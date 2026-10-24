@@ -653,7 +653,11 @@ func (t *Tree) diffMergeR(src, parent *Node, cache *dupCache, o mergeOpts) error
 		}
 		parent = dn
 	}
-	if t.diffIsRedundant(parent) {
+	redundant, err := t.diffIsRedundant(parent)
+	if err != nil {
+		return err
+	}
+	if redundant {
 		unlink(parent)
 	}
 	return nil
@@ -880,10 +884,10 @@ func (t *Tree) diffMergeNone(dm *Node, cur diffOp, src *Node) error {
 // diffIsRedundant is lyd_diff_is_redundant: a user-ordered move that is no move or undoes an
 // earlier one, a none without children (all descendants of a key-less list are keys), or a none
 // on a term whose default flag did not change; a none with diff metadata stays.
-func (t *Tree) diffIsRedundant(n *Node) bool {
+func (t *Tree) diffIsRedundant(n *Node) (bool, error) {
 	op, found := diffGetOp(n)
 	if !found {
-		return false // LY_CHECK_RET(…, 0)
+		return false, nil // LY_CHECK_RET(…, 0)
 	}
 	var child *Node
 	if !isDupInstList(n.schema) {
@@ -891,16 +895,16 @@ func (t *Tree) diffIsRedundant(n *Node) bool {
 	}
 	switch {
 	case op == diffReplace && isUserOrdered(n.schema):
-		if t.isRedundantUserordMove(n, child) {
-			return true
+		if redundant, err := t.isRedundantUserordMove(n, child); err != nil || redundant {
+			return redundant, err
 		}
 	case op == diffNone:
 		if n.schema == nil {
-			return true // an opaque node with none
+			return true, nil // an opaque node with none
 		}
 		for _, m := range n.meta { // libyang v5.8.6 src/diff.c: lyd_diff_is_redundant_meta
 			if strings.HasPrefix(m.name, "meta-") {
-				return false
+				return false, nil
 			}
 		}
 		for _, k := range n.kids.list { // … and on its keys
@@ -909,14 +913,14 @@ func (t *Tree) diffIsRedundant(n *Node) bool {
 			}
 			for _, m := range k.meta {
 				if strings.HasPrefix(m.name, "meta-") {
-					return false
+					return false, nil
 				}
 			}
 		}
 		if n.isTerm() {
 			i := findYangImplemented(n, "orig-default")
-			return i >= 0 && n.meta[i].value.Bool() == (n.flags&FlagDefault != 0)
+			return i >= 0 && n.meta[i].value.Bool() == (n.flags&FlagDefault != 0), nil
 		}
 	}
-	return child == nil && op == diffNone
+	return child == nil && op == diffNone, nil
 }

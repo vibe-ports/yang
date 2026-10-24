@@ -348,7 +348,9 @@ func (p *whenPass) finish() error {
 		n.touch()
 		n.flags &^= flagDead
 		if p.vc.diff != nil {
-			_ = p.vc.diff(n, diffDelete)
+			if err := p.vc.diff(n, diffDelete); err != nil {
+				return err
+			}
 		}
 		p.vc.dropTypes(n)
 	}
@@ -497,9 +499,11 @@ func (vc *valCtx) validateIncomplete(n *Node) error {
 			n.parent.lkeyDirty = true
 		}
 		n.touch()
-		n.value = v
 		if sib := n.siblingsOf(); sib != nil {
+			sib.refreshExact(n, func() { n.value = v })
 			sib.hashReindex(n)
+		} else {
+			n.value = v
 		}
 		reindexComparedParent(n)
 	} else {

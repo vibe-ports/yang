@@ -1,0 +1,27 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Hand-written alternate context for operation-child index regressions.
+module pv2-opidx-astra {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:pv2-opidx-astra";
+  prefix poa;
+
+  rpc r {
+    input {
+      leaf-list v { type uint32; ordered-by user; }
+      list outer {
+        list inner {
+          key id;
+          ordered-by user;
+          leaf id { type uint32; }
+        }
+      }
+      list shaped {
+        choice foreign-choice {
+          case foreign-case {
+            leaf value { type string; }
+          }
+        }
+      }
+    }
+  }
+}

@@ -29,6 +29,8 @@ func TestAudit261Reproducers(t *testing.T) {
 	metaPrefixModule := []any{map[string]any{"name": "pv2-meta-prefix"}}
 	editTarget := map[string]any{"searchdirs": []any{"schemas"}, "modules": []any{map[string]any{"name": "pv2-edit"}},
 		"context_options": []any{"no_yanglibrary"}}
+	opidxTarget := map[string]any{"searchdirs": []any{"schemas", "../ietf"},
+		"modules": []any{map[string]any{"name": "pv2-opidx-astra"}}, "context_options": []any{"no_yanglibrary"}}
 	step := func(kv map[string]any) any { return kv }
 	parse := func(input string) any {
 		return step(map[string]any{"do": "parse", "format": "json", "data_type": "config", "parse_only": true, "data": input})
@@ -172,6 +174,107 @@ func TestAudit261Reproducers(t *testing.T) {
 		{id: "diff-detached-nested-leaflist-create", steps: []any{step(map[string]any{"do": "diff", "single": true, "format": "json", "data_type": "config", "parse_only": true, "data": `{"pv2-detached:c":{"ll":["a"]}}`, "data_node": "/pv2-detached:c/ll[.='a']"})}},
 		{id: "diff-apply-latest-leaflist-anchor", steps: []any{parse(`{}`), step(map[string]any{"do": "diff", "format": "json", "data_type": "config", "parse_only": true, "data": `{"pv2-detached:ll":["a"]}`}), step(map[string]any{"do": "diff_apply"})}, modules: []any{map[string]any{"name": "pv2-detached"}, map[string]any{"name": "pv2-yang-loader"}}},
 		{id: "diff-apply-cross-context-container-leaf", steps: []any{parse(`{"pv2-detached:c":{"base":"x"}}`), step(map[string]any{"do": "dup", "node": "/pv2-detached:c", "options": []any{"recursive"}, "target": b}), step(map[string]any{"do": "diff", "format": "json", "data_type": "config", "parse_only": true, "data": `{"pv2-detached:c":{"base":"y"}}`}), step(map[string]any{"do": "dup", "node": "/pv2-detached:c", "options": []any{"recursive"}, "target": a}), step(map[string]any{"do": "diff_apply"})}},
+		{id: "opidx-keyless-lookup-merge", steps: []any{
+			step(map[string]any{"do": "parse", "format": "json", "data_type": "rpc", "parse_only": true,
+				"data": `{"pv2-opidx-astra:r":{"outer":[{"inner":[{"id":1},{"id":1}]}]}}`}),
+			step(map[string]any{"do": "edit", "format": "json", "data_type": "rpc", "parse_options": []any{"only"},
+				"merge": `{"pv2-opidx-astra:r":{"outer":[{"inner":[{"id":1},{"id":2}]}]}}`}),
+			step(map[string]any{"do": "dump"}),
+		}, modules: opidxTarget["modules"].([]any), searchdirs: opidxTarget["searchdirs"].([]any)},
+		{id: "opidx-foreign-leaflist-delete", steps: []any{
+			step(map[string]any{"do": "parse", "format": "json", "data_type": "rpc", "parse_only": true,
+				"data": `{"pv2-opidx-astra:r":{"a":"a","b":"b","c":"c","v":[1]}}`}),
+			step(map[string]any{"do": "dup", "node": "/pv2-opidx-astra:r", "options": []any{"recursive"}, "target": opidxTarget}),
+			step(map[string]any{"do": "diff", "format": "json", "data_type": "rpc", "parse_only": true,
+				"data": `{"pv2-opidx-astra:r":{"a":"a","b":"b","c":"c"}}`}),
+			step(map[string]any{"do": "dup", "node": "/pv2-opidx-astra:r", "options": []any{"recursive"}, "target": opidxTarget}),
+			step(map[string]any{"do": "diff_apply"}), step(map[string]any{"do": "dump"}),
+		}, modules: opidxTarget["modules"].([]any), searchdirs: opidxTarget["searchdirs"].([]any)},
+		{id: "opidx-keyless-dupset-metadata", steps: []any{
+			step(map[string]any{"do": "parse", "format": "json", "data_type": "rpc", "parse_only": true,
+				"data": `{"pv2-opidx-astra:r":{"@dup":[{"pv2-opidx-astra:tag":"a"},{"pv2-opidx-astra:tag":"b"},{"pv2-opidx-astra:tag":"c"},{"pv2-opidx-astra:tag":"d"}],"dup":[{"value":"x"},{"value":"x"},{"value":"x"},{"value":"x"}]}}`}),
+			step(map[string]any{"do": "diff", "format": "json", "data_type": "rpc", "parse_only": true, "options": []any{"meta"},
+				"data": `{"pv2-opidx-astra:r":{"@dup":[{"pv2-opidx-astra:tag":"a"},{"pv2-opidx-astra:tag":"d"},{"pv2-opidx-astra:tag":"b"},{"pv2-opidx-astra:tag":"c"}],"dup":[{"value":"x"},{"value":"x"},{"value":"x"},{"value":"x"}]}}`}),
+		}, modules: opidxTarget["modules"].([]any), searchdirs: opidxTarget["searchdirs"].([]any)},
+		{id: "opidx-dup-siblings-rb-initialization", steps: []any{
+			step(map[string]any{"do": "parse", "format": "json", "data_type": "rpc", "parse_only": true,
+				"data": `{"pv2-opidx-astra:r":{"v":[1,3]}}`}),
+			step(map[string]any{"do": "dup", "node": "/pv2-opidx-astra:r/v[.='5']", "parent": "/pv2-opidx-astra:r", "siblings": true,
+				"source": map[string]any{"format": "json", "data_type": "rpc", "parse_only": true,
+					"data": `{"pv2-opidx-astra:r":{"v":[5,7]}}`}}),
+			step(map[string]any{"do": "edit", "insert_term": map[string]any{"parent": "/pv2-opidx-astra:r", "name": "v", "value": "2"}}),
+			step(map[string]any{"do": "dump"}),
+		}, modules: opidxTarget["modules"].([]any), searchdirs: opidxTarget["searchdirs"].([]any)},
+		{id: "opidx-round4-sort-markrb-sequence", steps: []any{
+			step(map[string]any{"do": "parse", "format": "json", "data_type": "rpc", "parse_only": true,
+				"data": `{"pv2-opidx-astra:r":{"v":[3,1]}}`}),
+			step(map[string]any{"do": "dup", "node": "/pv2-opidx-astra:r", "options": []any{"recursive"},
+				"target": opidxTarget}),
+			step(map[string]any{"do": "edit", "insert_term": map[string]any{
+				"parent": "/pv2-opidx-astra:r", "name": "v", "value": "4"}}),
+			step(map[string]any{"do": "dup", "node": "/pv2-opidx-astra:r/v[.='5']", "parent": "/pv2-opidx-astra:r",
+				"siblings": true, "source": map[string]any{"format": "json", "data_type": "rpc", "parse_only": true,
+					"data": `{"pv2-opidx-astra:r":{"v":[5,7]}}`}}),
+			step(map[string]any{"do": "edit", "insert_term": map[string]any{
+				"parent": "/pv2-opidx-astra:r", "name": "v", "value": "2"}}),
+			step(map[string]any{"do": "dump"}),
+		}, modules: opidxTarget["modules"].([]any), searchdirs: []any{"opidx-astra-user"}},
+		{id: "opidx-keyless-merge-opaque-only", steps: []any{
+			step(map[string]any{"do": "parse", "format": "json", "data_type": "rpc", "unknown": "opaque", "parse_only": true,
+				"data": `{"pv2-opidx-astra:r":{"unknown":"opaque"}}`}),
+			step(map[string]any{"do": "edit", "format": "json", "data_type": "rpc", "unknown": "opaque",
+				"merge": `{"pv2-opidx-astra:r":{"outer":[{}]}}`}),
+			step(map[string]any{"do": "dump"}),
+		}, modules: opidxTarget["modules"].([]any), searchdirs: opidxTarget["searchdirs"].([]any)},
+		{id: "opidx-detached-operation-leaf", steps: []any{
+			step(map[string]any{"do": "parse", "format": "json", "data_type": "rpc", "parse_only": true,
+				"data": `{"pv2-opidx-astra:r":{"a":"x"}}`}),
+			step(map[string]any{"do": "unlink", "node": "/pv2-opidx-astra:r/a"}),
+			step(map[string]any{"do": "diff", "detached": true, "single": true}),
+		}, modules: opidxTarget["modules"].([]any), searchdirs: opidxTarget["searchdirs"].([]any)},
+		{id: "opidx-detached-user-ordered", steps: []any{
+			step(map[string]any{"do": "parse", "format": "json", "data_type": "rpc", "parse_only": true,
+				"data": `{"pv2-opidx-astra:r":{"dup":[{"value":"x"}]}}`}),
+			step(map[string]any{"do": "unlink", "node": "/pv2-opidx-astra:r/dup[1]"}),
+			step(map[string]any{"do": "diff", "detached": true, "single": true}),
+		}, modules: opidxTarget["modules"].([]any), searchdirs: opidxTarget["searchdirs"].([]any)},
+		{id: "opidx-notification-identical-opaque-merge", steps: []any{
+			step(map[string]any{"do": "parse", "format": "json", "data_type": "notif", "unknown": "opaque", "parse_only": true,
+				"data": `{"pv2-opidx-astra:n":{"v":[1,2,3,4],"unknown":"opaque"}}`}),
+			step(map[string]any{"do": "edit", "format": "json", "data_type": "notif", "unknown": "opaque",
+				"merge": `{"pv2-opidx-astra:n":{"v":[1,2,3,4],"unknown":"opaque"}}`}),
+			step(map[string]any{"do": "dump"}),
+		}, modules: opidxTarget["modules"].([]any), searchdirs: opidxTarget["searchdirs"].([]any)},
+		{id: "opidx-round4-notification-merge-change", steps: []any{
+			step(map[string]any{"do": "parse", "format": "json", "data_type": "notif", "unknown": "opaque", "parse_only": true,
+				"data": `{"pv2-opidx-astra:n":{"v":[1,3],"unknown":"opaque"}}`}),
+			step(map[string]any{"do": "edit", "format": "json", "data_type": "notif", "unknown": "opaque",
+				"merge": `{"pv2-opidx-astra:n":{"v":[5,7]}}`}),
+			step(map[string]any{"do": "edit", "delete": "/pv2-opidx-astra:n/v[.='1']"}),
+			step(map[string]any{"do": "change_term", "node": "/pv2-opidx-astra:n/v[.='3']", "value": "6"}),
+			step(map[string]any{"do": "dump"}),
+		}, modules: opidxTarget["modules"].([]any), searchdirs: opidxTarget["searchdirs"].([]any)},
+		{id: "opidx-round4-keyless-choice-case", steps: []any{
+			step(map[string]any{"do": "parse", "format": "json", "data_type": "rpc", "parse_only": true,
+				"data": `{"pv2-opidx-astra:r":{}}`}),
+			step(map[string]any{"do": "diff", "format": "json", "data_type": "rpc", "parse_only": true,
+				"data": `{"pv2-opidx-astra:r":{"shaped":[{"value":"same"}]}}`,
+				"target": map[string]any{"searchdirs": []any{"opidx-astra-user"},
+					"modules":         []any{map[string]any{"name": "pv2-opidx-astra"}},
+					"context_options": []any{"no_yanglibrary"}}}),
+			step(map[string]any{"do": "diff_apply"}),
+			step(map[string]any{"do": "edit", "format": "json", "data_type": "rpc", "parse_only": true,
+				"merge": `{"pv2-opidx-astra:r":{"shaped":[{"value":"same"}]}}`}),
+			step(map[string]any{"do": "dump"}),
+		}, modules: opidxTarget["modules"].([]any), searchdirs: opidxTarget["searchdirs"].([]any)},
+		{id: "opidx-cross-context-ordering-equality", steps: []any{
+			step(map[string]any{"do": "parse", "format": "json", "data_type": "rpc", "parse_only": true,
+				"data": `{"pv2-opidx-astra:r":{"outer":[{"inner":[{"id":1}]}]}}`}),
+			step(map[string]any{"do": "compare", "format": "json", "data_type": "rpc", "parse_only": true,
+				"options": []any{"full_recursion"}, "data": `{"pv2-opidx-astra:r":{"outer":[{"inner":[{"id":1}]}]}}`,
+				"target": map[string]any{"searchdirs": []any{"opidx-astra-user"},
+					"modules": []any{map[string]any{"name": "pv2-opidx-astra"}}, "context_options": []any{"no_yanglibrary"}}}),
+		}, modules: opidxTarget["modules"].([]any), searchdirs: opidxTarget["searchdirs"].([]any)},
 		{id: "diff-apply-latest-list-anchor", steps: []any{parse(`{}`), step(map[string]any{"do": "diff", "format": "json", "data_type": "config", "parse_only": true, "data": `{"pv2-detached:l":[{"k":"a"}]}`}), step(map[string]any{"do": "diff_apply"})}, modules: []any{map[string]any{"name": "pv2-detached"}, map[string]any{"name": "pv2-yang-loader"}}},
 		{id: "diff-apply-latest-state-anchor", steps: []any{parse(`{}`), step(map[string]any{"do": "diff", "format": "json", "data_type": "data", "parse_only": true, "data": `{"pv2-detached:sll":["a"]}`}), step(map[string]any{"do": "diff_apply"})}, modules: []any{map[string]any{"name": "pv2-detached"}, map[string]any{"name": "pv2-yang-loader"}}},
 		{id: "diff-merge-latest-delete-create-anchor", steps: []any{

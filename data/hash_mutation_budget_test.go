@@ -103,9 +103,11 @@ func snapshotHashBudgetSiblings(s *siblings) string {
 	for n, live := range s.unsorted {
 		unsorted = append(unsorted, fmt.Sprintf("%p=%t", n, live))
 	}
-	for sn, entry := range s.opIdx {
-		occurrence = append(occurrence, fmt.Sprintf("%p=%v:%d:%d:%d:%d", sn, entry.list,
-			entry.rank, entry.direction, entry.gaps, entry.rb))
+	if s.order != nil {
+		for sn, entry := range s.order.entries {
+			occurrence = append(occurrence, fmt.Sprintf("%p=%v:%d:%d:%d:%d", sn,
+				slices.Collect(s.allInstances(sn)), entry.rank, entry.direction, entry.gaps, entry.rb))
+		}
 	}
 	for sn, order := range s.pending {
 		var nodes []string
@@ -121,8 +123,8 @@ func snapshotHashBudgetSiblings(s *siblings) string {
 	sort.Strings(unsorted)
 	sort.Strings(occurrence)
 	sort.Strings(pending)
-	return fmt.Sprintf("order=%d gen=%d work=%p schemaUnordered=%t list=%v opq=%v ht=%v leaders=%v first=%v rb=%v unsorted=%v occurrences=%v ranks=%v pending=%v",
-		s.exactOrder, s.gen, s.work, s.schemaUnordered, s.list, s.opq, entries, leaders, first, rb, unsorted, occurrence, s.opRanks, pending)
+	return fmt.Sprintf("order=%d gen=%d work=%p schemaUnordered=%t list=%v opq=%v ht=%v leaders=%v first=%v rb=%v unsorted=%v occurrences=%v pending=%v",
+		s.exactOrder, s.gen, s.work, s.schemaUnordered, s.list, s.opq, entries, leaders, first, rb, unsorted, occurrence, pending)
 }
 
 func checkFindAgainstLinear(t *testing.T, tr *Tree) {
@@ -233,6 +235,7 @@ func checkEveryHashBudgetPointPair(t *testing.T, build func() ([]*Tree, func() e
 					if after := snapshotHashBudgetTree(tr); !reflect.DeepEqual(before[i], after) {
 						t.Fatalf("tree %d, charge %d: budget failure changed tree %d\nbefore=%+v\nafter=%+v", tree, limit, i, before[i], after)
 					}
+					opidxAssertTreeInvariant(t, tr)
 				}
 			case err != nil:
 				t.Fatalf("tree %d, charge %d: %v", tree, limit, err)

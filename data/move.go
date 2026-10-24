@@ -419,25 +419,8 @@ func runs(nodes []*Node) [][]*Node {
 	return rs
 }
 
-// take unlinks the run from the top level of src like lyd_unlink_ignore_lyds: the nodes keep
-// their RB-tree membership, and the run's tree state is returned to be given to its new place.
-func take(src *Tree, run []*Node) (rb, uns bool) {
-	if s := run[0].schema; s != nil {
-		rb, uns = src.top.rbTree[run[0]], src.top.unsorted[run[0]]
-	}
-	inRB := make([]bool, len(run))
-	groups := make([]*rbGroup, len(run))
-	for i, n := range run {
-		inRB[i] = n.inRB
-		groups[i] = n.rbGroup
-	}
-	_ = src.unlinkAll(run) // top-level nodes are never keys under a parent: lyd_unlink_check passes
-	for i, n := range run {
-		n.touch()
-		n.inRB = inRB[i]
-		n.rbGroup = groups[i]
-	}
-	return rb, uns
+type movedRunState struct {
+	rb, uns bool
 }
 
 // give records the tree state of a run moved whole into dst (lyds_tree metadata moves with its
@@ -473,16 +456,13 @@ func (t *Tree) moveNodes(parent *Node, src *Tree) error {
 	}
 	inRB := make([]bool, len(original))
 	groups := make([]*rbGroup, len(original))
-	type runState struct {
-		rb, uns bool
-	}
-	states := make(map[*Node]runState, len(rs))
+	states := make(map[*Node]movedRunState, len(rs))
 	for i, n := range original {
 		t.work.Add(1)
 		inRB[i] = n.inRB
 		groups[i] = n.rbGroup
 		if n.schema != nil && (i == 0 || original[i-1].schema != n.schema) {
-			states[n] = runState{src.top.rbTree[n], src.top.unsorted[n]}
+			states[n] = movedRunState{src.top.rbTree[n], src.top.unsorted[n]}
 		}
 	}
 	defer func() {
@@ -518,10 +498,21 @@ func (t *Tree) moveNodes(parent *Node, src *Tree) error {
 		}
 		dst.gen, src.top.gen = dstGen, srcGen
 	}()
+	// Removing a top-level operation run rebuilds its ordered index and can exhaust the
+	// source tree's hash-work budget. Unlink the complete source batch before publishing any
+	// destination change, so a refusal leaves both trees untouched and no later link sees a
+	// still-linked node.
+	if err := src.unlinkAll(original); err != nil {
+		return err
+	}
+	for i, n := range original {
+		n.touch()
+		n.inRB = inRB[i]
+		n.rbGroup = groups[i]
+	}
 	if dst.len() == 0 {
 		// lyd_move_nodes_at_once: the list keeps its order, its runs their RB trees
 		for _, run := range rs {
-			rb, uns := take(src, run)
 			for _, n := range run {
 				at := -1
 				if n.schema != nil {
@@ -532,7 +523,8 @@ func (t *Tree) moveNodes(parent *Node, src *Tree) error {
 				}
 			}
 			if run[0].schema != nil {
-				give(dst, run[0], rb, uns)
+				state := states[run[0]]
+				give(dst, run[0], state.rb, state.uns)
 			}
 		}
 		return nil
@@ -541,7 +533,7 @@ func (t *Tree) moveNodes(parent *Node, src *Tree) error {
 	for _, run := range rs {
 		s := run[0].schema
 		if sortedSupported(run[0]) && t.schemaLookup(dst, s) != nil {
-			if err := t.merge(parent, dst, src, run); err != nil {
+			if err := t.merge(parent, dst, run, states[run[0]]); err != nil {
 				return err
 			}
 			continue
@@ -558,7 +550,6 @@ func (t *Tree) moveNodes(parent *Node, src *Tree) error {
 				return t.work.hashErr
 			}
 		}
-		rb, uns := take(src, run)
 		for i, n := range run {
 			if at < 0 {
 				if err := t.link(parent, dst, n, -1); err != nil {
@@ -571,7 +562,8 @@ func (t *Tree) moveNodes(parent *Node, src *Tree) error {
 			}
 		}
 		if s != nil {
-			give(dst, run[0], rb, uns)
+			state := states[run[0]]
+			give(dst, run[0], state.rb, state.uns)
 		}
 	}
 	return nil
@@ -592,13 +584,13 @@ func (t *Tree) moveNodes(parent *Node, src *Tree) error {
 //     tree shape and uses data order (D-0061).
 //
 // Source instances outside the source tree come last, one by one (lyds_merge_nodes1 from next_p).
-func (t *Tree) merge(parent *Node, dst *siblings, src *Tree, run []*Node) error {
+func (t *Tree) merge(parent *Node, dst *siblings, run []*Node, state movedRunState) error {
 	if err := t.preflightSplice(parent, dst, run); err != nil {
 		return err
 	}
 	s := run[0].schema
-	srcRB := src.top.rbTree[run[0]]
-	selected := src.top.rbGroups[run[0]]
+	srcRB := state.rb
+	selected := run[0].rbGroup
 	var members, rest []*Node
 	for _, n := range run {
 		if srcRB && n.inRB && n.rbGroup == selected {
@@ -607,7 +599,6 @@ func (t *Tree) merge(parent *Node, dst *siblings, src *Tree, run []*Node) error 
 			rest = append(rest, n)
 		}
 	}
-	take(src, run)
 	if len(members) > 0 && !dst.hasRB(s) {
 		// lyds_merge_nodes2_front/_among/_back: a stable merge, source first on equal values
 		// Splice needs positions; its sibling copy already bounds this scan.

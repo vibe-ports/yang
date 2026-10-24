@@ -309,24 +309,26 @@ func (t *Tree) propagateMeta(dm *Node, name string, mod *schema.Module) error {
 // undoes an earlier move of a sibling (each one's anchor is the other's original anchor and each
 // points at the other) is redundant. The original and new anchors are different annotations, so
 // libyang's "no move" check (lyd_compare_meta of the two) never fires; neither does it here.
-func (t *Tree) isRedundantUserordMove(dm, child *Node) bool {
+func (t *Tree) isRedundantUserordMove(dm, child *Node) (bool, error) {
 	name, orig := anchorNames(dm.schema)
 	oi, vi := findYangLatest(dm, orig), findYangLatest(dm, name)
 	if oi < 0 || vi < 0 {
-		return false // libyang asserts them
+		return false, nil // libyang asserts them
 	}
 	if compareMeta(dm.meta[oi], dm.meta[vi]) {
 		delYangMeta(dm, orig)
 		delYangMeta(dm, name)
 		if child != nil {
-			_ = t.diffChangeOp(dm, diffNone)
-			return false
+			if err := t.diffChangeOp(dm, diffNone); err != nil {
+				return false, err
+			}
+			return false, nil
 		}
-		return true
+		return true, nil
 	}
 	sib := dm.siblingsOf()
 	if sib == nil {
-		return false
+		return false, nil
 	}
 	all := slices.Concat(sib.list, sib.opq)
 	at := slices.Index(all, dm)
@@ -343,13 +345,13 @@ func (t *Tree) isRedundantUserordMove(dm, child *Node) bool {
 		origVal, itVal := dm.meta[mo].value.Canonical(), it.meta[iv].value.Canonical()
 		if dm.schema.Kind == schema.List {
 			if listPredicate(dm) == itVal && listPredicate(it) == origVal {
-				return true // a cyclic change
+				return true, nil // a cyclic change
 			}
 		} else if it.isTerm() && dm.value.Canonical() == itVal && it.value.Canonical() == origVal {
-			return true
+			return true, nil
 		}
 	}
-	return false
+	return false, nil
 }
 
 // metaOfName collects diff metadata using n's own implemented yang module,

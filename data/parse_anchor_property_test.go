@@ -83,23 +83,27 @@ func TestParseDeferredRunAnchors(t *testing.T) {
 		if xml {
 			f, fp = FormatXML, parseXML
 		}
+		var tr *Tree
 		var parent *Node
 		if kind == 2 {
-			tr, diags, err := parseWith(context.Background(), strings.NewReader(in), set,
+			parsed, diags, err := parseWith(context.Background(), strings.NewReader(in), set,
 				parseOpts{ParseOptions: ParseOptions{Unknown: Reject, ParseOnly: true}}, fp, nil)
 			if err != nil {
 				t.Fatal(in, err, diags)
 			}
+			tr = parsed
 			for n := range tr.Top() {
 				parent = n
 			}
 		} else {
-			_, op, diags, err := parseOp(context.Background(), strings.NewReader(in), set, f, opRPC, nil, Reject)
+			parsed, op, diags, err := parseOp(context.Background(), strings.NewReader(in), set, f, opRPC, nil, Reject)
 			if err != nil {
 				t.Fatal(in, err, diags)
 			}
+			tr = parsed
 			parent = op
 		}
+		opidxAssertTreeInvariant(t, tr)
 		var gotNames, wantNames []string
 		var gotV, wantV, gotL, wantL []int
 		for _, it := range items {

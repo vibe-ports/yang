@@ -293,8 +293,10 @@ func TestOpIndexRecordRandomized(t *testing.T) {
 			}
 			checkAll := func() {
 				t.Helper()
+				opidxAssertTreeInvariant(t, tr)
 				opidxCheckRecords(t, &op.kids)
 				for i := range copies {
+					opidxAssertTreeInvariant(t, treeOf(copies[i].op))
 					opidxCheckRecords(t, &copies[i].op.kids)
 				}
 				if t.Failed() {

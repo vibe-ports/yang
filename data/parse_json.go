@@ -394,7 +394,7 @@ func (p *jsonParser) checkOpaq(sn *schema.Node) (h types.Hints, err error) {
 // instances are already sorted, design 07 §4). libyang scans all siblings per "@name"; the
 // instances are collected in that same document order from the operation index or an ordinary
 // contiguous schema run, and opaque nodes by name, so the work is linear.
-func (p *jsonParser) metadataFinish(parent *Node) error {
+func (p *jsonParser) metadataFinish(parent *Node) (result error) {
 	lc := p.lc
 	sib := lc.tree.childrenOf(parent)
 	if err := lc.flushDirty(sib); err != nil {
@@ -417,7 +417,11 @@ func (p *jsonParser) metadataFinish(parent *Node) error {
 	var done []*Node
 	// libyang frees each one when it is attached; none of them is a target of another (their
 	// names start with '@'), except for a "@@name" member
-	defer func() { _ = lc.tree.unlinkAll(done) }()
+	defer func() {
+		if err := lc.tree.unlinkAll(done); err != nil {
+			result = err
+		}
+	}()
 	var rc error
 	prev, instance := "", 0
 	for _, at := range ats {
@@ -591,21 +595,25 @@ func (p *jsonParser) metaAttr(node *Node, idx int) (rc error) {
 					return current
 				}
 				pastRun = func() *Node {
-					if d := sib.opIdx[sn]; d != nil {
-						return sibAt(sib, lc.position(sib, d.list[len(d.list)-1])+1)
+					if sib.order != nil {
+						if d := sib.order.entries[sn]; d != nil {
+							last := sib.order.bySchema.Last(sn, 0)
+							return sibAt(sib, sib.orderPosition(last.Value)+1)
+						}
 					}
 					_, hi := lc.tree.runBounds(sib, prev)
 					return sibAt(sib, hi)
 				}
 				return nil
 			}
-		} else if d := sib.opIdx[node.schema]; d != nil && d.gaps == 0 && d.list[0] == node {
+		} else if sib.order != nil && sib.order.entries[node.schema] != nil &&
+			sib.order.entries[node.schema].gaps == 0 && sib.documentFirst(node.schema) == node {
 			// A contiguous run is its index entry: node->next stays inside it until the run
 			// ends, so the start needs no sibling scan. Past the run node->next is the following
 			// sibling, of another schema node (the entry holds every instance). It ends the
 			// coupling, and only the representation error names it, so it is located on that
 			// error path alone (pastRun).
-			run := d.list
+			run := sib.walkFrom(node)
 			idx = 0
 			next = func(i int) *Node {
 				if i < len(run) {

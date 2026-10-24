@@ -1,0 +1,60 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Hand-written alternate context for operation-child digest regressions.
+module pv2-astra305 {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:pv2-astra305";
+  prefix pa305;
+
+  container data-r {
+    leaf a { type string; }
+    leaf b { type string; }
+    leaf c { type string; }
+    leaf target { type int32; }
+    leaf-list union-v {
+      type union {
+        type leafref { path "../target"; }
+        type string;
+      }
+    }
+  }
+
+  rpc r {
+    input {
+      leaf input { type string; }
+      leaf in2 { type string; }
+      leaf in3 { type string; }
+      leaf in4 { type string; }
+      leaf-list v { type uint32; }
+      leaf target { type int32; }
+      leaf-list union-v {
+        type union {
+          type leafref { path "../target"; }
+          type string;
+        }
+      }
+      list outer {
+        list inner {
+          key id;
+          leaf id { type uint32; }
+        }
+      }
+      list text-outer {
+        list text-inner {
+          key id;
+          leaf id { type string; }
+        }
+      }
+      list mapped {
+        key id;
+        leaf id { type string; }
+      }
+    }
+    output {
+      leaf before { type string; }
+      leaf-list output-v { type uint32; }
+      list l {
+        leaf value { type string; }
+      }
+    }
+  }
+}

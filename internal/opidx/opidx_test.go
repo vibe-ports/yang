@@ -103,6 +103,78 @@ func TestSequenceEdits(t *testing.T) {
 	checkSequence(t, &s, want)
 }
 
+func TestSequenceMovePreservesHandle(t *testing.T) {
+	var seq Seq[int]
+	var handles []*Handle[int]
+	for i := range 6 {
+		handles = append(handles, seq.InsertBefore(nil, i))
+	}
+	if !seq.MoveBefore(handles[4], handles[1]) || !seq.MoveBefore(handles[0], nil) {
+		t.Fatal("move rejected live handles")
+	}
+	want := []*Handle[int]{handles[4], handles[1], handles[2], handles[3], handles[5], handles[0]}
+	checkSequence(t, &seq, want)
+	if seq.MoveBefore(nil, handles[0]) {
+		t.Fatal("move accepted nil handle")
+	}
+}
+
+func TestSequenceMovePermutation(t *testing.T) {
+	var seq Seq[int]
+	handles := make([]*Handle[int], 64)
+	for i := range handles {
+		handles[i] = seq.InsertBefore(nil, i)
+	}
+	for i := len(handles) - 1; i >= 0; i-- {
+		if !seq.MoveBefore(handles[i], nil) {
+			t.Fatalf("MoveBefore(%d)", i)
+		}
+	}
+	for i, h := 0, seq.First(); h != nil; i, h = i+1, seq.Next(h) {
+		if want := len(handles) - 1 - i; h.Value != want {
+			t.Fatalf("position %d = %d, want %d", i, h.Value, want)
+		}
+		if rank, ok := seq.Rank(h); !ok || rank != i {
+			t.Fatalf("Rank(%d) = %d, %t, want %d, true", h.Value, rank, ok, i)
+		}
+	}
+}
+
+func TestSequenceMoveRangePermutations(t *testing.T) {
+	for seed := int64(1); seed <= 100; seed++ {
+		var seq Seq[int]
+		handles := make([]*Handle[int], 32)
+		for i := range handles {
+			handles[i] = seq.InsertBefore(nil, i)
+		}
+		desired := slices.Clone(handles[5:27])
+		want := slices.Clone(handles)
+		rng := rand.New(rand.NewSource(seed)) //nolint:gosec // deterministic structural test
+		rng.Shuffle(len(desired), func(i, j int) { desired[i], desired[j] = desired[j], desired[i] })
+		anchor := handles[27]
+		for i := len(desired) - 1; i >= 0; i-- {
+			h := desired[i]
+			if !seq.MoveBefore(h, anchor) {
+				t.Fatalf("seed %d: MoveBefore(%d)", seed, desired[i].Value)
+			}
+			from, to := slices.Index(want, h), slices.Index(want, anchor)
+			want = slices.Delete(want, from, from+1)
+			if from < to {
+				to--
+			}
+			want = slices.Insert(want, to, h)
+			checkSequence(t, &seq, want)
+			anchor = h
+		}
+		for i, h := 0, seq.First(); h != nil; i, h = i+1, seq.Next(h) {
+			if rank, ok := seq.Rank(h); !ok || rank != i || seq.Select(i) != h {
+				t.Fatalf("seed %d: position %d value %d: rank=%d ok=%t selected=%p handle=%p",
+					seed, i, h.Value, rank, ok, seq.Select(i), h)
+			}
+		}
+	}
+}
+
 func TestSequenceRandomReference(t *testing.T) {
 	for seed := int64(0); seed < 64; seed++ {
 		rng := rand.New(rand.NewSource(seed)) //nolint:gosec // deterministic reference model
@@ -211,6 +283,9 @@ func TestOccurrencesSplitRuns(t *testing.T) {
 			}
 			if idx.Len(schema, key) != len(want) || idx.First(schema, key) != valueAt(want, 0) || idx.Last(schema, key) != valueAt(want, len(want)-1) {
 				t.Fatal("occurrence endpoints or length wrong")
+			}
+			if got := idx.LastWhere(schema, key, func(v int) bool { return v <= want[len(want)/2].Value }); got != want[len(want)/2] {
+				t.Fatal("last matching occurrence wrong")
 			}
 			for i, h := range want {
 				if idx.Next(schema, key, h) != valueAt(want, i+1) {

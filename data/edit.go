@@ -10,6 +10,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"iter"
 	"slices"
 	"strings"
 
@@ -112,6 +113,9 @@ func (n *Node) Unlink() error {
 		return nil
 	}
 	defer n.beginHashWork()()
+	if err := preflightUnlink(n); err != nil {
+		return err
+	}
 	return (&logger{}).done(unlinkTree(n))
 }
 
@@ -417,9 +421,11 @@ func (t *Tree) newPath(lg *logger, path, value string, o NewPathOptions) (*Node,
 	var position uint64
 	if idx < len(p) {
 		var err error
-		if position, err = t.insertPositionBound(t.childrenOf(node), &Node{schema: p[idx].Node}, insertDefault); err != nil {
+		var ordered uint64
+		if position, ordered, err = t.insertPositionBound(t.childrenOf(node), &Node{schema: p[idx].Node}, insertDefault); err != nil {
 			return nil, err
 		}
+		position = addHashBound(position, ordered)
 	}
 	if err := t.preflightNewPathHash(p[idx:], node, value, position); err != nil {
 		return nil, err
@@ -729,8 +735,11 @@ func (t *Tree) changeNodeValue(n *Node, v types.Value, hashAmount uint64) {
 	if sortedSupported(target) {
 		// One indexed instance is necessarily alone; avoid a charged position
 		// lookup through unrelated siblings on its hash-only update.
-		entry := sib.opIdx[target.schema]
-		if entry == nil || len(entry.list) != 1 || entry.list[0] != target {
+		var entry *opEntry
+		if sib.order != nil {
+			entry = sib.order.entries[target.schema]
+		}
+		if entry == nil || entry.count != 1 || sib.documentFirst(target.schema) != target {
 			at, err := t.originIndex(sib, sib.list, target)
 			if err != nil {
 				t.work.hashErr = err
@@ -830,8 +839,10 @@ func (t *Tree) changeNodeValue(n *Node, v types.Value, hashAmount uint64) {
 	}
 	sib.hashRemove(target)
 	n.touch()
-	n.value = v
-	refreshInstanceHash(&t.work, target)
+	sib.refreshExact(target, func() {
+		n.value = v
+		refreshInstanceHash(&t.work, target)
+	})
 	if sib.ht != nil {
 		sib.hashPut(target)
 	} else {
@@ -852,15 +863,205 @@ type dupInst struct {
 	used int
 }
 
+// keylessFirstIndex is the narrowing index of the one native run selected by
+// lyd_find_sibling_first. With a children table, first is the identity of the
+// selected first-instance record; gen ties that selection to the sibling-table
+// generation in which it was observed. members lets an insertion extend the
+// index only when it is adjacent to that same selected run.
+type keylessFirstIndex struct {
+	first   *record
+	gen     uint64
+	buckets map[string][]*Node
+	members map[*Node]struct{}
+}
+
 // dupCache is the duplicate instance cache of one sibling level (lyd_dup_inst_get's hash table).
 // A level without a children table gets a document-order index built once per schema node; a
 // level with one reads the live lyd_hash bucket in registration order, or, with instances of
 // several contexts, a registration-order index by native key. The indexes are only appended to
 // (added); dupInstNext skips the nodes that have left the level since.
 type dupCache struct {
-	inst      map[*Node]*dupInst
-	runs      map[*schema.Node]map[idxKey]*nodeDeque // sibling order; a deque, creates prepend
-	tableRuns map[*siblings]map[string][]*Node
+	inst         map[*Node]*dupInst
+	runs         map[*schema.Node]map[idxKey]*nodeDeque // sibling order; a deque, creates prepend
+	tableRuns    map[*siblings]map[string][]*Node
+	keylessFirst map[*siblings]map[*schema.Node]*keylessFirstIndex
+	keylessDup   map[*siblings]map[*schema.Node]map[string][]*Node
+}
+
+func selectedFirstRecord(sib *siblings, sn *schema.Node) *record {
+	if sib == nil || sib.ht == nil {
+		return nil
+	}
+	if chain := sib.leaders[sn]; chain != nil {
+		return chain.first
+	}
+	return nil
+}
+
+// keylessDigest returns n's digest only when this cache has an index that can become stale.
+func (c *dupCache) keylessDigest(n *Node, work *workCounter) (string, bool) {
+	if n == nil || n.schema == nil {
+		return "", false
+	}
+	sib := n.siblingsOf()
+	if sib == nil {
+		return "", false
+	}
+	first := c.keylessFirst[sib]
+	dup := c.keylessDup[sib]
+	if first[n.schema] == nil && dup[n.schema] == nil {
+		return "", false
+	}
+	return subtreeEquivalenceKey(n, work)
+}
+
+// invalidateChangedKeyless removes subtree-digest buckets only when a merge changed n's key.
+// The native duplicate-instance cache deliberately remains intact: once an instance has been
+// consumed, lyd_dup_inst_next does not make it available again after its descendants change.
+func (c *dupCache) invalidateChangedKeyless(n *Node, before string, tracked bool, work *workCounter) {
+	if !tracked {
+		return
+	}
+	after, ok := subtreeEquivalenceKey(n, work)
+	if ok && after == before {
+		return
+	}
+	sib := n.siblingsOf()
+	if bySchema := c.keylessFirst[sib]; bySchema != nil {
+		delete(bySchema, n.schema)
+	}
+	if bySchema := c.keylessDup[sib]; bySchema != nil {
+		delete(bySchema, n.schema)
+	}
+}
+
+func (t *Tree) keylessFirstRun(c *dupCache, sib *siblings, sn *schema.Node, target *Node) []*Node {
+	if c.keylessFirst == nil {
+		c.keylessFirst = map[*siblings]map[*schema.Node]*keylessFirstIndex{}
+	}
+	bySchema := c.keylessFirst[sib]
+	if bySchema == nil {
+		bySchema = map[*schema.Node]*keylessFirstIndex{}
+		c.keylessFirst[sib] = bySchema
+	}
+	first := selectedFirstRecord(sib, sn)
+	entry := bySchema[sn]
+	if entry == nil || entry.first != first || entry.gen != sib.gen {
+		entry = &keylessFirstIndex{first: first, gen: sib.gen, buckets: map[string][]*Node{}, members: map[*Node]struct{}{}}
+		// With a children table, lyd_find_sibling_first starts at the native
+		// first-instance record and walks only that contiguous physical run.
+		// Without one it walks every sibling, so split operation runs must all be
+		// indexed in document order.
+		var all iter.Seq[*Node]
+		if sib.ht == nil {
+			all = sib.all()
+		} else {
+			all = t.instances(sib, sn)
+		}
+		for n := range all {
+			if n.schema != sn {
+				continue
+			}
+			key, ok := subtreeEquivalenceKey(n, &t.work)
+			if !ok {
+				return nil
+			}
+			entry.buckets[key] = append(entry.buckets[key], n)
+			entry.members[n] = struct{}{}
+		}
+		bySchema[sn] = entry
+	}
+	key, ok := subtreeEquivalenceKey(target, &t.work)
+	if !ok {
+		return nil
+	}
+	return entry.buckets[key]
+}
+
+func (t *Tree) keylessFirst(c *dupCache, sib *siblings, target *Node) *Node {
+	sn := target.schema
+	if len(sib.list) != 0 {
+		first := sib.list[0]
+		if !sameSet(ctxOf(first), ctxOf(target)) {
+			// lyd_find_sibling_first maps no schema in its linear branch. In
+			// particular, lyd_find_schema_ctx always walks operation input, so it
+			// cannot map an output child unless the table branch actually needs it.
+			if sib.ht == nil {
+				for candidate := range sib.all() {
+					if compareSingle(t, candidate, target, true) {
+						return candidate
+					}
+				}
+				return nil
+			}
+			var err error
+			if sn, err = findSchemaCtx(target.schema, ctxOf(first), first.parent); err != nil {
+				return nil
+			}
+		}
+	}
+	// lyd_find_sibling_first selects its full-recursion branch from the source
+	// schema, but lyd_find_sibling_val may resolve that schema to a keyed list in
+	// the destination context. Such candidates have no keyless-subtree digest;
+	// retain the native comparison walk instead of rejecting the mapped run.
+	if !sn.Keyless() {
+		for candidate := range t.instances(sib, sn) {
+			if compareSingle(t, candidate, target, true) {
+				return candidate
+			}
+		}
+		return nil
+	}
+	for _, candidate := range t.keylessFirstRun(c, sib, sn, target) {
+		if compareSingle(t, candidate, target, true) {
+			return candidate
+		}
+	}
+	return nil
+}
+
+// keylessDupRun narrows lyd_find_sibling_dup_inst_set's complete candidate
+// set while retaining its order: hash registration order with a children
+// table, physical sibling order without one. Unlike keylessFirstRun it must
+// include equal instances from every split run.
+func (t *Tree) keylessDupRun(c *dupCache, sib *siblings, target *Node, k idxKey) []*Node {
+	if c.keylessDup == nil {
+		c.keylessDup = map[*siblings]map[*schema.Node]map[string][]*Node{}
+	}
+	bySchema := c.keylessDup[sib]
+	if bySchema == nil {
+		bySchema = map[*schema.Node]map[string][]*Node{}
+		c.keylessDup[sib] = bySchema
+	}
+	index := bySchema[target.schema]
+	if index == nil {
+		index = map[string][]*Node{}
+		var all iter.Seq[*Node]
+		switch {
+		case sib.ht != nil:
+			all = sib.bucketNodes(k)
+		case sib.order != nil && (opChild(target.schema) || sib.schemaUnordered):
+			all = sib.allInstances(target.schema)
+		default:
+			all = sib.all()
+		}
+		for n := range all {
+			if n.schema != target.schema {
+				continue
+			}
+			key, ok := subtreeEquivalenceKey(n, &t.work)
+			if !ok {
+				return nil
+			}
+			index[key] = append(index[key], n)
+		}
+		bySchema[target.schema] = index
+	}
+	key, ok := subtreeEquivalenceKey(target, &t.work)
+	if !ok {
+		return nil
+	}
+	return index[key]
 }
 
 func dupNativeKey(n *Node) string {
@@ -879,6 +1080,9 @@ func (t *Tree) run(c *dupCache, inst *Node) []*Node {
 	k, ok := indexedKey(inst, &t.work)
 	if !ok {
 		return nil
+	}
+	if inst.schema.Kind == schema.List && inst.schema.Keyless() && !sib.mixedContexts() {
+		return t.keylessDupRun(c, sib, inst, k)
 	}
 	if sib.ht != nil && !sib.mixedContexts() {
 		// lyd_find_sibling_dup_inst_set reads the live hash bucket on each first lookup.
@@ -954,6 +1158,44 @@ func (t *Tree) run(c *dupCache, inst *Node) []*Node {
 
 // added records n, just inserted at the level of c, in the level's index.
 func (c *dupCache) added(n *Node, work *workCounter) {
+	if n.schema != nil && n.schema.Kind == schema.List && n.schema.Keyless() && c.keylessFirst != nil {
+		if sib := n.siblingsOf(); sib != nil {
+			if bySchema := c.keylessFirst[sib]; bySchema != nil {
+				if index := bySchema[n.schema]; index != nil {
+					first := selectedFirstRecord(sib, n.schema)
+					switch {
+					case index.first != first:
+						delete(bySchema, n.schema)
+					case sib.ht == nil || keylessRunAdjacent(sib, index, n):
+						if key, ok := subtreeEquivalenceKey(n, work); ok {
+							index.buckets[key] = append(index.buckets[key], n)
+							index.members[n] = struct{}{}
+							index.gen = sib.gen
+						}
+					default:
+						// The table generation changed, but the insertion was outside
+						// the selected run. Keep its contents and advance only its key.
+						index.gen = sib.gen
+					}
+				}
+			}
+		}
+	}
+	if n.schema != nil && n.schema.Kind == schema.List && n.schema.Keyless() && c.keylessDup != nil {
+		if sib := n.siblingsOf(); sib != nil {
+			if bySchema := c.keylessDup[sib]; bySchema != nil {
+				if index := bySchema[n.schema]; index != nil {
+					// Merge links unmatched instances at the end of their native candidate
+					// order: hash registration order with a children table, sibling order
+					// otherwise. Extend the digest bucket instead of rebuilding every
+					// accumulated keyless instance for each distinct source node.
+					if key, ok := subtreeEquivalenceKey(n, work); ok {
+						index[key] = append(index[key], n)
+					}
+				}
+			}
+		}
+	}
 	if sib := n.siblingsOf(); sib != nil && c.tableRuns != nil {
 		if idx := c.tableRuns[sib]; idx != nil && n.schema != nil {
 			key := dupNativeKey(n)
@@ -970,6 +1212,39 @@ func (c *dupCache) added(n *Node, work *workCounter) {
 	}
 }
 
+// keylessRunAdjacent reports whether newly linked n joined the cached selected
+// run. One insertion can extend a run only beside one of its previous members;
+// checking the mutation-maintained sequence avoids walking the growing run.
+func keylessRunAdjacent(sib *siblings, index *keylessFirstIndex, n *Node) bool {
+	if index.first != nil && index.first.node == n {
+		return true
+	}
+	if sib.order != nil {
+		h := sib.order.byNode[n]
+		if h == nil {
+			return false
+		}
+		if prev := sib.order.seq.Prev(h); prev != nil {
+			if _, ok := index.members[prev.Value]; ok {
+				return true
+			}
+		}
+		if next := sib.order.seq.Next(h); next != nil {
+			_, ok := index.members[next.Value]
+			return ok
+		}
+		return false
+	}
+	at := indexFromEnd(sib.work, sib.list, n)
+	return at > 0 && hasNode(index.members, sib.list[at-1]) ||
+		at >= 0 && at+1 < len(sib.list) && hasNode(index.members, sib.list[at+1])
+}
+
+func hasNode(set map[*Node]struct{}, n *Node) bool {
+	_, ok := set[n]
+	return ok
+}
+
 // created records n, just created at the level of c by ApplyDiff: lyd_find_sibling_dup_inst_set
 // reads the live siblings on each first lookup (tree_data_common.c:121-125), so a set built later
 // must include n. The registration-order index gets n at its end (n is registered last); the
@@ -977,6 +1252,22 @@ func (c *dupCache) added(n *Node, work *workCounter) {
 func (t *Tree) created(c *dupCache, n *Node) {
 	if n.schema == nil {
 		return
+	}
+	if n.schema.Kind == schema.List && n.schema.Keyless() && c.keylessFirst != nil {
+		if sib := n.siblingsOf(); sib != nil {
+			if bySchema := c.keylessFirst[sib]; bySchema != nil && bySchema[n.schema] != nil {
+				// ApplyDiff can place a new duplicate before an indexed instance.
+				// Rebuild on the next lookup so candidate order remains native.
+				delete(bySchema, n.schema)
+			}
+		}
+	}
+	if n.schema.Kind == schema.List && n.schema.Keyless() && c.keylessDup != nil {
+		if sib := n.siblingsOf(); sib != nil {
+			if bySchema := c.keylessDup[sib]; bySchema != nil {
+				delete(bySchema, n.schema)
+			}
+		}
 	}
 	if sib := n.siblingsOf(); sib != nil && c.tableRuns != nil {
 		if idx := c.tableRuns[sib]; idx != nil {
@@ -1015,6 +1306,20 @@ func (t *Tree) created(c *dupCache, n *Node) {
 func (t *Tree) moved(c *dupCache, n *Node) {
 	if n.schema == nil {
 		return
+	}
+	if n.schema.Kind == schema.List && n.schema.Keyless() && c.keylessFirst != nil {
+		if sib := n.siblingsOf(); sib != nil {
+			if bySchema := c.keylessFirst[sib]; bySchema != nil {
+				delete(bySchema, n.schema)
+			}
+		}
+	}
+	if n.schema.Kind == schema.List && n.schema.Keyless() && c.keylessDup != nil {
+		if sib := n.siblingsOf(); sib != nil {
+			if bySchema := c.keylessDup[sib]; bySchema != nil {
+				delete(bySchema, n.schema)
+			}
+		}
 	}
 	if sib := n.siblingsOf(); sib != nil && c.tableRuns != nil {
 		if idx := c.tableRuns[sib]; idx != nil {
@@ -1136,7 +1441,10 @@ func (t *Tree) mergeSibling(lv *mergeLevel, src *Node) error {
 			// a source with duplicate instances (parsed only): the equal one matches the pending
 			// copy, the first instance of its value (none was in the destination), as it would
 			// once linked; the batch goes on
-			return t.mergeMatch(last, src, lv.work)
+			before, tracked := lv.cache.keylessDigest(last, &t.work)
+			err := t.mergeMatch(last, src, lv.work)
+			lv.cache.invalidateChangedKeyless(last, before, tracked, &t.work)
+			return err
 		case c >= 0:
 			t.flushMerge(lv)
 			if t.work.hashErr != nil {
@@ -1150,6 +1458,8 @@ func (t *Tree) mergeSibling(lv *mergeLevel, src *Node) error {
 	switch {
 	case src.schema == nil:
 		match = opaqNext(sib, src.Name())
+	case src.schema.Kind == schema.List && src.schema.Keyless() && !sib.mixedContexts():
+		match = t.keylessFirst(cache, sib, src)
 	case src.schema.Kind == schema.List || src.schema.Kind == schema.LeafList:
 		match = t.findFirst(sib, src)
 	default:
@@ -1182,7 +1492,10 @@ func (t *Tree) mergeSibling(lv *mergeLevel, src *Node) error {
 		t.mergeAdded(cache, d, firstInst)
 		return nil
 	}
-	return t.mergeMatch(match, src, lv.work)
+	before, tracked := cache.keylessDigest(match, &t.work)
+	err := t.mergeMatch(match, src, lv.work)
+	cache.invalidateChangedKeyless(match, before, tracked, &t.work)
+	return err
 }
 
 // mergeCtx is LYD_CTX(match), the context the merged opaque value is stored in.
@@ -1287,12 +1600,7 @@ func (t *Tree) flushMerge(lv *mergeLevel) {
 // opaqNext is lyd_find_sibling_opaq_next from the first opaque sibling: the first opaque node
 // named name.
 func opaqNext(s *siblings, name string) *Node {
-	for _, n := range s.opq {
-		if n.opaq.Name == name {
-			return n
-		}
-	}
-	return nil
+	return s.opaqueFirst(name)
 }
 
 // dup is lyd_dup_single with LYD_DUP_RECURSIVE | LYD_DUP_WITH_FLAGS: an unlinked copy of n and
