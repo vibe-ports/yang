@@ -79,23 +79,19 @@ A=0 and C=0, and checks every B against `inventoryGapClasses`.
 
 ## Evidence and class counts
 
-The canonical linux/amd64 native run of the single-field matrix (CI tag `oracle`) gives the
-following r7 cache evidence. The current generator has 98,449 requests; the new
-`schema/repeated-load` seed contributes 768 cases, of which 757 are cache misses (11 reuse
-existing request records), so a canonical cache top-up is required before these category
-counts can be replaced.
+The canonical linux/amd64 native run of the single-field matrix (CI tag `oracle`)
+after #247 gives:
 
 | Category | Class | Count |
 |---|---|---:|
-| MATCH | Equal execution and output | 94,883 |
+| MATCH | Equal execution and output | 135,712 |
 | A — WRONG | Concrete execution mismatch | 0 |
-| B — GAP | All registered B classes | 3,563 |
+| B — GAP | All registered B classes | 1,167 |
 | C — ARTEFACT | Mutation outside the subject | 0 |
-| DEV — REGISTERED CRASH | Registered signal with the documented engine result | 3 |
-| **Total** | | **98,449** |
+| DEV — REGISTERED CRASH | Registered signal with the documented engine result | 8 |
+| **Total** | | **136,887** |
 
-The previous counts are intentionally not carried forward: the request set has
-changed, and relative delete is no longer a B capability gap.
+The run reported no A, C or deferred result.
 
 ## DEFERRED class list
 
@@ -116,48 +112,32 @@ follow-up issue (deferred envelope classes are tracked in
 
 This is the explicit list mirrored by `inventoryGapClasses`. Zero means that
 the single-field matrix contains no instance, not that the capability exists.
-The three newly added classes have Go-side generator counts; their native
-classification awaits the linux/amd64 oracle run. Other numeric counts are
-from the earlier r7 cache evidence above. Pairwise counts are reported separately below.
+Pairwise counts are reported separately below.
 
 | B class | Registry ID | Capability gap | Single-field |
 |---|---|---|---:|
 | `ordered-input` | D-0058 | `LYD_PARSE_ORDERED` input ordering | 39 |
-| `any-direct` | U-0112 | `any_direct` step: native pointer-level any-value calls | 210 |
+| `any-direct` | U-0112 | `any_direct` step: native pointer-level any-value calls | 228 |
 | `dup-no-lyds` | U-0105 | Duplication without value ordering | 2 |
 | `split-validation` | U-0106 | Final-only / not-final validation entry points | 7 |
-| `operation-parent` | U-0106 | Operation input into an existing parent, or reply into an opaque request | 581 |
-| `opaque-construction` | U-0107 | `insert_opaq` construction | 79 |
+| `operation-parent` | U-0106 | Operation input into an existing parent, or reply into an opaque request | 691 |
+| `opaque-construction` | U-0107 | `insert_opaq` construction | 90 |
 | `any-direct-opaque-source` | U-0107 | `any_direct` step: opaque source construction for sibling duplication | 2 |
-| `compare-insert-opaq` | U-0107 | `compare` step with `insert_opaq` construction | 78 |
-| `canonical-values` | U-0108 | Canonical/store-only constructor and change-term options | 5 |
+| `compare-insert-opaq` | U-0107 | `compare` step with `insert_opaq` construction | 88 |
+| `canonical-values` | U-0108 | Canonical/store-only constructor and change-term options | 8 |
 | `list2` | U-0109 | `lyd_new_list2` inputs/diagnostics unavailable through `NewPath` | 12 |
-| `notification-netconf` | U-0110 | Engine parsing of the NETCONF notification envelope | 1,419 |
-| `notification-restconf` | U-0110 | Engine parsing of the RESTCONF notification envelope | 1,419 |
-| `rpc-netconf` | U-0110 | `rpc-netconf` data type outside a plain `data` request (xpath, sequence parse/diff, `print_subtree`): the engine parses NETCONF messages only in `runEnvelope` (#95) | not re-run |
-| `reply-netconf` | U-0110 | `reply-netconf` data type outside a plain `data` request, as `rpc-netconf` | not re-run |
-| `rpc-restconf` | U-0110 | `rpc-restconf` data type outside a plain `data` request, as `rpc-netconf` | not re-run |
-| `reply-restconf` | U-0110 | `reply-restconf` data type outside a plain `data` request, as `rpc-netconf` | not re-run |
 | `reply-non-operation-parent` | U-0110 | Reply into a parent that is not an RPC/action; `ParseOpOptions.Request` rejects it before parsing | 0 |
 | `cross-context-diff` | D-0069 | Diff matching between populated trees from separate schema snapshots (#236) | 0 |
-| **Total** | | | **not re-run** |
+| **Total** | | | **1,167** |
 
-The new class counts cover engine `ErrUnsupported` results from all generated
-mutations of `step/any_direct`, `any_direct/target`, and `compare/insert-opaq`,
-including skipped-step probes. The classifier requires the relevant step and
-the exact unsupported reason. The earlier canonical B total of 3,563 above
-does not include these 290 cases.
+The classifier requires the relevant step and the exact unsupported reason.
 
-U-0110 is the single new unsupported-registry row for request-matrix engine
-coverage gaps, tracked in [#247](https://github.com/vibe-ports/yang/issues/247).
-Notification envelopes are B under that row, not library behaviour deviations.
-So are the four other NETCONF/RESTCONF message data types (#95) outside a plain
-`data` request: the linux/amd64 single-field run of #288 found 24 such cases
-(the `valid-*` data_type values under the xpath, parse and diff seeds); plain
-`data` requests of all six message types run through the engine's `runEnvelope`.
-The eight logged empty-envelope input-presence failures
-(JSON/XML, both envelopes, root/sequence parse) are also B under U-0110; they
-belong to the separate presence test and are not added to matrix totals.
+U-0110 now covers only `reply-non-operation-parent`, tracked in
+[#247](https://github.com/vibe-ports/yang/issues/247). The six NETCONF/RESTCONF
+message types (#95) run through the engine's envelope parser for `data`, XPath
+and sequence parse/diff requests, including `print_subtree` and empty-input
+error ordering. Live-oracle requests in `issue247_oracle_test.go` cover every
+retired envelope class without generated goldens.
 Existing IDs retain their scope. In particular, U-0107 covers opaque construction,
 not envelope parsing.
 
@@ -313,9 +293,10 @@ every record whose extracted termination text is not exactly registered.
 
 ## Checks
 
-The interaction regression `protocol-v2/reply-non-operation-parent` is explicitly allowed under U-0110 in the M4 gate. Its envelope fixtures are outside
-the existing operation/validation selection, so those envelope fixtures do not need a U-0110 `validationUnsupported` entry. Existing U-0106 allowances remain in place,
-including `ops/opidx-meta-doc-first`.
+The interaction regression `protocol-v2/reply-non-operation-parent` is explicitly
+allowed under U-0110 in the M4 gate. The NETCONF/RESTCONF envelope requests now
+execute and need no `validationUnsupported` entry. Existing U-0106 allowances
+remain in place, including `ops/opidx-meta-doc-first`.
 
 The single-field matrix runs natively in CI and the pairwise matrix is replayed
 from canonical linux/amd64 responses; both must report A=0 and
@@ -382,6 +363,11 @@ responses: the earlier 4,183,464-record capture plus a native top-up for the
 keeps a separate context per build call within a request, so a root and a
 target context with the same configuration stay distinct, as in plain
 `Yang.Run`.
+
+The counts below are the pre-#247 capture. Its two notification-envelope rows
+are now retired; the next canonical pairwise recapture is expected to move
+their 181,702 results from B to MATCH. The current single-field native run is
+recorded in the B-class section above.
 
 | Category | Class | Count |
 |---|---|---:|

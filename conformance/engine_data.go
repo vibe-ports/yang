@@ -84,8 +84,7 @@ var envelopeTypes = map[string]data.OpType{"rpc-netconf": data.OpRPCNetconf, "no
 
 // runEnvelope is lyoracle.c op_data for a NETCONF or RESTCONF message (parse_one, lines 1291-1320):
 // the types that need a request parse into the parsed rpc, the others alone; the printed and typed
-// tree is the envelope, op_typed the tree of the operation (or of the request). print_subtree
-// stays unsupported (U-0110).
+// tree is the envelope, op_typed the tree of the operation (or of the request).
 func runEnvelope(r Request, s *yang.Schema, resp map[string]any, typ data.OpType) error {
 	p := r.Params
 	if err := checkRequest(r, s, p, execData, dataRequestRules); err != nil {
@@ -119,7 +118,7 @@ func runEnvelope(r Request, s *yang.Schema, resp map[string]any, typ data.OpType
 	var perr error
 	if given && (typ == data.OpReplyNetconf || typ == data.OpRPCRestconf || typ == data.OpReplyRestconf) {
 		var rd []yang.Diagnostic
-		req, rd, perr, err = parseRequest(ctx, rpcIn, f, s, unknown, keep)
+		req, rd, perr, err = parseRequest(ctx, rpcIn, f, s, unknown, keep, typ)
 		diags = append(diags, diagsJSON(rd, "rpc")...)
 		if err != nil {
 			return err
@@ -156,6 +155,9 @@ func runEnvelope(r Request, s *yang.Schema, resp map[string]any, typ data.OpType
 		if resp["typed"], err = typedJSON(res.Envelope); err != nil {
 			return err
 		}
+		if err := printRequestSubtree(res.Envelope, p, resp, wd); err != nil {
+			return err
+		}
 	}
 	if rc != "LY_SUCCESS" {
 		resp["verdict"] = "invalid"
@@ -190,15 +192,11 @@ func runData(r Request, s *yang.Schema, resp map[string]any, exec executionConte
 	if typ, ok := opTypes[dataType]; ok {
 		return runOp(r, s, resp, typ, oper)
 	}
-	if typ, ok := envelopeTypes[dataType]; ok && p["print_subtree"] == nil {
+	if typ, ok := envelopeTypes[dataType]; ok {
 		return runEnvelope(r, s, resp, typ)
 	}
 	if err := checkRequest(r, s, p, exec, dataRequestRules); err != nil {
 		return err
-	}
-	if requestOperation(&requestCheck{p: p}) {
-		// op_data resolves print_subtree only after parse_one succeeds.
-		return fmt.Errorf("%w: notification envelope data_type %v (conformance engine capability gap, U-0110)", ErrUnsupported, p["data_type"])
 	}
 	// op_data line 1451 passes rpc to parse_one, but its datastore branch (1285-1287) ignores
 	// rpc/rpc_file and keep_input.
@@ -534,7 +532,7 @@ func runOp(r Request, s *yang.Schema, resp map[string]any, typ data.OpType, oper
 		if formatErr != nil {
 			return formatErr
 		}
-		req, _, perr, parseErr := parseRequest(context.Background(), rpcIn, f, s, unknown, true)
+		req, _, perr, parseErr := parseRequest(context.Background(), rpcIn, f, s, unknown, true, typ)
 		if parseErr != nil {
 			return parseErr
 		}
@@ -567,7 +565,7 @@ func runOp(r Request, s *yang.Schema, resp map[string]any, typ data.OpType, oper
 	}
 	keep, _ := p["keep_input"].(bool)
 	if typ == data.OpReply && given {
-		req, rd, rerr, err := parseRequest(ctx, rpcIn, f, s, unknown, keep)
+		req, rd, rerr, err := parseRequest(ctx, rpcIn, f, s, unknown, keep, typ)
 		diags = append(diags, diagsJSON(rd, "rpc")...)
 		perr = rerr
 		if err != nil {
@@ -653,10 +651,12 @@ func parseOne(r Request, s *yang.Schema, p map[string]any, exec executionContext
 	}
 	dataType := str(p, "data_type", "data-operational")
 	typ, operation := opTypes[dataType]
+	envelope := false
 	if !operation {
-		if requestOperation(&requestCheck{p: p}) {
-			return nil, nil, fmt.Errorf("%w: notification envelope data_type %v (conformance engine capability gap, U-0110)", ErrUnsupported, p["data_type"])
-		}
+		typ, operation = envelopeTypes[dataType]
+		envelope = operation
+	}
+	if !operation {
 		o, err := dataOptions(p, exec)
 		if err != nil {
 			return nil, nil, err
@@ -681,13 +681,19 @@ func parseOne(r Request, s *yang.Schema, p map[string]any, exec executionContext
 	}
 	ctx := context.Background()
 	keep, _ := p["keep_input"].(bool)
-	if hasRPC && typ != data.OpReply {
-		return nil, nil, fmt.Errorf("%w: rpc input into an existing request is not exported (ParseOpOptions.Request is for replies only, U-0106)",
-			ErrUnsupported)
+	if hasRPC && !parseOneConsumesRPC(typ) {
+		// parse_one reads rpc_src before this point, but only these operation types use it as
+		// a request parent (lyoracle.c:1291-1319). In particular, a dup source may carry rpc
+		// for the ignored types because check_step's reply-only rule applies only to parse and
+		// diff steps.
+		hasRPC = false
 	}
 	if !hasRPC {
 		res, diags, err := data.ParseOp(ctx, inputReader(in, present), f, s, typ, data.ParseOpOptions{Unknown: unknown})
 		diags = phased(nil, diags, phase)
+		if envelope {
+			return res.Envelope, diags, err
+		}
 		if err == nil && p["parse_only"] != true {
 			var vd []yang.Diagnostic
 			vd, err = validateOperation(ctx, res.Tree, res.Op, typ, oper)
@@ -699,7 +705,7 @@ func parseOne(r Request, s *yang.Schema, p map[string]any, exec executionContext
 		return res.Tree, diags, err
 	}
 
-	req, rd, perr, err := parseRequest(ctx, rpc, f, s, unknown, keep)
+	req, rd, perr, err := parseRequest(ctx, rpc, f, s, unknown, keep, typ)
 	diags := phased(nil, rd, "rpc")
 	if err != nil {
 		return nil, nil, err
@@ -707,9 +713,18 @@ func parseOne(r Request, s *yang.Schema, p map[string]any, exec executionContext
 	if perr != nil {
 		return nil, diags, perr
 	}
+	if typ == data.OpRPC {
+		// parse_one has already parsed and collected rpc_src at this point. Parsing the main RPC
+		// into that request remains outside ParseOp's public API (U-0106).
+		return nil, diags, fmt.Errorf("%w: rpc input into an existing request is not exported (ParseOpOptions.Request is for replies only, U-0106)",
+			ErrUnsupported)
+	}
 	res, parsed, err := data.ParseOp(ctx, inputReader(in, present), f, s, typ,
 		data.ParseOpOptions{Unknown: unknown, Request: req.Op})
 	diags = phased(diags, parsed, phase)
+	if envelope {
+		return res.Envelope, diags, err
+	}
 	if err != nil {
 		return nil, diags, err
 	}
@@ -722,6 +737,34 @@ func parseOne(r Request, s *yang.Schema, p map[string]any, exec executionContext
 		}
 	}
 	return res.Tree, diags, nil
+}
+
+// parseOneConsumesRPC reports whether lyoracle.c parse_one parses a non-NULL rpc_src before the
+// main input (lines 1291-1319). All other operation types and datastore data ignore rpc_src.
+func parseOneConsumesRPC(typ data.OpType) bool {
+	switch typ {
+	case data.OpRPC, data.OpReply, data.OpReplyNetconf, data.OpRPCRestconf, data.OpReplyRestconf:
+		return true
+	default:
+		return false
+	}
+}
+
+// parseOnePendingPhase is the phase parse_one assigns to diagnostics already pending on ctx when
+// it starts. An RPC-consuming type first collects ctx as "rpc"; every other path reaches the
+// caller-supplied phase at done (lyoracle.c:1298, 1356).
+func parseOnePendingPhase(p map[string]any, hasRPC bool, phase string) string {
+	if !hasRPC {
+		return phase
+	}
+	typ, ok := opTypes[str(p, "data_type", "data-operational")]
+	if !ok {
+		typ, ok = envelopeTypes[str(p, "data_type", "data-operational")]
+	}
+	if ok && parseOneConsumesRPC(typ) {
+		return "rpc"
+	}
+	return phase
 }
 
 type operationParentError struct{ path string }
@@ -761,17 +804,18 @@ func operationParentDiagnostic(err error) map[string]any {
 
 // parseRequest parses the request a reply is parsed into (lyoracle.c parse_one: the rpc parsed as
 // RPC, its input dropped unless keep): perr is the parse's own error, err an engine refusal. Every
-// place that builds a ParseOpOptions.Request goes through it. A request parsed opaque (unknown:
-// opaque) is no RPC or action: lyd_parse_op parses the reply into that parent anyway
-// (lyd_parser_find_operation finds no operation), but Request binds a reply to a schema
-// RPC/action only (design 07 §6.1.1), so the engine refuses it under U-0106.
-func parseRequest(ctx context.Context, rpc string, f data.Format, s *yang.Schema, unknown data.UnknownPolicy, keep bool) (
+// place that builds a ParseOpOptions.Request goes through it. For a protocol message, ParseOp
+// mirrors lyd_parse_op's native parent->schema argument check, so even an opaque request must
+// reach it. For a YANG operation, Request binds a reply to a schema RPC/action only (design 07
+// §6.1.1), so the engine retains the U-0106 refusal for an opaque request.
+func parseRequest(ctx context.Context, rpc string, f data.Format, s *yang.Schema, unknown data.UnknownPolicy, keep bool,
+	consumer data.OpType) (
 	req data.OpResult, diags []yang.Diagnostic, perr, err error) {
 	req, diags, perr = data.ParseOp(ctx, strings.NewReader(rpc), f, s, data.OpRPC, data.ParseOpOptions{Unknown: unknown})
 	if perr != nil {
 		return req, diags, perr, nil
 	}
-	if req.Op.Schema() == nil {
+	if req.Op.Schema() == nil && !protocolRequestConsumer(consumer) {
 		return req, diags, nil, fmt.Errorf("%w: a reply into an opaque request (ParseOpOptions.Request is for replies on a schema RPC or action, design 07 §6.1.1, U-0106)",
 			ErrUnsupported)
 	}
@@ -783,6 +827,17 @@ func parseRequest(ctx context.Context, rpc string, f data.Format, s *yang.Schema
 		}
 	}
 	return req, diags, nil, nil
+}
+
+// protocolRequestConsumer reports the parse_one operation types whose native lyd_parse_op call
+// has a parent->schema argument check, which ParseOp implements directly.
+func protocolRequestConsumer(typ data.OpType) bool {
+	switch typ {
+	case data.OpReplyNetconf, data.OpRPCRestconf, data.OpReplyRestconf:
+		return true
+	default:
+		return false
+	}
 }
 
 // loadOperational is load_oper, shared by all data_prelude callers, including
