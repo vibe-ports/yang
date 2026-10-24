@@ -5,7 +5,6 @@
 package conformance
 
 import (
-	"errors"
 	"path/filepath"
 	"testing"
 )
@@ -36,9 +35,12 @@ func TestRound18EnvelopeOracleOrder(t *testing.T) {
 			if want["verdict"] != tc.want || want["request_error"] != nil {
 				t.Fatalf("oracle verdict = %v, request error = %v; want %s", want["verdict"], want["request_error"], tc.want)
 			}
-			_, err = (Yang{}).Run(Request{ID: tc.id, BaseDir: base, Params: p})
-			if !errors.Is(err, ErrUnsupported) {
-				t.Fatalf("engine error = %v, want ErrUnsupported", err)
+			got, err := (Yang{}).Run(Request{ID: tc.id, BaseDir: base, Params: p})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if diff := diffResponses(want, got); diff != "" {
+				t.Fatalf("oracle mismatch: %s\noracle: %#v\nengine: %#v", diff, want, got)
 			}
 		})
 	}

@@ -39,9 +39,9 @@ func envelopeRequest(op, typ, input string, add map[string]any) map[string]any {
 	return p
 }
 
-// lyoracle resolves these fields after parse_one. Until the engine can parse
-// notification envelopes, no selector or module lookup can decide the result.
-func TestEnvelopePostParseChecksRemainUnsupported(t *testing.T) {
+// lyoracle resolves these fields after parse_one. The engine must parse the notification
+// envelope before it reports the selector, module or XPath-option result.
+func TestEnvelopePostParseChecks(t *testing.T) {
 	base := filepath.Join("corpus", "protocol-v2")
 	inputs := map[string]string{
 		"notif-netconf":  `<notification xmlns="urn:ietf:params:xml:ns:netconf:notification:1.0"><eventTime>2026-01-01T00:00:00Z</eventTime><alarm xmlns="urn:vibe-ports:yang:conformance:pv2"><sev>1</sev></alarm></notification>`,
@@ -64,29 +64,32 @@ func TestEnvelopePostParseChecksRemainUnsupported(t *testing.T) {
 		} {
 			t.Run(typ+"/"+tc.name, func(t *testing.T) {
 				_, err := (Yang{}).Run(Request{BaseDir: base, Params: envelopeRequest(tc.op, typ, input, tc.add)})
-				if !errors.Is(err, ErrUnsupported) {
-					t.Fatalf("got %v, want ErrUnsupported", err)
+				if errors.Is(err, ErrUnsupported) {
+					t.Fatalf("envelope request remains unsupported: %v", err)
 				}
 			})
 		}
 	}
 }
 
-func TestMalformedEnvelopePostParseChecksRemainUnsupported(t *testing.T) {
+func TestMalformedEnvelopePrecedesPostParseChecks(t *testing.T) {
 	base := filepath.Join("corpus", "protocol-v2")
 	for _, tc := range []struct {
-		name, op string
-		add      map[string]any
+		name, op, verdict string
+		add               map[string]any
 	}{
-		{"subtree", "data", map[string]any{"print_subtree": "/pv2:c"}},
-		{"cur-module", "xpath", map[string]any{"cur_module": "missing"}},
-		{"context", "xpath", map[string]any{"context_path": "/pv2:c"}},
-		{"diff-data-node", "sequence", map[string]any{"data_node": "/pv2:c"}},
+		{"subtree", "data", "invalid", map[string]any{"print_subtree": "/pv2:c"}},
+		{"cur-module", "xpath", "data-error", map[string]any{"cur_module": "missing"}},
+		{"context", "xpath", "data-error", map[string]any{"context_path": "/pv2:c"}},
+		{"diff-data-node", "sequence", "invalid", map[string]any{"data_node": "/pv2:c"}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			_, err := (Yang{}).Run(Request{BaseDir: base, Params: envelopeRequest(tc.op, "notif-netconf", "<", tc.add)})
-			if !errors.Is(err, ErrUnsupported) {
-				t.Fatalf("got %v, want ErrUnsupported", err)
+			got, err := (Yang{}).Run(Request{BaseDir: base, Params: envelopeRequest(tc.op, "notif-netconf", "<", tc.add)})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got.Verdict() != tc.verdict {
+				t.Fatalf("verdict = %q, want %q: %#v", got.Verdict(), tc.verdict, got)
 			}
 		})
 	}

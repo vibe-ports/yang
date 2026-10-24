@@ -563,22 +563,51 @@ func runSequence(r Request, s *yang.Schema, resp map[string]any, exec executionC
 			}
 		}
 		// Each branch that calls collect() consumes prior logs from the retained
-		// context before its own diagnostics. links and dump do not collect.
-		if what != "links" && what != "dump" && what != "diff" {
+		// context before its own diagnostics. links and dump do not collect. A failed
+		// insert source parse in a target context returns before step_insert collects ctx.
+		collectStep := what != "links" && what != "dump" && what != "diff"
+		if what == "insert" && st["target"] != nil && phase == "parse" {
+			collectStep = false
+		}
+		if collectStep {
 			prior := pending[pk(collectOwner)]
+			priorAfterParse := false
 			if phase == "" {
 				collectPhase := "parse"
 				_, hasData, _ := requestInput(r, st, "data")
-				if what == "insert" && !hasData {
+				if what == "insert" && (!hasData || st["target"] != nil) {
 					collectPhase = "edit"
+					// A target source is parsed and collected in other_ctx before
+					// step_insert collects the retained tree's ctx. Preserve that
+					// cross-context boundary: target parse diagnostics, retained
+					// pending diagnostics, then insertion diagnostics.
+					priorAfterParse = hasData && st["target"] != nil
 				}
-				typ := opTypes[str(st, "data_type", "data-operational")]
-				if what == "parse" && st["parent"] == nil && (typ == data.OpRPC || typ == data.OpReply) && st["rpc"] != nil {
-					collectPhase = "rpc"
+				source := st
+				if what == "dup" {
+					var sourceUsed bool
+					if st["detached"] != true {
+						source, sourceUsed = st["source"].(map[string]any)
+					}
+					if !sourceUsed {
+						collectPhase = "edit"
+					}
+				}
+				if collectPhase == "parse" {
+					_, hasRPC := source["rpc"].(string)
+					collectPhase = parseOnePendingPhase(source, hasRPC, collectPhase)
 				}
 				prior = phased(nil, prior, collectPhase)
 			}
-			diags = append(prior, diags...)
+			if priorAfterParse {
+				i := 0
+				for i < len(diags) && diags[i].Phase == "parse" {
+					i++
+				}
+				diags = slices.Concat(diags[:i], prior, diags[i:])
+			} else {
+				diags = append(prior, diags...)
+			}
 			delete(pending, pk(collectOwner))
 			// ponytail: foreign queues go after the step's own diagnostics; a step
 			// logging into both contexts would interleave differently in C.

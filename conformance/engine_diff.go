@@ -146,11 +146,8 @@ func stepDiff(r Request, s *yang.Schema, st map[string]any, tree *data.Tree, det
 			secondSchema = targetSchema
 		}
 		if secondSchema == s {
-			collectPhase := "parse"
-			typ := opTypes[str(st, "data_type", "data-operational")]
-			if (typ == data.OpRPC || typ == data.OpReply) && st["rpc"] != nil {
-				collectPhase = "rpc"
-			}
+			_, hasRPC := st["rpc"].(string)
+			collectPhase := parseOnePendingPhase(st, hasRPC, "parse")
 			diags = append(diags, collectPending(s, collectPhase)...)
 		}
 		t, d, perr := parseOne(r, secondSchema, st, execStepDiff, "data", "parse", nil)
