@@ -1,0 +1,63 @@
+module pv2-mergetypes {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:pv2-mergetypes";
+  prefix pmt;
+
+  import ietf-inet-types { prefix inet; }
+  import ietf-yang-types { prefix yang; }
+  import ietf-netconf-acm { prefix nacm; }
+  import libnetconf2-netconf-server { prefix np2; }
+
+  description
+    "Hand-written module for merging leaves of another context: one leaf per built-in type and
+     per type handler of libyang 5.8.6, leafrefs and unions (#306).";
+
+  identity base;
+  identity one { base base; }
+  identity two { base base; }
+
+  container c {
+    leaf str { type string; }
+    leaf en { type enumeration { enum a; enum b; } }
+    leaf bo { type boolean; }
+    leaf de { type decimal64 { fraction-digits 2; } }
+    leaf i8 { type int8; }
+    leaf u8 { type uint8; }
+    leaf bi { type bits { bit x; bit y; } }
+    leaf bin { type binary; }
+    leaf idr { type identityref { base base; } }
+    leaf iid { type instance-identifier { require-instance false; } }
+    leaf emp { type empty; }
+    leaf v4 { type inet:ipv4-address; }
+    leaf v4nz { type inet:ipv4-address-no-zone; }
+    leaf v4p { type inet:ipv4-prefix; }
+    leaf v6 { type inet:ipv6-address; }
+    leaf v6nz { type inet:ipv6-address-no-zone; }
+    leaf v6p { type inet:ipv6-prefix; }
+    leaf dt { type yang:date-and-time; }
+    leaf hex { type yang:hex-string; }
+    leaf mac { type yang:mac-address; }
+    leaf phys { type yang:phys-address; }
+    leaf uuid { type yang:uuid; }
+    leaf da { type yang:date; }
+    leaf dnz { type yang:date-no-zone; }
+    leaf ti { type yang:time; }
+    leaf tnz { type yang:time-no-zone; }
+    leaf xp { type yang:xpath1.0; }
+    leaf nii { type nacm:node-instance-identifier; }
+    leaf tp { type np2:time-period; }
+    leaf lr-u8 { type leafref { path "../u8"; } }
+    leaf lr-str { type leafref { path "../str"; } }
+    leaf lr-bi { type leafref { path "../bi"; } }
+    leaf lr-v4 { type leafref { path "../v4"; } }
+    leaf un-i8s { type union { type int8; type string; } }
+    leaf un-bits { type union { type bits { bit x; bit y; } type uint8; } }
+    leaf un-v4 { type union { type inet:ipv4-address; type string; } }
+    leaf un-u8 { type union { type uint8; type bits { bit x; } } }
+    leaf un-xp { type union { type yang:xpath1.0; } }
+  }
+
+  // targets of instance-identifier predicates
+  list kl { key k; leaf k { type string; } }
+  leaf-list ll { type string; }
+}

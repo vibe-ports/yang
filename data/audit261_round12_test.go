@@ -5,10 +5,16 @@ package data
 import (
 	"bytes"
 	"context"
+	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+	"testing/fstest"
+	"time"
+
+	"github.com/vibe-ports/yang"
 
 	"github.com/vibe-ports/yang/internal/compile"
 	"github.com/vibe-ports/yang/internal/contextopts"
@@ -458,5 +464,358 @@ func TestMixedFirstChildDefersToChargedXPathScan(t *testing.T) {
 	}
 	if _, ok := child.LookupChild(probe, []string{"a"}); ok {
 		t.Fatal("mixed keyed lookup must defer to the charged XPath scan")
+	}
+}
+
+// #306: a foreign leaf merged over a local one goes through lyd_change_term_val with a value of
+// another context. lyplg_type_compare_simple compares canonical pointers, so even an equal string
+// differs, and lyplg_type_dup_simple's lydict_dup does not find the foreign string: LY_ENOTFOUND,
+// nothing logged. The nodes merged before stay, as lyd_merge leaves them; the leaf keeps its value. (Equal integers compare by value and succeed:
+// conformance/testdata/merge-contexts.)
+func TestMergeForeignLeafChange(t *testing.T) {
+	a := round12Set(t, false, "pv2-detached")
+	b := round12Set(t, true, "pv2-detached")
+	for _, tc := range []struct {
+		foreign, rc string
+	}{{"old", "LY_ENOTFOUND"}, {"new", "LY_ENOTFOUND"}} {
+		target := round12Tree(t, a, `{"pv2-detached:c":{"base":"old"}}`)
+		source := round12Tree(t, a, `{"pv2-detached:l":[{"k":"a"}]}`)
+		foreignTree := round12Tree(t, b, `{"pv2-detached:c":{"base":"`+tc.foreign+`"}}`)
+		foreign := foreignTree.top.first()
+		unlink(foreign)
+		if err := source.link(nil, &source.top, foreign, source.top.len()); err != nil {
+			t.Fatal(err)
+		}
+		err := target.Merge(source)
+		var ve *ValidationError
+		switch {
+		case tc.rc == "" && err != nil:
+			t.Fatalf("equal foreign value: %v", err)
+		case tc.rc != "" && (!errors.As(err, &ve) || ve.RC() != tc.rc || len(ve.Diags) != 0):
+			t.Fatalf("different foreign value: %v", err)
+		}
+		c := target.schemaLookup(&target.top, foreign.schema)
+		if c == nil || c.kids.list[0].Value() != "old" || ctxOf(c.kids.list[0]) != a {
+			t.Fatalf("target leaf changed: %v", c)
+		}
+	}
+}
+
+// D-0133 (#306): merging a union or leafref leaf of another schema context crashes libyang
+// 5.8.6 in lyd_change_term_val's callbacks; the port refuses it, logged, and keeps the leaf.
+func TestMergeForeignUnionLeafrefRefused(t *testing.T) {
+	a := round12Set(t, false, "a", "pv2")
+	b := round12Set(t, false, "a", "pv2")
+	for _, tc := range []struct{ name, local, foreign, base string }{
+		{"u", `{"pv2:c":{"u":-3}}`, `{"pv2:c":{"u":-3}}`, "union"},
+		{"u", `{"pv2:c":{"u":"abc"}}`, `{"pv2:c":{"u":"xyz"}}`, "union"},
+		{"ref", `{"pv2:c":{"l":[{"k":"k1"}],"ref":"k1"}}`, `{"pv2:c":{"ref":"k1"}}`, "leafref"},
+	} {
+		target := round12Tree(t, a, tc.local)
+		before := target.top.first().kids.list
+		var local *Node
+		for _, n := range before {
+			if n.Name() == tc.name {
+				local = n
+			}
+		}
+		was := local.Value()
+		source := round12Tree(t, a, `{"a:foo":1}`) // a first root of the target's context
+		foreign := round12Tree(t, b, tc.foreign).top.first()
+		unlink(foreign)
+		if err := source.link(nil, &source.top, foreign, source.top.len()); err != nil {
+			t.Fatal(err)
+		}
+		err := target.Merge(source)
+		var ve *ValidationError
+		want := `Invalid arguments - merging the ` + tc.base + ` value of "` + tc.name +
+			`" from another schema context is undefined in libyang, not supported (D-0133) (lyd_merge()).`
+		if !errors.As(err, &ve) || ve.RC() != "LY_EINVAL" || len(ve.Diags) != 1 || ve.Diags[0].Msg != want {
+			t.Fatalf("%s %s: %v", tc.name, tc.foreign, err)
+		}
+		if local.Value() != was || ctxOf(local) != a {
+			t.Fatalf("%s changed: %q", tc.name, local.Value())
+		}
+	}
+}
+
+// D-0133 (#306): ietf-inet-types ipv4-address with its type handler in one context and as a plain
+// string in the other (builtin_plugins_only, which libyang cannot have next to a default context
+// in one process, D-0030): the leaf type definitions differ, so the merge is refused, logged, in
+// both directions, and the leaf is kept.
+func TestMergeForeignTypeHandlerRefused(t *testing.T) {
+	load := func(builtin bool) *schema.Set {
+		c, _, err := compile.NewContext(compile.Options{NoYangLibrary: true, BuiltinPluginsOnly: builtin},
+			os.DirFS(filepath.Join("..", "conformance", "corpus", "types", "schemas")))
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, name := range []string{"ty2", "ty3"} {
+			if _, ds, err := c.Load(name, "", nil); err != nil {
+				t.Fatalf("load %s: %v (%v)", name, err, ds)
+			}
+		}
+		return c.Snapshot()
+	}
+	for _, foreignBuiltin := range []bool{true, false} {
+		a, b := load(!foreignBuiltin), load(foreignBuiltin)
+		target := round12Tree(t, a, `{"ty3:c":{"v4":"1.2.3.4"}}`)
+		local := target.top.first().kids.list[0]
+		source := round12Tree(t, a, `{"ty2:c":{"id":"ty2:der"}}`) // a first root of the target's context
+		foreign := round12Tree(t, b, `{"ty3:c":{"v4":"1.2.3.4"}}`).top.first()
+		unlink(foreign)
+		if err := source.link(nil, &source.top, foreign, source.top.len()); err != nil {
+			t.Fatal(err)
+		}
+		err := target.Merge(source)
+		var ve *ValidationError
+		want := `Invalid arguments - the type of "v4" differs between the two schema contexts, merging its ` +
+			`value is not supported (D-0133) (lyd_merge()).`
+		if !errors.As(err, &ve) || ve.RC() != "LY_EINVAL" || len(ve.Diags) != 1 || ve.Diags[0].Msg != want {
+			t.Fatalf("foreign builtin %v: %v", foreignBuiltin, err)
+		}
+		if local.Value() != "1.2.3.4" || ctxOf(local) != a {
+			t.Fatalf("leaf changed: %q", local.Value())
+		}
+	}
+}
+
+// #306: a zoned address of another context never compares equal (lyplg_type_compare_ipv4_address
+// compares the zone dictionary pointers), also after a first merge stored the source's value: the
+// second merge replaces it again and sets LYD_NEW on the validated leaf.
+func TestMergeForeignZonedAddressTwice(t *testing.T) {
+	load := func() *schema.Set {
+		c, _, err := compile.NewContext(compile.Options{NoYangLibrary: true},
+			os.DirFS(filepath.Join("..", "conformance", "corpus", "types", "schemas")))
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, name := range []string{"ty2", "ty3"} {
+			if _, ds, err := c.Load(name, "", nil); err != nil {
+				t.Fatalf("load %s: %v (%v)", name, err, ds)
+			}
+		}
+		return c.Snapshot()
+	}
+	a, b := load(), load()
+	target := round12Tree(t, a, `{"ty3:c":{"v4":"1.2.3.4%eth0"}}`)
+	local := target.top.first().kids.list[0]
+	for round := range 2 {
+		local.flags &^= FlagNew // validated
+		source := round12Tree(t, a, `{"ty2:c":{"id":"ty2:der"}}`)
+		foreign := round12Tree(t, b, `{"ty3:c":{"v4":"1.2.3.4%eth0"}}`).top.first()
+		unlink(foreign)
+		if err := source.link(nil, &source.top, foreign, source.top.len()); err != nil {
+			t.Fatal(err)
+		}
+		if err := target.Merge(source); err != nil {
+			t.Fatalf("merge %d: %v", round, err)
+		}
+		if local.flags&FlagNew == 0 || local.Value() != "1.2.3.4%eth0" {
+			t.Fatalf("merge %d: the zoned value was not replaced (flags %v)", round, local.flags)
+		}
+	}
+}
+
+// #306: lyplg_type_dup_union keeps the source member realtype, so a union<bits> value merged from
+// A into B and back into A compares its member again (the destination's own realtype): equal, the
+// validated leaf stays as it is.
+func TestMergeForeignUnionRoundTrip(t *testing.T) {
+	fsys := fstest.MapFS{
+		"rt0.yang": {Data: []byte(`module rt0 { yang-version 1.1; namespace "urn:rt0"; prefix r0; leaf r { type string; } }`)},
+		"rt.yang": {Data: []byte(`module rt { yang-version 1.1; namespace "urn:rt"; prefix rt;
+  container c { leaf u { type union { type bits { bit x; bit y; } type uint8; } } } }`)},
+	}
+	load := func() *schema.Set {
+		c, _, err := compile.NewContext(compile.Options{NoYangLibrary: true}, fsys)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, name := range []string{"rt0", "rt"} {
+			if _, ds, err := c.Load(name, "", nil); err != nil {
+				t.Fatalf("load %s: %v (%v)", name, err, ds)
+			}
+		}
+		return c.Snapshot()
+	}
+	a, b := load(), load()
+	merge := func(dst *Tree, dstSet, srcSet *schema.Set, from *Node) {
+		t.Helper()
+		source := round12Tree(t, dstSet, `{"rt0:r":"x"}`)
+		c := from
+		if c == nil {
+			c = round12Tree(t, srcSet, `{"rt:c":{"u":"x"}}`).top.first()
+		}
+		unlink(c)
+		if err := source.link(nil, &source.top, c, source.top.len()); err != nil {
+			t.Fatal(err)
+		}
+		if err := dst.Merge(source); err != nil {
+			t.Fatal(err)
+		}
+	}
+	treeA := round12Tree(t, a, `{"rt:c":{"u":"x"}}`)
+	leafA := treeA.top.first().kids.list[0]
+	treeB := round12Tree(t, b, `{"rt:c":{"u":"x"}}`)
+	leafB := treeB.top.first().kids.list[0]
+	// A -> B: the member realtypes differ, lyplg_type_dup_bits copies A's value with A's member
+	carrier := round12Tree(t, a, `{"rt:c":{"u":"x"}}`).top.first()
+	leafB.flags &^= FlagNew
+	merge(treeB, b, a, carrier)
+	memberType := func(n *Node) *schema.Type { m, _ := n.value.Union().Member(); return m.Type() }
+	if leafB.flags&FlagNew == 0 || memberType(leafB) != memberType(leafA) {
+		t.Fatal("A's value did not replace B's")
+	}
+	// B -> A: the same member realtype, the bits compare equal
+	cB := treeB.top.first()
+	unlink(cB)
+	leafA.flags &^= FlagNew
+	merge(treeA, a, b, cB)
+	if leafA.flags&FlagNew != 0 {
+		t.Fatal("the value merged back compared different")
+	}
+}
+
+// TestMergeForeignSharedLeafrefGraph: l0...l32 are each a union of bits and two leafrefs to the
+// next leaf, so the type definitions form a small shared graph with 2^32 paths. The cross-context
+// definition comparison is linear in it and charged to the merge's hash work budget.
+func TestMergeForeignSharedLeafrefGraph(t *testing.T) {
+	var mod strings.Builder
+	mod.WriteString(`module sg { yang-version 1.1; namespace "urn:sg"; prefix sg; container c {` + "\n")
+	for i := range 32 {
+		fmt.Fprintf(&mod, `leaf l%d { type union { type bits { bit x; } type leafref { path "../l%d"; } `+
+			`type leafref { path "../l%d"; } } }`+"\n", i, i+1, i+1)
+	}
+	mod.WriteString(`leaf l32 { type bits { bit x; } } } }`)
+	fsys := fstest.MapFS{
+		"sg0.yang": {Data: []byte(`module sg0 { yang-version 1.1; namespace "urn:sg0"; prefix s0; leaf r { type string; } }`)},
+		"sg.yang":  {Data: []byte(mod.String())},
+	}
+	load := func() *schema.Set {
+		c, _, err := compile.NewContext(compile.Options{NoYangLibrary: true}, fsys)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, name := range []string{"sg0", "sg"} {
+			if _, ds, err := c.Load(name, "", nil); err != nil {
+				t.Fatalf("load %s: %v (%v)", name, err, ds)
+			}
+		}
+		return c.Snapshot()
+	}
+	a, b := load(), load()
+	merge := func(limit uint64) error {
+		dst := round12Tree(t, a, `{"sg:c":{"l0":"x"}}`)
+		dst.work.hashLimit = limit
+		source := round12Tree(t, a, `{"sg0:r":"x"}`)
+		c := round12Tree(t, b, `{"sg:c":{"l0":"x"}}`).top.first()
+		unlink(c)
+		if err := source.link(nil, &source.top, c, source.top.len()); err != nil {
+			t.Fatal(err)
+		}
+		return dst.Merge(source)
+	}
+	done := make(chan error, 1)
+	go func() { done <- merge(0) }()
+	select {
+	case err := <-done:
+		if err != nil {
+			t.Fatal(err)
+		}
+	case <-time.After(10 * time.Second):
+		t.Fatal("the definition comparison walks every path of the shared graph")
+	}
+	var limit uint64
+	for limit = 1; ; limit++ { // the smallest budget the merge fits in
+		if err := merge(limit); err == nil {
+			break
+		} else if !errors.Is(err, yang.ErrBudget) {
+			t.Fatalf("limit %d: %v", limit, err)
+		}
+		if limit > 1<<12 {
+			t.Fatal("no small budget fits the merge")
+		}
+	}
+	if limit <= 4*32 { // the compared pairs: per level a union, its bits and two leafrefs
+		t.Fatalf("the merge fits in %d units; the definition comparison is not charged", limit)
+	}
+	if err := merge(limit - 1); !errors.Is(err, yang.ErrBudget) {
+		t.Fatalf("one unit short: %v; want %v", err, yang.ErrBudget)
+	}
+}
+
+// TestMergeForeignFragmentedTypedefBudget: many matched leaves of one typedef whose range has many
+// intervals. The definition comparison charges every interval it scans, and the memo of one Merge
+// compares each type pair once however many leaves use it.
+func TestMergeForeignFragmentedTypedefBudget(t *testing.T) {
+	const leaves, parts = 64, 128
+	load := func(rng string) *schema.Set {
+		var mod strings.Builder
+		fmt.Fprintf(&mod, `module fr { yang-version 1.1; namespace "urn:fr"; prefix fr;
+  typedef frag { type uint32 { range "%s"; } } container c {`, rng)
+		for i := range leaves {
+			fmt.Fprintf(&mod, " leaf l%d { type frag; }", i)
+		}
+		mod.WriteString(" } }")
+		fsys := fstest.MapFS{
+			"fr0.yang": {Data: []byte(`module fr0 { yang-version 1.1; namespace "urn:fr0"; prefix f0; leaf r { type string; } }`)},
+			"fr.yang":  {Data: []byte(mod.String())},
+		}
+		c, _, err := compile.NewContext(compile.Options{NoYangLibrary: true}, fsys)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, name := range []string{"fr0", "fr"} {
+			if _, ds, err := c.Load(name, "", nil); err != nil {
+				t.Fatalf("load %s: %v (%v)", name, err, ds)
+			}
+		}
+		return c.Snapshot()
+	}
+	var frag []string
+	for i := range parts {
+		frag = append(frag, fmt.Sprint(2*i+1))
+	}
+	var doc strings.Builder
+	doc.WriteString(`{"fr:c":{`)
+	for i := range leaves {
+		if i > 0 {
+			doc.WriteString(",")
+		}
+		fmt.Fprintf(&doc, `"l%d":1`, i)
+	}
+	doc.WriteString("}}")
+	// used is the hash work the cross-context merge of every leaf charged; it must also fail
+	// with ErrBudget one unit short of it.
+	used := func(rng string) uint64 {
+		a, b := load(rng), load(rng)
+		merge := func(limit uint64) (uint64, error) {
+			dst := round12Tree(t, a, doc.String())
+			dst.work.hashLimit = limit
+			source := round12Tree(t, a, `{"fr0:r":"x"}`)
+			c := round12Tree(t, b, doc.String()).top.first()
+			unlink(c)
+			if err := source.link(nil, &source.top, c, source.top.len()); err != nil {
+				t.Fatal(err)
+			}
+			err := dst.Merge(source)
+			return dst.work.hashUsed, err
+		}
+		n, err := merge(0)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, err := merge(n - 1); !errors.Is(err, yang.ErrBudget) {
+			t.Fatalf("one unit short of %d: %v; want %v", n, err, yang.ErrBudget)
+		}
+		return n
+	}
+	extra := used(strings.Join(frag, "|")) - used("1")
+	if extra < parts-1 {
+		t.Fatalf("%d more work units for %d more range intervals; the scan is not charged", extra, parts-1)
+	}
+	if extra > 4*parts {
+		t.Fatalf("%d more work units for %d leaves of one typedef: compared once per leaf, not once per merge",
+			extra, leaves)
 	}
 }

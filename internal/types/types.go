@@ -102,6 +102,23 @@ func (x XMLNamespaces) Resolve(prefix string) *schema.Module {
 	return nil
 }
 
+// Namespace implements XMLScope.
+func (x XMLNamespaces) Namespace(prefix string) (string, bool) {
+	ns, ok := x.NS[prefix]
+	return ns, ok
+}
+
+// Context implements XMLScope.
+func (x XMLNamespaces) Context() *schema.Set { return x.Set }
+
+// XMLScope is an XML namespace context (the parser's, or a snapshot of it): the URI declared for
+// a prefix ("" the default namespace) and the context its modules are looked up in.
+type XMLScope interface {
+	PrefixCtx
+	Namespace(prefix string) (string, bool)
+	Context() *schema.Set
+}
+
 // SchemaText resolves prefixes of a value written in Module's schema text (FormatSchema).
 type SchemaText struct{ Module *schema.Module }
 

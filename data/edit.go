@@ -743,7 +743,13 @@ func (t *Tree) newPathUpdate(lg *logger, n *Node, value string) (*Node, error) {
 // changeTermVal is lyd_change_term_val: the term takes the value v (if it differs) and the
 // default flag dflt; it reports what changed.
 func (t *Tree) changeTermVal(n *Node, v types.Value, dflt bool) (valChange, dfltChange bool) {
-	if !types.Equal(n.value, v) {
+	return t.changeTermValCompared(n, v, dflt, types.Equal(n.value, v))
+}
+
+// changeTermValCompared is lyd_change_term_val with the compare callback's result given: across
+// contexts the callbacks compare storage that the port's value equality does not see.
+func (t *Tree) changeTermValCompared(n *Node, v types.Value, dflt, equal bool) (valChange, dfltChange bool) {
+	if !equal {
 		hashAmount, err := t.work.checkChangedHash(n, v)
 		if err != nil {
 			t.work.hashErr = err
@@ -1290,7 +1296,37 @@ func (t *Tree) mergeMatch(match, src *Node, w *anyWork) error {
 			match.flags = src.flags | FlagNew
 		}
 	case match.schema.Kind == schema.Leaf && src.flags&FlagDefault == 0:
-		t.changeTermVal(match, src.value, false)
+		if !sameSet(ctxOf(match), ctxOf(src)) {
+			// lyd_change_term_val on a value of another context: an equal one changes only the
+			// flags, a different one may fail in the duplicate callback (LY_ENOTFOUND, no log)
+			equal, dupOK, undefined, err := types.CrossContextChange(&w.defs, match.schema.Type, src.schema.Type,
+				match.value, src.value, t.work.chargeHash)
+			base := match.schema.Type.Base
+			switch {
+			case err != nil:
+				return err
+			case undefined == types.CrossDefinition:
+				return &opError{"LY_EINVAL", fmt.Sprintf("Invalid arguments - the type of \"%s\" differs between the two "+
+					"schema contexts, merging its value is not supported (D-0133) (lyd_merge()).", match.schema.Name)}
+			case undefined == types.CrossPredicate:
+				// ly_path_dup_predicates leaves NULL predicate values (lydict_dup of a foreign
+				// string, LY_ENOTFOUND ignored) and libyang 5.8.6 crashes printing them: refused
+				return &opError{"LY_EINVAL", fmt.Sprintf("Invalid arguments - merging the path predicates of "+
+					"\"%s\" from another schema context is undefined in libyang, not supported (D-0133) "+
+					"(lyd_merge()).", match.schema.Name)}
+			case !equal && !dupOK && (base == schema.Union || base == schema.Leafref):
+				// the failed duplicate leaves the leafref/union storage half freed and libyang 5.8.6
+				// crashes (SIGSEGV) when it frees or prints the node: undefined, refused (D-0133)
+				return &opError{"LY_EINVAL", fmt.Sprintf("Invalid arguments - merging the %s value of \"%s\" from "+
+					"another schema context is undefined in libyang, not supported (D-0133) (lyd_merge()).",
+					base, match.schema.Name)}
+			case !equal && !dupOK:
+				return rcError("LY_ENOTFOUND")
+			}
+			t.changeTermValCompared(match, src.value.RebindContext(ctxOf(match)), false, equal)
+		} else {
+			t.changeTermVal(match, src.value, false)
+		}
 		if t.work.hashErr != nil {
 			return t.work.hashErr
 		}

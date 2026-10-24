@@ -1,0 +1,114 @@
+module pv2-mtdiff {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:pv2-mtdiff";
+  prefix pmd;
+
+  import ietf-yang-types { prefix yang; }
+
+  description
+    "Hand-written module for merging leaves whose types differ between two contexts (#306):
+     this is context B.";
+
+  typedef date { type yang:date { length "1..max"; } }
+  typedef date-alias { type yang:date { length "1..max"; } }
+  typedef time { type yang:time { length "1..max"; } }
+  typedef time-alias { type yang:time { length "1..max"; } }
+
+  container c {
+    leaf n-int8-int8 { type int8; }
+    leaf n-int8-int16 { type int16; }
+    leaf n-int8-int32 { type int32; }
+    leaf n-int8-int64 { type int64; }
+    leaf n-int8-uint8 { type uint8; }
+    leaf n-int8-uint16 { type uint16; }
+    leaf n-int8-uint32 { type uint32; }
+    leaf n-int8-uint64 { type uint64; }
+    leaf n-int16-int8 { type int8; }
+    leaf n-int16-int16 { type int16; }
+    leaf n-int16-int32 { type int32; }
+    leaf n-int16-int64 { type int64; }
+    leaf n-int16-uint8 { type uint8; }
+    leaf n-int16-uint16 { type uint16; }
+    leaf n-int16-uint32 { type uint32; }
+    leaf n-int16-uint64 { type uint64; }
+    leaf n-int32-int8 { type int8; }
+    leaf n-int32-int16 { type int16; }
+    leaf n-int32-int32 { type int32; }
+    leaf n-int32-int64 { type int64; }
+    leaf n-int32-uint8 { type uint8; }
+    leaf n-int32-uint16 { type uint16; }
+    leaf n-int32-uint32 { type uint32; }
+    leaf n-int32-uint64 { type uint64; }
+    leaf n-int64-int8 { type int8; }
+    leaf n-int64-int16 { type int16; }
+    leaf n-int64-int32 { type int32; }
+    leaf n-int64-int64 { type int64; }
+    leaf n-int64-uint8 { type uint8; }
+    leaf n-int64-uint16 { type uint16; }
+    leaf n-int64-uint32 { type uint32; }
+    leaf n-int64-uint64 { type uint64; }
+    leaf n-uint8-int8 { type int8; }
+    leaf n-uint8-int16 { type int16; }
+    leaf n-uint8-int32 { type int32; }
+    leaf n-uint8-int64 { type int64; }
+    leaf n-uint8-uint8 { type uint8; }
+    leaf n-uint8-uint16 { type uint16; }
+    leaf n-uint8-uint32 { type uint32; }
+    leaf n-uint8-uint64 { type uint64; }
+    leaf n-uint16-int8 { type int8; }
+    leaf n-uint16-int16 { type int16; }
+    leaf n-uint16-int32 { type int32; }
+    leaf n-uint16-int64 { type int64; }
+    leaf n-uint16-uint8 { type uint8; }
+    leaf n-uint16-uint16 { type uint16; }
+    leaf n-uint16-uint32 { type uint32; }
+    leaf n-uint16-uint64 { type uint64; }
+    leaf n-uint32-int8 { type int8; }
+    leaf n-uint32-int16 { type int16; }
+    leaf n-uint32-int32 { type int32; }
+    leaf n-uint32-int64 { type int64; }
+    leaf n-uint32-uint8 { type uint8; }
+    leaf n-uint32-uint16 { type uint16; }
+    leaf n-uint32-uint32 { type uint32; }
+    leaf n-uint32-uint64 { type uint64; }
+    leaf n-uint64-int8 { type int8; }
+    leaf n-uint64-int16 { type int16; }
+    leaf n-uint64-int32 { type int32; }
+    leaf n-uint64-int64 { type int64; }
+    leaf n-uint64-uint8 { type uint8; }
+    leaf n-uint64-uint16 { type uint16; }
+    leaf n-uint64-uint32 { type uint32; }
+    leaf n-uint64-uint64 { type uint64; }
+    leaf d-1-1 { type decimal64 { fraction-digits 1; } }
+    leaf d-1-2 { type decimal64 { fraction-digits 2; } }
+    leaf d-1-5 { type decimal64 { fraction-digits 5; } }
+    leaf d-2-1 { type decimal64 { fraction-digits 1; } }
+    leaf d-2-2 { type decimal64 { fraction-digits 2; } }
+    leaf d-2-5 { type decimal64 { fraction-digits 5; } }
+    leaf d-5-1 { type decimal64 { fraction-digits 1; } }
+    leaf d-5-2 { type decimal64 { fraction-digits 2; } }
+    leaf d-5-5 { type decimal64 { fraction-digits 5; } }
+    leaf e-same { type enumeration { enum a; enum b; } }
+    leaf e-swap { type enumeration { enum b; enum a; } }
+    leaf e-other { type enumeration { enum a; enum c; } }
+    leaf e-values { type enumeration { enum a { value 7; } enum b; } }
+    leaf b-same { type bits { bit x; bit y; } }
+    leaf b-longer { type bits { bit x; bit y { position 9; } } }
+    leaf b-shorter { type bits { bit x; bit y; } }
+    leaf b-swap { type bits { bit y; bit x; } }
+    leaf t-str-bits { type bits { bit x; bit y; } }
+    leaf t-str-bin { type binary; }
+    leaf t-enum-bits { type bits { bit x; bit y; } }
+    leaf t-str-u8 { type uint8; }
+    leaf t-str-dt { type yang:date-and-time; }
+    leaf dz-same { type yang:date; }
+    leaf dnz-same { type yang:date-no-zone; }
+    leaf dal-same { type date-alias; }
+    leaf dname-same { type date; }
+    leaf dz-alias { type date-alias; }
+    leaf dz-nz { type yang:date-no-zone; }
+    leaf tz-same { type yang:time; }
+    leaf tal-same { type time-alias; }
+    leaf tz-alias { type time-alias; }
+  }
+}

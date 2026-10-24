@@ -35,12 +35,17 @@ type prefixSnap map[string]*schema.Module
 func (p prefixSnap) Resolve(prefix string) *schema.Module { return p[prefix] }
 
 // prefixDataNew ports lyplg_type_prefix_data_new: the prefix data a value keeps for printing it
-// later. For the schema and XML formats the modules of the prefixes the value uses are copied out
-// of a.pc (the parser's namespace context does not outlive the value); the other formats name
-// modules and keep a.pc.
+// later. For the schema formats the modules of the prefixes the value uses are copied out of a.pc;
+// for XML the namespace declarations they use, and the default one, are (ly_store_prefix_data
+// copies prefix - URI pairs, resolved in the value's context when it is printed); the parser's
+// namespace context does not outlive the value. The other formats name modules and keep a.pc.
 func prefixDataNew(a *storeArgs) (PrefixCtx, *Diag) {
 	switch a.f {
-	case FormatSchema, FormatSchemaResolved, FormatXML:
+	case FormatSchema, FormatSchemaResolved:
+	case FormatXML:
+		if x, ok := a.pc.(XMLScope); ok {
+			return xmlPrefixData(a.lex, x)
+		}
 	default:
 		return a.pc, nil
 	}
@@ -65,6 +70,36 @@ func prefixDataNew(a *storeArgs) (PrefixCtx, *Diag) {
 			p := a.lex[i : i+n]
 			if m := a.pc.Resolve(p); m != nil {
 				snap[p] = m
+			}
+		}
+		if next < 0 {
+			break
+		}
+		i = next
+	}
+	return snap, nil
+}
+
+// xmlPrefixData is the LY_VALUE_XML case of ly_store_prefix_data (tree_data_common.c:1378-1427):
+// the default namespace, then each declared prefix the value uses, as prefix - URI pairs.
+func xmlPrefixData(lex string, x XMLScope) (PrefixCtx, *Diag) {
+	snap := XMLNamespaces{Set: x.Context(), NS: map[string]string{}}
+	if u, ok := x.Namespace(""); ok {
+		snap.NS[""], snap.Order = u, append(snap.Order, "")
+	}
+	for i := 0; ; {
+		n, isPrefix, next, ok := lyxml.ValuePrefixNext(lex, i)
+		if !ok {
+			return nil, &Diag{Code: CodeOther, Msg: "Storing value failed.", Err: "LY_EINVAL", NoItem: true}
+		}
+		if n == 0 {
+			break
+		}
+		if p := lex[i : i+n]; isPrefix {
+			if _, done := snap.NS[p]; !done {
+				if u, ok := x.Namespace(p); ok {
+					snap.NS[p], snap.Order = u, append(snap.Order, p)
+				}
 			}
 		}
 		if next < 0 {

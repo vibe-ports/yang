@@ -1,0 +1,9 @@
+module pv2-mtaroot {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:pv2-mtaroot";
+  prefix pmr;
+
+  description "A top-level leaf ordered before pv2-mtdiff, for the merge requests of #306.";
+
+  leaf r { type string; }
+}

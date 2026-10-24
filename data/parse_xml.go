@@ -152,6 +152,12 @@ func (p *xmlParser) Resolve(prefix string) *schema.Module {
 	return (types.XMLNamespaces{Set: p.lc.tree.set, NS: map[string]string{prefix: u}}).Resolve(prefix)
 }
 
+// Namespace implements types.XMLScope.
+func (p *xmlParser) Namespace(prefix string) (string, bool) { return p.getNS(prefix) }
+
+// Context implements types.XMLScope.
+func (p *xmlParser) Context() *schema.Set { return p.lc.tree.set }
+
 // prefixes is the prefix context of value at the current position (ly_store_prefix_data with
 // LY_VALUE_XML): the default namespace and the in-scope namespaces of the prefixes the value
 // uses. A snapshot, because a stored union value or an opaque node keeps it.

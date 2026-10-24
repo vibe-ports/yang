@@ -185,6 +185,7 @@ type anyWork struct {
 	ctx          context.Context
 	budget       Budget
 	bytes, nodes int
+	defs         types.DefWalk // the cross-context type definitions a Merge compared
 }
 
 func newAnyWork(ctx context.Context, b Budget) *anyWork {
