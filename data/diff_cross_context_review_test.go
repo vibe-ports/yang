@@ -5,10 +5,12 @@ package data
 import (
 	"errors"
 	"fmt"
+	"runtime"
 	"slices"
 	"strings"
 	"testing"
 	"testing/fstest"
+	"weak"
 
 	"github.com/vibe-ports/yang"
 	"github.com/vibe-ports/yang/internal/compile"
@@ -70,6 +72,48 @@ func TestDiffCrossContextSortedRunMissUsesAnchor(t *testing.T) {
 	}
 }
 
+// TestDiffCrossContextSortedRunUsesRBTraversal pins rb_insert_node's comparison path after its
+// deterministic rotation. int16 reads each int8 union payload at int16 width until inserting -1
+// rotates -2 to the root; the final int8 comparator then puts 0 after -1.
+func TestDiffCrossContextSortedRunUsesRBTraversal(t *testing.T) {
+	module := func(typ string) string {
+		return `module review-rb-order { yang-version 1.1; namespace "urn:review-rb-order"; prefix r;
+  container top { presence "retain"; leaf-list v { type ` + typ + `; } }
+}`
+	}
+	firstSet, secondSet := reviewDiffSet(t, module("int16")), reviewDiffSet(t, module("int8"))
+	first := parseOnlyXML(t, firstSet, `<top xmlns="urn:review-rb-order"><v>1</v></top>`)
+	second := parseOnlyXML(t, secondSet, `<top xmlns="urn:review-rb-order"><v>-2</v><v>-1</v><v>0</v></top>`)
+	diff, err := Diff(first, second, DiffOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got, want := names(topOf(diff).Children()), []string{"v=1", "v=-2", "v=-1", "v=0"}; !slices.Equal(got, want) {
+		t.Fatalf("diff order = %v, want native RB order %v", got, want)
+	}
+}
+
+// TestDiffCrossContextIntegerCallbackReadsZeroedStringStorage covers different sort callbacks
+// whose C storage comparison is nevertheless defined. string_store zeroes the value union, so
+// the int8 callback compares -1 with zero and links string "2" after it.
+func TestDiffCrossContextIntegerCallbackReadsZeroedStringStorage(t *testing.T) {
+	module := func(typ string) string {
+		return `module review-int-string { yang-version 1.1; namespace "urn:review-int-string"; prefix r;
+  container top { presence "retain"; leaf-list v { type ` + typ + `; } }
+}`
+	}
+	firstSet, secondSet := reviewDiffSet(t, module("int8")), reviewDiffSet(t, module("string"))
+	first := parseOnlyXML(t, firstSet, `<top xmlns="urn:review-int-string"><v>-1</v></top>`)
+	second := parseOnlyXML(t, secondSet, `<top xmlns="urn:review-int-string"><v>2</v></top>`)
+	diff, err := Diff(first, second, DiffOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got, want := names(topOf(diff).Children()), []string{"v=-1", "v=2"}; !slices.Equal(got, want) {
+		t.Fatalf("diff order = %v, want zero-initialized storage order %v", got, want)
+	}
+}
+
 // TestDiffCrossContextSchemaLookupScaling verifies that independently compiled snapshots build
 // one lineage index per input sibling set instead of rescanning N siblings for every leaf. The
 // lowered quota also proves that the public operation's fixed ceiling returns ErrBudget.
@@ -109,4 +153,72 @@ func TestDiffCrossContextSchemaLookupScaling(t *testing.T) {
 			}
 		}
 	}
+}
+
+// TestDiffCrossContextDisjointSchemaLookupScaling covers indexed misses, not only hits. Once the
+// foreign lineage index misses, a second sibling scan is both redundant and outside its budget.
+func TestDiffCrossContextDisjointSchemaLookupScaling(t *testing.T) {
+	const n = 256
+	module := func(side string) string {
+		var text strings.Builder
+		fmt.Fprint(&text, `module review-disjoint { namespace "urn:review-disjoint"; prefix r; container t {`)
+		for i := range n {
+			fmt.Fprintf(&text, "leaf %s%d { type string; }", side, i)
+		}
+		fmt.Fprint(&text, "} }")
+		return text.String()
+	}
+	data := func(side string) string {
+		var text strings.Builder
+		fmt.Fprint(&text, `<t xmlns="urn:review-disjoint">`)
+		for i := range n {
+			fmt.Fprintf(&text, "<%s%d>x</%s%d>", side, i, side, i)
+		}
+		fmt.Fprint(&text, "</t>")
+		return text.String()
+	}
+	firstSet, secondSet := reviewDiffSet(t, module("a")), reviewDiffSet(t, module("b"))
+	first, second := parseOnlyXML(t, firstSet, data("a")), parseOnlyXML(t, secondSet, data("b"))
+	first.work.Store(0)
+	second.work.Store(0)
+	first.work.visits, second.work.visits = true, true
+	if _, err := diffNodesLookupLimit(topOf(first), topOf(second), DiffOptions{}, false, first, second, 8*n); err != nil {
+		t.Fatalf("disjoint leaves within linear lookup quota: %v", err)
+	}
+	if work := first.work.Load() + second.work.Load(); work > 16*n {
+		t.Fatalf("%d disjoint leaves: %d foreign sibling visits, want linear work", n, work)
+	}
+}
+
+func diffWithWeakInputs(t *testing.T, set *schema.Set) (*Tree, weak.Pointer[Tree], weak.Pointer[Tree]) {
+	t.Helper()
+	first := parseOnlyXML(t, set, `<top xmlns="urn:review-retention"><v>old</v></top>`)
+	second := parseOnlyXML(t, set, `<top xmlns="urn:review-retention"><v>new</v></top>`)
+	firstWeak, secondWeak := weak.Make(first), weak.Make(second)
+	diff, err := Diff(first, second, DiffOptions{})
+	if err != nil || diff == nil {
+		t.Fatalf("Diff = (%v, %v), want a retained delta", diff, err)
+	}
+	return diff, firstWeak, secondWeak
+}
+
+// TestDiffResultDoesNotRetainInputs keeps the returned delta live while weakly observing both
+// same-context inputs. Diff-time sibling/schema indexes must not escape with the result.
+func TestDiffResultDoesNotRetainInputs(t *testing.T) {
+	set := reviewDiffSet(t, `module review-retention { yang-version 1.1;
+  namespace "urn:review-retention"; prefix r;
+  container top { leaf v { type string; } }
+}`)
+	diff, first, second := diffWithWeakInputs(t, set)
+	for range 20 {
+		if first.Value() == nil && second.Value() == nil {
+			break
+		}
+		runtime.GC()
+		runtime.Gosched()
+	}
+	if first.Value() != nil || second.Value() != nil {
+		t.Fatal("returned diff retains one or both input trees")
+	}
+	runtime.KeepAlive(diff)
 }

@@ -174,23 +174,35 @@ func sortCallback(t *schema.Type) string {
 	}
 }
 
-// CompareCompatible invokes the callback shared by values compiled in distinct schema contexts.
-// lyds_compare_single() selects the first value's callback and compares the second value's
-// storage with it (libyang v5.8.6 src/tree_data_sorted.c:195-199,212-222). We additionally verify
-// that both realtypes use that callback so incompatible Go storage is never passed to a plugin.
+// CompareCompatible invokes the first value's callback for values compiled in distinct schema
+// contexts. lyds_compare_single() does not check the second realtype before passing its storage
+// to that callback (libyang v5.8.6 src/tree_data_sorted.c:195-199,212-222). The simple callback
+// reads only the canonical cache. Integer callbacks read the zero-initialized value union, so a
+// string or empty value is a defined zero even though it uses another callback.
 func CompareCompatible(a, b Value) (order int, compatible bool) {
-	if !SortCompatible(a, b) {
+	if a.typ == nil || b.typ == nil {
 		return 0, false
 	}
 	switch sortCallback(a.typ) {
 	case "simple":
 		return strings.Compare(a.canon, b.canon), true
 	case "int":
-		x, y := sortIntStorage(a, a), sortIntStorage(a, b)
+		x, okX := integerSortStorage(a, a)
+		y, okY := integerSortStorage(a, b)
+		if !okX || !okY {
+			return 0, false
+		}
 		return cmp3(x < y, x > y), true
 	case "uint":
-		x, y := sortUintStorage(a, a), sortUintStorage(a, b)
+		x, okX := unsignedSortStorage(a, a)
+		y, okY := unsignedSortStorage(a, b)
+		if !okX || !okY {
+			return 0, false
+		}
 		return cmp3(x < y, x > y), true
+	}
+	if !SortCompatible(a, b) {
+		return 0, false
 	}
 	if p := pluginFor(a.typ); p != nil {
 		return p.compare(a, b), true
@@ -203,35 +215,58 @@ func SortCompatible(a, b Value) bool {
 	return a.typ != nil && b.typ != nil && sortCallback(a.typ) == sortCallback(b.typ)
 }
 
-// sortIntStorage reads both zero-initialized C union payloads using the first value's field width.
-// A narrower second value is not sign-extended before a wider field reads it
-// (libyang v5.8.6 src/plugins_types/integer.c:61-62,99-117,249-294; linux/amd64 oracle).
-func sortIntStorage(first, v Value) int64 {
-	u := integerLYB(v)
-	switch first.typ.Base {
-	case schema.Int8:
-		return int64(int8(u)) //nolint:gosec // the C callback reads this union field width
-	case schema.Int16:
-		return int64(int16(u)) //nolint:gosec // the C callback reads this union field width
-	case schema.Int32:
-		return int64(int32(u)) //nolint:gosec // the C callback reads this union field width
+// integerUnionStorage returns the first eight bytes of struct lyd_value's union when their value
+// is deterministic. String and empty store callbacks memset the whole struct and leave the union
+// untouched. Pointer-backed and plugin values are deliberately refused: their storage is not a
+// portable deterministic integer.
+func integerUnionStorage(v Value) (uint64, bool) {
+	switch v.typ.Base {
+	case schema.Int8, schema.Int16, schema.Int32, schema.Int64,
+		schema.Uint8, schema.Uint16, schema.Uint32, schema.Uint64:
+		return integerLYB(v), true
+	case schema.String, schema.Empty:
+		return 0, true
 	default:
-		return int64(u) //nolint:gosec // the C callback reads this union field width
+		return 0, false
 	}
 }
 
-// sortUintStorage selects the first value's C union field width
+// integerSortStorage reads zero-initialized C union payloads using the first value's field width.
+// A narrower second value is not sign-extended before a wider field reads it
+// (libyang v5.8.6 src/plugins_types/integer.c:61-62,99-117,249-294; linux/amd64 oracle).
+func integerSortStorage(first, v Value) (int64, bool) {
+	u, ok := integerUnionStorage(v)
+	if !ok {
+		return 0, false
+	}
+	switch first.typ.Base {
+	case schema.Int8:
+		return int64(int8(u)), true //nolint:gosec // the C callback reads this union field width
+	case schema.Int16:
+		return int64(int16(u)), true //nolint:gosec // the C callback reads this union field width
+	case schema.Int32:
+		return int64(int32(u)), true //nolint:gosec // the C callback reads this union field width
+	default:
+		return int64(u), true //nolint:gosec // the C callback reads this union field width
+	}
+}
+
+// unsignedSortStorage selects the first value's C union field width
 // (libyang v5.8.6 src/plugins_types/integer.c:472-517).
-func sortUintStorage(first, v Value) uint64 {
+func unsignedSortStorage(first, v Value) (uint64, bool) {
+	u, ok := integerUnionStorage(v)
+	if !ok {
+		return 0, false
+	}
 	switch first.typ.Base {
 	case schema.Uint8:
-		return uint64(uint8(v.u)) //nolint:gosec // the C callback reads this union field width
+		return uint64(uint8(u)), true //nolint:gosec // the C callback reads this union field width
 	case schema.Uint16:
-		return uint64(uint16(v.u)) //nolint:gosec // the C callback reads this union field width
+		return uint64(uint16(u)), true //nolint:gosec // the C callback reads this union field width
 	case schema.Uint32:
-		return uint64(uint32(v.u)) //nolint:gosec // the C callback reads this union field width
+		return uint64(uint32(u)), true //nolint:gosec // the C callback reads this union field width
 	default:
-		return v.u
+		return u, true
 	}
 }
 

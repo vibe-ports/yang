@@ -322,13 +322,22 @@ func (j *hashTransaction) captureSiblings(s *siblings) {
 	saved.pending = maps.Clone(s.pending)
 	saved.rbTree = maps.Clone(s.rbTree)
 	saved.rbGroups = maps.Clone(s.rbGroups)
+	if s.rbOrders != nil {
+		saved.rbOrders = make(map[*rbGroup]*dirtyOrder, len(s.rbOrders))
+		for group, order := range s.rbOrders {
+			saved.rbOrders[group] = cloneDirtyOrder(order)
+		}
+	}
 	saved.opIdx = maps.Clone(s.opIdx)
 	saved.contexts = maps.Clone(s.contexts) // a handful of contexts: not charged
 	saved.opRanks = cloneRanks(s.opRanks)
 	j.siblings[s] = saved
 	objects := 1 + uint64(len(s.list)+len(s.opq)+len(s.ht)+len(s.leaders)+len(s.firstRun)+
 		len(s.exactByNode)+len(s.history)+len(s.leaderByNode)+len(s.unsorted)+len(s.rbTree)+len(s.rbGroups)+
-		len(s.opIdx)+len(s.pending))
+		len(s.rbOrders)+len(s.opIdx)+len(s.pending))
+	for _, order := range s.rbOrders {
+		objects += uint64(len(order.nodes))
+	}
 	for _, c := range s.ht {
 		j.captureChain(c, &objects)
 	}

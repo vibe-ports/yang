@@ -11,7 +11,7 @@ fixtures:
       searchdirs: [schemas/cross-context-int-string-order-a]
       modules: [{name: diff-cross-context-int-string-order}]
       steps:
-        - {do: parse, format: xml, data_type: data, parse_only: true, data: '<top xmlns="urn:vibe-ports:yang:diff-cross-context-int-string-order"><v>1</v></top>'}
+        - {do: parse, format: xml, data_type: data, parse_only: true, data: '<top xmlns="urn:vibe-ports:yang:diff-cross-context-int-string-order"><v>-1</v></top>'}
         - do: diff
           format: xml
           data_type: data

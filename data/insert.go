@@ -279,6 +279,7 @@ func (t *Tree) insertPos(sib *siblings, n *Node, order insertOrder) int {
 		n.rbGroup = sib.rbGroups[l[lo]]
 		if !sib.rbTree[l[lo]] {
 			oldLeader := l[lo]
+			insertionOrder := slices.Clone(l[lo:hi])
 			// lyds_additionally_create_rb_tree: the run gets its RB tree from all its instances,
 			// inserted in order, so it is sorted stably (rb_insert_node puts equal values after
 			// the existing ones)
@@ -303,6 +304,7 @@ func (t *Tree) insertPos(sib *siblings, n *Node, order insertOrder) int {
 			}
 			markRB(sib, l[lo])
 			n.rbGroup = sib.rbGroups[l[lo]]
+			t.buildRBOrder(sib, n.rbGroup, insertionOrder)
 		} else if sib.unsorted[l[lo]] {
 			// instances appended after the tree was made are not in it (only diff.c's
 			// LAST_BY_SCHEMA does that): lyds_link_data_node puts n right after its RB
@@ -314,14 +316,18 @@ func (t *Tree) insertPos(sib *siblings, n *Node, order insertOrder) int {
 					at = i + 1
 				}
 			}
+			t.rbRecordInsert(sib, n)
 			return at
 		}
 		// after the equal values (rb_insert_node goes right on 0); append fast path
 		t.work.Add(1)
 		if t.compareSorted(l[hi-1], n) <= 0 {
+			t.rbRecordInsert(sib, n)
 			return hi
 		}
-		return t.upper(l[:hi], lo, func(a *Node) bool { return t.compareSorted(a, n) > 0 })
+		at := t.upper(l[:hi], lo, func(a *Node) bool { return t.compareSorted(a, n) > 0 })
+		t.rbRecordInsert(sib, n)
+		return at
 	}
 	// lyd_insert_node_ordby_schema; append fast path
 	at := len(l)
@@ -478,6 +484,7 @@ func (t *Tree) crossContextSortedPos(sib *siblings, n *Node, lo int) (int, bool)
 			hi++
 		}
 		oldLeader := leader
+		insertionOrder := slices.Clone(l[lo:hi])
 		t.applyRunReorderHash(sib, l[lo:hi], reorderExact|reorderFirst)
 		slices.SortStableFunc(l[lo:hi], func(a, b *Node) int {
 			t.work.Add(1)
@@ -499,33 +506,94 @@ func (t *Tree) crossContextSortedPos(sib *siblings, n *Node, lo int) (int, bool)
 		}
 		markRB(sib, l[lo])
 		leader = l[lo]
+		t.buildRBOrder(sib, sib.rbGroups[leader], insertionOrder)
 	}
 	group := sib.rbGroups[leader]
 	if group == nil {
 		group = leader.rbGroup
 	}
-	at := lo
-	for i := lo; i < len(l); i++ {
-		t.work.Add(1)
-		a := l[i]
-		if !schemaLookupMatch(a.schema, leader.schema, sib.ht != nil) {
-			break
-		}
-		if !a.inRB || a.rbGroup != group {
-			continue
-		}
-		c, compatible := t.compareSortedCompatible(a, n)
-		if !compatible {
-			return 0, false
-		}
-		if c > 0 {
-			break
-		}
-		at = i + 1
-	}
 	n.inRB = true
 	n.rbGroup = group
+	at, compatible := t.rbInsertPos(sib, n, lo, t.compareSortedCompatible)
+	if !compatible {
+		n.inRB, n.rbGroup = false, nil
+		return 0, false
+	}
 	return at, true
+}
+
+// buildRBOrder retains rb_insert_node's exact topology. The physical slice remains the in-order
+// view, but cross-context callbacks are asymmetric, so only a native root-to-leaf traversal can
+// choose the same predecessor after rotations.
+func (t *Tree) buildRBOrder(sib *siblings, group *rbGroup, insertionOrder []*Node) {
+	sib.touch()
+	order := &dirtyOrder{nodes: make(map[*Node]*dirtyOrderNode, len(insertionOrder)), work: &t.work}
+	for _, n := range insertionOrder {
+		_, _ = order.insertCompatible(n, func(a, b *Node) (int, bool) {
+			return t.compareSorted(a, b), true
+		})
+	}
+	if sib.rbOrders == nil {
+		sib.rbOrders = make(map[*rbGroup]*dirtyOrder)
+	}
+	sib.rbOrders[group] = order
+}
+
+// rbInsertPos is rb_insert_node followed by lyds_link_data_node. A missing retained topology can
+// only come from an older copied/moved run; rebuilding its symmetric in-order members preserves
+// ordinary ordering while keeping all subsequent cross-context rotations exact.
+func (t *Tree) rbInsertPos(sib *siblings, n *Node, lo int, compare func(*Node, *Node) (int, bool)) (int, bool) {
+	pred, ok := t.rbInsert(sib, n, compare)
+	if !ok {
+		return lo, false
+	}
+	if pred == nil {
+		return lo, true
+	}
+	return t.indexFromEnd(sib.list, pred) + 1, true
+}
+
+func (t *Tree) rbInsert(sib *siblings, n *Node, compare func(*Node, *Node) (int, bool)) (*Node, bool) {
+	sib.touch()
+	group := n.rbGroup
+	order := sib.rbOrders[group]
+	if order == nil {
+		var members []*Node
+		for _, candidate := range sib.list {
+			if candidate.inRB && candidate.rbGroup == group {
+				members = append(members, candidate)
+			}
+		}
+		t.buildRBOrder(sib, group, members)
+		order = sib.rbOrders[group]
+	}
+	order.work = &t.work
+	return order.insertCompatible(n, compare)
+}
+
+// rbRecordInsert mirrors a normal symmetric insertion in the retained topology. Slice lookup is
+// still the port's charged implementation for these nodes; recording the otherwise duplicate RB
+// comparisons must not make its work accounting depend on this cross-context compatibility aid.
+func (t *Tree) rbRecordInsert(sib *siblings, n *Node) {
+	sib.touch()
+	if n.rbGroup == nil {
+		return
+	}
+	order := sib.rbOrders[n.rbGroup]
+	if order == nil {
+		var members []*Node
+		for _, candidate := range sib.list {
+			if candidate.inRB && candidate.rbGroup == n.rbGroup {
+				members = append(members, candidate)
+			}
+		}
+		t.buildRBOrder(sib, n.rbGroup, members)
+		order = sib.rbOrders[n.rbGroup]
+	}
+	order.work = nil
+	_, _ = order.insertCompatible(n, func(a, b *Node) (int, bool) {
+		return compareSorted(a, b), true
+	})
 }
 
 // opRebuild replaces one index entry after its contiguous sibling run was sorted.

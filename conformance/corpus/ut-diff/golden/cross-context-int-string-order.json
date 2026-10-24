@@ -49,10 +49,10 @@
           "kind": "leaflist",
           "meta": [],
           "opaque": null,
-          "path": "/diff-cross-context-int-string-order:top/v[.='1']",
+          "path": "/diff-cross-context-int-string-order:top/v[.='-1']",
           "schema": "/diff-cross-context-int-string-order:top/v",
           "value": {
-            "canonical": "1",
+            "canonical": "-1",
             "type": "int8",
             "typedef": null,
             "union_member": null
@@ -63,8 +63,8 @@
     {
       "diagnostics": [],
       "diff": {
-        "json": "{\n  \"diff-cross-context-int-string-order:top\": {\n    \"@\": {\n      \"yang:operation\": \"none\"\n    },\n    \"diff-cross-context-int-string-order:v\": [\n      \"2\"\n    ],\n    \"@diff-cross-context-int-string-order:v\": [\n      {\n        \"yang:operation\": \"create\"\n      }\n    ],\n    \"v\": [\n      1\n    ],\n    \"@v\": [\n      {\n        \"yang:operation\": \"delete\"\n      }\n    ]\n  }\n}\n",
-        "xml": "<top xmlns=\"urn:vibe-ports:yang:diff-cross-context-int-string-order\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\">\n  <v yang:operation=\"create\">2</v>\n  <v yang:operation=\"delete\">1</v>\n</top>\n"
+        "json": "{\n  \"diff-cross-context-int-string-order:top\": {\n    \"@\": {\n      \"yang:operation\": \"none\"\n    },\n    \"v\": [\n      -1\n    ],\n    \"@v\": [\n      {\n        \"yang:operation\": \"delete\"\n      }\n    ],\n    \"diff-cross-context-int-string-order:v\": [\n      \"2\"\n    ],\n    \"@diff-cross-context-int-string-order:v\": [\n      {\n        \"yang:operation\": \"create\"\n      }\n    ]\n  }\n}\n",
+        "xml": "<top xmlns=\"urn:vibe-ports:yang:diff-cross-context-int-string-order\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\">\n  <v yang:operation=\"delete\">-1</v>\n  <v yang:operation=\"create\">2</v>\n</top>\n"
       },
       "diff_typed": [
         {
@@ -99,15 +99,15 @@
             {
               "module": "yang",
               "name": "operation",
-              "value": "create"
+              "value": "delete"
             }
           ],
           "opaque": null,
-          "path": "/diff-cross-context-int-string-order:top/diff-cross-context-int-string-order:v[.='2']",
+          "path": "/diff-cross-context-int-string-order:top/v[.='-1']",
           "schema": "/diff-cross-context-int-string-order:top/v",
           "value": {
-            "canonical": "2",
-            "type": "string",
+            "canonical": "-1",
+            "type": "int8",
             "typedef": null,
             "union_member": null
           }
@@ -124,15 +124,15 @@
             {
               "module": "yang",
               "name": "operation",
-              "value": "delete"
+              "value": "create"
             }
           ],
           "opaque": null,
-          "path": "/diff-cross-context-int-string-order:top/v[.='1']",
+          "path": "/diff-cross-context-int-string-order:top/diff-cross-context-int-string-order:v[.='2']",
           "schema": "/diff-cross-context-int-string-order:top/v",
           "value": {
-            "canonical": "1",
-            "type": "int8",
+            "canonical": "2",
+            "type": "string",
             "typedef": null,
             "union_member": null
           }
@@ -168,10 +168,10 @@
           "kind": "leaflist",
           "meta": [],
           "opaque": null,
-          "path": "/diff-cross-context-int-string-order:top/v[.='1']",
+          "path": "/diff-cross-context-int-string-order:top/v[.='-1']",
           "schema": "/diff-cross-context-int-string-order:top/v",
           "value": {
-            "canonical": "1",
+            "canonical": "-1",
             "type": "int8",
             "typedef": null,
             "union_member": null

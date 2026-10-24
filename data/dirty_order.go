@@ -92,6 +92,33 @@ func newDirtyOrder(work *workCounter, nodes []*Node, compare func(*Node, *Node) 
 	return d, moved
 }
 
+// cloneDirtyOrder copies an RB topology for the mutation journal. The data nodes are immutable
+// keys here; only the topology nodes and their links are changed by later insertions.
+func cloneDirtyOrder(d *dirtyOrder) *dirtyOrder {
+	if d == nil {
+		return nil
+	}
+	clone := &dirtyOrder{nodes: make(map[*Node]*dirtyOrderNode, len(d.nodes)), work: d.work, compare: d.compare,
+		leaders: append([][2]*Node(nil), d.leaders...)}
+	byOld := make(map[*dirtyOrderNode]*dirtyOrderNode, len(d.nodes))
+	stack := []*dirtyOrderNode{d.root}
+	for len(stack) != 0 {
+		old := stack[len(stack)-1]
+		stack = stack[:len(stack)-1]
+		if old == nil || byOld[old] != nil {
+			continue
+		}
+		byOld[old] = &dirtyOrderNode{node: old.node, size: old.size, red: old.red, active: old.active}
+		stack = append(stack, old.left, old.right)
+	}
+	for old, copied := range byOld {
+		copied.left, copied.right, copied.parent = byOld[old.left], byOld[old.right], byOld[old.parent]
+		clone.nodes[copied.node] = copied
+	}
+	clone.root = byOld[d.root]
+	return clone
+}
+
 func dirtySize(n *dirtyOrderNode) int {
 	if n == nil {
 		return 0
@@ -148,7 +175,9 @@ func (d *dirtyOrder) rotateRight(n *dirtyOrderNode) {
 // insertColor is rb_insert_color (tree_data_sorted.c:430-479).
 func (d *dirtyOrder) insertColor(x *dirtyOrderNode) {
 	for p := x.parent; p != nil && p.red; p = x.parent {
-		d.work.Add(1)
+		if d.work != nil {
+			d.work.Add(1)
+		}
 		g := p.parent
 		if p == g.left {
 			if u := g.right; u != nil && u.red {
@@ -217,6 +246,77 @@ func (d *dirtyOrder) insertNode(n *Node, right bool) (isMax, leftmost bool) {
 	}
 	d.insertColor(x)
 	return isMax, leftmost
+}
+
+// insertCompatible is rb_insert_node with a comparison that can refuse a C storage access the Go
+// port cannot model deterministically. It returns the inserted node's RB predecessor, which is
+// where lyds_link_data_node links the data node (tree_data_sorted.c:669-716,1021-1039).
+// No topology is changed when a comparison is refused.
+func (d *dirtyOrder) insertCompatible(n *Node, compare func(*Node, *Node) (int, bool)) (*Node, bool) {
+	var parent *dirtyOrderNode
+	var path []*dirtyOrderNode
+	left := false
+	for cur := d.root; cur != nil; {
+		if d.work != nil {
+			d.work.Add(1)
+		}
+		parent = cur
+		path = append(path, cur)
+		order, ok := compare(cur.node, n)
+		if !ok {
+			return nil, false
+		}
+		left = order > 0
+		if left {
+			cur = cur.left
+		} else {
+			cur = cur.right
+		}
+	}
+	for _, cur := range path {
+		cur.size++
+	}
+	x := &dirtyOrderNode{node: n, size: 1, red: true, active: true, parent: parent}
+	if d.nodes == nil {
+		d.nodes = make(map[*Node]*dirtyOrderNode)
+	}
+	d.nodes[n] = x
+	switch {
+	case parent == nil:
+		d.root = x
+	case left:
+		parent.left = x
+	default:
+		parent.right = x
+	}
+	d.insertColor(x)
+	return d.predecessorNode(x), true
+}
+
+func (d *dirtyOrder) predecessorNode(n *dirtyOrderNode) *Node {
+	if n.left != nil {
+		n = n.left
+		for n.right != nil {
+			if d.work != nil {
+				d.work.Add(1)
+			}
+			n = n.right
+		}
+		return n.node
+	}
+	for n.parent != nil && n == n.parent.left {
+		if d.work != nil {
+			d.work.Add(1)
+		}
+		n = n.parent
+	}
+	if n.parent != nil && d.work != nil {
+		d.work.Add(1)
+	}
+	if n.parent == nil {
+		return nil
+	}
+	return n.parent.node
 }
 
 // remove makes an unlinked parser node invisible without restructuring the tree. rb_remove

@@ -110,6 +110,13 @@ func diffNodesLookupLimit(first, second *Node, o DiffOptions, nosiblings bool, f
 		return nil, nil
 	}
 	d := newTree(set)
+	// These indexes belong to this call. In particular, their sibling keys point into both input
+	// trees and must not make the returned one-leaf delta retain either complete snapshot.
+	defer func() {
+		d.foreignSchemaInput = nil
+		d.foreignSchema = nil
+		d.schemaLineage = nil
+	}()
 	d.work.lookupLimit = lookupLimit
 	if fs == nil && ft != nil {
 		fs = ft.set
@@ -279,11 +286,17 @@ func (t *Tree) findMatch(sib *siblings, target *Node, defaults bool, cache *dupC
 	case target.schema.Kind == schema.List || target.schema.Kind == schema.LeafList:
 		m = t.findFirst(sib, target)
 	default:
+		lookupBefore := t.work.lookupUsed
 		m = t.schemaLookup(sib, target.schema)
-		// schemaLookup already scans mixed sibling contexts. A uniform foreign context
-		// may still need schema equivalence after its pointer lookup misses.
-		if m == nil && len(sib.contexts) == 1 && ctxOf(sib.list[0]) != ctxOf(target) {
+		indexed := t.work.lookupUsed != lookupBefore
+		// A diff-time index uses the same equality as native lookup, so its miss is final. An
+		// ownerless schema can instead take schemaLookup's ordinary pointer path; retain its full
+		// lineage fallback, but charge every candidate to the same bounded lookup quota.
+		if m == nil && !indexed && len(sib.contexts) == 1 && ctxOf(sib.list[0]) != ctxOf(target) {
 			for _, candidate := range sib.list {
+				if err := t.work.chargeLookup(1); err != nil {
+					return nil
+				}
 				sib.visit()
 				if compareSchemaEqual(candidate.schema, target.schema, true) {
 					m = candidate

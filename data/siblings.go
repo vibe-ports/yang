@@ -83,6 +83,7 @@ type siblings struct {
 	pending      map[*schema.Node]*dirtyOrder // the parser's dirty runs: the sibling order is their tree's
 	rbTree       map[*Node]bool               // libyang's lyds metadata lives on each run leader
 	rbGroups     map[*Node]*rbGroup           // tree identity follows metadata when its leader moves
+	rbOrders     map[*rbGroup]*dirtyOrder     // retained native RB shape for asymmetric cross-context comparisons
 	opIdx        map[*schema.Node]*opEntry    // operation children or unordered copies by schema (opInst)
 	opRanks      [2]rankBits                  // occupied input/output schema ranks, for the next anchor
 	gen          uint64                       // changes with every insertion and removal
@@ -407,6 +408,7 @@ func (s *siblings) clearEmptyRBGroup(group *rbGroup) {
 			s.runGone(leader)
 		}
 	}
+	delete(s.rbOrders, group)
 }
 
 // len is the number of siblings, opaque ones included.
