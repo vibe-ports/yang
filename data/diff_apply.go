@@ -100,7 +100,10 @@ func (t *Tree) applyR(parent, dn *Node, cb func(diff, node *Node) error, cache *
 	var match *Node
 	if isUserOrdered(dn.schema) && (op == diffCreate || op == diffReplace) {
 		if op == diffReplace {
-			if match = t.findMatch(sib, dn, true, cache); match == nil { // moved: there are siblings
+			if match, err = t.findMatch(sib, dn, true, cache); err != nil {
+				return err
+			}
+			if match == nil { // moved: there are siblings
 				return t.noInstErr(dn)
 			}
 		}
@@ -133,7 +136,10 @@ func (t *Tree) applyR(parent, dn *Node, cb func(diff, node *Node) error, cache *
 	} else {
 		switch op {
 		case diffNone:
-			if match = t.findMatch(sib, dn, true, cache); match == nil {
+			if match, err = t.findMatch(sib, dn, true, cache); err != nil {
+				return err
+			}
+			if match == nil {
 				return t.noInstErr(dn)
 			}
 			if match.isTerm() { // only the default flag changed
@@ -157,7 +163,10 @@ func (t *Tree) applyR(parent, dn *Node, cb func(diff, node *Node) error, cache *
 			}
 			t.created(cache, match)
 		case diffDelete:
-			if match = t.findMatch(sib, dn, true, cache); match == nil {
+			if match, err = t.findMatch(sib, dn, true, cache); err != nil {
+				return err
+			}
+			if match == nil {
 				return t.noInstErr(dn)
 			}
 			return freeTree(match) // the whole subtree is gone, nothing to recurse into
@@ -166,7 +175,10 @@ func (t *Tree) applyR(parent, dn *Node, cb func(diff, node *Node) error, cache *
 				return &opError{"LY_EINVAL", fmt.Sprintf("Operation \"replace\" is invalid for %s node \"%s\".",
 					nodetypeStr(dn.schema.Kind), dn.Name())}
 			}
-			if match = t.findMatch(sib, dn, true, cache); match == nil {
+			if match, err = t.findMatch(sib, dn, true, cache); err != nil {
+				return err
+			}
+			if match == nil {
 				return t.noInstErr(dn)
 			}
 			if isAny(dn.schema) { // their values await the public diff surface (U-0112)
@@ -190,6 +202,13 @@ func (t *Tree) applyR(parent, dn *Node, cb func(diff, node *Node) error, cache *
 			return err
 		}
 	}
+	// Descendant edits can change the enclosing keyless instance's narrowing
+	// digest. Preserve the native consumed-instance sets while rebuilding only
+	// digest buckets on the next sibling lookup, as Merge does.
+	before, tracked, err := cache.keylessDigest(match, &t.work)
+	if err != nil {
+		return err
+	}
 	childCache := &dupCache{}
 	for _, c := range dn.kids.nodes() {
 		if c.isKey() { // lyd_child_no_keys
@@ -199,7 +218,7 @@ func (t *Tree) applyR(parent, dn *Node, cb func(diff, node *Node) error, cache *
 			return err
 		}
 	}
-	return nil
+	return cache.invalidateChangedKeyless(match, before, tracked, &t.work)
 }
 
 // diffDupCreate is lyd_dup_single(diff_node, NULL, LYD_DUP_NO_META): the new
@@ -453,7 +472,7 @@ func (t *Tree) findAnchor(sib *siblings, sn *schema.Node, anchor string) (*Node,
 			return nil, &storeFailure{d, key}
 		}
 	}
-	return t.findFirst(sib, target), nil
+	return t.findFirstChecked(sib, target)
 }
 
 // changeTerm is lyd_change_term with a JSON value: "" when the value changed, LY_EEXIST when it

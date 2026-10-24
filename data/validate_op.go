@@ -104,7 +104,10 @@ func validateOpNode(ctx context.Context, set *schema.Set, opNode *Node, dep *Tre
 	if opTree != nil && opTree != t {
 		defer opTree.work.beginHashWork()()
 	}
-	sub, tparent := opMergeFind(opNode, dep)
+	sub, tparent, err := opMergeFind(opNode, dep)
+	if err != nil {
+		return nil, err
+	}
 	// move the operation's subtree into t, under its parent there
 	sib := sub.siblingsOf()
 	oparent := sub.parent
@@ -133,7 +136,7 @@ func validateOpNode(ctx context.Context, set *schema.Set, opNode *Node, dep *Tre
 	}
 	vc := &valCtx{t: t, log: &logger{set: t.context()}, nodeWhen: &nodeSet{}, nodeTypes: &nodeSet{}, metaTypes: &[]*meta{},
 		budget: xpathBudget{ctx: ctx, max: b.MaxXPathSteps}, output: oo.reply, op: oo, charge: implicitCharge(ctx, b)}
-	err := vc.validateOp(opNode)
+	err = vc.validateOp(opNode)
 	restore()
 	if err == nil || errors.Is(err, errLogged) {
 		err = vc.log.result()
@@ -192,21 +195,24 @@ func (vc *valCtx) validateOp(opNode *Node) error {
 // opMergeFind is lyd_val_op_merge_find: the operation's ancestor sub to move into dep (the
 // highest one dep does not have) and its parent there (nil: the top level). Without dep, sub is
 // the top of the operation's tree.
-func opMergeFind(opNode *Node, dep *Tree) (sub, parent *Node) {
+func opMergeFind(opNode *Node, dep *Tree) (sub, parent *Node, err error) {
 	var chain []*Node // the operation and its ancestors, top-level first
 	for n := opNode; n != nil; n = n.parent {
 		chain = append([]*Node{n}, chain...)
 	}
 	if dep == nil {
-		return chain[0], nil
+		return chain[0], nil, nil
 	}
 	sib := &dep.top
 	for _, n := range chain[:len(chain)-1] {
-		m := dep.findFirst(sib, n)
+		m, err := dep.findFirstChecked(sib, n)
+		if err != nil {
+			return nil, nil, err
+		}
 		if m == nil {
-			return n, parent
+			return n, parent, nil
 		}
 		parent, sib = m, &m.kids
 	}
-	return opNode, parent
+	return opNode, parent, nil
 }

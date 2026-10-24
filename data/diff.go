@@ -426,7 +426,11 @@ func (t *Tree) diffAdd(n *Node, op diffOp, a diffAttrs) (*Node, error) {
 			match = nil // never found: the instances cannot be told apart
 			break
 		}
-		if match = t.findFirst(sib, parent); match == nil {
+		var err error
+		if match, err = t.findFirstChecked(sib, parent); err != nil {
+			return nil, err
+		}
+		if match == nil {
 			break
 		}
 		diffParent = match
@@ -545,7 +549,7 @@ func (t *Tree) diffMergeModule(src *Tree, o mergeOpts) error {
 
 // diffFindMatch is lyd_diff_find_match with defaults among the children of parent (nil: the top
 // of t).
-func (t *Tree) diffFindMatch(parent, target *Node, cache *dupCache) *Node {
+func (t *Tree) diffFindMatch(parent, target *Node, cache *dupCache) (*Node, error) {
 	return t.findMatch(t.childrenOf(parent), target, true, cache)
 }
 
@@ -556,7 +560,10 @@ func (t *Tree) diffMergeR(src, parent *Node, cache *dupCache, o mergeOpts) error
 	if err != nil {
 		return err
 	}
-	dn := t.diffFindMatch(parent, src, cache)
+	dn, err := t.diffFindMatch(parent, src, cache)
+	if err != nil {
+		return err
+	}
 	var cur diffOp
 	if dn != nil {
 		if cur, err = t.diffOpOf(dn); err != nil {
@@ -653,7 +660,11 @@ func (t *Tree) diffMergeR(src, parent *Node, cache *dupCache, o mergeOpts) error
 		}
 		parent = dn
 	}
-	if t.diffIsRedundant(parent) {
+	redundant, err := t.diffIsRedundant(parent)
+	if err != nil {
+		return err
+	}
+	if redundant {
 		unlink(parent)
 	}
 	return nil
@@ -717,13 +728,17 @@ func (t *Tree) diffMergeCreate(dm *Node, cur diffOp, src *Node, defaults bool) (
 			delYangMeta(dm, orig)
 		}
 	case src.schema.Kind == schema.Leaf:
+		equal, err := compareSingleErr(t, dm, src, false)
+		if err != nil {
+			return nil, err
+		}
 		switch {
 		case defaults && len(src.schema.Default) > 0 && defaultEquals(src):
 			// deleted, so its default was in use, and it is created with that value
 			if err := t.diffChangeOp(dm, diffNone); err != nil {
 				return nil, err
 			}
-		case compareSingle(t, dm, src, false):
+		case equal:
 			if err := t.diffChangeOp(dm, diffNone); err != nil { // deleted + created
 				return nil, err
 			}
@@ -782,7 +797,11 @@ func lastInst(n *Node) *Node {
 
 // diffMergeDelete is lyd_diff_merge_delete.
 func (t *Tree) diffMergeDelete(dm *Node, cur diffOp, src *Node) error {
-	if !compareSingle(t, dm, src, false) {
+	equal, err := compareSingleErr(t, dm, src, false)
+	if err != nil {
+		return err
+	}
+	if !equal {
 		return &opError{"LY_EINT", "Internal error."} // only an existing node can be deleted
 	}
 	switch cur {
@@ -852,7 +871,10 @@ func (t *Tree) diffMergeDelete(dm *Node, cur diffOp, src *Node) error {
 		case c.schema == nil:
 			found = opaqNext(&src.kids, c.Name())
 		case c.schema.Kind == schema.List || c.schema.Kind == schema.LeafList:
-			found = t.findFirst(&src.kids, c)
+			var err error
+			if found, err = t.findFirstChecked(&src.kids, c); err != nil {
+				return err
+			}
 		default:
 			found = t.schemaLookup(&src.kids, c.schema)
 		}
@@ -880,10 +902,10 @@ func (t *Tree) diffMergeNone(dm *Node, cur diffOp, src *Node) error {
 // diffIsRedundant is lyd_diff_is_redundant: a user-ordered move that is no move or undoes an
 // earlier one, a none without children (all descendants of a key-less list are keys), or a none
 // on a term whose default flag did not change; a none with diff metadata stays.
-func (t *Tree) diffIsRedundant(n *Node) bool {
+func (t *Tree) diffIsRedundant(n *Node) (bool, error) {
 	op, found := diffGetOp(n)
 	if !found {
-		return false // LY_CHECK_RET(…, 0)
+		return false, nil // LY_CHECK_RET(…, 0)
 	}
 	var child *Node
 	if !isDupInstList(n.schema) {
@@ -891,16 +913,16 @@ func (t *Tree) diffIsRedundant(n *Node) bool {
 	}
 	switch {
 	case op == diffReplace && isUserOrdered(n.schema):
-		if t.isRedundantUserordMove(n, child) {
-			return true
+		if redundant, err := t.isRedundantUserordMove(n, child); err != nil || redundant {
+			return redundant, err
 		}
 	case op == diffNone:
 		if n.schema == nil {
-			return true // an opaque node with none
+			return true, nil // an opaque node with none
 		}
 		for _, m := range n.meta { // libyang v5.8.6 src/diff.c: lyd_diff_is_redundant_meta
 			if strings.HasPrefix(m.name, "meta-") {
-				return false
+				return false, nil
 			}
 		}
 		for _, k := range n.kids.list { // … and on its keys
@@ -909,14 +931,14 @@ func (t *Tree) diffIsRedundant(n *Node) bool {
 			}
 			for _, m := range k.meta {
 				if strings.HasPrefix(m.name, "meta-") {
-					return false
+					return false, nil
 				}
 			}
 		}
 		if n.isTerm() {
 			i := findYangImplemented(n, "orig-default")
-			return i >= 0 && n.meta[i].value.Bool() == (n.flags&FlagDefault != 0)
+			return i >= 0 && n.meta[i].value.Bool() == (n.flags&FlagDefault != 0), nil
 		}
 	}
-	return child == nil && op == diffNone
+	return child == nil && op == diffNone, nil
 }

@@ -356,7 +356,8 @@ func TestAutodelWork(t *testing.T) {
 	if err := vc.validateNew(top, nil, nil); err != nil {
 		t.Fatal(err)
 	}
-	if top.kids.len() != 1 || typ.len() != 0 || int(tr.work.Load()) > 4*n {
+	// Include the charged preflight batch scan and fixed root bookkeeping.
+	if top.kids.len() != 1 || typ.len() != 0 || int(tr.work.Load()) > 5*n+16 {
 		t.Fatalf("%d left, %d queued, %d steps", top.kids.len(), typ.len(), int(tr.work.Load()))
 	}
 	charged := 0

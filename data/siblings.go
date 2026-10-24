@@ -83,8 +83,7 @@ type siblings struct {
 	pending      map[*schema.Node]*dirtyOrder // the parser's dirty runs: the sibling order is their tree's
 	rbTree       map[*Node]bool               // libyang's lyds metadata lives on each run leader
 	rbGroups     map[*Node]*rbGroup           // tree identity follows metadata when its leader moves
-	opIdx        map[*schema.Node]*opEntry    // operation children or unordered copies by schema (opInst)
-	opRanks      [2]rankBits                  // occupied input/output schema ranks, for the next anchor
+	order        *childOrder                  // ordered sequence and occurrence indexes; compatibility records stay above
 	gen          uint64                       // changes with every insertion and removal
 	work         *workCounter                 // the tree's work counter once a node was linked: all and indexOf count visits
 
@@ -320,6 +319,9 @@ func (s *siblings) indexOf(l []*Node, n *Node) int {
 // position caches one interior sibling position until the next insertion or removal. The
 // generation in the key makes mutation invalidate it without any maintenance work.
 func (s *siblings) position(n *Node) int {
+	if at := s.orderPosition(n); at >= 0 {
+		return at
+	}
 	// No cache here: lookups run on read-only paths that concurrent readers share (doc.go), so
 	// they must not write sibling state. The parser keeps its own cache (lydCtx.position).
 	return indexFromEnd(s.work, s.list, n)
@@ -345,8 +347,8 @@ func (s *siblings) runLeader(sn *schema.Node) *Node {
 	if n := s.firstRun[sn]; n != nil {
 		return n
 	}
-	if d := s.opIdx[sn]; d != nil && len(d.list) != 0 {
-		return d.list[0]
+	if n := s.documentFirst(sn); n != nil {
+		return n
 	}
 	return nil
 }
@@ -1318,8 +1320,8 @@ func (s *siblings) leaderInsertBetween(n, prev, next *Node) {
 	s.leaderAppend(n.schema, n)
 }
 
-// opRehashNeighbours gets the neighbours relevant to first-record rehashing in O(1) for a
-// gap-free operation entry. Split entries retain the counted position scan below (#240).
+// opRehashNeighbours gets the physical neighbours relevant to first-record
+// rehashing in O(1), including around a split operation run.
 func (s *siblings) opRehashNeighbours(n *Node) (prev, next *Node, ok bool) {
 	if ord := s.pending[n.schema]; ord != nil {
 		// a run the parser defers: its tree order is the sibling order libyang has
@@ -1328,15 +1330,18 @@ func (s *siblings) opRehashNeighbours(n *Node) (prev, next *Node, ok bool) {
 		}
 		return nil, ord.successor(n), true
 	}
-	d := s.opIdx[n.schema]
-	if d == nil || d.gaps != 0 || len(d.list) == 0 {
+	if s.order == nil {
 		return nil, nil, false
 	}
-	if d.list[0] != n {
-		return d.list[0], nil, true // any same-schema predecessor proves n is not a run start
+	h := s.order.byNode[n]
+	if h == nil {
+		return nil, nil, false
 	}
-	if len(d.list) > 1 {
-		next = d.list[1]
+	if before := s.order.seq.Prev(h); before != nil && before.Value.schema == n.schema {
+		return before.Value, nil, true
+	}
+	if after := s.order.seq.Next(h); after != nil && after.Value.schema == n.schema {
+		next = after.Value
 	}
 	return nil, next, true
 }
@@ -1486,10 +1491,7 @@ func (s *siblings) mixedContexts() bool {
 // maintained document-order index, as do copies outside schema order.
 func (t *Tree) documentFirst(s *siblings, sn *schema.Node) *Node {
 	if opChild(sn) || s.schemaUnordered {
-		if inst := s.opInst(sn); len(inst) > 0 {
-			return inst[0]
-		}
-		return nil
+		return s.documentFirst(sn)
 	}
 	if i := t.schemaIndex(s, sn); i >= 0 {
 		return s.list[i]
@@ -1518,7 +1520,7 @@ func (t *Tree) schemaIndex(s *siblings, sn *schema.Node) int {
 	}
 	if opChild(sn) || s.schemaUnordered {
 		if leader := physicalStart(s, sn, t.schemaLookupOperation(s, sn)); leader != nil {
-			return t.indexFromEnd(s.list, leader)
+			return s.orderPosition(leader)
 		}
 		return -1
 	}
@@ -1570,6 +1572,11 @@ func isDupInstList(s *schema.Node) bool {
 // ponytail: keyless lists compare whole subtrees per instance (O(n·subtree), libyang parity);
 // parsers and validation never search them, Merge/diff must run under a step budget.
 func (t *Tree) findFirst(s *siblings, target *Node) *Node {
+	n, _ := t.findFirstWork(s, target, nil)
+	return n
+}
+
+func (t *Tree) findFirstChecked(s *siblings, target *Node) (*Node, error) {
 	if t.work.hashDepth == 0 {
 		var readWork workCounter
 		return t.findFirstWork(s, target, &readWork)
@@ -1577,75 +1584,120 @@ func (t *Tree) findFirst(s *siblings, target *Node) *Node {
 	return t.findFirstWork(s, target, &t.work)
 }
 
-func (t *Tree) findFirstWork(s *siblings, target *Node, work *workCounter) *Node {
+func (t *Tree) findFirstWork(s *siblings, target *Node, work *workCounter) (*Node, error) {
 	if s.len() == 0 {
-		return nil
+		return nil, nil
 	}
 	if len(s.list) > 0 && s.list[0].schema != nil && target.schema != nil &&
 		!compareSchemaEqual(s.list[0].schema.DataParent(), target.schema.DataParent(), true) {
-		return nil // schema mismatch
+		return nil, nil // schema mismatch
 	}
 	dup := isDupInstList(target.schema)
 	if target.schema != nil && s.mixedContexts() {
 		for n := range s.all() {
-			if compareSingle(t, n, target, dup) {
-				return n
+			first, second := n, target
+			if s.ht != nil {
+				first, second = target, n
+			}
+			equal, err := compareSingleWork(t, work, first, second, dup)
+			if err != nil || equal {
+				return n, err
 			}
 		}
-		return nil
+		return nil, nil
+	}
+	sn := target.schema
+	if sn != nil && len(s.list) != 0 {
+		if first := s.list[0]; !sameSet(ctxOf(first), ctxOf(target)) {
+			// The no-table branch of lyd_find_sibling_first compares the live
+			// siblings directly. Mapping first would lose operation output nodes
+			// because lyd_find_schema_ctx walks lys_getnext with input options.
+			if s.ht == nil {
+				for n := range s.all() {
+					equal, err := compareSingleWork(t, work, n, target, dup)
+					if err != nil || equal {
+						return n, err
+					}
+				}
+				return nil, nil
+			}
+			var err error
+			if sn, err = findSchemaCtx(target.schema, ctxOf(first), first.parent); err != nil {
+				return nil, nil
+			}
+		}
 	}
 	if target.schema != nil && s.ht != nil {
 		if len(s.list) == 0 {
 			// a table kept after its schema children left (lyd_unlink_hash never frees it) or
 			// copied by a recursive dup: lyht_find misses, opaque nodes are not in it
 			// (tree_data.c:3210-3237)
-			return nil
+			return nil, nil
 		}
 		// the target's schema node in the siblings' context (libyang hashes module and node
 		// names, so a target of another context finds its instances)
-		sn := target.schema
-		if first := s.list[0]; !sameSet(ctxOf(first), ctxOf(target)) {
-			var err error
-			if sn, err = findSchemaCtx(target.schema, ctxOf(first), first.parent); err != nil {
-				return nil
-			}
-		}
 		if dup {
-			for n := range t.instances(s, sn) {
-				s.visit()
-				if compareSingle(t, n, target, true) {
-					return n
+			if target.schema.Kind == schema.LeafList && s.order != nil &&
+				(opChild(sn) || s.schemaUnordered) {
+				entry := s.order.entries[sn]
+				leader := physicalStart(s, sn, t.schemaLookupOperation(s, sn))
+				if entry != nil && entry.gaps == 0 {
+					if candidate := s.exactAtOrAfter(sn, target, leader); candidate != nil {
+						equal, err := compareSingleWork(t, work, target, candidate, true)
+						if err != nil || equal {
+							return candidate, err
+						}
+					}
+					return nil, nil
 				}
 			}
-			return nil
+			for n := range t.instances(s, sn) {
+				s.visit()
+				equal, err := compareSingleWork(t, work, target, n, true)
+				if err != nil || equal {
+					return n, err
+				}
+			}
+			return nil, nil
 		}
 		k, ok := indexedKey(target, work)
 		if !ok {
-			return nil
+			return nil, workError(work)
 		}
 		k.s = sn
 		for n := range s.bucketNodes(k) {
-			if htValEqual(t, n, target) {
-				return n
+			equal, err := htValEqual(t, work, target, n)
+			if err != nil || equal {
+				return n, err
 			}
 		}
-		return nil
+		return nil, nil
+	}
+	if dup && target.schema.Kind == schema.LeafList && s.order != nil {
+		if candidate := s.exactFirst(sn, target); candidate != nil {
+			equal, err := compareSingleWork(t, work, candidate, target, true)
+			if err != nil || equal {
+				return candidate, err
+			}
+		}
+		return nil, nil
 	}
 	for n := range s.all() {
-		if compareSingle(t, n, target, dup) {
-			return n
+		equal, err := compareSingleWork(t, work, n, target, dup)
+		if err != nil || equal {
+			return n, err
 		}
 	}
-	return nil
+	return nil, nil
 }
 
 // htValEqual is lyd_hash_table_val_equal: lists and leaf-lists by their instance, other nodes
 // by schema node only (equal schema nodes and parents across contexts).
-func htValEqual(t *Tree, a, b *Node) bool {
+func htValEqual(t *Tree, work *workCounter, a, b *Node) (bool, error) {
 	if a.schema.Kind == schema.List || a.schema.Kind == schema.LeafList {
-		return compareSingle(t, a, b, false)
+		return compareSingleWork(t, work, a, b, false)
 	}
-	return compareSchemaEqual(a.schema, b.schema, true)
+	return compareSchemaEqual(a.schema, b.schema, true), nil
 }
 
 // hashEqual is the stored-hash gate of lyd_compare_single_data (tree_data.c:1714-1716).
@@ -1673,17 +1725,52 @@ func hashValueEqual(x, y types.Value) bool {
 // compareSingle is lyd_compare_single; full is LYD_COMPARE_FULL_RECURSION (Node.Equal for all
 // the options).
 func compareSingle(t *Tree, a, b *Node, full bool) bool {
-	return compareSingleChecked(t, a, b, CompareOptions{FullRecursion: full}, false)
+	equal, _ := compareSingleWork(t, nil, a, b, full)
+	return equal
 }
 
-// compareSingleChecked is lyd_compare_single_schema followed by the iterative
-// lyd_compare_single_data/lyd_compare_siblings_ walk. Any payloads are always
-// compared as sibling forests, irrespective of the outer FullRecursion option.
-func compareSingleChecked(t *Tree, a, b *Node, o CompareOptions, parentsChecked bool) bool {
-	if !compareSingleSchema(a, b, o.Opaque, parentsChecked) {
-		return false
+func compareSingleErr(t *Tree, a, b *Node, full bool) (bool, error) {
+	if t.work.hashDepth != 0 {
+		return compareSingleWork(t, &t.work, a, b, full)
 	}
-	return compareDataStack(t, []compareFrame{{a: a, b: b, opts: o}})
+	// Read-only comparisons must not mutate the queried tree: concurrent readers
+	// share it. Their comparison still has an enforced private cumulative budget.
+	var work workCounter
+	return compareSingleWork(t, &work, a, b, full)
+}
+
+func compareSingleWork(t *Tree, work *workCounter, a, b *Node, full bool) (bool, error) {
+	return compareSingleCheckedWork(t, work, a, b, CompareOptions{FullRecursion: full}, false)
+}
+
+// compareSingleCheckedWork implements lyd_compare_single_schema followed by the
+// iterative lyd_compare_single_data/lyd_compare_siblings_ walk. Any payloads
+// are always compared as sibling forests, irrespective of the outer
+// FullRecursion option. With a non-nil work counter, every candidate comparison
+// and recursively visited node consumes the operation's cumulative stored-work
+// budget, so digest collisions cannot turn merge or diff into unbounded work.
+func compareSingleCheckedWork(t *Tree, work *workCounter, a, b *Node, o CompareOptions, parentsChecked bool) (bool, error) {
+	if err := chargeComparison(work); err != nil {
+		return false, err
+	}
+	if !compareSingleSchema(a, b, o.Opaque, parentsChecked) {
+		return false, nil
+	}
+	return compareDataStack(t, work, []compareFrame{{a: a, b: b, opts: o}})
+}
+
+func chargeComparison(work *workCounter) error {
+	if work == nil {
+		return nil
+	}
+	return work.chargeHash(1)
+}
+
+func workError(work *workCounter) error {
+	if work == nil {
+		return nil
+	}
+	return work.hashErr
 }
 
 type compareFrame struct {
@@ -1760,13 +1847,13 @@ func newCompareIndex(nodes []*Node) *compareIndex {
 	return x
 }
 
-func (x *compareIndex) first(t *Tree, s *siblings, current, target *Node) *Node {
+func (x *compareIndex) first(t *Tree, work *workCounter, s *siblings, current, target *Node) (*Node, error) {
 	if current.schema != nil && target.schema != nil &&
 		!compareSchemaEqual(current.schema.DataParent(), target.schema.DataParent(), true) {
-		return nil // keep lyd_find_sibling_first's initial schema-parent check
+		return nil, nil // keep lyd_find_sibling_first's initial schema-parent check
 	}
 	if n, ok := x.matched[target]; ok {
-		return n
+		return n, nil
 	}
 	canonical := compareInstanceKey(target, false, false)
 	if !x.mixed[canonical] && x.types[canonical] == compareInstanceKey(target, true, false) {
@@ -1775,9 +1862,13 @@ func (x *compareIndex) first(t *Tree, s *siblings, current, target *Node) *Node 
 		key := compareInstanceKey(target, true, true)
 		for _, n := range x.exact[key] {
 			s.visit()
-			if compareSingle(t, n, target, false) {
+			equal, err := compareSingleWork(t, work, n, target, false)
+			if err != nil {
+				return nil, err
+			}
+			if equal {
 				x.matched[target] = n
-				return n
+				return n, nil
 			}
 		}
 		// Stored hashes decide equality, not the selected member: a duplicate
@@ -1786,13 +1877,17 @@ func (x *compareIndex) first(t *Tree, s *siblings, current, target *Node) *Node 
 	}
 	for _, n := range x.buckets[canonical] {
 		s.visit()
-		if compareSingle(t, n, target, false) {
+		equal, err := compareSingleWork(t, work, n, target, false)
+		if err != nil {
+			return nil, err
+		}
+		if equal {
 			x.matched[target] = n
-			return n
+			return n, nil
 		}
 	}
 	x.matched[target] = nil
-	return nil
+	return nil, nil
 }
 
 // compareNeedsLookup is lyd_compare_siblings_' LHS-only selection. Unlike
@@ -1808,53 +1903,67 @@ func compareNeedsLookup(n *Node) bool {
 // compareSiblingFrames is lyd_compare_siblings_: pairwise schema comparison,
 // system-ordered instance lookup, then full recursive data comparison. The work
 // is queued instead of calling recursively across unbounded payload boundaries.
-func compareSiblingFrames(t *Tree, stack []compareFrame, a, b *siblings, o CompareOptions) ([]compareFrame, bool) {
+func compareSiblingFrames(t *Tree, work *workCounter, stack []compareFrame, a, b *siblings, o CompareOptions) ([]compareFrame, bool, error) {
 	if a.len() != b.len() {
-		return stack, false
+		return stack, false, nil
 	}
 	al, bl := a.nodes(), b.nodes()
 	var index *compareIndex
 	for i, n := range al {
 		m := bl[i]
+		if err := chargeComparison(work); err != nil {
+			return stack, false, err
+		}
 		if !compareSingleSchema(n, m, o.Opaque, true) {
-			return stack, false
+			return stack, false, nil
 		}
 		if compareNeedsLookup(n) {
 			if b.ht == nil {
 				if index == nil {
 					index = newCompareIndex(bl)
 				}
-				m = index.first(t, b, m, n)
+				var err error
+				m, err = index.first(t, work, b, m, n)
+				if err != nil {
+					return stack, false, err
+				}
 			} else {
-				m = t.findFirst(b, n)
+				var err error
+				m, err = t.findFirstWork(b, n, work)
+				if err != nil {
+					return stack, false, err
+				}
 			}
 			if m == nil {
-				return stack, false
+				return stack, false, nil
 			}
 		}
 		o.FullRecursion = true
 		stack = append(stack, compareFrame{n, m, o})
 	}
-	return stack, true
+	return stack, true, nil
 }
 
-func compareDataStack(t *Tree, stack []compareFrame) bool {
+func compareDataStack(t *Tree, work *workCounter, stack []compareFrame) (bool, error) {
 	for len(stack) != 0 {
 		f := stack[len(stack)-1]
 		stack = stack[:len(stack)-1]
 		a, b, o := f.a, f.b, f.opts
+		if err := chargeComparison(work); err != nil {
+			return false, err
+		}
 		if !o.Opaque && !hashEqual(a, b) {
-			return false
+			return false, nil
 		}
 		var ac, bc *siblings
 		switch {
 		case a.schema == nil || b.schema == nil:
 			if !o.Opaque && (a.schema == nil) != (b.schema == nil) {
-				return false
+				return false, nil
 			}
 			if a.schema == nil && b.schema == nil || a.isTerm() || b.isTerm() {
 				if !compareNodeValue(a, b) {
-					return false
+					return false, nil
 				}
 			}
 			if o.FullRecursion {
@@ -1862,10 +1971,10 @@ func compareDataStack(t *Tree, stack []compareFrame) bool {
 			}
 		case a.isTerm():
 			if o.Defaults && a.flags&FlagDefault != b.flags&FlagDefault {
-				return false
+				return false, nil
 			}
 			if a.value.Canonical() != b.value.Canonical() {
-				return false
+				return false, nil
 			}
 		case isAny(a.schema):
 			// libyang checks the first operand's child and text independently.
@@ -1884,12 +1993,12 @@ func compareDataStack(t *Tree, stack []compareFrame) bool {
 				break
 			}
 			if ach && !bch || av.text != nil && bv.text == nil {
-				return false
+				return false, nil
 			}
 			if ach {
 				ac, bc = &a.any.children, &b.any.children
 			} else if av.text == nil || bv.text == nil || *av.text != *bv.text {
-				return false
+				return false, nil
 			}
 		case a.schema.Kind == schema.List && !o.FullRecursion:
 			if a.schema.Keyless() {
@@ -1899,12 +2008,15 @@ func compareDataStack(t *Tree, stack []compareFrame) bool {
 				x, y := positionalChild(a, i), positionalChild(b, i)
 				if x == nil || y == nil {
 					if x != y {
-						return false
+						return false, nil
 					}
 					break
 				}
+				if err := chargeComparison(work); err != nil {
+					return false, err
+				}
 				if !compareSingleSchema(x, y, o.Opaque, true) {
-					return false
+					return false, nil
 				}
 				stack = append(stack, compareFrame{x, y, o})
 			}
@@ -1915,10 +2027,11 @@ func compareDataStack(t *Tree, stack []compareFrame) bool {
 		}
 		if ac != nil {
 			var ok bool
-			if stack, ok = compareSiblingFrames(t, stack, ac, bc, o); !ok {
-				return false
+			var err error
+			if stack, ok, err = compareSiblingFrames(t, work, stack, ac, bc, o); err != nil || !ok {
+				return false, err
 			}
 		}
 	}
-	return true
+	return true, nil
 }

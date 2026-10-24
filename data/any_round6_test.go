@@ -631,6 +631,28 @@ func TestCompareDateCanonicalCollision(t *testing.T) {
 		makeLists("2023-12-31+00:00", "2024-01-01+01:00"), CompareOptions{FullRecursion: true}) {
 		t.Fatal("reordered list keys with colliding canonical dates compare unequal")
 	}
+
+	// Equal has only a boolean result, so its read-only comparison cannot turn a
+	// private work-budget failure into inequality. Each value in the second half
+	// scans past all the canonically equal but stored-distinct values in the first.
+	anySchema := b.add(m, nil, schema.AnyData, "payload", nil)
+	payload := &Node{schema: anySchema, any: &anyValue{}}
+	for _, value := range []string{"2024-01-01+01:00", "2023-12-31+00:00"} {
+		for range 6000 {
+			leaf := b.term(dl, value)
+			leaf.parent = payload
+			payload.any.children.list = append(payload.any.children.list, leaf)
+		}
+	}
+	if payload.any.children.ht != nil {
+		t.Fatal("anydata payload unexpectedly acquired a children table")
+	}
+	if !payload.Equal(payload, CompareOptions{}) {
+		t.Fatal("repeated canonical-collision payload compares unequal to itself")
+	}
+	if equal, err := compareSingleErr(&Tree{}, payload, payload, false); equal || !errors.Is(err, yang.ErrBudget) {
+		t.Fatalf("charged repeated comparison = (%t, %v), want false and ErrBudget", equal, err)
+	}
 }
 
 func TestCompareCrossContextInstanceOrdering(t *testing.T) {

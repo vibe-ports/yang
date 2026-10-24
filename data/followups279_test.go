@@ -263,8 +263,8 @@ func TestApplyDiffCreateLookupScaling(t *testing.T) {
 		ratio(t, func(n int) int64 {
 			tr := round12Tree(t, set, `{"pv2-dupcreate:tl":["a"]}`)
 			cache := &dupCache{}
-			if tr.dupInstNext(tr.top.first(), cache) == nil { // builds the index
-				t.Fatal("no first instance")
+			if first, err := tr.dupInstNext(tr.top.first(), cache); err != nil || first == nil { // builds the index
+				t.Fatal("no first instance", err)
 			}
 			tr.work.visits, tr.work.shifts = true, true
 			var total int64
@@ -275,8 +275,8 @@ func TestApplyDiffCreateLookupScaling(t *testing.T) {
 				}
 				tr.work.Store(0)
 				tr.created(cache, node)
-				if tr.dupInstNext(node, cache) != node {
-					t.Fatal("created instance is not its own first instance")
+				if got, err := tr.dupInstNext(node, cache); err != nil || got != node {
+					t.Fatal("created instance is not its own first instance", err)
 				}
 				total += tr.work.Load()
 			}

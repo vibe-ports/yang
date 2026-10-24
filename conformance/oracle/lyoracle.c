@@ -1897,8 +1897,8 @@ check_step(const struct ly_ctx *ctx, const cJSON *step)
             die("any_direct needs a case%s", NULL);
         }
         if (strcmp(which, "nil_boundaries") && strcmp(which, "text_nul") &&
-                strcmp(which, "node_then_empty") && strcmp(which, "equal_repeated_collisions") && strcmp(which, "equal_mixed_parent_payload") &&
-                strcmp(which, "dup_payload_parent_context") && strcmp(which, "trim_payload_links") && strcmp(which, "merge_mixed_into_tree") &&
+                strcmp(which, "node_then_empty") && strcmp(which, "equal_repeated_collisions") && strcmp(which, "equal_repeated_date_collisions") && strcmp(which, "equal_mixed_parent_payload") &&
+                strcmp(which, "dup_payload_parent_context") && strcmp(which, "trim_payload_links") && strcmp(which, "merge_mixed_into_tree") && strcmp(which, "merge_opaque_mixed_schema_parents") &&
                 strcmp(which, "dup_siblings_into_empty_anydata") &&
                 strcmp(which, "dup_siblings_into_empty_anyxml") && strcmp(which, "dup_into_default_any_parent")) {
             die("unknown any_direct case %s", which);
@@ -2190,7 +2190,7 @@ step_dup(struct ly_ctx *ctx, const cJSON *step, struct lyd_node **tree, struct l
     /* tctx stays: the tree may now live in it, and the process ends after the response */
     return rc;
 }
-static LY_ERR step_dup_into_default_any_parent(struct ly_ctx *, const struct lys_module *, cJSON *, cJSON *), step_merge_mixed_into_tree(struct ly_ctx *, const struct lys_module *, cJSON *, cJSON *), step_equal_mixed_parent_payload(struct ly_ctx *, const struct lys_module *, cJSON *, cJSON *);
+static LY_ERR step_dup_into_default_any_parent(struct ly_ctx *, const struct lys_module *, cJSON *, cJSON *), step_merge_mixed_into_tree(struct ly_ctx *, const struct lys_module *, cJSON *, cJSON *), step_equal_mixed_parent_payload(struct ly_ctx *, const struct lys_module *, cJSON *, cJSON *), step_merge_opaque_mixed_schema_parents(struct ly_ctx *, cJSON *, cJSON *), step_equal_repeated_date_collisions(struct ly_ctx *, const struct lys_module *, cJSON *, cJSON *);
 static LY_ERR check_equal_order_contexts(struct ly_ctx *ctx, const cJSON *step, cJSON *diag);
 static LY_ERR
 step_any_direct(struct ly_ctx *ctx, const cJSON *step, cJSON *out, cJSON *diag)
@@ -2290,7 +2290,7 @@ step_any_direct(struct ly_ctx *ctx, const cJSON *step, cJSON *out, cJSON *diag)
         collect(ctx, diag, "edit");
         return rc;
     }
-    if (!strcmp(which, "merge_mixed_into_tree")) return step_merge_mixed_into_tree(ctx, ac, out, diag);
+    if (!strcmp(which, "merge_mixed_into_tree")) { return step_merge_mixed_into_tree(ctx, ac, out, diag); } if (!strcmp(which, "merge_opaque_mixed_schema_parents")) { return step_merge_opaque_mixed_schema_parents(ctx, out, diag); } if (!strcmp(which, "equal_repeated_date_collisions")) { return step_equal_repeated_date_collisions(ctx, ac, out, diag); }
     if (!strcmp(which, "dup_into_default_any_parent")) return step_dup_into_default_any_parent(ctx, ac, out, diag); if (!strcmp(which, "equal_mixed_parent_payload")) return step_equal_mixed_parent_payload(ctx, ac, out, diag);
     if (!strcmp(which, "equal_repeated_collisions")) {
         struct lyd_node *a = NULL, *b = NULL, *x = NULL, *aw = NULL, *bw = NULL;
@@ -3531,6 +3531,92 @@ step_equal_mixed_parent_payload(struct ly_ctx *ctx, const struct lys_module *ac,
     lyd_free_tree(inner);
     lyd_free_tree(any);
     lyd_free_tree(copy);
+    collect(ctx, diag, "edit");
+    return rc;
+}
+
+/* lyd_find_sibling_first rejects a target when the first sibling has a
+ * different schema parent. Duplication under an opaque node can create this
+ * otherwise-invalid mixed-parent sibling forest, so merging /b/l must not
+ * reuse the existing /b/l after the leading /a/x. */
+static LY_ERR
+step_merge_opaque_mixed_schema_parents(struct ly_ctx *ctx, cJSON *out, cJSON *diag)
+{
+    const struct lys_module *mod = ly_ctx_get_module_implemented(ctx, "ac-r10");
+    struct lyd_node *a = NULL, *b = NULL, *x = NULL, *list = NULL;
+    struct lyd_node *dst = NULL, *src = NULL, *made = NULL, *iter;
+    size_t lists = 0, children = 0;
+    LY_ERR rc = LY_SUCCESS;
+
+    if (!mod) {
+        die("merge_opaque_mixed_schema_parents needs ac-r10%s", NULL);
+    }
+    rc = lyd_new_inner(NULL, mod, "a", 0, &a);
+    if (!rc) rc = lyd_new_term(a, NULL, "x", "x", 0, &x);
+    if (!rc) rc = lyd_new_inner(NULL, mod, "b", 0, &b);
+    if (!rc) rc = lyd_new_list(b, NULL, "l", 0, &list);
+    if (!rc) rc = lyd_new_term(list, NULL, "v", "same", 0, NULL);
+    if (!rc) rc = lyd_new_opaq(NULL, ctx, "parent", "", NULL, "free", &dst);
+    if (!rc) rc = lyd_dup_single(list, dst, LYD_DUP_RECURSIVE, &made);
+    if (!rc) rc = lyd_dup_single(x, dst, 0, &made);
+    if (!rc) rc = lyd_new_opaq(NULL, ctx, "parent", "", NULL, "free", &src);
+    if (!rc) rc = lyd_dup_single(list, src, LYD_DUP_RECURSIVE, &made);
+    if (!rc) {
+        iter = lyd_child(dst);
+        cJSON_AddStringToObject(out, "first_child", iter->schema->name);
+        cJSON_AddStringToObject(out, "first_schema_parent", lysc_data_parent(iter->schema)->name);
+    }
+    if (!rc) rc = lyd_merge_siblings(&dst, src, 0);
+    if (!rc) {
+        LY_LIST_FOR(lyd_child(dst), iter) {
+            ++children;
+            if (iter->schema && !strcmp(iter->schema->name, "l")) {
+                ++lists;
+            }
+        }
+        cJSON_AddNumberToObject(out, "children", children);
+        cJSON_AddNumberToObject(out, "list_instances", lists);
+    }
+    lyd_free_tree(a);
+    lyd_free_tree(b);
+    lyd_free_all(dst);
+    lyd_free_all(src);
+    collect(ctx, diag, "edit");
+    return rc;
+}
+
+/* Public boolean equality has no error channel. Pin libyang's verdict for a
+ * no-table anydata payload whose canonical date collisions force more than
+ * the Go port's private stored-work allowance of candidate comparisons. */
+static LY_ERR
+step_equal_repeated_date_collisions(struct ly_ctx *ctx, const struct lys_module *ac, cJSON *out, cJSON *diag)
+{
+    const struct lys_module *mod = ly_ctx_get_module_implemented(ctx, "ac-r10");
+    const char *values[] = {"2024-01-01+01:00", "2023-12-31+00:00"};
+    struct lyd_node *children = NULL, *node = NULL, *any = NULL;
+    LY_ERR rc = LY_SUCCESS;
+
+    if (!mod) {
+        die("equal_repeated_date_collisions needs ac-r10%s", NULL);
+    }
+    for (size_t v = 0; !rc && v < 2; ++v) {
+        for (size_t i = 0; !rc && i < 6000; ++i) {
+            rc = lyd_new_term(NULL, mod, "dates", values[v], 0, &node);
+            if (!rc) rc = lyd_insert_sibling(children, node, &children);
+            if (!rc) node = NULL;
+        }
+    }
+    if (!rc) {
+        rc = lyd_new_any(NULL, ac, "data", children, NULL, 0, LYD_NEW_ANY_USE_VALUE, &any);
+        if (!rc) children = NULL;
+    }
+    if (!rc) {
+        cJSON_AddItemToObject(out, "compare_rc", code_json(lyd_compare_single(any, any, 0)));
+        cJSON_AddNumberToObject(out, "copies_per_value", 6000);
+    }
+    lyd_free_tree(node);
+    lyd_free_all(children);
+    lyd_free_tree(any);
     collect(ctx, diag, "edit");
     return rc;
 }

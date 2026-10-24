@@ -40,8 +40,9 @@ func TestCompareMixedSchemaParentPayload(t *testing.T) {
 	nodes := []*Node{newTerm(first, v), newTerm(second, v)}
 	sibs := &siblings{nodeDeque: nodeDeque{list: nodes}} // like an any payload: no children hash table
 	tr := newTree(&schema.Set{Modules: []*schema.Module{mod}})
-	frames, ok := compareSiblingFrames(tr, nil, sibs, sibs, CompareOptions{})
-	if !ok || !compareDataStack(tr, frames) {
+	frames, ok, err := compareSiblingFrames(tr, &tr.work, nil, sibs, sibs, CompareOptions{})
+	equal, compareErr := compareDataStack(tr, &tr.work, frames)
+	if err != nil || compareErr != nil || !ok || !equal {
 		t.Fatal("mixed-parent payload must compare equal to itself")
 	}
 	anySchema := &schema.Node{Kind: schema.AnyData, Name: "payload", Module: mod}

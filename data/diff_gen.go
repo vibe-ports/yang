@@ -256,16 +256,19 @@ func firstNoKeys(n *Node) *Node {
 
 // findMatch is lyd_diff_find_match: the instance of target among sib (nil: none), the next equal
 // one on every call for duplicate instances; a default node does not count without defaults.
-func (t *Tree) findMatch(sib *siblings, target *Node, defaults bool, cache *dupCache) *Node {
+func (t *Tree) findMatch(sib *siblings, target *Node, defaults bool, cache *dupCache) (*Node, error) {
 	if sib == nil || sib.len() == 0 {
-		return nil
+		return nil, nil
 	}
 	var m *Node
 	switch {
 	case target.schema == nil:
 		m = opaqNext(sib, target.Name())
 	case target.schema.Kind == schema.List || target.schema.Kind == schema.LeafList:
-		m = t.findFirst(sib, target)
+		var err error
+		if m, err = t.findFirstChecked(sib, target); err != nil {
+			return nil, err
+		}
 	default:
 		m = t.schemaLookup(sib, target.schema)
 		// schemaLookup already scans mixed sibling contexts. A uniform foreign context
@@ -280,11 +283,15 @@ func (t *Tree) findMatch(sib *siblings, target *Node, defaults bool, cache *dupC
 			}
 		}
 	}
-	m = t.dupInstNext(m, cache)
-	if m != nil && m.flags&FlagDefault != 0 && !defaults {
-		return nil // default nodes ignored
+	var err error
+	m, err = t.dupInstNext(m, cache)
+	if err != nil {
+		return nil, err
 	}
-	return m
+	if m != nil && m.flags&FlagDefault != 0 && !defaults {
+		return nil, nil // default nodes ignored
+	}
+	return m, nil
 }
 
 // userord is struct lyd_diff_userord: the current (virtually changed) order of the instances of
@@ -328,13 +335,21 @@ func (t *Tree) userordAttrs(first, second *Node, o DiffOptions, u *userord) (dif
 	}
 	secondPos := u.pos
 	u.pos++
+	positionEqual := false
+	if second != nil && first != nil && secondPos < len(u.inst) {
+		var err error
+		positionEqual, err = compareSingleErr(t, second, u.inst[secondPos], isDupInstList(second.schema))
+		if err != nil {
+			return 0, a, err
+		}
+	}
 	var op diffOp
 	switch {
 	case second == nil:
 		op = diffDelete
 	case first == nil:
 		op = diffCreate
-	case secondPos >= len(u.inst) || !compareSingle(t, second, u.inst[secondPos], isDupInstList(second.schema)):
+	case secondPos >= len(u.inst) || !positionEqual:
 		op = diffReplace // another instance on this position in first: first is moved here
 	case o.Defaults && first.flags&FlagDefault != second.flags&FlagDefault:
 		op = diffNone
@@ -429,8 +444,12 @@ func (t *Tree) attrs(first, second *Node, o DiffOptions) (diffOp, diffAttrs, err
 				return 0, a, errNoChange
 			}
 		case schema.Leaf:
+			equal, err := compareSingleErr(t, first, second, false)
+			if err != nil {
+				return 0, a, err
+			}
 			switch {
-			case !compareSingle(t, first, second, false):
+			case !equal:
 				op = diffReplace
 			case o.Defaults && first.flags&FlagDefault != second.flags&FlagDefault:
 				op = diffNone
@@ -561,10 +580,16 @@ func (t *Tree) nodeMetaR(first, second *Node, keysOnly bool, n *Node) error {
 		}
 		var f, s *Node
 		if first != nil {
-			f = t.findFirst(&first.kids, c)
+			var err error
+			if f, err = t.findFirstChecked(&first.kids, c); err != nil {
+				return err
+			}
 		}
 		if second != nil {
-			s = t.findFirst(&second.kids, c)
+			var err error
+			if s, err = t.findFirstChecked(&second.kids, c); err != nil {
+				return err
+			}
 		}
 		if err := t.nodeMetaR(f, s, keysOnly, c); err != nil {
 			return err
@@ -589,7 +614,10 @@ func (t *Tree) diffSiblingsR(first, second *Node, o DiffOptions, nosiblings bool
 		if f.flags&FlagDefault != 0 && !o.Defaults {
 			continue // default nodes skipped
 		}
-		m := t.findMatch(ss, f, o.Defaults, secondCache)
+		m, err := t.findMatch(ss, f, o.Defaults, secondCache)
+		if err != nil {
+			return err
+		}
 		var dn *Node
 		if isUserOrdered(f.schema) {
 			u := t.userordGet(f, f.schema, &items)
@@ -645,7 +673,10 @@ func (t *Tree) diffSiblingsR(first, second *Node, o DiffOptions, nosiblings bool
 		if s.flags&FlagDefault != 0 && !o.Defaults {
 			continue
 		}
-		m := t.findMatch(fs, s, o.Defaults, firstCache)
+		m, err := t.findMatch(fs, s, o.Defaults, firstCache)
+		if err != nil {
+			return err
+		}
 		var dn *Node
 		switch {
 		case isUserOrdered(s.schema):

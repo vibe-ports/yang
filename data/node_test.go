@@ -599,7 +599,8 @@ func TestBulkWork(t *testing.T) {
 	if err := tr.unlinkAll(all); err != nil {
 		t.Fatal(err)
 	}
-	if int(tr.work.Load()) > 5*n || len(c.kids.list) != 0 || len(c.kids.ht) != 0 {
+	// Include the preflight batch scan now charged to the source hash budget.
+	if int(tr.work.Load()) > 6*n || len(c.kids.list) != 0 || len(c.kids.ht) != 0 {
 		t.Fatalf("bulk unlink: %d steps, %d left, %d buckets", int(tr.work.Load()), len(c.kids.list), len(c.kids.ht))
 	}
 }

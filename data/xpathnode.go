@@ -569,7 +569,8 @@ func (p *xprobe) Match(node xpath.Node) (bool, error) {
 	}
 	// Shared with Find/NewPath: first key-count actual children, including
 	// each child's schema and stored hash (tree_data.c:1769-1782).
-	return htValEqual(&Tree{}, n.n, p.node), nil
+	var work workCounter
+	return htValEqual(&Tree{}, &work, n.n, p.node)
 }
 
 var xkinds = map[schema.Kind]xpath.Kind{

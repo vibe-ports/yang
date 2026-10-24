@@ -196,7 +196,10 @@ func opidxDupSetIDs(t *testing.T, tr *Tree, op, target *Node) []string {
 	cache := &dupCache{}
 	var got []string
 	for {
-		n := tr.findMatch(&op.kids, target, true, cache)
+		n, err := tr.findMatch(&op.kids, target, true, cache)
+		if err != nil {
+			t.Fatal(err)
+		}
 		if n == nil {
 			return got
 		}

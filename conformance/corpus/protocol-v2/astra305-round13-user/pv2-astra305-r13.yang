@@ -1,0 +1,16 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Alternate context for the live split-run sorted-index rebuild regression.
+module pv2-astra305-r13 {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:pv2-astra305-r13";
+  prefix p;
+  rpc r {
+    input {
+      leaf a { type string; }
+      leaf b { type string; }
+      leaf c { type string; }
+      leaf-list v { type uint32; ordered-by user; }
+    }
+    output { leaf out { type string; } }
+  }
+}

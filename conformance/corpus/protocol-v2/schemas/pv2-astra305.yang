@@ -1,0 +1,88 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Hand-written live-oracle fixtures for operation-child insertion and merge regressions.
+module pv2-astra305 {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:pv2-astra305";
+  prefix pa305;
+
+  container data-r {
+    leaf a { type string; }
+    leaf b { type string; }
+    leaf c { type string; }
+    leaf-list distinct-a { type string; }
+    leaf-list distinct-b { type string; }
+    leaf-list distinct-c { type string; }
+    leaf-list distinct-d { type string; }
+    leaf-list opaque-prefix {
+      ordered-by user;
+      type string;
+    }
+    leaf target { type int32; }
+    leaf-list union-v {
+      type union {
+        type leafref { path "../target"; }
+        type string;
+      }
+    }
+  }
+
+  container probe-r {
+    list item {
+      key id;
+      leaf id { type string; }
+    }
+    leaf ref { type instance-identifier; }
+    leaf union-ref {
+      type union {
+        type instance-identifier;
+        type string;
+      }
+    }
+  }
+
+  leaf anchor { type string; }
+  leaf moved { type string; }
+
+  rpc r {
+    input {
+      leaf input { type string; }
+      leaf in2 { type string; }
+      leaf in3 { type string; }
+      leaf in4 { type string; }
+      leaf detached-plain { type string; }
+      leaf-list detached-ordered {
+        ordered-by user;
+        type string;
+      }
+      leaf-list v { type uint32; }
+      leaf target { type int32; }
+      leaf-list union-v {
+        type union {
+          type leafref { path "../target"; }
+          type string;
+        }
+      }
+      list outer {
+        list inner {
+          key id;
+          leaf id { type uint32; }
+        }
+      }
+      list text-outer {
+        list text-inner {
+          leaf id { type string; }
+        }
+      }
+      list mapped {
+        leaf id { type string; }
+      }
+    }
+    output {
+      leaf before { type string; }
+      leaf-list output-v { type uint32; }
+      list l {
+        leaf value { type string; }
+      }
+    }
+  }
+}

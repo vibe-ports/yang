@@ -333,10 +333,14 @@ func (vc *valCtx) autodel(del []*Node, npContDiff bool) error {
 		}
 		if !npContDiff && isNPCont(n.schema) {
 			for c := range n.Children() {
-				_ = vc.diff(c, diffDelete) // libyang ignores the result here
+				if err := vc.diff(c, diffDelete); err != nil {
+					return err
+				}
 			}
 		} else {
-			_ = vc.diff(n, diffDelete)
+			if err := vc.diff(n, diffDelete); err != nil {
+				return err
+			}
 		}
 	}
 	for _, n := range del {
@@ -435,7 +439,14 @@ func (vc *valCtx) duplicates(d *dupIndex, n *Node) error {
 			return vc.t.work.hashErr
 		}
 		vc.t.work.Add(1)
-		if m == n || !vc.linkedIn(m, d.sib) || !htValEqual(vc.t, m, n) {
+		if m == n || !vc.linkedIn(m, d.sib) {
+			continue
+		}
+		equal, err := htValEqual(vc.t, &vc.t.work, m, n)
+		if err != nil {
+			return err
+		}
+		if !equal {
 			continue
 		}
 		if (n.schema.Kind == schema.List || n.schema.Kind == schema.LeafList) && vc.opts.Operational {

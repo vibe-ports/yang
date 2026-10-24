@@ -549,7 +549,8 @@ func TestUnresWork(t *testing.T) {
 		vc.t.work.Store(0)
 		vc.t.work.visits = true
 		_ = vc.unres()
-		if vc.posBuilds > 2 || vc.nodeTypes.scans > 2*n || int(vc.t.work.Load()) > 4*n || vc.nodeWhen.len() != 0 {
+		// Include the charged preflight batch scan and fixed root bookkeeping.
+		if vc.posBuilds > 2 || vc.nodeTypes.scans > 2*n || int(vc.t.work.Load()) > 5*n+16 || vc.nodeWhen.len() != 0 {
 			t.Fatalf("whenTrue %v: %d position maps, %d queue scans, %d unlink steps, %d queued",
 				whenTrue, vc.posBuilds, vc.nodeTypes.scans, int(vc.t.work.Load()), vc.nodeWhen.len())
 		}

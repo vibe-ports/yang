@@ -513,18 +513,15 @@ func hintsOpaq(name, value string, sibs *siblings, ns string) (h types.Hints, an
 	if sibs == nil {
 		return h, nil
 	}
-	for i := len(sibs.opq) - 1; i >= 0; i-- {
-		o := sibs.opq[i]
-		if o.opaq.Name == name && o.opaq.ModuleNS == ns {
-			if o.opaq.Value != "" {
-				o.opaq.Hints |= hintLeafList
-				h |= hintLeafList
-			} else {
-				o.opaq.Hints |= hintList
-				h |= hintList
-			}
-			return h, o
+	if o := sibs.opaqueLast(name, ns); o != nil {
+		if o.opaq.Value != "" {
+			o.opaq.Hints |= hintLeafList
+			h |= hintLeafList
+		} else {
+			o.opaq.Hints |= hintList
+			h |= hintList
 		}
+		return h, o
 	}
 	return h, nil
 }

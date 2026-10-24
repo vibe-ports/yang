@@ -381,7 +381,7 @@ var stepRequestRules = map[string][]requestRule{
 		{1894, requestRequired("any_direct needs a case", "case")},
 		{1904, func(c *requestCheck) error { // lyoracle.c:1904 has its own wording
 			v := str(c.p, "case", "")
-			for _, s := range strings.Fields("nil_boundaries text_nul node_then_empty equal_repeated_collisions equal_mixed_parent_payload dup_payload_parent_context trim_payload_links merge_mixed_into_tree dup_siblings_into_empty_anydata dup_siblings_into_empty_anyxml dup_into_default_any_parent") {
+			for _, s := range strings.Fields("nil_boundaries text_nul node_then_empty equal_repeated_collisions equal_repeated_date_collisions equal_mixed_parent_payload dup_payload_parent_context trim_payload_links merge_mixed_into_tree merge_opaque_mixed_schema_parents dup_siblings_into_empty_anydata dup_siblings_into_empty_anyxml dup_into_default_any_parent") {
 				if s == v {
 					return nil
 				}

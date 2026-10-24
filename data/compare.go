@@ -25,6 +25,9 @@ func (n *Node) Equal(m *Node, o CompareOptions) bool {
 	if n == nil || m == nil {
 		return n == m
 	}
-	// a Tree of its own: it only caches schema ranks, so Equal writes nothing shared
-	return compareSingleChecked(&Tree{}, n, m, o, false)
+	// Equal has no error result. Keep this read-only public comparison unbudgeted,
+	// as it was before stored-work charging was added; operation callers use the
+	// charged comparator and propagate an exhausted budget separately from inequality.
+	equal, _ := compareSingleCheckedWork(&Tree{}, nil, n, m, o, false)
+	return equal
 }

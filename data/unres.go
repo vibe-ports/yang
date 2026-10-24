@@ -423,7 +423,9 @@ func (p *whenPass) finish() error {
 		n.touch()
 		n.flags &^= flagDead
 		if p.vc.diff != nil {
-			_ = p.vc.diff(n, diffDelete)
+			if err := p.vc.diff(n, diffDelete); err != nil {
+				return err
+			}
 		}
 		// finish must complete queue/link cleanup after a canceled when pass.
 		if err := p.vc.dropTypes(n, false); err != nil {
@@ -596,9 +598,11 @@ func (vc *valCtx) validateIncomplete(n *Node) error {
 			n.parent.lkeyDirty = true
 		}
 		n.touch()
-		n.value = v
 		if sib := n.siblingsOf(); sib != nil {
+			sib.refreshExact(n, func() { n.value = v })
 			sib.hashReindex(n)
+		} else {
+			n.value = v
 		}
 		reindexComparedParent(n)
 	} else {
@@ -660,9 +664,9 @@ func (tt *typeTree) LeafrefTarget(t *schema.Type, v types.Value) (bool, error) {
 
 // InstanceExists is ly_path_eval: the instance-identifier target, found segment by segment.
 func (tt *typeTree) InstanceExists(p types.Path) bool {
-	n := tt.vc.pathEval(p)
-	if tt.vc.probes != nil && tt.vc.probes.work.hashErr != nil {
-		tt.err = tt.vc.probes.work.hashErr
+	n, err := tt.vc.pathEvalChecked(p)
+	if err != nil {
+		tt.err = err
 	}
 	return n != nil
 }
@@ -786,6 +790,11 @@ func (l lrefNS) Default() string             { return l.def }
 
 // pathEval is ly_path_eval_partial for a full match: the node at the end of p, or nil.
 func (vc *valCtx) pathEval(p types.Path) *Node {
+	n, _ := vc.pathEvalChecked(p)
+	return n
+}
+
+func (vc *valCtx) pathEvalChecked(p types.Path) (*Node, error) {
 	if vc.probes == nil {
 		vc.probes = newTree(vc.t.set)
 	}
@@ -801,9 +810,15 @@ func (vc *valCtx) pathEval(p types.Path) *Node {
 				// the instance at that position; a position beyond the instances (strtoull
 				// saturates huge numbers, as ParseUint does) selects nothing
 				if opChild(seg.Node) || sib.schemaUnordered {
-					run := vc.t.opRun(sib, seg.Node)
-					if pr.Position > 0 && pr.Position <= uint64(len(run)) {
-						node = run[pr.Position-1]
+					pos := pr.Position
+					if pos > 0 {
+						for candidate := range vc.t.opRun(sib, seg.Node) {
+							pos--
+							if pos == 0 {
+								node = candidate
+								break
+							}
+						}
 					}
 				} else if pr.Position > 0 {
 					pos := pr.Position
@@ -818,23 +833,32 @@ func (vc *valCtx) pathEval(p types.Path) *Node {
 			case types.PredLeafList:
 				target := newTerm(seg.Node, pr.Value, &vc.probes.work)
 				if vc.probes.work.hashErr != nil {
-					return nil
+					return nil, vc.probes.work.hashErr
 				}
-				node = vc.t.findFirst(sib, target)
+				var err error
+				if node, err = vc.t.findFirstChecked(sib, target); err != nil {
+					return nil, err
+				}
 			case types.PredKey: // ly_path_eval → ly_path_eval_partial: lyd_create_list, store-only
 				// a key that does not re-store finds nothing: libyang's instance-identifier
 				// validation reports "required instance not found" then (ut-new/path-08)
-				if target, d, _, err := vc.probes.lookupList(seg); d == nil && err == nil {
-					node = vc.t.findFirst(sib, target)
+				target, d, _, err := vc.probes.lookupList(seg)
+				if err != nil {
+					return nil, err
+				}
+				if d == nil {
+					if node, err = vc.t.findFirstChecked(sib, target); err != nil {
+						return nil, err
+					}
 				}
 			}
 		}
 		if node == nil || node.flags&flagDead != 0 {
-			return nil
+			return nil, nil
 		}
 		sib = &node.kids
 	}
-	return node
+	return node, nil
 }
 
 // deref resolves deref() (xpath_deref): a leafref's targets (lyplg_type_resolve_leafref with
@@ -883,9 +907,9 @@ func (vc *valCtx) derefType(n *Node, v types.Value, t *schema.Type, log bool) ([
 		}
 		return out, nil
 	case schema.InstanceID:
-		target := vc.pathEval(v.Path())
-		if vc.probes != nil && vc.probes.work.hashErr != nil {
-			return nil, vc.probes.work.hashErr
+		target, err := vc.pathEvalChecked(v.Path())
+		if err != nil {
+			return nil, err
 		}
 		if target == nil {
 			return nil, fail("Invalid instance-identifier \"%s\" value - required instance not found.",

@@ -1,0 +1,35 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Hand-written live-oracle regressions for duplicate-cache and split-run mutations.
+module pv2-astra305-r13 {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:pv2-astra305-r13";
+  prefix p;
+
+  container state {
+    config false;
+    list l {
+      leaf b { type string; }
+      leaf extra { type string; }
+      leaf gone { when "../b = 'keep'"; type string; }
+      leaf d { when "../b = 'defaults'"; type string; default "z"; }
+    }
+  }
+  rpc r {
+    input {
+      leaf a { type string; }
+      leaf b { type string; }
+      leaf c { type string; }
+      leaf-list v { type uint32; }
+      // lyd_find_schema_ctx maps a copied output by its input name.
+      leaf out { type string; }
+      list l { leaf b { type string; } }
+      list outer {
+        list inner {
+          key id;
+          leaf id { type uint32; }
+        }
+      }
+    }
+    output { leaf out { type string; } }
+  }
+}

@@ -119,6 +119,7 @@ func (m *listIndexModel) keyInserted(n *Node) bool {
 
 func (m *listIndexModel) check(t *testing.T, tr *Tree, root *Node) {
 	t.Helper()
+	opidxAssertTreeInvariant(t, tr)
 	m.refresh()
 	if root.kids.ht == nil {
 		t.Fatal("children table disappeared")

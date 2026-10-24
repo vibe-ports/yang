@@ -164,11 +164,11 @@ func TestDuplicateInstanceCacheIncludesForeignEqualSibling(t *testing.T) {
 	}
 	first := target.top.list[0]
 	cache := &dupCache{}
-	if got := target.dupInstNext(first, cache); got != first {
-		t.Fatalf("first instance: %v", got)
+	if got, err := target.dupInstNext(first, cache); err != nil || got != first {
+		t.Fatalf("first instance: %v, %v", got, err)
 	}
-	if got := target.dupInstNext(first, cache); got != foreign {
-		t.Fatalf("second equal foreign instance: %v", got)
+	if got, err := target.dupInstNext(first, cache); err != nil || got != foreign {
+		t.Fatalf("second equal foreign instance: %v, %v", got, err)
 	}
 }
 
@@ -202,11 +202,11 @@ func TestDuplicateInstanceCacheIncludesForeignEqualSiblingWithTable(t *testing.T
 		t.Fatal("foreign equal instance was not prepended")
 	}
 	cache := &dupCache{}
-	if got := target.dupInstNext(first, cache); got != first {
-		t.Fatalf("first registered equal instance = %v", got)
+	if got, err := target.dupInstNext(first, cache); err != nil || got != first {
+		t.Fatalf("first registered equal instance = %v, %v", got, err)
 	}
-	if got := target.dupInstNext(first, cache); got != foreign {
-		t.Fatalf("later registered foreign equal instance = %v", got)
+	if got, err := target.dupInstNext(first, cache); err != nil || got != foreign {
+		t.Fatalf("later registered foreign equal instance = %v, %v", got, err)
 	}
 }
 

@@ -65,7 +65,7 @@ func TestOpIndexSortRelocatesRecord(t *testing.T) {
 		t.Errorf("instance walk = %v, want %v", gotValues, wantValues)
 	}
 	gotValues = gotValues[:0]
-	for _, n := range tr.opRun(&op.kids, ss) {
+	for n := range tr.opRun(&op.kids, ss) {
 		gotValues = append(gotValues, n.value.Canonical())
 	}
 	if !slices.Equal(gotValues, wantValues) {
@@ -79,11 +79,15 @@ func TestOpIndexSortRelocatesRecord(t *testing.T) {
 	opidxCompareGoldens(t, fixture, []int{4}, []opidxSnapshot{opidxSnapshotOf(t, tr)})
 }
 
-func opidxDupSetNodes(tr *Tree, op, target *Node) []*Node {
+func opidxDupSetNodes(t *testing.T, tr *Tree, op, target *Node) []*Node {
+	t.Helper()
 	cache := &dupCache{}
 	var got []*Node
 	for {
-		n := tr.findMatch(&op.kids, target, true, cache)
+		n, err := tr.findMatch(&op.kids, target, true, cache)
+		if err != nil {
+			t.Fatal(err)
+		}
 		if n == nil {
 			return got
 		}
@@ -126,7 +130,7 @@ func TestOpIndexSortRelocatesEqualValues(t *testing.T) {
 		t.Errorf("exact-value bucket = %p, want a,b (%p)", got, wantEqual)
 	}
 	probe := opIndexTerm(t, ss, 1)
-	if got := opidxDupSetNodes(tr, op, probe); !slices.Equal(got, wantEqual) {
+	if got := opidxDupSetNodes(t, tr, op, probe); !slices.Equal(got, wantEqual) {
 		t.Errorf("duplicate set = %p, want a,b (%p)", got, wantEqual)
 	}
 	if got := opidxSchemaNodes(op, ss); !slices.Equal(got, []*Node{oneA, oneB, five, six}) {

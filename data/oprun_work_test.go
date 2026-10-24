@@ -85,7 +85,9 @@ func TestOpRunLookupWork(t *testing.T) {
 							}
 						}
 					}
-					tr.flushMerge(lv)
+					if err := tr.flushMerge(lv); err != nil {
+						t.Fatal(err)
+					}
 					work := tr.work.Load() + src.work.Load()
 					if operation == "merge" && len(op.kids.list) != len(indices) {
 						t.Fatalf("merge: %d instances, want %d", len(op.kids.list), len(indices))
@@ -116,10 +118,10 @@ func TestOpRunGaps(t *testing.T) {
 	sn := op.kids.list[1].schema
 	check := func(gaps, run int) {
 		t.Helper()
-		if got := op.kids.opIdx[sn].gaps; got != gaps {
+		if got := op.kids.order.entries[sn].gaps; got != gaps {
 			t.Fatalf("gaps = %d, want %d", got, gaps)
 		}
-		if got := tr.opRun(&op.kids, sn); len(got) != run {
+		if got := slices.Collect(tr.opRun(&op.kids, sn)); len(got) != run {
 			t.Fatalf("first run has %d nodes, want %d", len(got), run)
 		}
 		if got := tr.findFirst(&op.kids, opIndexTerm(t, sn, 3)); (got != nil) != (run == 3) {
@@ -146,7 +148,7 @@ func TestOpRunGaps(t *testing.T) {
 	if err := unlinkTree(v3); err != nil {
 		t.Fatal(err)
 	}
-	if got := op.kids.opIdx[sn].gaps; got != 0 {
+	if got := op.kids.order.entries[sn].gaps; got != 0 {
 		t.Fatalf("removed singleton run: gaps %d", got)
 	}
 	mustLink(t, tr.insert(op, v3, insertLast))
