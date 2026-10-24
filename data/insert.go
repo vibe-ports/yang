@@ -575,14 +575,10 @@ func (t *Tree) rbInsert(sib *siblings, n *Node, compare func(*Node, *Node) (int,
 	group := n.rbGroup
 	order := sib.rbOrders[group]
 	if order == nil {
-		var members []*Node
-		for _, candidate := range sib.list {
-			if candidate.inRB && candidate.rbGroup == group {
-				members = append(members, candidate)
-			}
-		}
-		t.buildRBOrder(sib, group, members)
-		order = sib.rbOrders[group]
+		// Every mutation that moves or batches RB members transfers or updates the
+		// retained topology. Rebuilding here would turn repeated foreign inserts
+		// into quadratic scans and allocations, and would lose native tree shape.
+		return nil, false
 	}
 	order.work = &t.work
 	return order.insertCompatible(n, compare)
@@ -597,15 +593,8 @@ func (t *Tree) rbRecordInsert(sib *siblings, n *Node) {
 		return
 	}
 	order := sib.rbOrders[n.rbGroup]
-	if order == nil {
-		var members []*Node
-		for _, candidate := range sib.list {
-			if candidate.inRB && candidate.rbGroup == n.rbGroup {
-				members = append(members, candidate)
-			}
-		}
-		t.buildRBOrder(sib, n.rbGroup, members)
-		order = sib.rbOrders[n.rbGroup]
+	if order == nil || order.nodes[n] != nil {
+		return
 	}
 	order.work = nil
 	_, _ = order.insertCompatible(n, func(a, b *Node) (int, bool) {
@@ -689,6 +678,29 @@ func (t *Tree) runEnd(sib *siblings, lo int) int {
 		if sib.list[hi].schema != sn {
 			break
 		}
+		hi++
+	}
+	return hi
+}
+
+// retainedRunEnd is the physical end of a sorted run selected by lo. Equivalent schemas from
+// distinct contexts share the same retained RB group even though their schema pointers differ.
+func (t *Tree) retainedRunEnd(sib *siblings, lo int) int {
+	if lo < 0 || lo >= len(sib.list) {
+		return lo
+	}
+	leader := sib.list[lo]
+	group := leader.rbGroup
+	if selected := sib.rbGroups[leader]; selected != nil {
+		group = selected
+	}
+	hi := lo
+	for hi < len(sib.list) {
+		n := sib.list[hi]
+		if n.schema != leader.schema && (group == nil || !n.inRB || n.rbGroup != group) {
+			break
+		}
+		t.work.Add(1)
 		hi++
 	}
 	return hi
@@ -1323,20 +1335,23 @@ func (t *Tree) preflightSortedStorage(sib *siblings, n *Node, order insertOrder)
 		return nil
 	}
 	leader := sib.list[lo]
-	check := []*Node{leader}
 	if sib.rbTree[leader] {
 		group := sib.rbGroups[leader]
-		check = check[:0]
-		for _, candidate := range sib.list {
-			if candidate.inRB && candidate.rbGroup == group {
-				check = append(check, candidate)
-			}
+		order := sib.rbOrders[group]
+		if order == nil {
+			return &opError{"LY_EINT", "Missing retained red-black topology for a system-ordered run."}
 		}
-	}
-	for _, candidate := range check {
-		if _, compatible := t.compareSortedCompatible(candidate, n); !compatible {
+		compatible, err := order.checkInsertCompatible(&t.work, n, t.compareSortedCompatible)
+		if err != nil {
+			return err
+		}
+		if !compatible {
 			return crossContextStorageError(n)
 		}
+		return nil
+	}
+	if _, compatible := t.compareSortedCompatible(leader, n); !compatible {
+		return crossContextStorageError(n)
 	}
 	return nil
 }
@@ -1468,8 +1483,9 @@ func (t *Tree) link(parent *Node, sib *siblings, n *Node, at int) error {
 		if sib.firstRun[n.schema] == nil || at < len(sib.list) && sib.list[at] == sib.firstRun[n.schema] {
 			sib.firstRun[n.schema] = n
 		}
-		if at < len(sib.list) && sib.list[at].schema == n.schema &&
-			(at == 0 || sib.list[at-1].schema != n.schema) {
+		if at < len(sib.list) &&
+			(sib.list[at].schema == n.schema && (at == 0 || sib.list[at-1].schema != n.schema) ||
+				n.inRB && n.rbGroup != nil && sib.list[at].inRB && sib.list[at].rbGroup == n.rbGroup) {
 			sib.transferRun(sib.list[at], n)
 		}
 		if !sib.schemaUnordered && !opChild(n.schema) &&
@@ -1785,6 +1801,14 @@ func (t *Tree) splice(parent *Node, sib *siblings, lo, hi int, ns []*Node, first
 			}
 		}
 	}
+	// Batch paths bypass insertPos, so mirror every newly linked RB member into
+	// the retained native topology. Members transferred with their source tree
+	// are already present and are intentionally skipped by rbRecordInsert.
+	for _, n := range ns {
+		if n.inRB && n.rbGroup != nil {
+			t.rbRecordInsert(sib, n)
+		}
+	}
 	if t.work.shifts {
 		t.work.Add(int64(len(sib.list)))
 	}
@@ -1906,15 +1930,19 @@ func unlink(n *Node) {
 				markUnsorted(sib, sib.list[left])
 			}
 		}
+		sameRetainedRun := func(next *Node) bool {
+			return next != nil && (next.schema == n.schema ||
+				n.inRB && n.rbGroup != nil && next.inRB && next.rbGroup == n.rbGroup)
+		}
 		if sib.firstRun[n.schema] == n {
-			if i+1 < len(sib.list) && sib.list[i+1].schema == n.schema {
+			if i+1 < len(sib.list) && sameRetainedRun(sib.list[i+1]) {
 				sib.firstRun[n.schema] = sib.list[i+1]
 			} else {
 				delete(sib.firstRun, n.schema)
 			}
 		}
-		if (i == 0 || sib.list[i-1].schema != n.schema) && i+1 < len(sib.list) &&
-			sib.list[i+1].schema == n.schema {
+		if (i == 0 || !sameRetainedRun(sib.list[i-1])) && i+1 < len(sib.list) &&
+			sameRetainedRun(sib.list[i+1]) {
 			sib.transferRun(n, sib.list[i+1])
 		}
 		if n.isKey() {
@@ -2122,7 +2150,9 @@ func (t *Tree) unlinkAllDefaults(ns, defaults []*Node) error {
 		pending := false
 		sib.list = slices.DeleteFunc(sib.list, func(n *Node) bool {
 			t.work.Add(1)
-			if oldLeader == nil || n.schema != oldLeader.schema {
+			sameRetainedRun := oldLeader != nil && (n.schema == oldLeader.schema ||
+				n.inRB && n.rbGroup != nil && oldLeader.inRB && oldLeader.rbGroup == n.rbGroup)
+			if !sameRetainedRun {
 				oldLeader, pending = n, gone[n]
 			} else if pending && !gone[n] {
 				sib.transferRun(oldLeader, n)

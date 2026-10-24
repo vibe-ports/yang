@@ -5,12 +5,90 @@
 package conformance
 
 import (
+	"fmt"
+	"math/rand/v2"
 	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
 	"testing"
 )
+
+// TestRetainedRBRound5Oracle compares the new-minimum metadata move and sampled merge-then-
+// foreign-insert sequences directly with libyang v5.8.6. The seeded samples are the live-oracle
+// counterpart of data/TestRetainedRBRandomMixedContextMutations.
+func TestRetainedRBRound5Oracle(t *testing.T) {
+	base := t.TempDir()
+	const moduleName = "retained-rb-round5"
+	if err := os.WriteFile(filepath.Join(base, moduleName+".yang"), []byte(`module retained-rb-round5 {
+  yang-version 1.1; namespace "urn:vibe-ports:yang:retained-rb-round5"; prefix r;
+  container c { leaf-list v { type uint32; } }
+  leaf-list top { type uint32; }
+}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	ctx := map[string]any{"searchdirs": []any{"."}, "modules": []any{map[string]any{"name": moduleName}}}
+	parse := func(data string) any {
+		return map[string]any{"do": "parse", "format": "json", "data_type": "data", "parse_only": true, "data": data}
+	}
+	compare := func(id string, steps []any) {
+		t.Helper()
+		params := map[string]any{"op": "sequence", "searchdirs": []any{"."},
+			"modules": []any{map[string]any{"name": moduleName}}, "steps": steps}
+		got, err := (Yang{}).Run(Request{ID: id, BaseDir: base, Params: params})
+		if err != nil {
+			t.Fatal(err)
+		}
+		want, err := nativeRequestRunner(t)(base, params)
+		if err != nil {
+			t.Fatal(err)
+		}
+		want, _ = withoutSkipped(want, Yang{}.SkippedFields("sequence"))
+		got, _ = withoutSkipped(got, Yang{}.SkippedFields("sequence"))
+		if diff := diffResponses(want, got); diff != "" {
+			t.Fatalf("oracle mismatch: %s\noracle: %#v\nengine: %#v", diff, want, got)
+		}
+	}
+	t.Run("new-minimum", func(t *testing.T) {
+		compare("ut-diff/retained-rb-new-minimum", []any{
+			parse(`{"retained-rb-round5:c":{"v":[5]}}`),
+			map[string]any{"do": "diff", "format": "json", "data_type": "data", "parse_only": true,
+				"data": `{"retained-rb-round5:c":{"v":[1,7]}}`, "target": ctx},
+		})
+	})
+	t.Run("foreign-scaling", func(t *testing.T) {
+		var values strings.Builder
+		values.WriteString(`{"retained-rb-round5:c":{"v":[`)
+		for value := 1; value <= 64; value++ {
+			if value != 1 {
+				values.WriteByte(',')
+			}
+			fmt.Fprint(&values, value)
+		}
+		values.WriteString(`]}}`)
+		compare("ut-diff/retained-rb-foreign-scaling", []any{
+			parse(`{"retained-rb-round5:c":{"v":[0]}}`),
+			map[string]any{"do": "diff", "format": "json", "data_type": "data", "parse_only": true,
+				"data": values.String(), "target": ctx},
+		})
+	})
+	rng := rand.New(rand.NewPCG(0x301, 5)) //nolint:gosec // deterministic oracle samples
+	for sample := range 8 {
+		created := 4 + rng.IntN(28)
+		id := fmt.Sprintf("ut-diff/retained-rb-merge-foreign-%02d", sample)
+		t.Run(fmt.Sprintf("merge-foreign-%02d", sample), func(t *testing.T) {
+			compare(id, []any{
+				map[string]any{"do": "diff", "format": "json", "data_type": "data", "parse_only": true,
+					"data": fmt.Sprintf(`{"retained-rb-round5:top":[%d]}`, created), "target": ctx},
+				parse(`{"retained-rb-round5:top":[1,3]}`),
+				map[string]any{"do": "edit", "format": "json", "data_type": "data",
+					"merge": `{"retained-rb-round5:top":[5,7,9,11]}`},
+				map[string]any{"do": "diff_apply"},
+				map[string]any{"do": "dump"},
+			})
+		})
+	}
+}
 
 // TestDiffReviewOracleCases keeps the ordering, indexed-miss, and small retained-delta request
 // shapes live. Their libyang implementation behavior has no hand-written golden here.

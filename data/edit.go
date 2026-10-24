@@ -1276,11 +1276,9 @@ func (t *Tree) flushMerge(lv *mergeLevel) {
 	}
 	// Splice needs positions; it already walks/copies the sibling slice once.
 	lo := t.schemaIndex(sib, lv.pend[0].schema)
-	hi := lo
-	for hi < len(sib.list) && sib.list[hi].schema == lv.pend[0].schema {
-		hi++
-	}
+	hi := t.retainedRunEnd(sib, lo)
 	for _, d := range lv.pend {
+		d.touch()
 		d.inRB = true
 		d.rbGroup = sib.rbGroups[sib.runLeader(d.schema)]
 	}

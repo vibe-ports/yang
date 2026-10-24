@@ -254,14 +254,12 @@ func (d *dirtyOrder) insertNode(n *Node, right bool) (isMax, leftmost bool) {
 // No topology is changed when a comparison is refused.
 func (d *dirtyOrder) insertCompatible(n *Node, compare func(*Node, *Node) (int, bool)) (*Node, bool) {
 	var parent *dirtyOrderNode
-	var path []*dirtyOrderNode
 	left := false
 	for cur := d.root; cur != nil; {
 		if d.work != nil {
 			d.work.Add(1)
 		}
 		parent = cur
-		path = append(path, cur)
 		order, ok := compare(cur.node, n)
 		if !ok {
 			return nil, false
@@ -273,7 +271,9 @@ func (d *dirtyOrder) insertCompatible(n *Node, compare func(*Node, *Node) (int, 
 			cur = cur.right
 		}
 	}
-	for _, cur := range path {
+	// All comparisons have succeeded, so topology may now change. Walking the
+	// parent chain avoids allocating a search-path slice for every insertion.
+	for cur := parent; cur != nil; cur = cur.parent {
 		cur.size++
 	}
 	x := &dirtyOrderNode{node: n, size: 1, red: true, active: true, parent: parent}
@@ -291,6 +291,34 @@ func (d *dirtyOrder) insertCompatible(n *Node, compare func(*Node, *Node) (int, 
 	}
 	d.insertColor(x)
 	return d.predecessorNode(x), true
+}
+
+// checkInsertCompatible walks the exact rb_insert_node search path without changing the tree.
+// Each visited RB node and each additional list-key comparison is charged to the mutation's
+// enforced work budget. It is the failure-safe preflight for a foreign-context insertion.
+func (d *dirtyOrder) checkInsertCompatible(work *workCounter, n *Node,
+	compare func(*Node, *Node) (int, bool),
+) (bool, error) {
+	for cur := d.root; cur != nil; {
+		before := work.Load()
+		order, ok := compare(cur.node, n)
+		cost := uint64(1)
+		if extra := work.Load() - before; extra > 0 {
+			cost += uint64(extra)
+		}
+		if err := work.chargeHash(cost); err != nil {
+			return false, err
+		}
+		if !ok {
+			return false, nil
+		}
+		if order > 0 {
+			cur = cur.left
+		} else {
+			cur = cur.right
+		}
+	}
+	return true, nil
 }
 
 func (d *dirtyOrder) predecessorNode(n *dirtyOrderNode) *Node {
