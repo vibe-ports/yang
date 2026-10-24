@@ -30,7 +30,6 @@ type hashTransaction struct {
 	siblings map[*siblings]siblings
 	chains   map[*recordChain]recordChain
 	records  map[*record]record
-	op       map[*opEntry]opEntry
 	pending  map[*dirtyOrder]dirtyOrder
 	dirty    map[*dirtyOrderNode]dirtyOrderNode
 	links    map[*leafrefLinks]leafrefLinks
@@ -58,7 +57,7 @@ func beginHashTransaction(t *Tree) *hashTransaction {
 	}
 	j := &hashTransaction{tree: t, done: t.work.beginHashWork(), rank: maps.Clone(t.rank), set: t.set,
 		nodes: map[*Node]Node{}, siblings: map[*siblings]siblings{}, chains: map[*recordChain]recordChain{},
-		records: map[*record]record{}, op: map[*opEntry]opEntry{},
+		records: map[*record]record{},
 		pending: map[*dirtyOrder]dirtyOrder{}, dirty: map[*dirtyOrderNode]dirtyOrderNode{},
 		links: map[*leafrefLinks]leafrefLinks{}, owners: map[*Node]*leafrefLinks{},
 		metas: map[*meta]meta{}, opaq: map[*opaque]opaque{}, works: map[*siblings]*workCounter{}}
@@ -178,17 +177,6 @@ func (s *siblings) rebind(work *workCounter) {
 
 func cloneDeque(d nodeDeque) nodeDeque {
 	return nodeDeque{list: slices.Clone(d.list)}
-}
-
-func cloneRanks(in [2]rankBits) (out [2]rankBits) {
-	for i := range in {
-		out[i].bits = in[i].bits
-		out[i].levels = make([][]uint64, len(in[i].levels))
-		for j, level := range in[i].levels {
-			out[i].levels[j] = slices.Clone(level)
-		}
-	}
-	return out
 }
 
 // captureNode journals n itself, not its children: its sibling set is journaled on its own.
@@ -322,13 +310,17 @@ func (j *hashTransaction) captureSiblings(s *siblings) {
 	saved.pending = maps.Clone(s.pending)
 	saved.rbTree = maps.Clone(s.rbTree)
 	saved.rbGroups = maps.Clone(s.rbGroups)
-	saved.opIdx = maps.Clone(s.opIdx)
+	saved.order = cloneChildOrder(s)
 	saved.contexts = maps.Clone(s.contexts) // a handful of contexts: not charged
-	saved.opRanks = cloneRanks(s.opRanks)
 	j.siblings[s] = saved
 	objects := 1 + uint64(len(s.list)+len(s.opq)+len(s.ht)+len(s.leaders)+len(s.firstRun)+
 		len(s.exactByNode)+len(s.history)+len(s.leaderByNode)+len(s.unsorted)+len(s.rbTree)+len(s.rbGroups)+
-		len(s.opIdx)+len(s.pending))
+		len(s.pending))
+	if s.order != nil {
+		// Sequence handles, occurrence nodes/maps, entry metadata, and sparse
+		// rank nodes are all private rollback copies.
+		objects += 6 + 6*uint64(len(s.order.byNode)) + 2*uint64(len(s.order.entries))
+	}
 	for _, c := range s.ht {
 		j.captureChain(c, &objects)
 	}
@@ -345,12 +337,6 @@ func (j *hashTransaction) captureSiblings(s *siblings) {
 		for _, r := range byHash {
 			j.captureRecords(r, &objects)
 		}
-	}
-	for _, op := range s.opIdx {
-		saved := *op
-		saved.nodeDeque = cloneDeque(op.nodeDeque)
-		j.op[op] = saved
-		objects += uint64(len(op.list))
 	}
 	for _, p := range s.pending {
 		saved := *p
@@ -393,14 +379,14 @@ func (j *hashTransaction) restore() {
 	for s, work := range j.works {
 		s.work = work
 	}
+	for s := range j.siblings {
+		s.setOrderHooks()
+	}
 	for c, saved := range j.chains {
 		*c = saved
 	}
 	for r, saved := range j.records {
 		*r = saved
-	}
-	for op, saved := range j.op {
-		*op = saved
 	}
 	for p, saved := range j.pending {
 		*p = saved

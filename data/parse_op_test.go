@@ -357,9 +357,9 @@ func TestParseOpMixedInputOutput(t *testing.T) {
 	}
 }
 
-// TestParseOpLinear: a large sorted leaf-list of an rpc output costs counted work linear in its
-// size (the run of an operation's child is found run by run, appends take the fast path), with
-// the other output nodes before and after it.
+// TestParseOpLinear: a large sorted leaf-list of an rpc output costs counted work O(n log n) in
+// the operation's order-statistic and occurrence indexes, with the other output nodes before and
+// after it.
 func TestParseOpLinear(t *testing.T) {
 	set := opsSet(t, readOpsFixture(t, filepath.Join(opsManifest, "parse-json-reply-keep-order.yaml")))
 	work := func(n int) int64 {
@@ -374,8 +374,8 @@ func TestParseOpLinear(t *testing.T) {
 		}
 		return tree.work.Load()
 	}
-	if w1, w4 := work(1000), work(4000); w4 > 5*w1 {
-		t.Fatalf("work %d for 1000 values, %d for 4000: not linear", w1, w4)
+	if w1, w4 := work(1000), work(4000); w4 > 6*w1 {
+		t.Fatalf("work %d for 1000 values, %d for 4000: exceeds n log n", w1, w4)
 	}
 }
 
@@ -1116,7 +1116,8 @@ func TestParseOpDetachedParent(t *testing.T) {
 }
 
 // TestParseOpRollback: a reply that fails after many parsed nodes removes them all again with
-// linear counted work, and the parent's own children stay.
+// O(n log n) counted work, and the parent's own children stay. The rollback
+// snapshots and restores the operation's balanced ordered indexes.
 func TestParseOpRollback(t *testing.T) {
 	c, _, err := compile.NewContext(compile.Options{NoYangLibrary: true}, fstest.MapFS{"rb.yang": {Data: []byte(
 		`module rb { yang-version 1.1; namespace urn:rb; prefix rb;
@@ -1158,7 +1159,7 @@ func TestParseOpRollback(t *testing.T) {
 		return work
 	}
 	small, large := run(2000), run(32000)
-	if small <= 0 || large > 20*small { // 16x input, with room for fixed setup work
-		t.Fatalf("rollback work for 2000 nodes %d, for 32000 nodes %d: not linear", small, large)
+	if small <= 0 || large > 28*small { // 16x input plus the balanced-index log factor
+		t.Fatalf("rollback work for 2000 nodes %d, for 32000 nodes %d: exceeds n log n", small, large)
 	}
 }

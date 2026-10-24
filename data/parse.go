@@ -757,7 +757,11 @@ func (lc *lydCtx) nodeInsert(parent, anchor, n *Node) error {
 		// lyd_insert_after of the XML parser's anchor (lydxml_get_hints_opaq): an opaque node
 		// right after the last opaque sibling with the same name, among the opaque nodes
 		sib := anchor.siblingsOf()
-		return lc.tree.link(anchor.parent, sib, n, sib.indexOf(sib.opq, anchor)+1)
+		at := sib.orderPosition(anchor)
+		if at < 0 {
+			at = sib.indexOf(sib.opq, anchor) + len(sib.list)
+		}
+		return lc.tree.link(anchor.parent, sib, n, at-len(sib.list)+1)
 	}
 	if anchor != nil {
 		// libyang's only insert anchor is the opaque one above
@@ -784,24 +788,28 @@ func (lc *lydCtx) appendSorted(parent, n *Node) (bool, error) {
 	sib := lc.tree.childrenOf(parent)
 	lc.tree.touch(sib)
 	var run []*Node
-	var at int
-	if opChild(n.schema) && sib.opIdx[n.schema] != nil && sib.opIdx[n.schema].gaps == 0 {
-		d := sib.opIdx[n.schema]
-		if len(d.list) == 0 {
+	var at, runLen int
+	var first *Node
+	if opChild(n.schema) && sib.order != nil && sib.order.entries[n.schema] != nil && sib.order.entries[n.schema].gaps == 0 {
+		d := sib.order.entries[n.schema]
+		if d.count == 0 {
 			return false, nil
 		}
-		run = d.list
-		at = lc.tree.indexFromEnd(sib.list, run[len(run)-1]) + 1
+		first = sib.documentFirst(n.schema)
+		last := sib.order.bySchema.Last(n.schema, 0)
+		runLen = d.count
+		at = sib.orderPosition(last.Value) + 1
 	} else {
 		lo, hi := lc.tree.runBounds(sib, n)
 		if lo == hi {
 			return false, nil
 		}
 		run, at = sib.list[lo:hi], hi
+		runLen, first = len(run), run[0]
 	}
 	k := dirtyRun{sib, n.schema}
 	ord := lc.runOrd[k]
-	leader := run[0]
+	leader := first
 	if lc.dirtyOrd[k] != nil && ord != nil {
 		leader = ord.first()
 	}
@@ -815,7 +823,7 @@ func (lc *lydCtx) appendSorted(parent, n *Node) (bool, error) {
 		return false, err
 	}
 	// One check for the run's replays and n's link: both follow the reorder below.
-	amount, err := lc.tree.insertPositionBound(sib, n, insertDefault)
+	amount, orderedWork, err := lc.tree.insertPositionBound(sib, n, insertDefault)
 	if err != nil {
 		return false, err
 	}
@@ -823,12 +831,18 @@ func (lc *lydCtx) appendSorted(parent, n *Node) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	if err := lc.tree.reserveHash(addHashBound(amount, link)); err != nil {
+	if err := lc.tree.reserveHash(addHashBound(addHashBound(amount, link), orderedWork)); err != nil {
 		return false, err
 	}
-	if ord == nil || lc.dirtyOrd[k] == nil && dirtySize(ord.root) != len(run) {
+	if err := lc.tree.work.chargeHash(orderedWork); err != nil {
+		return false, err
+	}
+	if ord == nil || lc.dirtyOrd[k] == nil && dirtySize(ord.root) != runLen {
 		// The first parser insertion into the run, or the run changed outside the parser since:
 		// a run without an RB tree gets one (lyds_additionally_create_rb_tree), sorting it.
+		if run == nil {
+			run = sib.walkFrom(first)
+		}
 		create := !sib.rbTree[leader]
 		if create {
 			lc.tree.applyRunReorderHash(sib, run, reorderExact)
@@ -837,8 +851,10 @@ func (lc *lydCtx) appendSorted(parent, n *Node) (bool, error) {
 				old.touch()
 				old.inRB = true
 			}
-			if d := sib.opIdx[n.schema]; d != nil {
-				d.rb = len(run)
+			if sib.order != nil {
+				if d := sib.order.entries[n.schema]; d != nil {
+					d.rb = len(run)
+				}
 			}
 			markRB(sib, leader)
 		}
@@ -920,7 +936,7 @@ func (lc *lydCtx) markDirty(sib *siblings, sn *schema.Node, ord *dirtyOrder) {
 // flushDirty stably sorts the dirty runs of sib and forgets them; other sets are not looked at.
 // Parser insertPos/opAnchor only need the run boundary, which appending preserves; JSON metadata
 // and closeInner call this before reading instance order. Rollback can unlink dirty members in any
-// order because opIdx and the leader chain are maintained per mutation. XML opaque anchors only
+// order because childOrder and the leader chain are maintained per mutation. XML opaque anchors only
 // distinguish schema-run boundaries, also unchanged.
 func (lc *lydCtx) flushDirty(sib *siblings) error {
 	if err := lc.ctx.Err(); err != nil {
@@ -1007,15 +1023,19 @@ func (lc *lydCtx) flushDirtyRun(k dirtyRun, lo int) {
 		delete(k.sib.pending, k.sn)
 	}()
 	var count int
-	if d := k.sib.opIdx[k.sn]; d != nil && d.gaps == 0 {
-		if len(d.list) < 2 {
-			return
+	if k.sib.order != nil {
+		if d := k.sib.order.entries[k.sn]; d != nil && d.gaps == 0 {
+			if d.count < 2 {
+				return
+			}
+			instances := k.sib.walkFrom(k.sib.documentFirst(k.sn))
+			count = len(instances)
+			if lo < 0 {
+				lo = k.sib.orderPosition(instances[0])
+			}
 		}
-		count = len(d.list)
-		if lo < 0 {
-			lo = lc.tree.runFrom(k.sib.list, d.list[0], d.list[count-1], count)
-		}
-	} else {
+	}
+	if count == 0 {
 		if lo < 0 {
 			lo = lc.tree.schemaIndex(k.sib, k.sn)
 		}
@@ -1049,11 +1069,9 @@ func (lc *lydCtx) flushDirtyRun(k dirtyRun, lo int) {
 		}
 	}
 	lc.tree.work.Add(int64(len(run)))
-	if d := k.sib.opIdx[k.sn]; d != nil {
-		if d.gaps == 0 {
-			k.sib.opRebuild(lc.tree, k.sn, run)
-		} else {
-			k.sib.opBuild(lc.tree)
+	if k.sib.order != nil {
+		if d := k.sib.order.entries[k.sn]; d != nil {
+			k.sib.opRebuild(run)
 		}
 	}
 	k.sib.gen++

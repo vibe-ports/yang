@@ -68,8 +68,10 @@ func opIndexScaling(t *testing.T, sizes []int, work func(int) int64) {
 			t.Errorf("work(%d)=%d exceeds 6 * work(%d)=%d", sizes[i], works[i], sizes[i-2], works[i-2])
 		}
 	}
-	if works[len(works)-1] > 12*works[0] {
-		t.Errorf("work(%d)=%d exceeds 12 * work(%d)=%d", sizes[len(sizes)-1], works[len(works)-1], sizes[0], works[0])
+	// An 8x input permits the log factor of the order-statistic and occurrence
+	// trees (8*log2(last)/log2(first), plus fixed setup), but still rejects n².
+	if works[len(works)-1] > 14*works[0] {
+		t.Errorf("work(%d)=%d exceeds 14 * work(%d)=%d", sizes[len(sizes)-1], works[len(works)-1], sizes[0], works[0])
 	}
 }
 
@@ -272,12 +274,13 @@ func TestOpIndexUnlinkClearsRetainedPointers(t *testing.T) {
 				t.Fatal(err, diags)
 			}
 			removed := op.kids.list[tc.at]
-			sn := removed.schema
 			if err := unlinkTree(removed); err != nil {
 				t.Fatal(err)
 			}
 			assertDequeDoesNotRetain(t, "siblings", &op.kids.nodeDeque, removed)
-			assertDequeDoesNotRetain(t, "operation index", &op.kids.opIdx[sn].nodeDeque, removed)
+			if op.kids.order.byNode[removed] != nil {
+				t.Error("operation index retains removed node")
+			}
 			runtime.KeepAlive(tree)
 		})
 	}
