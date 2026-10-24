@@ -54,8 +54,8 @@
 package data
 
 // dirtyOrder is the parser's copy of a system-ordered run's RB tree (lyds): the same red-black
-// algorithm and comparison direction as rb_insert_node and rb_insert_color
-// (tree_data_sorted.c:430-479,669-716), fed in the same order, so it has libyang's shape. The
+// algorithm and comparison direction as rb_insert_node, rb_insert_color, and rb_remove
+// (tree_data_sorted.c:430-667,669-716), fed in the same order, so it has libyang's shape. The
 // shape matters once a repeated key has changed an instance after it was linked: libyang leaves
 // that instance where it is and later insertions compare its current keys on their way down
 // (rb_compare_lists, tree_data_sorted.c:235-270). The physical sibling and operation-index
@@ -319,20 +319,146 @@ func (d *dirtyOrder) predecessorNode(n *dirtyOrderNode) *Node {
 	return n.parent.node
 }
 
-// remove makes an unlinked parser node invisible without restructuring the tree. rb_remove
-// would restructure it (tree_data_sorted.c:582-667); the shape differs only for later insertions
-// past an instance a repeated key moved out of value order (ponytail: no rb_remove port).
+func dirtyRed(n *dirtyOrderNode) bool { return n != nil && n.red }
+
+func (d *dirtyOrder) fixSizes(n *dirtyOrderNode) {
+	for ; n != nil; n = n.parent {
+		dirtyFix(n)
+	}
+}
+
+// removeColor is rb_remove_color (tree_data_sorted.c:481-572).
+func (d *dirtyOrder) removeColor(parent, n *dirtyOrderNode) {
+	for !dirtyRed(n) && n != d.root && parent != nil {
+		if d.work != nil {
+			d.work.Add(1)
+		}
+		if parent.left == n {
+			sibling := parent.right
+			if dirtyRed(sibling) {
+				sibling.red, parent.red = false, true
+				d.rotateLeft(parent)
+				sibling = parent.right
+			}
+			if sibling == nil {
+				n, parent = parent, parent.parent
+				continue
+			}
+			if !dirtyRed(sibling.left) && !dirtyRed(sibling.right) {
+				sibling.red = true
+				n, parent = parent, parent.parent
+				continue
+			}
+			if !dirtyRed(sibling.right) {
+				if sibling.left != nil {
+					sibling.left.red = false
+				}
+				sibling.red = true
+				d.rotateRight(sibling)
+				sibling = parent.right
+			}
+			sibling.red, parent.red = parent.red, false
+			if sibling.right != nil {
+				sibling.right.red = false
+			}
+			d.rotateLeft(parent)
+			n = d.root
+			break
+		}
+
+		sibling := parent.left
+		if dirtyRed(sibling) {
+			sibling.red, parent.red = false, true
+			d.rotateRight(parent)
+			sibling = parent.left
+		}
+		if sibling == nil {
+			n, parent = parent, parent.parent
+			continue
+		}
+		if !dirtyRed(sibling.left) && !dirtyRed(sibling.right) {
+			sibling.red = true
+			n, parent = parent, parent.parent
+			continue
+		}
+		if !dirtyRed(sibling.left) {
+			if sibling.right != nil {
+				sibling.right.red = false
+			}
+			sibling.red = true
+			d.rotateLeft(sibling)
+			sibling = parent.left
+		}
+		sibling.red, parent.red = parent.red, false
+		if sibling.left != nil {
+			sibling.left.red = false
+		}
+		d.rotateRight(parent)
+		n = d.root
+		break
+	}
+	if n != nil {
+		n.red = false
+	}
+}
+
+// remove is rb_remove_node followed by rb_remove (tree_data_sorted.c:582-667,954-982).
+// It structurally removes the topology node so the retained tree neither changes shape nor
+// keeps a detached data node alive after lyds_unlink.
 func (d *dirtyOrder) remove(n *Node) {
-	x := d.nodes[n]
-	if x == nil || !x.active {
+	old := d.nodes[n]
+	if old == nil || !old.active {
 		return
 	}
 	delete(d.nodes, n)
-	x.active = false
-	for ; x != nil; x = x.parent {
-		d.work.Add(1)
-		dirtyFix(x)
+
+	removed := old
+	var child, parent *dirtyOrderNode
+	red := old.red
+	switch {
+	case old.left == nil:
+		child, parent = old.right, old.parent
+		d.replaceChild(parent, old, child)
+		if child != nil {
+			child.parent = parent
+		}
+		d.fixSizes(parent)
+	case old.right == nil:
+		child, parent = old.left, old.parent
+		d.replaceChild(parent, old, child)
+		child.parent = parent
+		d.fixSizes(parent)
+	default:
+		replacement := old.right
+		for replacement.left != nil {
+			if d.work != nil {
+				d.work.Add(1)
+			}
+			replacement = replacement.left
+		}
+		child, parent, red = replacement.right, replacement.parent, replacement.red
+		if child != nil {
+			child.parent = parent
+		}
+		d.replaceChild(parent, replacement, child)
+		if replacement.parent == old {
+			parent = replacement
+		}
+
+		replacement.parent, replacement.left, replacement.right, replacement.red =
+			old.parent, old.left, old.right, old.red
+		d.replaceChild(old.parent, old, replacement)
+		replacement.left.parent = replacement
+		if replacement.right != nil {
+			replacement.right.parent = replacement
+		}
+		d.fixSizes(parent)
 	}
+	if !red {
+		d.removeColor(parent, child)
+	}
+	removed.left, removed.right, removed.parent = nil, nil, nil
+	removed.size, removed.red, removed.active = 0, false, false
 }
 
 func (d *dirtyOrder) rawNext(n *dirtyOrderNode) *dirtyOrderNode {

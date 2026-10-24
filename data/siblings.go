@@ -411,6 +411,19 @@ func (s *siblings) clearEmptyRBGroup(group *rbGroup) {
 	delete(s.rbOrders, group)
 }
 
+// removeRBNode is lyds_unlink's rb_remove_node. The sibling set is touched before the retained
+// topology changes so #257's transaction can restore both its group map and every RB node.
+func (s *siblings) removeRBNode(n *Node) {
+	s.touch()
+	if n == nil || !n.inRB || n.rbGroup == nil {
+		return
+	}
+	if order := s.rbOrders[n.rbGroup]; order != nil {
+		order.work = s.work
+		order.remove(n)
+	}
+}
+
 // len is the number of siblings, opaque ones included.
 func (s *siblings) len() int { return len(s.list) + len(s.opq) }
 

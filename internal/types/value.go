@@ -177,8 +177,9 @@ func sortCallback(t *schema.Type) string {
 // CompareCompatible invokes the first value's callback for values compiled in distinct schema
 // contexts. lyds_compare_single() does not check the second realtype before passing its storage
 // to that callback (libyang v5.8.6 src/tree_data_sorted.c:195-199,212-222). The simple callback
-// reads only the canonical cache. Integer callbacks read the zero-initialized value union, so a
-// string or empty value is a defined zero even though it uses another callback.
+// reads only the canonical cache. Scalar callbacks read the zero-initialized value union, whose
+// integer, boolean, decimal64, string, and empty representations are deterministic. Pointer and
+// type-specific fixed-memory representations are refused unless both callbacks expect them.
 func CompareCompatible(a, b Value) (order int, compatible bool) {
 	if a.typ == nil || b.typ == nil {
 		return 0, false
@@ -201,6 +202,37 @@ func CompareCompatible(a, b Value) (order int, compatible bool) {
 		}
 		return cmp3(x < y, x > y), true
 	}
+	switch a.typ.Base {
+	case schema.Bool:
+		x, okX := scalarUnionStorage(a)
+		y, okY := scalarUnionStorage(b)
+		if !okX || !okY {
+			return 0, false
+		}
+		x8, y8 := int8(x), int8(y) //nolint:gosec // the C callback reads the union's signed low byte
+		return cmp3(x8 < y8, x8 > y8), true
+	case schema.Dec64:
+		x, okX := scalarUnionStorage(a)
+		y, okY := scalarUnionStorage(b)
+		if !okX || !okY {
+			return 0, false
+		}
+		x64, y64 := int64(x), int64(y) //nolint:gosec // the C callback reads the union's int64 field
+		return cmp3(x64 < y64, x64 > y64), true
+	case schema.Bits:
+		if b.typ.Base != schema.Bits || len(a.typ.Bits) == 0 || len(b.typ.Bits) == 0 {
+			return 0, false
+		}
+		// lyplg_type_sort_bits uses val1's declaration width for memcmp. Reading that
+		// many bytes from a shorter foreign bitmap is undefined; otherwise compare the
+		// same full-byte prefix, including val2 bits above val1's last declared bit.
+		firstBytes := uint64(a.typ.Bits[len(a.typ.Bits)-1].Position)/8 + 1
+		secondBytes := uint64(b.typ.Bits[len(b.typ.Bits)-1].Position)/8 + 1
+		if firstBytes > secondBytes {
+			return 0, false
+		}
+		return compareBitsPrefix(a.bits, b.bits, firstBytes), true
+	}
 	if !SortCompatible(a, b) {
 		return 0, false
 	}
@@ -215,15 +247,19 @@ func SortCompatible(a, b Value) bool {
 	return a.typ != nil && b.typ != nil && sortCallback(a.typ) == sortCallback(b.typ)
 }
 
-// integerUnionStorage returns the first eight bytes of struct lyd_value's union when their value
-// is deterministic. String and empty store callbacks memset the whole struct and leave the union
-// untouched. Pointer-backed and plugin values are deliberately refused: their storage is not a
-// portable deterministic integer.
-func integerUnionStorage(v Value) (uint64, bool) {
+// scalarUnionStorage returns the first eight bytes of struct lyd_value's union when deterministic
+// on the canonical linux/amd64 oracle. Every store callback first zeroes the structure. Narrow
+// scalars then write only their low bytes; string and empty leave the whole union zero. Pointer-
+// backed and type-specific fixed-memory values are refused.
+func scalarUnionStorage(v Value) (uint64, bool) {
 	switch v.typ.Base {
 	case schema.Int8, schema.Int16, schema.Int32, schema.Int64,
 		schema.Uint8, schema.Uint16, schema.Uint32, schema.Uint64:
 		return integerLYB(v), true
+	case schema.Bool:
+		return uint64(v.i), true //nolint:gosec // stored boolean is exactly 0 or 1
+	case schema.Dec64:
+		return uint64(v.i), true //nolint:gosec // C union contains the two's-complement int64
 	case schema.String, schema.Empty:
 		return 0, true
 	default:
@@ -235,7 +271,7 @@ func integerUnionStorage(v Value) (uint64, bool) {
 // A narrower second value is not sign-extended before a wider field reads it
 // (libyang v5.8.6 src/plugins_types/integer.c:61-62,99-117,249-294; linux/amd64 oracle).
 func integerSortStorage(first, v Value) (int64, bool) {
-	u, ok := integerUnionStorage(v)
+	u, ok := scalarUnionStorage(v)
 	if !ok {
 		return 0, false
 	}
@@ -254,7 +290,7 @@ func integerSortStorage(first, v Value) (int64, bool) {
 // unsignedSortStorage selects the first value's C union field width
 // (libyang v5.8.6 src/plugins_types/integer.c:472-517).
 func unsignedSortStorage(first, v Value) (uint64, bool) {
-	u, ok := integerUnionStorage(v)
+	u, ok := scalarUnionStorage(v)
 	if !ok {
 		return 0, false
 	}

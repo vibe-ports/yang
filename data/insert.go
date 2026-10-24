@@ -475,7 +475,8 @@ func (t *Tree) crossContextSortedPos(sib *siblings, n *Node, lo int) (int, bool)
 	l := sib.list
 	leader := l[lo]
 	if _, compatible := t.compareSortedCompatible(leader, n); !compatible {
-		return 0, false
+		t.work.hashErr = crossContextStorageError(n)
+		return lo, true
 	}
 	if !sib.rbTree[leader] {
 		hi := lo + 1
@@ -517,9 +518,14 @@ func (t *Tree) crossContextSortedPos(sib *siblings, n *Node, lo int) (int, bool)
 	at, compatible := t.rbInsertPos(sib, n, lo, t.compareSortedCompatible)
 	if !compatible {
 		n.inRB, n.rbGroup = false, nil
-		return 0, false
+		t.work.hashErr = crossContextStorageError(n)
+		return lo, true
 	}
 	return at, true
+}
+
+func crossContextStorageError(n *Node) error {
+	return &opError{"LY_EINVAL", fmt.Sprintf("Invalid arguments - the system-ordered instances of %q in two schema contexts require indeterminate libyang value storage, a diff of such data is not supported (D-0121) (lyd_diff()).", n.Name())}
 }
 
 // buildRBOrder retains rb_insert_node's exact topology. The physical slice remains the in-order
@@ -1274,11 +1280,54 @@ func (t *Tree) insert(parent, n *Node, order insertOrder) error {
 // insertPos may perform when it first builds a sorted run. It observes the run
 // before sorting it, so a failed hash charge cannot reorder visible siblings.
 func (t *Tree) preflightInsertPosition(sib *siblings, n *Node, order insertOrder) error {
+	if err := t.preflightSortedStorage(sib, n, order); err != nil {
+		return err
+	}
 	amount, err := t.insertPositionBound(sib, n, order)
 	if err != nil {
 		return err
 	}
 	return t.reserveHash(amount)
+}
+
+// preflightSortedStorage prevents crossContextSortedPos from silently falling back to schema
+// order when the retained native callback would read indeterminate or invalid foreign storage.
+// Defined scalar and same-representation pairs are handled by CompareCompatible; the
+// remaining native states are undefined and use the existing D-0121 cross-context refusal.
+func (t *Tree) preflightSortedStorage(sib *siblings, n *Node, order insertOrder) error {
+	if order != insertDefault || !sortedSupported(n) || len(sib.list) == 0 {
+		return nil
+	}
+	newCtx := ctxOf(n)
+	foreign := ctxOf(sib.list[0]) != nil && ctxOf(sib.list[0]) != newCtx || len(sib.contexts) > 1
+	if !foreign && sib.list[0].parent != nil && ctxOf(sib.list[0].parent) != nil &&
+		ctxOf(sib.list[0].parent) != newCtx && t.mixedDiff {
+		foreign = true
+	}
+	if !foreign {
+		return nil
+	}
+	lo := t.schemaIndex(sib, n.schema)
+	if lo < 0 {
+		return nil
+	}
+	leader := sib.list[lo]
+	check := []*Node{leader}
+	if sib.rbTree[leader] {
+		group := sib.rbGroups[leader]
+		check = check[:0]
+		for _, candidate := range sib.list {
+			if candidate.inRB && candidate.rbGroup == group {
+				check = append(check, candidate)
+			}
+		}
+	}
+	for _, candidate := range check {
+		if _, compatible := t.compareSortedCompatible(candidate, n); !compatible {
+			return crossContextStorageError(n)
+		}
+	}
+	return nil
 }
 
 // insertPositionBound is preflightInsertPosition's amount: zero when insertPos
@@ -1834,6 +1883,7 @@ func unlink(n *Node) {
 			}
 		}
 	} else if i := indexFromEnd(sib.work, sib.list, n); i >= 0 {
+		sib.removeRBNode(n)
 		if i > 0 && i+1 < len(sib.list) && n.schema != sib.list[i-1].schema &&
 			sib.list[i-1].schema == sib.list[i+1].schema {
 			// Removing a separator joins physical runs, but their RB trees do not merge.
@@ -1996,6 +2046,7 @@ func (t *Tree) unlinkAllDefaults(ns, defaults []*Node) error {
 			groups[sib] = append(groups[sib], n)
 		}
 		if n.schema != nil {
+			sib.removeRBNode(n)
 			sib.dropContext(n)
 			if removedRuns[sib] == nil {
 				removedRuns[sib] = map[*schema.Node]bool{}

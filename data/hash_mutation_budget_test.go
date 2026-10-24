@@ -93,7 +93,7 @@ func snapshotHashBudgetSiblings(s *siblings) string {
 		leaders = append(leaders, fmt.Sprintf("%p=%v", sn, records))
 	}
 	sort.Strings(leaders)
-	var first, rb, unsorted, occurrence, pending []string
+	var first, rb, rbOrders, unsorted, occurrence, pending []string
 	for sn, n := range s.firstRun {
 		first = append(first, fmt.Sprintf("%p=%p", sn, n))
 	}
@@ -102,6 +102,15 @@ func snapshotHashBudgetSiblings(s *siblings) string {
 	}
 	for n, live := range s.unsorted {
 		unsorted = append(unsorted, fmt.Sprintf("%p=%t", n, live))
+	}
+	for group, order := range s.rbOrders {
+		var nodes []string
+		for n, state := range order.nodes {
+			nodes = append(nodes, fmt.Sprintf("%p=%p:%p:%p:%d:%t:%t", n, dirtyOrderDataNode(state.left),
+				dirtyOrderDataNode(state.right), dirtyOrderDataNode(state.parent), state.size, state.red, state.active))
+		}
+		sort.Strings(nodes)
+		rbOrders = append(rbOrders, fmt.Sprintf("%p=%p:%v", group, dirtyOrderDataNode(order.root), nodes))
 	}
 	for sn, entry := range s.opIdx {
 		occurrence = append(occurrence, fmt.Sprintf("%p=%v:%d:%d:%d:%d", sn, entry.list,
@@ -118,11 +127,19 @@ func snapshotHashBudgetSiblings(s *siblings) string {
 	}
 	sort.Strings(first)
 	sort.Strings(rb)
+	sort.Strings(rbOrders)
 	sort.Strings(unsorted)
 	sort.Strings(occurrence)
 	sort.Strings(pending)
-	return fmt.Sprintf("order=%d gen=%d work=%p schemaUnordered=%t list=%v opq=%v ht=%v leaders=%v first=%v rb=%v unsorted=%v occurrences=%v ranks=%v pending=%v",
-		s.exactOrder, s.gen, s.work, s.schemaUnordered, s.list, s.opq, entries, leaders, first, rb, unsorted, occurrence, s.opRanks, pending)
+	return fmt.Sprintf("order=%d gen=%d work=%p schemaUnordered=%t list=%v opq=%v ht=%v leaders=%v first=%v rb=%v rbOrders=%v unsorted=%v occurrences=%v ranks=%v pending=%v",
+		s.exactOrder, s.gen, s.work, s.schemaUnordered, s.list, s.opq, entries, leaders, first, rb, rbOrders, unsorted, occurrence, s.opRanks, pending)
+}
+
+func dirtyOrderDataNode(n *dirtyOrderNode) *Node {
+	if n == nil {
+		return nil
+	}
+	return n.node
 }
 
 func checkFindAgainstLinear(t *testing.T, tr *Tree) {

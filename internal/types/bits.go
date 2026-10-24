@@ -62,6 +62,12 @@ func storeBits(a *storeArgs) (Value, *Diag) {
 // positions 8i..8i+7, bit p%8 of it), over the set bits in position order: the first byte that
 // differs decides, a byte with no set bit being 0.
 func compareBits(a, b []*schema.Bit) int {
+	return compareBitsPrefix(a, b, math.MaxUint32/8+1)
+}
+
+// compareBitsPrefix compares only the first sizeBytes of the little-endian bitmap, matching a
+// foreign lyplg_type_sort_bits call whose memcmp length comes from its first value's realtype.
+func compareBitsPrefix(a, b []*schema.Bit, sizeBytes uint64) int {
 	for i, j := 0, 0; i < len(a) || j < len(b); {
 		var ba, bb byte
 		idx := uint32(math.MaxUint32 / 8)
@@ -70,6 +76,9 @@ func compareBits(a, b []*schema.Bit) int {
 		}
 		if j < len(b) {
 			idx = min(idx, b[j].Position/8)
+		}
+		if uint64(idx) >= sizeBytes {
+			return 0
 		}
 		for ; i < len(a) && a[i].Position/8 == idx; i++ {
 			ba |= 1 << (a[i].Position % 8)

@@ -114,6 +114,118 @@ func TestDiffCrossContextIntegerCallbackReadsZeroedStringStorage(t *testing.T) {
 	}
 }
 
+// TestDiffCrossContextIntegerCallbackReadsBooleanStorage covers scalar storage with a distinct
+// callback. boolean_store writes 1 into the zeroed union, so int8 orders true after -1.
+func TestDiffCrossContextIntegerCallbackReadsBooleanStorage(t *testing.T) {
+	module := func(typ string) string {
+		return `module review-int-boolean { yang-version 1.1; namespace "urn:review-int-boolean"; prefix r;
+  container top { presence "retain"; leaf-list v { type ` + typ + `; } }
+}`
+	}
+	firstSet, secondSet := reviewDiffSet(t, module("int8")), reviewDiffSet(t, module("boolean"))
+	first := parseOnlyXML(t, firstSet, `<top xmlns="urn:review-int-boolean"><v>-1</v></top>`)
+	second := parseOnlyXML(t, secondSet, `<top xmlns="urn:review-int-boolean"><v>true</v></top>`)
+	diff, err := Diff(first, second, DiffOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got, want := names(topOf(diff).Children()), []string{"v=-1", "v=true"}; !slices.Equal(got, want) {
+		t.Fatalf("diff order = %v, want boolean union payload order %v", got, want)
+	}
+}
+
+type crossContextBuiltInCase struct {
+	name, declaration, first, second string
+}
+
+var crossContextBuiltIns = []crossContextBuiltInCase{
+	{"binary", "binary", "AQ==", "Ag=="},
+	{"uint8", "uint8", "1", "2"}, {"uint16", "uint16", "1", "2"},
+	{"uint32", "uint32", "1", "2"}, {"uint64", "uint64", "1", "2"},
+	{"string", "string", "a", "b"},
+	{"bits", "bits { bit a { position 0; } bit b { position 1; } }", "a", "b"},
+	{"boolean", "boolean", "false", "true"},
+	{"decimal64", "decimal64 { fraction-digits 1; }", "1.0", "2.0"},
+	{"empty", "empty", "", ""},
+	{"enumeration", "enumeration { enum a { value 1; } enum b { value 2; } }", "a", "b"},
+	{"identityref", "identityref { base root; }", "id-a", "id-b"},
+	{"instance-identifier", "instance-identifier { require-instance false; }", "/r:top/r:anchor", "/r:top/r:other"},
+	{"leafref", "leafref { path /top/anchor; require-instance false; }", "a", "b"},
+	{"union", "union { type int8; type string; }", "-1", "2"},
+	{"int8", "int8", "-1", "2"}, {"int16", "int16", "-1", "2"},
+	{"int32", "int32", "-1", "2"}, {"int64", "int64", "-1", "2"},
+}
+
+func crossContextBuiltInSupported(first, second string) bool {
+	simple := first == "string" || first == "empty" || first == "instance-identifier" || first == "leafref"
+	if simple {
+		return true
+	}
+	scalar := func(name string) bool {
+		switch name {
+		case "int8", "int16", "int32", "int64", "uint8", "uint16", "uint32", "uint64",
+			"boolean", "decimal64", "string", "empty", "leafref":
+			return true
+		}
+		return false
+	}
+	if scalar(first) {
+		return scalar(second)
+	}
+	return first == second
+}
+
+func crossContextBuiltInModule(tc crossContextBuiltInCase) string {
+	typeStmt := "type " + tc.declaration + ";"
+	if strings.Contains(tc.declaration, "{") {
+		typeStmt = "type " + tc.declaration
+	}
+	return `module review-built-in-matrix { yang-version 1.1;
+  namespace "urn:review-built-in-matrix"; prefix r;
+  identity root; identity id-a { base root; } identity id-b { base root; }
+  container top { presence "retain"; leaf anchor { type string; } leaf other { type string; }
+    leaf-list v { ` + typeStmt + ` }
+  }
+}`
+}
+
+func crossContextBuiltInXML(value string) string {
+	v := "<v>" + value + "</v>"
+	if value == "" {
+		v = "<v/>"
+	}
+	return `<top xmlns="urn:review-built-in-matrix" xmlns:r="urn:review-built-in-matrix"><anchor>a</anchor><other>b</other>` + v + `</top>`
+}
+
+// TestDiffCrossContextBuiltInTypeMatrix makes every built-in callback/storage pair explicit.
+// Defined storage must diff; incompatible pointer and fixed-buffer reinterpretations must return
+// D-0121 instead of quietly using schema order.
+func TestDiffCrossContextBuiltInTypeMatrix(t *testing.T) {
+	sets := make(map[string]*schema.Set, len(crossContextBuiltIns))
+	for _, tc := range crossContextBuiltIns {
+		sets[tc.name] = reviewDiffSet(t, crossContextBuiltInModule(tc))
+	}
+	for _, firstType := range crossContextBuiltIns {
+		for _, secondType := range crossContextBuiltIns {
+			name := firstType.name + "-" + secondType.name
+			t.Run(name, func(t *testing.T) {
+				first := parseOnlyXML(t, sets[firstType.name], crossContextBuiltInXML(firstType.first))
+				second := parseOnlyXML(t, sets[secondType.name], crossContextBuiltInXML(secondType.second))
+				diff, err := Diff(first, second, DiffOptions{})
+				if crossContextBuiltInSupported(firstType.name, secondType.name) {
+					if err != nil {
+						t.Fatalf("defined storage pair refused: %v", err)
+					}
+					return
+				}
+				if diff != nil || err == nil || !strings.Contains(err.Error(), "D-0121") {
+					t.Fatalf("indeterminate storage pair Diff = (%v, %v), want nil D-0121 refusal", diff, err)
+				}
+			})
+		}
+	}
+}
+
 // TestDiffCrossContextSchemaLookupScaling verifies that independently compiled snapshots build
 // one lineage index per input sibling set instead of rescanning N siblings for every leaf. The
 // lowered quota also proves that the public operation's fixed ceiling returns ErrBudget.
@@ -221,4 +333,168 @@ func TestDiffResultDoesNotRetainInputs(t *testing.T) {
 		t.Fatal("returned diff retains one or both input trees")
 	}
 	runtime.KeepAlive(diff)
+}
+
+func retainedRBNodeCount(root *dirtyOrderNode) int {
+	if root == nil {
+		return 0
+	}
+	return 1 + retainedRBNodeCount(root.left) + retainedRBNodeCount(root.right)
+}
+
+func checkRetainedRBTopology(t *testing.T, order *dirtyOrder, want int) {
+	t.Helper()
+	if order == nil {
+		if want != 0 {
+			t.Fatalf("nil retained topology, want %d nodes", want)
+		}
+		return
+	}
+	if order.root != nil && order.root.red {
+		t.Error("retained RB root is red")
+	}
+	seen := make(map[*dirtyOrderNode]bool, want)
+	var walk func(*dirtyOrderNode, *dirtyOrderNode) (int, int)
+	walk = func(n, parent *dirtyOrderNode) (count, blackHeight int) {
+		if n == nil {
+			return 0, 1
+		}
+		if seen[n] {
+			t.Fatal("cycle in retained RB topology")
+		}
+		seen[n] = true
+		if n.parent != parent || !n.active || order.nodes[n.node] != n {
+			t.Errorf("invalid retained RB node links for %p", n.node)
+		}
+		if n.red && (dirtyRed(n.left) || dirtyRed(n.right)) {
+			t.Errorf("red retained RB node %p has a red child", n.node)
+		}
+		leftCount, leftBlack := walk(n.left, n)
+		rightCount, rightBlack := walk(n.right, n)
+		if leftBlack != rightBlack {
+			t.Errorf("retained RB node %p black heights %d and %d differ", n.node, leftBlack, rightBlack)
+		}
+		count = leftCount + rightCount + 1
+		if n.size != count {
+			t.Errorf("retained RB node %p size=%d, want %d", n.node, n.size, count)
+		}
+		return count, leftBlack + btoi(!n.red)
+	}
+	count, _ := walk(order.root, nil)
+	if count != want || len(order.nodes) != want {
+		t.Fatalf("retained topology reachable=%d mapped=%d, want %d", count, len(order.nodes), want)
+	}
+}
+
+// TestSortedSetValueRetainedRBTopologyBounded covers lyd_change_term's unlink/reinsert cycle.
+// rb_remove_node must remove the old topology entry instead of leaving one tombstone per value.
+func TestSortedSetValueRetainedRBTopologyBounded(t *testing.T) {
+	set := reviewDiffSet(t, `module review-rb-retention { yang-version 1.1;
+  namespace "urn:review-rb-retention"; prefix r; leaf-list v { type uint32; }
+}`)
+	tr := newTree(set)
+	for _, value := range []string{"0", "1"} {
+		if _, err := tr.NewTerm(nil, "review-rb-retention:v", value, NewOptions{}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	member := tr.top.list[1]
+	for i := range 256 {
+		if changed, err := member.SetValue(fmt.Sprint(i + 2)); err != nil || !changed {
+			t.Fatalf("SetValue %d: changed=%t error=%v", i, changed, err)
+		}
+	}
+	group := tr.top.rbGroups[tr.top.list[0]]
+	order := tr.top.rbOrders[group]
+	checkRetainedRBTopology(t, order, 2)
+	if retainedRBNodeCount(order.root) != 2 {
+		t.Fatalf("retained topology: order=%p mapped=%d reachable=%d, want one entry per 2 live nodes",
+			order, len(order.nodes), retainedRBNodeCount(order.root))
+	}
+}
+
+func btoi(v bool) int {
+	if v {
+		return 1
+	}
+	return 0
+}
+
+// TestRetainedRBRemoveRebalances removes every position of a nontrivial topology and checks the
+// rb_remove_color invariants after each unlink.
+func TestRetainedRBRemoveRebalances(t *testing.T) {
+	set := reviewDiffSet(t, `module review-rb-delete { yang-version 1.1;
+  namespace "urn:review-rb-delete"; prefix r; leaf-list v { type uint32; }
+}`)
+	tr := newTree(set)
+	const count = 64
+	nodes := make([]*Node, count)
+	for i := range count {
+		n, err := tr.NewTerm(nil, "review-rb-delete:v", fmt.Sprint(i), NewOptions{})
+		if err != nil {
+			t.Fatal(err)
+		}
+		nodes[i] = n
+	}
+	group := tr.top.rbGroups[tr.top.list[0]]
+	order := tr.top.rbOrders[group]
+	checkRetainedRBTopology(t, order, count)
+	for removed := range count - 1 {
+		i := (removed * 17) % count
+		for nodes[i] == nil {
+			i = (i + 1) % count
+		}
+		if err := nodes[i].Remove(); err != nil {
+			t.Fatal(err)
+		}
+		nodes[i] = nil
+		checkRetainedRBTopology(t, order, count-removed-1)
+	}
+}
+
+func removedSortedNodeWeak(t *testing.T, bulk bool) (*Tree, weak.Pointer[Node]) {
+	t.Helper()
+	set := reviewDiffSet(t, `module review-rb-collection { yang-version 1.1;
+  namespace "urn:review-rb-collection"; prefix r; leaf-list v { type uint32; }
+}`)
+	tr := newTree(set)
+	for _, value := range []string{"0", "1"} {
+		if _, err := tr.NewTerm(nil, "review-rb-collection:v", value, NewOptions{}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	victim := tr.top.list[1]
+	observed := weak.Make(victim)
+	if bulk {
+		if err := tr.unlinkAll([]*Node{victim}); err != nil {
+			t.Fatal(err)
+		}
+	} else if err := victim.Remove(); err != nil {
+		t.Fatal(err)
+	}
+	return tr, observed
+}
+
+// TestSortedRemoveReleasesRBNode checks both lyds_unlink callers: single-node removal and the
+// validation/free batch path. A surviving instance keeps the group live but not the removed node.
+func TestSortedRemoveReleasesRBNode(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		bulk bool
+	}{{"remove", false}, {"unlink-all", true}} {
+		t.Run(tc.name, func(t *testing.T) {
+			tr, observed := removedSortedNodeWeak(t, tc.bulk)
+			for range 20 {
+				if observed.Value() == nil {
+					break
+				}
+				runtime.GC()
+				runtime.Gosched()
+			}
+			if observed.Value() != nil {
+				t.Fatal("retained RB topology keeps the removed node alive")
+			}
+			runtime.KeepAlive(tr)
+		})
+	}
 }
