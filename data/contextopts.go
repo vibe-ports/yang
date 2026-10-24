@@ -4,6 +4,7 @@
 package data
 
 import (
+	"errors"
 	"strings"
 
 	"github.com/vibe-ports/yang/internal/contextopts"
@@ -61,6 +62,13 @@ func init() {
 		}
 		t.diffLogs = nil
 		return out
+	}
+	contextopts.ErrorSchema = func(err error) *snap.Schema {
+		var ve *ValidationError
+		if !errors.As(err, &ve) || ve.set == nil {
+			return nil
+		}
+		return snap.New(ve.set)
 	}
 	contextopts.CheckDupContexts = func(node, parent any) error {
 		n, _ := node.(*Node)

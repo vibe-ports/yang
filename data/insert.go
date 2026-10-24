@@ -39,6 +39,16 @@ type opError struct {
 
 func (e *opError) Error() string { return e.Msg }
 
+// loggedContextError retains the context selected by a native LOGERR(ctx, ...). The public Go
+// error still contains the diagnostic; the conformance harness also needs its owner because the
+// C oracle collects context logs separately.
+type loggedContextError struct {
+	error
+	set *schema.Set
+}
+
+func (e *loggedContextError) Unwrap() error { return e.error }
+
 // schemaRank is the position of s among its schema siblings in lys_getnext order: the data
 // children of its data parent (choices and cases entered, the input or output of an operation),
 // or the top-level nodes of its module.
@@ -117,6 +127,33 @@ func (t *Tree) compareSorted(a, b *Node) int {
 		return types.Compare(a.value, b.value)
 	}
 	return compareKeyRuns(&t.work, a.kids.list, b.kids.list)
+}
+
+// compareSortedCompatible compares equivalent sorted instances whose schema nodes came from
+// distinct contexts. libyang retains the first run's RB comparator and calls it for the foreign
+// value (tree_data_sorted.c:195-199,212-222).
+func (t *Tree) compareSortedCompatible(a, b *Node) (int, bool) {
+	if a.schema == nil || b.schema == nil || a.schema.Kind != b.schema.Kind {
+		return 0, false
+	}
+	if a.schema.Kind == schema.LeafList {
+		return types.CompareCompatible(a.value, b.value)
+	}
+	if a.schema.Kind != schema.List {
+		return 0, false
+	}
+	for i := range min(len(a.kids.list), len(b.kids.list)) {
+		t.work.Add(1)
+		ka, kb := a.kids.list[i], b.kids.list[i]
+		if !ka.isKey() || !kb.isKey() {
+			break
+		}
+		c, compatible := types.CompareCompatible(ka.value, kb.value)
+		if !compatible || c != 0 {
+			return c, compatible
+		}
+	}
+	return 0, true
 }
 
 // compareKeyRuns is rb_compare_lists (tree_data_sorted.c:235-270): compare every
@@ -219,10 +256,15 @@ func (t *Tree) insertPos(sib *siblings, n *Node, order insertOrder) int {
 	if len(l) == 0 {
 		return 0
 	}
-	if order != insertLast && !sortedSupported(n) && n.schema.DataParent() != nil {
+	if order != insertLast {
 		newCtx, firstCtx := ctxOf(n), ctxOf(l[0])
-		if newCtx != nil && (firstCtx != nil && firstCtx != newCtx || len(sib.contexts) > 1) {
-			if at, ok := t.crossContextInsertPos(sib, n, newCtx); ok {
+		mixedHere := firstCtx != nil && firstCtx != newCtx || len(sib.contexts) > 1
+		foreignParent := l[0].parent != nil && ctxOf(l[0].parent) != nil && ctxOf(l[0].parent) != newCtx
+		// A top-level insert has no schema parent whose children lys_getnext can restart from;
+		// keep the ordinary module ordering there. The special same-child/different-parent state
+		// occurs in a mixed-context diff before the destination child list itself becomes mixed.
+		if newCtx != nil && n.schema.DataParent() != nil && (mixedHere || t.mixedDiff && foreignParent) {
+			if at, ok := t.crossContextInsertPos(sib, n, newCtx, order, foreignParent); ok {
 				return at
 			}
 		}
@@ -316,13 +358,13 @@ func (t *Tree) insertPos(sib *siblings, n *Node, order insertOrder) int {
 
 // crossContextInsertPos is lyd_insert_get_next_anchor for a child level retaining schemas from
 // several contexts. With no children table libyang walks the new node's schema context and stops
-// at the first foreign-context sibling. Once the table exists it instead walks the first
-// sibling's parent schema. Passing the new context's schema as the previous node of that foreign
-// schema tree restarts lys_getnext at its first child; lyd_find_sibling_schema can then return the
-// first same-named instance, making that instance the anchor.
-func (t *Tree) crossContextInsertPos(sib *siblings, n *Node, newCtx *schema.Set) (int, bool) {
+// at the first foreign-context sibling. Once the table exists, tree_data.c:522-535 calls
+// lys_getnext(new_node->schema, local_parent, ...). tree_schema.c:301-332 follows the supplied
+// foreign node's next siblings first and only then restarts at the local parent's first child;
+// lyd_find_sibling_schema makes the first matching instance the anchor.
+func (t *Tree) crossContextInsertPos(sib *siblings, n *Node, newCtx *schema.Set, order insertOrder, force bool) (int, bool) {
 	l := sib.list
-	foreign := ctxOf(l[0]) != nil && ctxOf(l[0]) != newCtx
+	foreign := force || ctxOf(l[0]) != nil && ctxOf(l[0]) != newCtx
 	if !foreign {
 		// A nil context record can occur transiently for ownerless schemas. Only a known distinct
 		// retained context selects libyang's cross-context anchor path.
@@ -336,6 +378,18 @@ func (t *Tree) crossContextInsertPos(sib *siblings, n *Node, newCtx *schema.Set)
 	if !foreign {
 		return 0, false
 	}
+	if order == insertDefault && sortedSupported(n) {
+		if lo := t.schemaIndex(sib, n.schema); lo >= 0 {
+			if at, compatible := t.crossContextSortedPos(sib, n, lo); compatible {
+				return at, true
+			}
+		}
+	}
+	if order != insertDefault && sortedSupported(n) {
+		if lo := t.schemaIndex(sib, n.schema); lo >= 0 && sib.rbTree[l[lo]] {
+			markUnsorted(sib, l[lo])
+		}
+	}
 
 	var opts schema.GetNextOpt
 	if n.schema.InOutput() {
@@ -343,17 +397,33 @@ func (t *Tree) crossContextInsertPos(sib *siblings, n *Node, newCtx *schema.Set)
 	}
 	if ctxOf(l[0]) == newCtx && l[0].parent != nil && l[0].parent.schema != nil && sib.ht != nil {
 		parent := l[0].parent.schema
-		found := ctxOf(l[0].parent) != newCtx
-		for sn := range schema.GetNext(parent, parent.Module.Top, opts) {
-			if !found {
-				if sn == n.schema {
-					found = true
+		probe := func(seq iter.Seq[*schema.Node], after *schema.Node) (int, bool) {
+			found := after == nil
+			for sn := range seq {
+				if !found {
+					found = sn == after
+					continue
 				}
-				continue
+				if leader := t.schemaLookup(sib, sn); leader != nil {
+					return t.indexFromEnd(l, leader), true
+				}
 			}
-			if leader := t.schemaLookup(sib, sn); leader != nil {
-				return t.indexFromEnd(l, leader), true
+			return 0, false
+		}
+		if ctxOf(l[0].parent) != newCtx {
+			// lys_getnext(new_node->schema, local_parent, ...) first follows the foreign
+			// schema's remaining siblings. Only after that list ends does it restart at the
+			// local parent's first child (libyang v5.8.6 src/tree_schema.c:301-332 and
+			// src/tree_data.c:522-535). An anchor
+			// in the foreign suffix therefore wins over a same-named child in the restart.
+			if at, ok := probe(schema.GetNext(n.schema.DataParent(), n.schema.Module.Top, opts), n.schema); ok {
+				return at, true
 			}
+			if at, ok := probe(schema.GetNext(parent, parent.Module.Top, opts), nil); ok {
+				return at, true
+			}
+		} else if at, ok := probe(schema.GetNext(parent, parent.Module.Top, opts), n.schema); ok {
+			return at, true
 		}
 		return len(l), true
 	}
@@ -389,6 +459,73 @@ func (t *Tree) crossContextInsertPos(sib *siblings, n *Node, newCtx *schema.Set)
 		}
 	}
 	return len(l), true
+}
+
+// crossContextSortedPos is lyds_insert after lyd_find_sibling_schema matched an equivalent run
+// from another context. The first sorted insertion builds an RB tree only from the leader's
+// pointer-identical physical run; later foreign instances join that same tree
+// (libyang v5.8.6 src/tree_data_sorted.c:1013-1073,1213-1252).
+func (t *Tree) crossContextSortedPos(sib *siblings, n *Node, lo int) (int, bool) {
+	l := sib.list
+	leader := l[lo]
+	if _, compatible := t.compareSortedCompatible(leader, n); !compatible {
+		return 0, false
+	}
+	if !sib.rbTree[leader] {
+		hi := lo + 1
+		for hi < len(l) && l[hi].schema == leader.schema {
+			t.work.Add(1)
+			hi++
+		}
+		oldLeader := leader
+		t.applyRunReorderHash(sib, l[lo:hi], reorderExact|reorderFirst)
+		slices.SortStableFunc(l[lo:hi], func(a, b *Node) int {
+			t.work.Add(1)
+			return t.compareSorted(a, b)
+		})
+		sib.transferRun(oldLeader, l[lo])
+		if sib.firstRun[leader.schema] == oldLeader {
+			sib.firstRun[leader.schema] = l[lo]
+		}
+		for _, a := range l[lo:hi] {
+			a.inRB = true
+		}
+		if sib.opIdx != nil {
+			if sib.opIdx[leader.schema].gaps == 0 {
+				sib.opRebuild(t, leader.schema, l[lo:hi])
+			} else {
+				sib.opBuild(t)
+			}
+		}
+		markRB(sib, l[lo])
+		leader = l[lo]
+	}
+	group := sib.rbGroups[leader]
+	if group == nil {
+		group = leader.rbGroup
+	}
+	at := lo
+	for i := lo; i < len(l); i++ {
+		t.work.Add(1)
+		a := l[i]
+		if !schemaLookupMatch(a.schema, leader.schema, sib.ht != nil) {
+			break
+		}
+		if !a.inRB || a.rbGroup != group {
+			continue
+		}
+		c, compatible := t.compareSortedCompatible(a, n)
+		if !compatible {
+			return 0, false
+		}
+		if c > 0 {
+			break
+		}
+		at = i + 1
+	}
+	n.inRB = true
+	n.rbGroup = group
+	return at, true
 }
 
 // opRebuild replaces one index entry after its contiguous sibling run was sorted.

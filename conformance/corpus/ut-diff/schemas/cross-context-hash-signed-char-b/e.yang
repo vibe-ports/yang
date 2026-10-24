@@ -1,0 +1,15 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Hand-written conformance fixture (this repo).
+module e {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:cross-context-hash-signed-char";
+  prefix e;
+
+  leaf-list v {
+    config false;
+    type enumeration {
+      enum neg { value -1; }
+      enum same { value 1012838760; }
+    }
+  }
+}

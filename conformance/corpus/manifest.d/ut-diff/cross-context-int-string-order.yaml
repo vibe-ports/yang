@@ -1,0 +1,21 @@
+fixtures:
+  - id: ut-diff/cross-context-int-string-order
+    dir: ut-diff
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    # Ordering rests on libyang v5.8.6 src/plugins_types/integer.c:249-288,653-666 and
+    # src/plugins_types/string.c:152-168: the contexts use different sort callbacks.
+    rfc: []   # libyang cross-context typed-value sorting mechanics, no RFC
+    areas: [diff]
+    request:
+      op: sequence
+      searchdirs: [schemas/cross-context-int-string-order-a]
+      modules: [{name: diff-cross-context-int-string-order}]
+      steps:
+        - {do: parse, format: xml, data_type: data, parse_only: true, data: '<top xmlns="urn:vibe-ports:yang:diff-cross-context-int-string-order"><v>1</v></top>'}
+        - do: diff
+          format: xml
+          data_type: data
+          parse_only: true
+          data: '<top xmlns="urn:vibe-ports:yang:diff-cross-context-int-string-order"><v>2</v></top>'
+          target: {searchdirs: [schemas/cross-context-int-string-order-b], modules: [{name: diff-cross-context-int-string-order}]}
+    golden: golden/cross-context-int-string-order.json

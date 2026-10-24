@@ -1,0 +1,27 @@
+fixtures:
+  - id: ut-diff/cross-context-apply-nested
+    dir: ut-diff
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/src/diff.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}
+    rfc: []   # libyang diff/apply API: foreign singleton schemas and repeated ancestors
+    areas: [diff]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      modules: [{name: diff-cross-context}]
+      steps:
+        - {do: parse, format: xml, data_type: data, parse_only: true, data: '<top xmlns="urn:vibe-ports:yang:diff-cross-context"><x><x><a>old</a><b>same</b></x></x></top>'}
+        - do: diff
+          format: xml
+          data_type: data
+          parse_only: true
+          data: '<top xmlns="urn:vibe-ports:yang:diff-cross-context"><x><x><a>new</a><b>changed</b></x></x></top>'
+          target: {searchdirs: [schemas], modules: [{name: diff-cross-context}]}
+        - {do: diff_apply}
+        - do: diff
+          format: xml
+          data_type: data
+          parse_only: true
+          data: '<top xmlns="urn:vibe-ports:yang:diff-cross-context"><x><x><a>new</a><b>changed</b></x></x></top>'
+          target: {searchdirs: [schemas], modules: [{name: diff-cross-context}]}
+        - {do: dump}
+    golden: golden/cross-context-apply-nested.json

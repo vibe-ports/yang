@@ -1,0 +1,21 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Hand-written conformance fixture (this repo).
+module diff-cross-context-create {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:diff-cross-context-create";
+  prefix dccc;
+
+  container top {
+    presence "retain an explicitly empty top";
+
+    list keyless {
+      config false;
+      leaf value { type string; }
+    }
+
+    leaf-list state-value {
+      config false;
+      type string;
+    }
+  }
+}

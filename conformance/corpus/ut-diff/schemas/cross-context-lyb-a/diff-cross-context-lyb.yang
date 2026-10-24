@@ -1,0 +1,30 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Hand-written conformance fixture (this repo).
+module diff-cross-context-lyb {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:diff-cross-context-lyb";
+  prefix dccl;
+
+  import ietf-inet-types { prefix inet; }
+
+  container top {
+    leaf-list address { type inet:ipv4-address; }
+    leaf-list enum-value {
+      type enumeration {
+        enum same { value 1; }
+        enum high { value 2; }
+      }
+    }
+    leaf-list enum-negative {
+      type enumeration {
+        enum same { value 1; }
+        enum other { value 2; }
+      }
+    }
+    leaf-list bits-value {
+      type bits {
+        bit same { position 0; }
+      }
+    }
+  }
+}

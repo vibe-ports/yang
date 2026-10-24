@@ -1,0 +1,21 @@
+fixtures:
+  - id: ut-diff/cross-context-foreign-creates-after-deletes
+    dir: ut-diff
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    # Expected ordering rests on libyang v5.8.6 src/diff.c:332-376,383-527,1225-1375 and
+    # src/tree_data.c:503-592,712-730,778-835 (foreign-context insertion takes the non-hash path).
+    rfc: []   # libyang data diff construction and insertion order, no RFC
+    areas: [diff]
+    request:
+      op: sequence
+      searchdirs: [schemas/cross-context-foreign-creates-after-deletes-a]
+      modules: [{name: diff-cross-context-foreign-creates}]
+      steps:
+        - {do: parse, format: xml, data_type: data, parse_only: true, data: '<top xmlns="urn:vibe-ports:yang:diff-cross-context-foreign-creates"><a>A</a><b>B</b></top>'}
+        - do: diff
+          format: xml
+          data_type: data
+          parse_only: true
+          data: '<top xmlns="urn:vibe-ports:yang:diff-cross-context-foreign-creates"><c>C</c><d>D</d></top>'
+          target: {searchdirs: [schemas/cross-context-foreign-creates-after-deletes-b], modules: [{name: diff-cross-context-foreign-creates}]}
+    golden: golden/cross-context-foreign-creates-after-deletes.json

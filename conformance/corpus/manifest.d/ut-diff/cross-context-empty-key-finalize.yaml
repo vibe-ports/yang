@@ -1,0 +1,19 @@
+fixtures:
+  - id: ut-diff/cross-context-empty-key-finalize
+    dir: ut-diff
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # src/tree_data_hash.c:43-66 hashes every list key; src/hash_table.c:52-64 finalizes for each zero-length key, so one empty key and two empty keys have different hashes and do not match at src/tree_data.c:1714-1717
+    rfc: []   # libyang list-instance hashing across non-identical contexts, no RFC
+    areas: [diff]
+    request:
+      op: sequence
+      searchdirs: [schemas/cross-context-empty-key-a]
+      modules: [{name: diff-cross-context-empty-key}]
+      steps:
+        - {do: parse, format: xml, data_type: data, parse_only: true, data: '<l xmlns="urn:vibe-ports:yang:diff-cross-context-empty-key"><a/></l>'}
+        - do: diff
+          format: xml
+          data_type: data
+          parse_only: true
+          data: '<l xmlns="urn:vibe-ports:yang:diff-cross-context-empty-key"><a/><b/></l>'
+          target: {searchdirs: [schemas/cross-context-empty-key-b], modules: [{name: diff-cross-context-empty-key}]}
+    golden: golden/cross-context-empty-key-finalize.json

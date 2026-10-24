@@ -64,6 +64,12 @@ func DiffTree(first, second *Node, o DiffOptions) (*Tree, error) {
 
 // diffNodes is lyd_diff; ft and st are the trees of first and second when known.
 func diffNodes(first, second *Node, o DiffOptions, nosiblings bool, ft, st *Tree) (*Tree, error) {
+	return diffNodesLookupLimit(first, second, o, nosiblings, ft, st, 0)
+}
+
+// diffNodesLookupLimit is diffNodes with a test seam for the fixed internal cross-context lookup
+// ceiling. Production callers pass zero and use defaultMaxDiffLookupWork.
+func diffNodesLookupLimit(first, second *Node, o DiffOptions, nosiblings bool, ft, st *Tree, lookupLimit uint64) (*Tree, error) {
 	fs, ss := ctxOf(first), ctxOf(second)
 	var set *schema.Set
 	switch {
@@ -104,9 +110,21 @@ func diffNodes(first, second *Node, o DiffOptions, nosiblings bool, ft, st *Tree
 		return nil, nil
 	}
 	d := newTree(set)
+	d.work.lookupLimit = lookupLimit
+	if fs == nil && ft != nil {
+		fs = ft.set
+	}
+	if ss == nil && st != nil {
+		ss = st.set
+	}
+	d.mixedDiff = fs != nil && ss != nil && fs != ss
 	defer d.work.beginHashWork()()
+	defer d.work.beginLookupWork()()
 	if err := d.diffSiblingsR(first, second, o, nosiblings); err != nil {
 		return nil, lg.done(err)
+	}
+	if d.work.lookupErr != nil {
+		return nil, d.work.lookupErr
 	}
 	if d.work.hashErr != nil {
 		return nil, d.work.hashErr
@@ -287,8 +305,9 @@ func (t *Tree) findMatch(sib *siblings, target *Node, defaults bool, cache *dupC
 type userord struct {
 	schema *schema.Node
 	pos    int
-	inst   []*Node // allocated slots; slots at or after count model libyang's out-of-count writes
+	inst   []*Node // allocated slots; slots at or after count model native out-of-count writes
 	count  int
+	unsafe bool // a previous native out-of-count transition makes the next access undefined
 }
 
 // userordGet is lyd_diff_userord_get: the entry of sn, created with the instances of first's
@@ -319,14 +338,28 @@ func (t *Tree) userordAttrs(first, second *Node, o DiffOptions, u *userord) (dif
 	var a diffAttrs
 	sn := u.schema
 	firstPos := 0
+	wasUnsafe := u.unsafe
 	if first != nil {
 		firstPos = slices.Index(u.inst[:u.count], first)
 		if firstPos < 0 {
-			// lyd_diff_userord_attrs uses the array count after its release-build assertion.
+			// LY_ARRAY_FOR leaves first_pos at the logical count after the release assertion.
 			firstPos = u.count
+			u.unsafe = true
 		}
 	}
 	secondPos := u.pos
+	// Entries are keyed by schema pointer (diff.c:546-547). Across contexts the entry used in
+	// the second pass can therefore omit first or end before second_pos; native
+	// lyd_diff_userord_attrs then asserts or accesses outside the array. Refuse only those native
+	// undefined states before reading them (D-0121; libyang v5.8.6 src/diff.c:700-705,827-849).
+	refuse := func() error {
+		return &opError{"LY_EINVAL", fmt.Sprintf("Invalid arguments - the user-ordered instances of %q "+
+			"in two schema contexts leave libyang's diff bookkeeping out of range, a diff of such data is not "+
+			"supported (D-0121) (lyd_diff()).", sn.Name)}
+	}
+	if wasUnsafe && second != nil {
+		return 0, a, refuse()
+	}
 	u.pos++
 	var op diffOp
 	switch {
@@ -342,6 +375,13 @@ func (t *Tree) userordAttrs(first, second *Node, o DiffOptions, u *userord) (dif
 		op = diffNone
 	default:
 		return 0, a, errNoChange
+	}
+	if op == diffReplace && firstPos < secondPos {
+		// The release build reaches the write with an underflowed move range. Preserve the
+		// observed slots for this last operation, but refuse before a later operation consumes
+		// that undefined state. This keeps defined sweeps 06 and 37 compatible while refusing
+		// the crashing three-operation shapes 04, 20 and 22.
+		u.unsafe = true
 	}
 	str := func(s string) *string { return &s }
 	pred := func(pos int) *string { // the anchor: the instance before pos, "" for the first
@@ -395,9 +435,9 @@ func (t *Tree) userordAttrs(first, second *Node, o DiffOptions, u *userord) (dif
 	}
 	switch op { // the change applied to the virtual order
 	case diffCreate:
-		// libyang increments the logical count by one but writes at second_pos even when it
-		// is beyond that new end (diff.c:827-849). Preserve those slots explicitly so the
-		// following operation observes the same release-build state without unsafe memory.
+		if secondPos > u.count {
+			u.unsafe = true
+		}
 		ensure(max(u.count+1, secondPos+1))
 		if secondPos < u.count {
 			copy(u.inst[secondPos+1:u.count+1], u.inst[secondPos:u.count])
@@ -408,6 +448,8 @@ func (t *Tree) userordAttrs(first, second *Node, o DiffOptions, u *userord) (dif
 		if firstPos < u.count {
 			copy(u.inst[firstPos:u.count-1], u.inst[firstPos+1:u.count])
 			u.count--
+		} else {
+			u.unsafe = true
 		}
 	case diffReplace:
 		ensure(max(u.count+1, secondPos+1))
@@ -603,6 +645,15 @@ func (t *Tree) diffSiblingsR(first, second *Node, o DiffOptions, nosiblings bool
 	var items []*userord
 	firstCache, secondCache := &dupCache{}, &dupCache{}
 	fs, ss := sibsOf(first), sibsOf(second)
+	if t.foreignSchemaInput == nil {
+		t.foreignSchemaInput = make(map[*siblings]bool)
+	}
+	if fs != nil {
+		t.foreignSchemaInput[fs] = true
+	}
+	if ss != nil {
+		t.foreignSchemaInput[ss] = true
+	}
 	for _, f := range fromNode(first) {
 		if f.schema == nil {
 			continue
@@ -611,6 +662,9 @@ func (t *Tree) diffSiblingsR(first, second *Node, o DiffOptions, nosiblings bool
 			continue // default nodes skipped
 		}
 		m := t.findMatch(ss, f, o.Defaults, secondCache)
+		if t.work.lookupErr != nil {
+			return t.work.lookupErr
+		}
 		var dn *Node
 		if isUserOrdered(f.schema) {
 			u := t.userordGet(f, f.schema, &items)
@@ -667,6 +721,9 @@ func (t *Tree) diffSiblingsR(first, second *Node, o DiffOptions, nosiblings bool
 			continue
 		}
 		m := t.findMatch(fs, s, o.Defaults, firstCache)
+		if t.work.lookupErr != nil {
+			return t.work.lookupErr
+		}
 		var dn *Node
 		switch {
 		case isUserOrdered(s.schema):

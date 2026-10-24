@@ -22,6 +22,7 @@ type ValidationError struct {
 	Diags []yang.Diagnostic
 	err   error  // yang.ErrBudget after a libyang nesting limit, or the XML lexer's silent error
 	rc    string // the call's LY_ERR when it is not that of the last error logged
+	set   *schema.Set
 }
 
 // Unwrap returns yang.ErrBudget when a nesting limit of the input stopped the parse, or the XML
@@ -224,7 +225,7 @@ func (e rcError) Error() string { return "data: " + string(e) }
 func (l *logger) result() error {
 	for _, d := range l.diags {
 		if failing(d) {
-			return &ValidationError{Diags: l.diags}
+			return &ValidationError{Diags: l.diags, set: l.set}
 		}
 	}
 	return nil

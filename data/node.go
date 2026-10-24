@@ -100,6 +100,14 @@ type Tree struct {
 	// Diagnostics from lyd_find_meta calls during a diff merge retain their
 	// emitting context even when a later wrapper reports the operation error.
 	diffLogs []diffLogEntry
+	// mixedDiff makes insertion follow libyang's cross-context scans from the first copied node,
+	// before the destination itself contains nodes from both input contexts.
+	mixedDiff bool
+	// foreignSchema indexes sibling schema lineages only while a cross-context diff is running.
+	// The inputs are immutable for that operation, so the cache needs no mutation invalidation.
+	foreignSchema      map[foreignSchemaCacheKey]map[string]int
+	foreignSchemaInput map[*siblings]bool
+	schemaLineage      map[*schema.Node]string
 }
 
 // workCounter counts the work of a tree for tests (work, not time): comparisons made by
@@ -109,16 +117,20 @@ type Tree struct {
 // private counter rather than changing the queried tree's quota.
 type workCounter struct {
 	atomic.Int64
-	visits     bool                      // count sibling/link-record visits too (tests only; set before measured calls)
-	shifts     bool                      // count the sibling slots moved by insertions too (tests only)
-	hashUsed   uint64                    // cumulative reserved hash transitions in the current mutation
-	hashLimit  uint64                    // zero takes the internal default; tests may lower it
-	hashErr    error                     // the first hash budget error, propagated at the operation boundary
-	hashDepth  int                       // nested mutation helpers share their enclosing operation's quota
-	hashTrace  *[]uint64                 // optional charge/check thresholds for exhaustive budget tests
-	hashNames  map[*schema.Node]uint32   // immutable module/name prefix, once per schema node in this tree
-	indexNames map[*schema.Node][32]byte // immutable positional-index name digest for hand-built schemas
-	journal    *hashTransaction          // the running operation's undo journal (beginHashTransaction)
+	visits      bool                      // count sibling/link-record visits too (tests only; set before measured calls)
+	shifts      bool                      // count the sibling slots moved by insertions too (tests only)
+	hashUsed    uint64                    // cumulative reserved hash transitions in the current mutation
+	hashLimit   uint64                    // zero takes the internal default; tests may lower it
+	hashErr     error                     // the first hash budget error, propagated at the operation boundary
+	hashDepth   int                       // nested mutation helpers share their enclosing operation's quota
+	hashTrace   *[]uint64                 // optional charge/check thresholds for exhaustive budget tests
+	hashNames   map[*schema.Node]uint32   // immutable module/name prefix, once per schema node in this tree
+	indexNames  map[*schema.Node][32]byte // immutable positional-index name digest for hand-built schemas
+	journal     *hashTransaction          // the running operation's undo journal (beginHashTransaction)
+	lookupUsed  uint64                    // cross-context schema-index work in the current diff
+	lookupLimit uint64                    // zero takes the internal default; tests may lower it
+	lookupErr   error                     // first lookup budget error, propagated at the diff boundary
+	lookupDepth int                       // recursive diff helpers share one lookup quota
 }
 
 // newTree returns an empty tree over the compiled schema s (the public constructor over a

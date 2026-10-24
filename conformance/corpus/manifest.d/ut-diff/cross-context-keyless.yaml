@@ -1,0 +1,25 @@
+fixtures:
+  - id: ut-diff/cross-context-keyless
+    dir: ut-diff
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: []   # libyang duplicate-instance matching and mixed-context diff output, no RFC
+    areas: [diff]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      modules: [{name: diff-cross-context}]
+      steps:
+        - {do: parse, format: xml, data_type: data, parse_only: true, data: '<top xmlns="urn:vibe-ports:yang:diff-cross-context"><keyless><value>one</value><nested><value>same</value></nested></keyless><keyless><value>two</value><nested><value>old</value></nested></keyless></top>'}
+        - do: diff
+          format: xml
+          data_type: data
+          parse_only: true
+          data: '<top xmlns="urn:vibe-ports:yang:diff-cross-context"><keyless><value>one</value><nested><value>same</value></nested></keyless><keyless><value>two</value><nested><value>old</value></nested></keyless></top>'
+          target: {searchdirs: [schemas], modules: [{name: diff-cross-context}]}
+        - do: diff
+          format: xml
+          data_type: data
+          parse_only: true
+          data: '<top xmlns="urn:vibe-ports:yang:diff-cross-context"><keyless><value>one</value><nested><value>same</value></nested></keyless><keyless><value>two</value><nested><value>new</value></nested></keyless></top>'
+          target: {searchdirs: [schemas], modules: [{name: diff-cross-context}]}
+    golden: golden/cross-context-keyless.json

@@ -1,0 +1,23 @@
+fixtures:
+  - id: ut-diff/cross-context-reverse-added-leaf
+    dir: ut-diff
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    # Reverse behavior rests on libyang v5.8.6 src/diff.c:3473-3503: lyd_diff_reverse_all
+    # duplicates with lyd_dup_siblings(src_diff, NULL, LYD_DUP_RECURSIVE, ...) before reversal.
+    rfc: []   # libyang data diff reverse API mechanics, no RFC
+    areas: [diff]
+    request:
+      op: sequence
+      searchdirs: [schemas/cross-context-reverse-added-leaf-a]
+      modules: [{name: diff-cross-context-reverse-added-leaf}]
+      steps:
+        - {do: parse, format: xml, data_type: data, parse_only: true, data: '<top xmlns="urn:vibe-ports:yang:diff-cross-context-reverse-added-leaf"><x>1</x></top>'}
+        - do: diff
+          format: xml
+          data_type: data
+          parse_only: true
+          data: '<top xmlns="urn:vibe-ports:yang:diff-cross-context-reverse-added-leaf"><x>1</x><b>2</b></top>'
+          target: {searchdirs: [schemas/cross-context-reverse-added-leaf-b], modules: [{name: diff-cross-context-reverse-added-leaf}]}
+        - {do: diff_reverse}
+        - {do: dump}
+    golden: golden/cross-context-reverse-added-leaf.json

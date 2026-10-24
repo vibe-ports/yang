@@ -54,6 +54,9 @@ type ContextDiagnostic struct {
 // lyd_find_meta calls during the last diff merge.
 var DrainDiffDiagnostics func(any) []ContextDiagnostic
 
+// ErrorSchema returns the context where a validation error's diagnostics were logged.
+var ErrorSchema func(error) *snap.Schema
+
 // CheckDupContexts checks ordinary duplication's operand contexts.
 var CheckDupContexts func(any, any) error
 

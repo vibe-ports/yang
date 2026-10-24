@@ -169,10 +169,10 @@ func TestDiffMixedSnapshots(t *testing.T) {
 	}
 }
 
-// TestDiffCrossContextStateLeafListOrder pins lyd_insert_get_next_anchor's hash-table path when
-// one diff sibling level retains instances compiled in two contexts. The foreign parent schema
-// makes lys_getnext restart at its first child, so the fifth diff node is inserted at the front.
-func TestDiffCrossContextStateLeafListOrder(t *testing.T) {
+// TestDiffCrossContextStateLeafListRefused retains the original #242 reproducer. Native
+// lyd_diff_userord_attrs runs beyond its context-keyed instance array; D-0121 refuses that
+// undefined state without constructing a partial diff.
+func TestDiffCrossContextStateLeafListRefused(t *testing.T) {
 	module := func(hi uint32) string {
 		return fmt.Sprintf(`module m { namespace "urn:m"; prefix m;
 			container top { presence "retain"; leaf-list v { config false; type bits {
@@ -197,38 +197,7 @@ func TestDiffCrossContextStateLeafListOrder(t *testing.T) {
 	secondSet := compileSet(module(4294967293))
 	input := `<top xmlns="urn:m"><v>hi</v><v>lo</v><v>lo hi</v></top>`
 	first, second := parseOnlyXML(t, firstSet, input), parseOnlyXML(t, secondSet, input)
-	diff, err := Diff(first, second, DiffOptions{})
-	if err != nil {
-		t.Fatal(err)
-	}
-	top := topOf(diff)
-	if top == nil || top.kids.ht == nil {
-		t.Fatalf("diff top/hash table = %v/%v", top, top != nil && top.kids.ht != nil)
-	}
-	var got []string
-	for _, n := range top.kids.list {
-		op := ""
-		for _, m := range n.meta {
-			if m.mod.Name == "yang" && m.name == "operation" {
-				op = m.value.Canonical()
-			}
-		}
-		ctx := "first"
-		if ctxOf(n) == secondSet {
-			ctx = "second"
-		}
-		got = append(got, ctx+":"+n.value.Canonical()+":"+op)
-	}
-	want := []string{
-		"second:lo hi:create",
-		"second:hi:create",
-		"second:lo:replace",
-		"first:hi:delete",
-		"first:lo hi:delete",
-	}
-	if !slices.Equal(got, want) {
-		t.Errorf("diff sibling order = %q, want %q", got, want)
-	}
+	requireD0121Refusal(t, first, second)
 }
 
 // TestDiffEmptyMixedSnapshots: an empty tree is libyang's NULL even when it names a different

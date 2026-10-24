@@ -1,0 +1,19 @@
+fixtures:
+  - id: ut-diff/cross-context-create-keyless
+    dir: ut-diff
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: []   # libyang lyd_diff_dup/LYD_DUP_WITH_PARENTS context retention, no RFC
+    areas: [diff]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      modules: [{name: diff-cross-context-create}]
+      steps:
+        - {do: parse, format: xml, data_type: data, parse_only: true, data: '<top xmlns="urn:vibe-ports:yang:diff-cross-context-create"/>'}
+        - do: diff
+          format: xml
+          data_type: data
+          parse_only: true
+          data: '<top xmlns="urn:vibe-ports:yang:diff-cross-context-create"><keyless><value>new</value></keyless></top>'
+          target: {searchdirs: [schemas], modules: [{name: diff-cross-context-create}]}
+    golden: golden/cross-context-create-keyless.json

@@ -147,6 +147,94 @@ func Compare(a, b Value) int {
 	return strings.Compare(a.canon, b.canon) // lyplg_type_sort_simple
 }
 
+// sortCallback identifies the plugin .sort callback, not its type record. Several distinct
+// realtypes share a callback: all signed widths share lyplg_type_sort_int, all unsigned widths
+// share lyplg_type_sort_uint, and the simple lexical types share lyplg_type_sort_simple
+// (libyang v5.8.6 src/plugins_types/integer.c:603-708, string.c:164, empty.c:109 and
+// instanceid.c:335). Leafrefs already store their target realtype.
+func sortCallback(t *schema.Type) string {
+	if t == nil {
+		return ""
+	}
+	if p := pluginFor(t); p != nil {
+		if p.compare == nil {
+			return "simple"
+		}
+		return p.id
+	}
+	switch t.Base {
+	case schema.Int8, schema.Int16, schema.Int32, schema.Int64:
+		return "int"
+	case schema.Uint8, schema.Uint16, schema.Uint32, schema.Uint64:
+		return "uint"
+	case schema.String, schema.Empty, schema.InstanceID:
+		return "simple"
+	default:
+		return t.Base.String()
+	}
+}
+
+// CompareCompatible invokes the callback shared by values compiled in distinct schema contexts.
+// lyds_compare_single() selects the first value's callback and compares the second value's
+// storage with it (libyang v5.8.6 src/tree_data_sorted.c:195-199,212-222). We additionally verify
+// that both realtypes use that callback so incompatible Go storage is never passed to a plugin.
+func CompareCompatible(a, b Value) (order int, compatible bool) {
+	if !SortCompatible(a, b) {
+		return 0, false
+	}
+	switch sortCallback(a.typ) {
+	case "simple":
+		return strings.Compare(a.canon, b.canon), true
+	case "int":
+		x, y := sortIntStorage(a, a), sortIntStorage(a, b)
+		return cmp3(x < y, x > y), true
+	case "uint":
+		x, y := sortUintStorage(a, a), sortUintStorage(a, b)
+		return cmp3(x < y, x > y), true
+	}
+	if p := pluginFor(a.typ); p != nil {
+		return p.compare(a, b), true
+	}
+	return Compare(a, b), true
+}
+
+// SortCompatible reports whether two realtypes use the same libyang sort callback.
+func SortCompatible(a, b Value) bool {
+	return a.typ != nil && b.typ != nil && sortCallback(a.typ) == sortCallback(b.typ)
+}
+
+// sortIntStorage reads both zero-initialized C union payloads using the first value's field width.
+// A narrower second value is not sign-extended before a wider field reads it
+// (libyang v5.8.6 src/plugins_types/integer.c:61-62,99-117,249-294; linux/amd64 oracle).
+func sortIntStorage(first, v Value) int64 {
+	u := integerLYB(v)
+	switch first.typ.Base {
+	case schema.Int8:
+		return int64(int8(u)) //nolint:gosec // the C callback reads this union field width
+	case schema.Int16:
+		return int64(int16(u)) //nolint:gosec // the C callback reads this union field width
+	case schema.Int32:
+		return int64(int32(u)) //nolint:gosec // the C callback reads this union field width
+	default:
+		return int64(u) //nolint:gosec // the C callback reads this union field width
+	}
+}
+
+// sortUintStorage selects the first value's C union field width
+// (libyang v5.8.6 src/plugins_types/integer.c:472-517).
+func sortUintStorage(first, v Value) uint64 {
+	switch first.typ.Base {
+	case schema.Uint8:
+		return uint64(uint8(v.u)) //nolint:gosec // the C callback reads this union field width
+	case schema.Uint16:
+		return uint64(uint16(v.u)) //nolint:gosec // the C callback reads this union field width
+	case schema.Uint32:
+		return uint64(uint32(v.u)) //nolint:gosec // the C callback reads this union field width
+	default:
+		return v.u
+	}
+}
+
 func cmp3(less, greater bool) int {
 	switch {
 	case less:

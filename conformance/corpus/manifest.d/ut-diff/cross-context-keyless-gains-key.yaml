@@ -1,0 +1,25 @@
+fixtures:
+  - id: ut-diff/cross-context-keyless-gains-key
+    dir: ut-diff
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/src/tree_data_hash.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # lyd_hash:44-81; lyd_compare_single_data:1714-1717 in src/tree_data.c
+    rfc: []   # libyang list-instance hashing across non-identical contexts, no RFC
+    areas: [diff]
+    # After hashing module "diff-cross-context-key-change" and node "l", h=0x684e6f11.
+    # A's keyless hash is Finish(Finish(h))=0xc05fc0ea. B hashes the uint8 k=0 LYB
+    # payload, one byte 0x00, then finishes: Finish(Hash(h, 0x00))=0xa197fa28. The unequal
+    # hashes make lyd_compare_single_data return LY_ENOT, so the cross-context instances are
+    # not equal.
+    # 
+    request:
+      op: sequence
+      searchdirs: [schemas/cross-context-key-change-keyless]
+      modules: [{name: diff-cross-context-key-change}]
+      steps:
+        - {do: parse, format: xml, data_type: data, parse_only: true, data: '<top xmlns="urn:vibe-ports:yang:diff-cross-context-key-change"><l><k>0</k></l></top>'}
+        - do: diff
+          format: xml
+          data_type: data
+          parse_only: true
+          data: '<top xmlns="urn:vibe-ports:yang:diff-cross-context-key-change"><l><k>0</k></l></top>'
+          target: {searchdirs: [schemas/cross-context-key-change-keyed], modules: [{name: diff-cross-context-key-change}]}
+    golden: golden/cross-context-keyless-gains-key.json

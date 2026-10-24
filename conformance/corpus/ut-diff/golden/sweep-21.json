@@ -6,7 +6,7 @@
     {
       "accepted": true,
       "diagnostics": [],
-      "name": "diff-cross-context-bits-max",
+      "name": "diff-sweep-21",
       "revision": null
     }
   ],
@@ -35,8 +35,8 @@
           "kind": "container",
           "meta": [],
           "opaque": null,
-          "path": "/diff-cross-context-bits-max:top",
-          "schema": "/diff-cross-context-bits-max:top",
+          "path": "/diff-sweep-21:top",
+          "schema": "/diff-sweep-21:top",
           "value": null
         },
         {
@@ -49,11 +49,11 @@
           "kind": "leaflist",
           "meta": [],
           "opaque": null,
-          "path": "/diff-cross-context-bits-max:top/v[1]",
-          "schema": "/diff-cross-context-bits-max:top/v",
+          "path": "/diff-sweep-21:top/c0[.='a']",
+          "schema": "/diff-sweep-21:top/c0",
           "value": {
-            "canonical": "hi",
-            "type": "bits",
+            "canonical": "a",
+            "type": "string",
             "typedef": null,
             "union_member": null
           }
@@ -68,11 +68,11 @@
           "kind": "leaflist",
           "meta": [],
           "opaque": null,
-          "path": "/diff-cross-context-bits-max:top/v[2]",
-          "schema": "/diff-cross-context-bits-max:top/v",
+          "path": "/diff-sweep-21:top/c0[.='b']",
+          "schema": "/diff-sweep-21:top/c0",
           "value": {
-            "canonical": "lo",
-            "type": "bits",
+            "canonical": "b",
+            "type": "string",
             "typedef": null,
             "union_member": null
           }
@@ -87,11 +87,49 @@
           "kind": "leaflist",
           "meta": [],
           "opaque": null,
-          "path": "/diff-cross-context-bits-max:top/v[3]",
-          "schema": "/diff-cross-context-bits-max:top/v",
+          "path": "/diff-sweep-21:top/c0[.='c']",
+          "schema": "/diff-sweep-21:top/c0",
           "value": {
-            "canonical": "lo hi",
-            "type": "bits",
+            "canonical": "c",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/diff-sweep-21:top/c1[.='1']",
+          "schema": "/diff-sweep-21:top/c1",
+          "value": {
+            "canonical": "1",
+            "type": "int8",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/diff-sweep-21:top/c3",
+          "schema": "/diff-sweep-21:top/c3",
+          "value": {
+            "canonical": "a",
+            "type": "string",
             "typedef": null,
             "union_member": null
           }
@@ -101,8 +139,8 @@
     {
       "diagnostics": [],
       "diff": {
-        "json": "{\n  \"diff-cross-context-bits-max:top\": {\n    \"@\": {\n      \"yang:operation\": \"none\"\n    },\n    \"diff-cross-context-bits-max:v\": [\n      \"lo hi\",\n      \"hi\",\n      \"lo\"\n    ],\n    \"@diff-cross-context-bits-max:v\": [\n      {\n        \"yang:operation\": \"create\",\n        \"yang:position\": 2\n      },\n      {\n        \"yang:operation\": \"create\",\n        \"yang:position\": [null]\n      },\n      {\n        \"yang:operation\": \"replace\",\n        \"yang:orig-default\": false,\n        \"yang:position\": 1,\n        \"yang:orig-position\": 1\n      }\n    ],\n    \"v\": [\n      \"hi\",\n      \"lo hi\"\n    ],\n    \"@v\": [\n      {\n        \"yang:operation\": \"delete\",\n        \"yang:orig-position\": [null]\n      },\n      {\n        \"yang:operation\": \"delete\",\n        \"yang:orig-position\": 1\n      }\n    ]\n  }\n}\n",
-        "xml": "<top xmlns=\"urn:vibe-ports:yang:diff-cross-context-bits-max\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\">\n  <v yang:operation=\"create\" yang:position=\"2\">lo hi</v>\n  <v yang:operation=\"create\" yang:position=\"\">hi</v>\n  <v yang:operation=\"replace\" yang:orig-default=\"false\" yang:position=\"1\" yang:orig-position=\"1\">lo</v>\n  <v yang:operation=\"delete\" yang:orig-position=\"\">hi</v>\n  <v yang:operation=\"delete\" yang:orig-position=\"1\">lo hi</v>\n</top>\n"
+        "json": "{\n  \"diff-sweep-21:top\": {\n    \"@\": {\n      \"yang:operation\": \"none\"\n    },\n    \"diff-sweep-21:c1\": [\n      -2\n    ],\n    \"@diff-sweep-21:c1\": [\n      {\n        \"yang:operation\": \"create\"\n      }\n    ],\n    \"diff-sweep-21:c2\": \"b\",\n    \"@diff-sweep-21:c2\": {\n      \"yang:operation\": \"create\"\n    },\n    \"diff-sweep-21:c3\": \"c\",\n    \"@diff-sweep-21:c3\": {\n      \"yang:operation\": \"replace\",\n      \"yang:orig-default\": false,\n      \"yang:orig-value\": \"a\"\n    },\n    \"c0\": [\n      \"b\",\n      \"c\"\n    ],\n    \"@c0\": [\n      {\n        \"yang:operation\": \"delete\"\n      },\n      {\n        \"yang:operation\": \"delete\"\n      }\n    ]\n  }\n}\n",
+        "xml": "<top xmlns=\"urn:vibe-ports:yang:ut-diff:sweep:21\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\">\n  <c1 yang:operation=\"create\">-2</c1>\n  <c2 yang:operation=\"create\">b</c2>\n  <c3 yang:operation=\"replace\" yang:orig-default=\"false\" yang:orig-value=\"a\">c</c3>\n  <c0 yang:operation=\"delete\">b</c0>\n  <c0 yang:operation=\"delete\">c</c0>\n</top>\n"
       },
       "diff_typed": [
         {
@@ -121,8 +159,8 @@
             }
           ],
           "opaque": null,
-          "path": "/diff-cross-context-bits-max:top",
-          "schema": "/diff-cross-context-bits-max:top",
+          "path": "/diff-sweep-21:top",
+          "schema": "/diff-sweep-21:top",
           "value": null
         },
         {
@@ -138,19 +176,14 @@
               "module": "yang",
               "name": "operation",
               "value": "create"
-            },
-            {
-              "module": "yang",
-              "name": "position",
-              "value": "2"
             }
           ],
           "opaque": null,
-          "path": "/diff-cross-context-bits-max:top/diff-cross-context-bits-max:v[1]",
-          "schema": "/diff-cross-context-bits-max:top/v",
+          "path": "/diff-sweep-21:top/diff-sweep-21:c1[.='-2']",
+          "schema": "/diff-sweep-21:top/c1",
           "value": {
-            "canonical": "lo hi",
-            "type": "bits",
+            "canonical": "-2",
+            "type": "int8",
             "typedef": null,
             "union_member": null
           }
@@ -162,25 +195,20 @@
             "new": true,
             "when_true": false
           },
-          "kind": "leaflist",
+          "kind": "leaf",
           "meta": [
             {
               "module": "yang",
               "name": "operation",
               "value": "create"
-            },
-            {
-              "module": "yang",
-              "name": "position",
-              "value": ""
             }
           ],
           "opaque": null,
-          "path": "/diff-cross-context-bits-max:top/diff-cross-context-bits-max:v[2]",
-          "schema": "/diff-cross-context-bits-max:top/v",
+          "path": "/diff-sweep-21:top/diff-sweep-21:c2",
+          "schema": "/diff-sweep-21:top/c2",
           "value": {
-            "canonical": "hi",
-            "type": "bits",
+            "canonical": "b",
+            "type": "string",
             "typedef": null,
             "union_member": null
           }
@@ -192,7 +220,7 @@
             "new": true,
             "when_true": false
           },
-          "kind": "leaflist",
+          "kind": "leaf",
           "meta": [
             {
               "module": "yang",
@@ -206,21 +234,16 @@
             },
             {
               "module": "yang",
-              "name": "position",
-              "value": "1"
-            },
-            {
-              "module": "yang",
-              "name": "orig-position",
-              "value": "1"
+              "name": "orig-value",
+              "value": "a"
             }
           ],
           "opaque": null,
-          "path": "/diff-cross-context-bits-max:top/diff-cross-context-bits-max:v[3]",
-          "schema": "/diff-cross-context-bits-max:top/v",
+          "path": "/diff-sweep-21:top/diff-sweep-21:c3",
+          "schema": "/diff-sweep-21:top/c3",
           "value": {
-            "canonical": "lo",
-            "type": "bits",
+            "canonical": "c",
+            "type": "string",
             "typedef": null,
             "union_member": null
           }
@@ -238,19 +261,14 @@
               "module": "yang",
               "name": "operation",
               "value": "delete"
-            },
-            {
-              "module": "yang",
-              "name": "orig-position",
-              "value": ""
             }
           ],
           "opaque": null,
-          "path": "/diff-cross-context-bits-max:top/v[1]",
-          "schema": "/diff-cross-context-bits-max:top/v",
+          "path": "/diff-sweep-21:top/c0[.='b']",
+          "schema": "/diff-sweep-21:top/c0",
           "value": {
-            "canonical": "hi",
-            "type": "bits",
+            "canonical": "b",
+            "type": "string",
             "typedef": null,
             "union_member": null
           }
@@ -268,19 +286,14 @@
               "module": "yang",
               "name": "operation",
               "value": "delete"
-            },
-            {
-              "module": "yang",
-              "name": "orig-position",
-              "value": "1"
             }
           ],
           "opaque": null,
-          "path": "/diff-cross-context-bits-max:top/v[2]",
-          "schema": "/diff-cross-context-bits-max:top/v",
+          "path": "/diff-sweep-21:top/c0[.='c']",
+          "schema": "/diff-sweep-21:top/c0",
           "value": {
-            "canonical": "lo hi",
-            "type": "bits",
+            "canonical": "c",
+            "type": "string",
             "typedef": null,
             "union_member": null
           }
@@ -302,8 +315,8 @@
           "kind": "container",
           "meta": [],
           "opaque": null,
-          "path": "/diff-cross-context-bits-max:top",
-          "schema": "/diff-cross-context-bits-max:top",
+          "path": "/diff-sweep-21:top",
+          "schema": "/diff-sweep-21:top",
           "value": null
         },
         {
@@ -316,11 +329,11 @@
           "kind": "leaflist",
           "meta": [],
           "opaque": null,
-          "path": "/diff-cross-context-bits-max:top/v[1]",
-          "schema": "/diff-cross-context-bits-max:top/v",
+          "path": "/diff-sweep-21:top/c0[.='a']",
+          "schema": "/diff-sweep-21:top/c0",
           "value": {
-            "canonical": "hi",
-            "type": "bits",
+            "canonical": "a",
+            "type": "string",
             "typedef": null,
             "union_member": null
           }
@@ -335,11 +348,11 @@
           "kind": "leaflist",
           "meta": [],
           "opaque": null,
-          "path": "/diff-cross-context-bits-max:top/v[2]",
-          "schema": "/diff-cross-context-bits-max:top/v",
+          "path": "/diff-sweep-21:top/c0[.='b']",
+          "schema": "/diff-sweep-21:top/c0",
           "value": {
-            "canonical": "lo",
-            "type": "bits",
+            "canonical": "b",
+            "type": "string",
             "typedef": null,
             "union_member": null
           }
@@ -354,11 +367,49 @@
           "kind": "leaflist",
           "meta": [],
           "opaque": null,
-          "path": "/diff-cross-context-bits-max:top/v[3]",
-          "schema": "/diff-cross-context-bits-max:top/v",
+          "path": "/diff-sweep-21:top/c0[.='c']",
+          "schema": "/diff-sweep-21:top/c0",
           "value": {
-            "canonical": "lo hi",
-            "type": "bits",
+            "canonical": "c",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/diff-sweep-21:top/c1[.='1']",
+          "schema": "/diff-sweep-21:top/c1",
+          "value": {
+            "canonical": "1",
+            "type": "int8",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/diff-sweep-21:top/c3",
+          "schema": "/diff-sweep-21:top/c3",
+          "value": {
+            "canonical": "a",
+            "type": "string",
             "typedef": null,
             "union_member": null
           }

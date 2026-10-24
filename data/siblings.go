@@ -1461,6 +1461,9 @@ func (t *Tree) schemaIndex(s *siblings, sn *schema.Node) int {
 	// node names for foreign contexts. Its table callback compares schema lineage.
 	foreign := s.mixedContexts() || sn.Module.Owner != nil && ctxOf(s.list[0]) != nil && ctxOf(s.list[0]) != sn.Module.Owner
 	if foreign {
+		if t.work.lookupDepth != 0 && t.foreignSchemaInput[s] {
+			return t.foreignSchemaIndex(s, sn, s.ht != nil)
+		}
 		for i, n := range s.list {
 			s.visit()
 			if schemaLookupMatch(n.schema, sn, s.ht != nil) {
@@ -1486,6 +1489,74 @@ func (t *Tree) schemaIndex(s *siblings, sn *schema.Node) int {
 		return i
 	}
 	return -1
+}
+
+type foreignSchemaCacheKey struct {
+	s     *siblings
+	table bool
+}
+
+// foreignSchemaIndex is the diff-time equivalent of lyd_find_sibling_schema's cross-context
+// comparisons. The C lookup compares module/name only without children_ht and complete schema
+// lineage with it (libyang v5.8.6 src/tree_data_common.c:1101-1137). Building this index once per
+// sibling set replaces the two repeated scans in diff.c:1252-1254 and 1339-1341.
+func (t *Tree) foreignSchemaIndex(s *siblings, sn *schema.Node, table bool) int {
+	if t.foreignSchema == nil {
+		t.foreignSchema = make(map[foreignSchemaCacheKey]map[string]int)
+	}
+	cacheKey := foreignSchemaCacheKey{s: s, table: table}
+	index := t.foreignSchema[cacheKey]
+	if index == nil {
+		index = make(map[string]int, len(s.list))
+		for i, n := range s.list {
+			s.visit()
+			if err := t.work.chargeLookup(1); err != nil {
+				return -1
+			}
+			key := t.foreignSchemaKey(n.schema, table)
+			if _, exists := index[key]; !exists {
+				index[key] = i
+			}
+		}
+		t.foreignSchema[cacheKey] = index
+	}
+	if err := t.work.chargeLookup(1); err != nil {
+		return -1
+	}
+	if i, ok := index[t.foreignSchemaKey(sn, table)]; ok {
+		return i
+	}
+	return -1
+}
+
+func (t *Tree) foreignSchemaKey(sn *schema.Node, table bool) string {
+	if sn == nil || sn.Module == nil {
+		return ""
+	}
+	if !table {
+		return sn.Module.Name + "\x00" + sn.Name
+	}
+	if t.schemaLineage == nil {
+		t.schemaLineage = make(map[*schema.Node]string)
+	}
+	if key, ok := t.schemaLineage[sn]; ok {
+		return key
+	}
+	var missing []*schema.Node
+	for n := sn; n != nil; n = n.Parent {
+		if _, ok := t.schemaLineage[n]; ok {
+			break
+		}
+		missing = append(missing, n)
+	}
+	for i := len(missing) - 1; i >= 0; i-- {
+		n := missing[i]
+		parent := t.schemaLineage[n.Parent]
+		// Module and node identifiers cannot contain NUL. Kind is included because
+		// lyd_compare_schema_equal compares nodetype before accepting the hash hit.
+		t.schemaLineage[n] = parent + "\x00" + n.Module.Name + "\x00" + n.Name + "\x00" + fmt.Sprint(uint16(n.Kind))
+	}
+	return t.schemaLineage[sn]
 }
 
 func schemaLookupMatch(got, want *schema.Node, table bool) bool {

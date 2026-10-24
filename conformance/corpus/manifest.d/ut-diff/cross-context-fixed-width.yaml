@@ -1,0 +1,19 @@
+fixtures:
+  - id: ut-diff/cross-context-fixed-width
+    dir: ut-diff
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: []   # libyang fixed-width enumeration/bits LYB hashing across contexts, no RFC
+    areas: [diff]
+    request:
+      op: sequence
+      searchdirs: [schemas/cross-context-lyb-a]
+      modules: [{name: diff-cross-context-lyb}]
+      steps:
+        - {do: parse, format: xml, data_type: data, parse_only: true, data: '<top xmlns="urn:vibe-ports:yang:diff-cross-context-lyb"><enum-value>same</enum-value><enum-negative>same</enum-negative><bits-value>same</bits-value></top>'}
+        - do: diff
+          format: xml
+          data_type: data
+          parse_only: true
+          data: '<top xmlns="urn:vibe-ports:yang:diff-cross-context-lyb"><enum-value>same</enum-value><enum-negative>same</enum-negative><bits-value>same</bits-value></top>'
+          target: {searchdirs: [schemas/cross-context-lyb-b], modules: [{name: diff-cross-context-lyb}]}
+    golden: golden/cross-context-fixed-width.json
