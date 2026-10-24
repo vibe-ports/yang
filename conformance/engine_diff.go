@@ -168,11 +168,6 @@ func stepDiff(r Request, s *yang.Schema, st map[string]any, tree *data.Tree, det
 		}
 	}
 	// lyoracle.c:2731-2752 permits populated trees from separate contexts.
-	// DiffSiblings/DiffTree deliberately refuse this matching (D-0069, #236).
-	// Preserve parse and selector failures above, and the supported NULL cases.
-	if first != nil && second != nil && snap.Set(contextopts.NodeSchema(first)) != snap.Set(contextopts.NodeSchema(second)) {
-		return nil, fmt.Errorf("%w: cross-context diff of populated trees (D-0069)", ErrUnsupported)
-	}
 	diff := data.DiffSiblings
 	if b, _ := st["single"].(bool); b {
 		diff = data.DiffTree

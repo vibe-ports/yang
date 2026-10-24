@@ -1,0 +1,19 @@
+fixtures:
+  - id: ut-diff/cross-context-lyb-families
+    dir: ut-diff
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: []   # libyang LY_VALUE_LYB hashing across contexts, no RFC
+    areas: [diff]
+    request:
+      op: sequence
+      searchdirs: [schemas, ../types/schemas]
+      modules: [{name: diff-cross-context-lyb-families}]
+      steps:
+        - {do: parse, format: xml, data_type: data, parse_only: true, data: '<top xmlns="urn:vibe-ports:yang:diff-cross-context-lyb-families"><binary-value>AQID</binary-value><boolean-value>true</boolean-value><decimal-value>12.34</decimal-value><empty-value/><ipv4-zone>192.0.2.1%z</ipv4-zone><ipv4-no-zone>192.0.2.2</ipv4-no-zone><ipv4-prefix>192.0.2.129/24</ipv4-prefix><ipv6-zone>2001:db8::1%z</ipv6-zone><ipv6-no-zone>2001:db8::2</ipv6-no-zone><ipv6-prefix>2001:db8::ffff/64</ipv6-prefix><hex-value>0a:0b:0c</hex-value><time-period>2w</time-period><union-value>7</union-value></top>'}
+        - do: diff
+          format: xml
+          data_type: data
+          parse_only: true
+          data: '<top xmlns="urn:vibe-ports:yang:diff-cross-context-lyb-families"><binary-value>AQID</binary-value><boolean-value>true</boolean-value><decimal-value>12.34</decimal-value><empty-value/><ipv4-zone>192.0.2.1%z</ipv4-zone><ipv4-no-zone>192.0.2.2</ipv4-no-zone><ipv4-prefix>192.0.2.129/24</ipv4-prefix><ipv6-zone>2001:db8::1%z</ipv6-zone><ipv6-no-zone>2001:db8::2</ipv6-no-zone><ipv6-prefix>2001:db8::ffff/64</ipv6-prefix><hex-value>0a:0b:0c</hex-value><time-period>2w</time-period><union-value>7</union-value></top>'
+          target: {searchdirs: [schemas, ../types/schemas], modules: [{name: diff-cross-context-lyb-families}]}
+    golden: golden/cross-context-lyb-families.json

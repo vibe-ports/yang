@@ -153,6 +153,9 @@ func (t *Tree) applyR(parent, dn *Node, cb func(diff, node *Node) error, cache *
 				err = t.insertSibling(sib.first(), match)
 			}
 			if err != nil {
+				// lyd_insert_check_schema logs on the inserted node's schema context
+				// (libyang v5.8.6 src/tree_data.c:1074-1081), which can differ from t.
+				err = &loggedContextError{error: err, set: ctxOf(match)}
 				return err
 			}
 			t.created(cache, match)
@@ -220,11 +223,14 @@ func (t *Tree) insertDiffRoot(n, source *Node) error {
 // diffSourceInsertCheck preserves lyd_insert_check_schema's pointer identity on a
 // cross-context create.
 func diffSourceInsertCheck(parent, sibling, source *Node) error {
+	var err error
 	if parent != nil {
-		return insertCheckSchema(parent.schema, nil, source.schema)
+		err = insertCheckSchema(parent.schema, nil, source.schema)
+	} else if sibling != nil {
+		err = insertCheckSchema(nil, sibling.schema, source.schema)
 	}
-	if sibling != nil {
-		return insertCheckSchema(nil, sibling.schema, source.schema)
+	if err != nil {
+		return &loggedContextError{error: err, set: ctxOf(source)}
 	}
 	return nil
 }

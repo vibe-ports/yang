@@ -1,0 +1,184 @@
+{
+  "context_diagnostics": [],
+  "failed_step": null,
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "diff-cross-context-lyb",
+      "revision": null
+    }
+  ],
+  "op": "sequence",
+  "protocol": 2,
+  "rc": {
+    "err": 0,
+    "name": "LY_SUCCESS"
+  },
+  "steps": [
+    {
+      "diagnostics": [],
+      "do": "parse",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [],
+          "opaque": null,
+          "path": "/diff-cross-context-lyb:top",
+          "schema": "/diff-cross-context-lyb:top",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/diff-cross-context-lyb:top/address[.='1.2.3.4']",
+          "schema": "/diff-cross-context-lyb:top/address",
+          "value": {
+            "canonical": "1.2.3.4",
+            "type": "string",
+            "typedef": "ipv4-address",
+            "union_member": null
+          }
+        }
+      ]
+    },
+    {
+      "diagnostics": [],
+      "diff": {
+        "json": "{\n  \"diff-cross-context-lyb:top\": {\n    \"@\": {\n      \"yang:operation\": \"none\"\n    },\n    \"diff-cross-context-lyb:address\": [\n      \"1.2.3.4\"\n    ],\n    \"@diff-cross-context-lyb:address\": [\n      {\n        \"yang:operation\": \"create\"\n      }\n    ],\n    \"address\": [\n      \"1.2.3.4\"\n    ],\n    \"@address\": [\n      {\n        \"yang:operation\": \"delete\"\n      }\n    ]\n  }\n}\n",
+        "xml": "<top xmlns=\"urn:vibe-ports:yang:diff-cross-context-lyb\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\">\n  <address yang:operation=\"create\">1.2.3.4</address>\n  <address yang:operation=\"delete\">1.2.3.4</address>\n</top>\n"
+      },
+      "diff_typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [
+            {
+              "module": "yang",
+              "name": "operation",
+              "value": "none"
+            }
+          ],
+          "opaque": null,
+          "path": "/diff-cross-context-lyb:top",
+          "schema": "/diff-cross-context-lyb:top",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [
+            {
+              "module": "yang",
+              "name": "operation",
+              "value": "create"
+            }
+          ],
+          "opaque": null,
+          "path": "/diff-cross-context-lyb:top/diff-cross-context-lyb:address[.='1.2.3.4']",
+          "schema": "/diff-cross-context-lyb:top/address",
+          "value": {
+            "canonical": "1.2.3.4",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [
+            {
+              "module": "yang",
+              "name": "operation",
+              "value": "delete"
+            }
+          ],
+          "opaque": null,
+          "path": "/diff-cross-context-lyb:top/address[.='1.2.3.4']",
+          "schema": "/diff-cross-context-lyb:top/address",
+          "value": {
+            "canonical": "1.2.3.4",
+            "type": "string",
+            "typedef": "ipv4-address",
+            "union_member": null
+          }
+        }
+      ],
+      "do": "diff",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [],
+          "opaque": null,
+          "path": "/diff-cross-context-lyb:top",
+          "schema": "/diff-cross-context-lyb:top",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/diff-cross-context-lyb:top/address[.='1.2.3.4']",
+          "schema": "/diff-cross-context-lyb:top/address",
+          "value": {
+            "canonical": "1.2.3.4",
+            "type": "string",
+            "typedef": "ipv4-address",
+            "union_member": null
+          }
+        }
+      ]
+    }
+  ],
+  "verdict": "valid"
+}

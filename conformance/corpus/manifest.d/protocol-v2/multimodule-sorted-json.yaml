@@ -1,0 +1,18 @@
+fixtures:
+  - id: protocol-v2/multimodule-sorted-json
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # libyang v5.8.6 tree_data.c lyd_insert_get_next_anchor/lyd_insert_node and tree_data_sorted.c lyds: descending system-ordered instances are stored ascending after a preceding module's top-level node
+    rfc: ["RFC7950#7.7.7", "RFC7950#7.8.5", "RFC7951#4"]
+    areas: [codecs, operations]
+    request:
+      op: sequence
+      searchdirs: [schemas/multimodule-sorted]
+      modules: [{name: a}, {name: b}]
+      steps:
+        - do: parse
+          format: json
+          data_type: config
+          parse_only: true
+          data: '{"a:first":"first","b:ll":[2,1],"b:l":[{"k":2},{"k":1}],"b:c":{"ll":[2,1],"l":[{"k":2},{"k":1}]}}'
+        - {do: dump, with_defaults: explicit}
+    golden: golden/multimodule-sorted-json.json

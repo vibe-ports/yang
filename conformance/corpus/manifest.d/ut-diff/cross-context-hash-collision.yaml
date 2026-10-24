@@ -1,0 +1,19 @@
+fixtures:
+  - id: ut-diff/cross-context-hash-collision
+    dir: ut-diff
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: []   # generated collision in libyang's 32-bit lyd_hash, no RFC
+    areas: [diff]
+    request:
+      op: sequence
+      searchdirs: [schemas/cross-context-collision-a]
+      modules: [{name: diff-cross-context-collision}]
+      steps:
+        - {do: parse, format: xml, data_type: data, parse_only: true, data: '<top xmlns="urn:vibe-ports:yang:diff-cross-context-collision"><collision>same</collision></top>'}
+        - do: diff
+          format: xml
+          data_type: data
+          parse_only: true
+          data: '<top xmlns="urn:vibe-ports:yang:diff-cross-context-collision"><collision>same</collision></top>'
+          target: {searchdirs: [schemas/cross-context-collision-b], modules: [{name: diff-cross-context-collision}]}
+    golden: golden/cross-context-hash-collision.json

@@ -5,7 +5,6 @@
 package conformance
 
 import (
-	"errors"
 	"os"
 	"strings"
 	"testing"
@@ -62,7 +61,6 @@ func TestAudit261Reproducers(t *testing.T) {
 		modules     []any
 		searchdirs  []any
 		contextOpts []any
-		unsupported bool
 	}{
 		{id: "unlink-before-parse", steps: []any{step(map[string]any{"do": "unlink", "node": "@top"})}},
 		{id: "unlink-empty-tree", steps: []any{parse(`{}`), step(map[string]any{"do": "unlink", "node": "@top"})}},
@@ -154,7 +152,7 @@ func TestAudit261Reproducers(t *testing.T) {
 		{id: "unlink-target-empty-delete-reinsert", steps: plus(prefix(), parse(`{"pv2-detached:ll":["a"]}`), step(map[string]any{"do": "edit", "delete": "/pv2-detached:ll[.='a']"}), step(map[string]any{"do": "insert", "detached": true}))},
 		{id: "unlink-target-dup-incompatible-parent", steps: plus(prefix(), parse(`{"pv2-detached:c":{}}`), step(map[string]any{"do": "dup", "detached": true, "parent": "/pv2-detached:c"}))},
 		{id: "unlink-target-insert-incompatible-parent", steps: plus(prefix(), parse(`{"pv2-detached:c":{}}`), step(map[string]any{"do": "insert", "detached": true, "parent": "/pv2-detached:c"}))},
-		{id: "diff-detached-cross-context-refused", steps: plus(withoutExtra(), step(map[string]any{"do": "diff", "detached": true, "single": true, "format": "json", "data_type": "config", "parse_only": true, "data": `{"pv2-detached:c":{"base":"x"}}`})), unsupported: true},
+		{id: "diff-detached-cross-context-identical", steps: plus(withoutExtra(), step(map[string]any{"do": "diff", "detached": true, "single": true, "format": "json", "data_type": "config", "parse_only": true, "data": `{"pv2-detached:c":{"base":"x"}}`}))},
 		{id: "diff-detached-target-merge-empty", steps: plus(prefix(), step(map[string]any{"do": "diff", "detached": true, "single": true, "merge": true}))},
 		{id: "diff-detached-target-reverse-apply-empty", steps: plus(prefix(), step(map[string]any{"do": "diff", "detached": true, "single": true}), step(map[string]any{"do": "diff_reverse"}), step(map[string]any{"do": "diff_apply"}))},
 		// libyang v5.8.6 src/diff.c:1793-1811 compares the module pointer passed by
@@ -291,15 +289,6 @@ func TestAudit261Reproducers(t *testing.T) {
 				}
 			}
 			got, err := inventoryRun(Request{BaseDir: base, Params: p})
-			if tc.unsupported {
-				if !errors.Is(err, ErrUnsupported) {
-					t.Fatalf("want D-0069 refusal, got %v, response %v", err, got)
-				}
-				if want["verdict"] != "valid" {
-					t.Fatalf("native verdict: %v", want)
-				}
-				return
-			}
 			category, class := inventoryClassification(want, got, err, "")
 			if category != "MATCH" {
 				t.Fatalf("%s/%s: native=%v Go=%v err=%v", category, class, want, got, err)

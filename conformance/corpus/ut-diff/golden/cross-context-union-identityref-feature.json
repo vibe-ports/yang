@@ -1,0 +1,193 @@
+{
+  "context_diagnostics": [],
+  "failed_step": null,
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "diff-cross-context-union",
+      "revision": null
+    }
+  ],
+  "op": "sequence",
+  "protocol": 2,
+  "rc": {
+    "err": 0,
+    "name": "LY_SUCCESS"
+  },
+  "steps": [
+    {
+      "diagnostics": [],
+      "do": "parse",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [],
+          "opaque": null,
+          "path": "/diff-cross-context-union:top",
+          "schema": "/diff-cross-context-union:top",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/diff-cross-context-union:top/value",
+          "schema": "/diff-cross-context-union:top/value",
+          "value": {
+            "canonical": "diff-cross-context-union:d",
+            "type": "union",
+            "typedef": null,
+            "union_member": {
+              "index": 0,
+              "realtype": {
+                "type": "identityref",
+                "typedef": null
+              },
+              "type": "identityref",
+              "typedef": null
+            }
+          }
+        }
+      ]
+    },
+    {
+      "diagnostics": [],
+      "diff": {
+        "json": "{\n  \"diff-cross-context-union:top\": {\n    \"@\": {\n      \"yang:operation\": \"none\"\n    },\n    \"value\": \"d\",\n    \"@value\": {\n      \"yang:operation\": \"replace\",\n      \"yang:orig-default\": false,\n      \"yang:orig-value\": \"diff-cross-context-union:d\"\n    }\n  }\n}\n",
+        "xml": "<top xmlns=\"urn:vibe-ports:yang:diff-cross-context-union\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\">\n  <value yang:operation=\"replace\" yang:orig-default=\"false\" yang:orig-value=\"diff-cross-context-union:d\">d</value>\n</top>\n"
+      },
+      "diff_typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [
+            {
+              "module": "yang",
+              "name": "operation",
+              "value": "none"
+            }
+          ],
+          "opaque": null,
+          "path": "/diff-cross-context-union:top",
+          "schema": "/diff-cross-context-union:top",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [
+            {
+              "module": "yang",
+              "name": "operation",
+              "value": "replace"
+            },
+            {
+              "module": "yang",
+              "name": "orig-default",
+              "value": "false"
+            },
+            {
+              "module": "yang",
+              "name": "orig-value",
+              "value": "diff-cross-context-union:d"
+            }
+          ],
+          "opaque": null,
+          "path": "/diff-cross-context-union:top/value",
+          "schema": "/diff-cross-context-union:top/value",
+          "value": {
+            "canonical": "d",
+            "type": "union",
+            "typedef": null,
+            "union_member": {
+              "index": 1,
+              "realtype": {
+                "type": "string",
+                "typedef": null
+              },
+              "type": "string",
+              "typedef": null
+            }
+          }
+        }
+      ],
+      "do": "diff",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [],
+          "opaque": null,
+          "path": "/diff-cross-context-union:top",
+          "schema": "/diff-cross-context-union:top",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/diff-cross-context-union:top/value",
+          "schema": "/diff-cross-context-union:top/value",
+          "value": {
+            "canonical": "diff-cross-context-union:d",
+            "type": "union",
+            "typedef": null,
+            "union_member": {
+              "index": 0,
+              "realtype": {
+                "type": "identityref",
+                "typedef": null
+              },
+              "type": "identityref",
+              "typedef": null
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "verdict": "valid"
+}

@@ -119,7 +119,6 @@
     },
     {
       "id": "cross-context-diff",
-      "gap": "cross-context-diff",
       "sha256": "4880013c9775b7a80336e52943db4d5c949ba47ecb36b20c8902e88ba03cfb3b",
       "request": {
         "base_dir": ".",

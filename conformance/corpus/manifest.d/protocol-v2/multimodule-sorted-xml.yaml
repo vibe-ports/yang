@@ -1,0 +1,18 @@
+fixtures:
+  - id: protocol-v2/multimodule-sorted-xml
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # libyang v5.8.6 tree_data.c lyd_insert_get_next_anchor/lyd_insert_node and tree_data_sorted.c lyds: descending system-ordered instances are stored ascending after a preceding module's top-level node
+    rfc: ["RFC7950#7.7.7", "RFC7950#7.8.5"]
+    areas: [codecs, operations]
+    request:
+      op: sequence
+      searchdirs: [schemas/multimodule-sorted]
+      modules: [{name: a}, {name: b}]
+      steps:
+        - do: parse
+          format: xml
+          data_type: config
+          parse_only: true
+          data: '<first xmlns="urn:vibe-ports:yang:multimodule-sorted:a">first</first><ll xmlns="urn:vibe-ports:yang:multimodule-sorted:b">2</ll><ll xmlns="urn:vibe-ports:yang:multimodule-sorted:b">1</ll><l xmlns="urn:vibe-ports:yang:multimodule-sorted:b"><k>2</k></l><l xmlns="urn:vibe-ports:yang:multimodule-sorted:b"><k>1</k></l><c xmlns="urn:vibe-ports:yang:multimodule-sorted:b"><ll>2</ll><ll>1</ll><l><k>2</k></l><l><k>1</k></l></c>'
+        - {do: dump, with_defaults: explicit}
+    golden: golden/multimodule-sorted-xml.json

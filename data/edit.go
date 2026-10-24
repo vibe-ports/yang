@@ -36,18 +36,27 @@ var (
 // done turns an operation's error into its result: the logged diagnostics as a
 // *ValidationError, other errors (budget, not found) as they are.
 func (l *logger) done(err error) error {
+	var contextual *loggedContextError
+	errors.As(err, &contextual)
+	finish := func(result error) error {
+		var ve *ValidationError
+		if contextual != nil && errors.As(result, &ve) {
+			ve.set = contextual.set
+		}
+		return result
+	}
 	var oe *opError
 	if errors.As(err, &oe) {
 		err = l.logErr(oe.Err, "%s", oe.Msg)
 	}
 	if errors.Is(err, errLogged) {
-		return l.result()
+		return finish(l.result())
 	}
 	var rc rcError
 	if errors.As(err, &rc) {
-		return &ValidationError{Diags: l.diags, rc: string(rc)}
+		return finish(&ValidationError{Diags: l.diags, rc: string(rc), set: l.set})
 	}
-	return err
+	return finish(err)
 }
 
 // NewPath is lyd_new_path on the top level of t: it creates the nodes of the absolute JSON path

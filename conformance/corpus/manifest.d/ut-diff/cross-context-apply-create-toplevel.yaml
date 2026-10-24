@@ -1,0 +1,21 @@
+fixtures:
+  - id: ut-diff/cross-context-apply-create-toplevel
+    dir: ut-diff
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # src/diff.c:1865-1877 calls lyd_dup_single then lyd_insert_sibling; src/tree_data.c:2510-2518 keeps the diff node's context, and 1064-1089,1114-1129 accepts it because both schema parents are NULL
+    rfc: []   # libyang cross-context diff-apply mechanics, no RFC
+    areas: [diff]
+    request:
+      op: sequence
+      searchdirs: [schemas/cross-context-apply-create]
+      modules: [{name: diff-cross-context-apply-create}]
+      steps:
+        - {do: parse, format: xml, data_type: data, parse_only: true, data: '<sibling xmlns="urn:vibe-ports:yang:diff-cross-context-apply-create"/>'}
+        - do: diff
+          format: xml
+          data_type: data
+          parse_only: true
+          data: '<sibling xmlns="urn:vibe-ports:yang:diff-cross-context-apply-create"/><created xmlns="urn:vibe-ports:yang:diff-cross-context-apply-create"><value>new</value></created>'
+          target: {searchdirs: [schemas/cross-context-apply-create], modules: [{name: diff-cross-context-apply-create}]}
+        - {do: diff_apply}
+        - {do: dump}
+    golden: golden/cross-context-apply-create-toplevel.json

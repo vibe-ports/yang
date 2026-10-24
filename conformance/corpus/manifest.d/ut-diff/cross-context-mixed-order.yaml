@@ -1,0 +1,19 @@
+fixtures:
+  - id: ut-diff/cross-context-mixed-order
+    dir: ut-diff
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: []   # libyang mixed-context non-hash insertion ordering, no RFC
+    areas: [diff]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      modules: [{name: diff-cross-context}]
+      steps:
+        - {do: parse, format: xml, data_type: data, parse_only: true, data: '<top xmlns="urn:vibe-ports:yang:diff-cross-context"><x><x><a>old</a></x></x><keyless><value>old</value></keyless></top>'}
+        - do: diff
+          format: xml
+          data_type: data
+          parse_only: true
+          data: '<top xmlns="urn:vibe-ports:yang:diff-cross-context"><x><x><a>new</a></x></x><keyless><value>new</value></keyless></top>'
+          target: {searchdirs: [schemas], modules: [{name: diff-cross-context}]}
+    golden: golden/cross-context-mixed-order.json
