@@ -93,7 +93,7 @@ func (x *xmlPrinter) printNS(ns, newPrefix string, hasNew bool, opts int) (strin
 	return newPrefix, hasNew
 }
 
-// meta is xml_print_meta (the NETCONF filter attributes are not part of M1).
+// meta is xml_print_meta.
 func (x *xmlPrinter) meta(n *Node) error {
 	if n.isTerm() && x.opts.tagged(n) {
 		// the module "default" is libyang's internal one with the wd:default annotation, used only
@@ -103,6 +103,15 @@ func (x *xmlPrinter) meta(n *Node) error {
 				prefix, _ := x.printNS(df.Namespace, df.Prefix, true, 0)
 				x.printf(" %s:default=\"true\"", prefix)
 			}
+		}
+	}
+	// NETCONF filter attributes are the only XML metadata printed without a prefix. The old
+	// notifications module predates the ietf-netconf extension that marks the other filters.
+	filterAttrs := n.schema.Module.Name == "notifications"
+	for _, e := range n.schema.Exts {
+		if e.Def != nil && e.Def.Name == "ietf-netconf" && e.Name == "get-filter-element-attributes" {
+			filterAttrs = true
+			break
 		}
 	}
 	for _, m := range n.meta {
@@ -122,8 +131,12 @@ func (x *xmlPrinter) meta(n *Node) error {
 		for _, um := range pc.Used {
 			x.printNS(um.Namespace, um.Prefix, true, prefixRequired)
 		}
-		prefix, _ := x.printNS(m.mod.Namespace, m.mod.Prefix, true, prefixRequired)
-		x.printf(" %s:%s=\"", prefix, m.name)
+		if filterAttrs && m.mod.Name == "ietf-netconf" && (m.name == "type" || m.name == "select") {
+			x.printf(" %s=\"", m.name)
+		} else {
+			prefix, _ := x.printNS(m.mod.Namespace, m.mod.Prefix, true, prefixRequired)
+			x.printf(" %s:%s=\"", prefix, m.name)
+		}
 		x.dump(value, true)
 		x.buf.appendString("\"")
 	}

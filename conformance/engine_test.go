@@ -3,6 +3,7 @@
 package conformance
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"maps"
@@ -772,6 +773,165 @@ func validationAllowed(id, reason string) bool {
 	return ok && strings.Contains(reason, u)
 }
 
+// TestYangEngineCodecs is the M5 exit gate (#116): every codecs-area fixture must agree with
+// libyang, without dropping any response field except the out-of-scope compiled-schema printout.
+// An unsupported fixture must be listed with the deviations.md id named by its reason.
+func TestYangEngineCodecs(t *testing.T) {
+	m, rep := yangReport(t)
+	registry := deviationRegistry(t)
+	n := 0
+	for i, r := range rep.Results {
+		f := m.Fixtures[i]
+		if !codecsFixture(f) {
+			continue
+		}
+		n++
+		op, _ := f.Request["op"].(string)
+		if fields := (Yang{}).SkippedFields(op); !codecsSkippedFieldsAllowed(op, fields) {
+			t.Errorf("codecs fixture %s drops fields outside schema compiled: %v", r.ID, fields)
+		}
+		switch {
+		case r.Status == Differ:
+			t.Errorf("differ %s: %s", r.ID, r.Detail)
+		case r.Status == Unsupported && !codecsAllowed(r.ID, r.Detail, registry):
+			t.Errorf("unsupported codecs fixture %s without a listed registry entry: %s", r.ID, r.Detail)
+		}
+	}
+	t.Logf("gated fixtures: %d", n)
+	if n < codecsFloor {
+		t.Errorf("%d codecs fixtures gated, fewer than %d: the selection lost fixtures", n, codecsFloor)
+	}
+}
+
+// codecsFloor is the number of codecs-area fixtures at the M5 exit. Fewer means the selection or
+// corpus lost some, which would let the gate pass on nothing.
+const codecsFloor = 415
+
+func codecsFixture(f Fixture) bool { return slices.Contains(f.Areas, "codecs") }
+
+func codecsSkippedFieldsAllowed(op string, fields []string) bool {
+	return len(fields) == 0 || op == "schema" && slices.Equal(fields, []string{"compiled"})
+}
+
+// codecsUnsupported names every codecs fixture allowed to remain unsupported and the registry id
+// that must occur in its unsupported reason.
+var codecsUnsupported = map[string]string{
+	"any-core/create-invalid-json":            "U-0112",
+	"any-core/create-invalid-text":            "U-0112",
+	"any-core/create-invalid-xml":             "U-0112",
+	"any-core/create-warning-xml-key-order":   "U-0112",
+	"any-core/create-xml-scan-error-anydata":  "U-0112",
+	"any-core/create-xml-scan-error-anyxml":   "U-0112",
+	"any-core/equal-xml-scan-error":           "U-0107",
+	"ext/structure-data-json":                 "U-0060",
+	"ops/parse-json-rpc-parent-opaque-meta":   "U-0106",
+	"ops/parse-json-rpc-rollback-key":         "U-0106",
+	"ops/parse-json-rpc-rollback-keys-order":  "U-0106",
+	"ops/parse-xml-rpc-parent-envelope-value": "U-0106",
+	"ops/parse-xml-rpc-parent-input":          "U-0106",
+	"protocol-v2/ordered-opaque-between":      "D-0058",
+	"protocol-v2/ordered-schema-order":        "D-0058",
+	"ut-new/any-create-json":                  "U-0112",
+	"ut-new/any-create-xml":                   "U-0112",
+}
+
+func codecsAllowed(id, reason string, registry map[string]bool) bool {
+	u, ok := codecsUnsupported[id]
+	return ok && registry[u] && strings.Contains(reason, u)
+}
+
+var registryRow = regexp.MustCompile(`(?m)^\|\s*([DU]-\d+)\b`)
+
+func deviationRegistry(t *testing.T) map[string]bool {
+	t.Helper()
+	b, err := os.ReadFile("deviations.md")
+	if err != nil {
+		t.Fatal(err)
+	}
+	ids := map[string]bool{}
+	for _, m := range registryRow.FindAllSubmatch(b, -1) {
+		ids[string(m[1])] = true
+	}
+	return ids
+}
+
+// TestYangEngineCodecsExactPrint is PLAN section 4's M5 exact-printer gate. The ordinary
+// comparator already compares tree.json and subtree strings exactly but intentionally drops
+// tree.xml; this test checks every JSON and XML tree/subtree string from every codecs fixture.
+func TestYangEngineCodecsExactPrint(t *testing.T) {
+	m, rep := yangReport(t)
+	registry := deviationRegistry(t)
+	fixtures, outputs, excludedOutputs := 0, 0, 0
+	var excluded []string
+	for i, f := range m.Fixtures {
+		if !codecsFixture(f) {
+			continue
+		}
+		golden, err := LoadGolden(m.GoldenPath(f))
+		if err != nil {
+			t.Fatal(err)
+		}
+		want := exactPrinterStrings(golden)
+		if r := rep.Results[i]; r.Status == Unsupported {
+			if codecsAllowed(r.ID, r.Detail, registry) && len(want) > 0 {
+				excluded = append(excluded, r.ID)
+				excludedOutputs += len(want)
+			}
+			continue // the codecs gate reports an unlisted unsupported result
+		}
+		if len(want) == 0 {
+			continue
+		}
+		fixtures++
+		outputs += len(want)
+		got := yangPrinterStrings[f.ID]
+		for path, value := range want {
+			actual, ok := got[path]
+			if !ok {
+				t.Errorf("%s %s: printer output missing", f.ID, path)
+				continue
+			}
+			if !bytes.Equal([]byte(actual), []byte(value)) {
+				t.Errorf("%s %s: printer output is not byte-exact: got %q, want %q", f.ID, path, actual, value)
+			}
+		}
+		for path := range got {
+			if _, ok := want[path]; !ok {
+				t.Errorf("%s %s: unexpected printer output", f.ID, path)
+			}
+		}
+	}
+	t.Logf("exact printer coverage: %d codecs fixtures, %d outputs; %d outputs in %d unsupported fixtures excluded: %v",
+		fixtures, outputs, excludedOutputs, len(excluded), excluded)
+	if fixtures < codecsExactFixtureFloor || outputs < codecsExactOutputFloor {
+		t.Errorf("exact printer coverage fell below the M5 floor of %d fixtures and %d outputs",
+			codecsExactFixtureFloor, codecsExactOutputFloor)
+	}
+}
+
+const codecsExactFixtureFloor, codecsExactOutputFloor = 269, 566
+
+func exactPrinterStrings(r Response) map[string]string {
+	out := map[string]string{}
+	collect := func(prefix string, m map[string]any) {
+		for _, field := range []string{"tree", "subtree"} {
+			printed, _ := m[field].(map[string]any)
+			for _, format := range []string{"json", "xml"} {
+				if value, ok := printed[format].(string); ok {
+					out[prefix+field+"."+format] = value
+				}
+			}
+		}
+	}
+	collect("", r)
+	for i, raw := range list(r["steps"]) {
+		if step, ok := raw.(map[string]any); ok {
+			collect(fmt.Sprintf("steps[%d].", i), step)
+		}
+	}
+	return out
+}
+
 // TestYangEngineTargets: the m1 schema dumps agree with the oracle (compiled printout skipped).
 func TestYangEngineTargets(t *testing.T) {
 	m := load(t)
@@ -1199,6 +1359,34 @@ func TestValidationGateSelection(t *testing.T) {
 	}
 }
 
+// TestCodecsGateSelection: the M5 gate takes exactly codecs-area fixtures, permits only the
+// compiled field of schema requests to be skipped, and allows only listed fixtures whose reason
+// names an id that is present in deviations.md.
+func TestCodecsGateSelection(t *testing.T) {
+	if !codecsFixture(Fixture{Areas: []string{"codecs"}}) ||
+		!codecsFixture(Fixture{Areas: []string{"types", "codecs"}}) ||
+		codecsFixture(Fixture{Areas: []string{"validation"}}) {
+		t.Error("gate selection")
+	}
+	if !codecsSkippedFieldsAllowed("data", nil) ||
+		!codecsSkippedFieldsAllowed("schema", []string{"compiled"}) ||
+		codecsSkippedFieldsAllowed("data", []string{"compiled"}) ||
+		codecsSkippedFieldsAllowed("schema", []string{"typed"}) ||
+		codecsSkippedFieldsAllowed("schema", []string{"compiled", "typed"}) {
+		t.Error("skipped fields")
+	}
+	registry := deviationRegistry(t)
+	for id, deviation := range codecsUnsupported {
+		if !codecsAllowed(id, "unsupported: "+deviation, registry) ||
+			codecsAllowed(id, "unsupported without the id", registry) {
+			t.Errorf("allowlist entry %s = %s", id, deviation)
+		}
+	}
+	if codecsAllowed("not-listed", "U-0112", registry) {
+		t.Error("unlisted fixture passed the allowlist")
+	}
+}
+
 // TestSchemaLimit: only the allowlisted limits pass the M2 gate.
 func TestSchemaLimit(t *testing.T) {
 	for reason, want := range map[string]string{
@@ -1471,11 +1659,22 @@ func TestSequenceInsertNullInputUsesRetainedTree(t *testing.T) {
 }
 
 var (
-	yangOnce sync.Once
-	yangM    *Manifest
-	yangRep  Report
-	yangErr  error
+	yangOnce           sync.Once
+	yangM              *Manifest
+	yangRep            Report
+	yangErr            error
+	yangPrinterStrings map[string]map[string]string
 )
+
+type recordingYang struct{}
+
+func (recordingYang) Run(r Request) (Response, error) {
+	resp, err := (Yang{}).Run(r)
+	yangPrinterStrings[r.ID] = exactPrinterStrings(resp)
+	return resp, err
+}
+
+func (recordingYang) SkippedFields(op string) []string { return (Yang{}).SkippedFields(op) }
 
 // yangReport is the corpus run through the Yang engine, shared by the engine gates (schema,
 // XPath, validation): one run instead of one per gate, read-only afterwards.
@@ -1484,7 +1683,8 @@ func yangReport(t *testing.T) (*Manifest, Report) {
 	yangOnce.Do(func() {
 		if yangM, yangErr = LoadManifest(manifestPath); yangErr == nil {
 			if yangErr = yangM.CheckFiles(true); yangErr == nil {
-				yangRep, yangErr = yangM.Compare(Yang{})
+				yangPrinterStrings = map[string]map[string]string{}
+				yangRep, yangErr = yangM.Compare(recordingYang{})
 			}
 		}
 	})
