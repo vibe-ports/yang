@@ -246,6 +246,42 @@ func TestNetconfRPC(t *testing.T) {
 	}
 }
 
+// TestPrintXMLFilterAttributesUnqualified is xml_print_meta's NETCONF filter exception: type and
+// select are ietf-netconf metadata internally but print without an XML namespace. The two cases
+// are oracle fixtures ut-parser/xml-filter-attributes-01 and -02.
+func TestPrintXMLFilterAttributesUnqualified(t *testing.T) {
+	ctx, _, err := yang.NewContext(yang.Options{}, os.DirFS("../conformance/corpus/ietf"),
+		os.DirFS("../conformance/corpus/ut-parser/notif.1"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if diags, err := ctx.Load("ietf-netconf", "2011-06-01", []string{"writable-running"}); err != nil {
+		t.Fatal(err, diags)
+	}
+	if diags, err := ctx.Load("notifications", "2008-07-14", nil); err != nil {
+		t.Fatal(err, diags)
+	}
+	s := ctx.Schema()
+	for _, tc := range []struct {
+		name, input, want string
+	}{
+		{"extension", `<get xmlns="urn:ietf:params:xml:ns:netconf:base:1.0"><filter type="xpath" select="/*"/></get>`,
+			`<get xmlns="urn:ietf:params:xml:ns:netconf:base:1.0"><filter type="xpath" select="/*"/></get>`},
+		{"legacy notifications", `<create-subscription xmlns="urn:ietf:params:xml:ns:netconf:notification:1.0"><filter type="subtree"><inner-node xmlns="my:urn"/></filter></create-subscription>`,
+			`<create-subscription xmlns="urn:ietf:params:xml:ns:netconf:notification:1.0"><filter type="subtree"><inner-node xmlns="my:urn"/></filter></create-subscription>`},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			res, err := parseEnv(t, s, data.FormatXML, data.OpRPC, nil, tc.input)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got := envXML(t, res.Tree, true); got != tc.want {
+				t.Errorf("PrintXML = %q, want %q", got, tc.want)
+			}
+		})
+	}
+}
+
 // TestNetconfAction is test_parser_xml.c test_netconf_action.
 func TestNetconfAction(t *testing.T) {
 	s := envSchema(t, envModuleXML)
