@@ -1843,7 +1843,7 @@ func bindSubtreeWork(root *Node, work *workCounter) {
 			continue // bound with all its descendants already
 		}
 		sib.rebind(work)
-		sib.work = work
+		sib.setWork(work)
 		stack = append(stack, sib.list...)
 		stack = append(stack, sib.opq...)
 	}

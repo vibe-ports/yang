@@ -206,6 +206,13 @@ func CompareCompatible(a, b Value) (order int, compatible bool) {
 	switch sortCallback(a.typ) {
 	case "simple":
 		return strings.Compare(a.canon, b.canon), true
+	case "time-period":
+		// lyplg_type_sort_time_period reads only both canonical forms (time_period.c:41-75);
+		// an empty one makes it index before the string
+		if a.canon == "" || b.canon == "" {
+			return 0, false
+		}
+		return compareTimePeriod(a, b), true
 	case "int":
 		x, okX := integerSortStorage(a, a)
 		y, okY := integerSortStorage(a, b)
@@ -268,16 +275,33 @@ func storeCallback(t *schema.Type) string {
 	if t == nil {
 		return ""
 	}
-	if p := pluginFor(t); p != nil {
-		return "plugin:" + p.id
+	base, builtIn := storageBase(t)
+	if !builtIn {
+		// date-and-time's two revisions have distinct store callbacks writing one
+		// lyd_value_date_and_time representation, sorted by one callback: one class
+		return "plugin:" + pluginFor(t).id
 	}
-	switch t.Base {
+	switch base {
 	case schema.Int8, schema.Int16, schema.Int32, schema.Int64:
 		return "int"
 	case schema.Uint8, schema.Uint16, schema.Uint32, schema.Uint64:
 		return "uint"
 	default:
-		return "builtin:" + t.Base.String()
+		return "builtin:" + base.String()
+	}
+}
+
+// storageBase is the built-in type whose store callback writes t's values: t's own base, or
+// string for a plugin registered with lyplg_type_store_string. false: a plugin's own storage.
+func storageBase(t *schema.Type) (schema.BaseType, bool) {
+	p := pluginFor(t)
+	switch {
+	case p == nil:
+		return t.Base, true
+	case p.stringStore:
+		return schema.String, true
+	default:
+		return 0, false
 	}
 }
 
@@ -285,10 +309,14 @@ func storeCallback(t *schema.Type) string {
 // plugin's fixed_mem or dyn_mem. Enumeration is deliberately absent: its enum_item is a pointer,
 // but same-callback enumeration comparisons remain supported above.
 func plainBuiltInScalarStorage(t *schema.Type) bool {
-	if t == nil || pluginFor(t) != nil {
+	if t == nil {
 		return false
 	}
-	switch t.Base {
+	base, builtIn := storageBase(t)
+	if !builtIn {
+		return false
+	}
+	switch base {
 	case schema.Int8, schema.Int16, schema.Int32, schema.Int64,
 		schema.Uint8, schema.Uint16, schema.Uint32, schema.Uint64,
 		schema.Bool, schema.Dec64, schema.String, schema.Empty:
@@ -308,10 +336,14 @@ func SortCompatible(a, b Value) bool {
 // scalars then write only their low bytes; string and empty leave the whole union zero. Pointer-
 // backed and type-specific fixed-memory values are refused.
 func scalarUnionStorage(v Value) (uint64, bool) {
-	if v.typ == nil || pluginFor(v.typ) != nil {
+	if v.typ == nil {
 		return 0, false
 	}
-	switch v.typ.Base {
+	base, builtIn := storageBase(v.typ)
+	if !builtIn {
+		return 0, false
+	}
+	switch base {
 	case schema.Int8, schema.Int16, schema.Int32, schema.Int64,
 		schema.Uint8, schema.Uint16, schema.Uint32, schema.Uint64:
 		return integerLYB(v), true

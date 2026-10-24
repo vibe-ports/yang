@@ -153,6 +153,18 @@ func (n *Node) touch() {
 	}
 }
 
+// setWork binds s and its retained RB topologies to work: a topology must not keep the tree it
+// was built in alive, or charge it, after its subtree moved to another tree.
+func (s *siblings) setWork(work *workCounter) {
+	s.work = work
+	for _, d := range s.rbOrders {
+		d.work = work
+	}
+	for _, d := range s.pending {
+		d.work = work
+	}
+}
+
 // rebind records the work counter of s before bindSubtreeWork moves it to another tree.
 func (s *siblings) rebind(work *workCounter) {
 	if s.work == work {
@@ -400,7 +412,7 @@ func (j *hashTransaction) restore() {
 	}
 	// after the sibling sets: a set rebound before its capture was captured with the new counter
 	for s, work := range j.works {
-		s.work = work
+		s.setWork(work)
 	}
 	for c, saved := range j.chains {
 		*c = saved

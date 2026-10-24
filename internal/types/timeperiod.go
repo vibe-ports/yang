@@ -9,7 +9,7 @@ import "math"
 // the record has no validate_value), compared as strings, sorted by compareTimePeriod.
 func init() {
 	plugins[pluginKey{"libnetconf2-netconf-server", "", "time-period"}] = &plugin{
-		id: "time-period", store: storeString, compare: compareTimePeriod}
+		id: "time-period", store: storeString, compare: compareTimePeriod, stringStore: true}
 }
 
 // compareTimePeriod ports lyplg_type_sort_time_period: descending, months before weeks before

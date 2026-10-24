@@ -522,3 +522,96 @@ func TestRetainedRBUnlinkOracle(t *testing.T) {
 		t.Fatalf("oracle mismatch: %s\noracle: %#v\nengine: %#v", diff, want, got)
 	}
 }
+
+// oracleSequence runs one sequence request through the engine and libyang and compares them.
+func oracleSequence(t *testing.T, base, id string, params map[string]any) {
+	t.Helper()
+	got, err := (Yang{}).Run(Request{ID: id, BaseDir: base, Params: params})
+	if err != nil {
+		t.Fatal(err)
+	}
+	want, err := nativeRequestRunner(t)(base, params)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want, _ = withoutSkipped(want, Yang{}.SkippedFields("sequence"))
+	got, _ = withoutSkipped(got, Yang{}.SkippedFields("sequence"))
+	if diff := diffResponses(want, got); diff != "" {
+		t.Fatalf("oracle mismatch: %s\noracle: %#v\nengine: %#v", diff, want, got)
+	}
+}
+
+// TestDiffStringTimePeriodOracle: libnetconf2's time-period is stored by lyplg_type_store_string
+// and sorted from canonical text (time_period.c:41-75), so a string run and a time-period run
+// from independently compiled contexts compare natively in both directions.
+func TestDiffStringTimePeriodOracle(t *testing.T) {
+	base := t.TempDir()
+	typedef, err := os.ReadFile(filepath.Join("corpus", "types", "schemas", "libnetconf2-netconf-server@2026-04-17.yang"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	modules := map[string]string{
+		"string": `module rb-time-period { yang-version 1.1; namespace "urn:rb-time-period"; prefix r;
+  container c { leaf-list v { type string; } } }`,
+		"period": `module rb-time-period { yang-version 1.1; namespace "urn:rb-time-period"; prefix r;
+  import libnetconf2-netconf-server { prefix ln2; } container c { leaf-list v { type ln2:time-period; } } }`,
+	}
+	for dir, text := range modules {
+		if err := os.MkdirAll(filepath.Join(base, dir), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(base, dir, "rb-time-period.yang"), []byte(text), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(base, dir, "libnetconf2-netconf-server@2026-04-17.yang"), typedef, 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	module := []any{map[string]any{"name": "rb-time-period"}}
+	for _, dirs := range [][2]string{{"string", "period"}, {"period", "string"}} {
+		t.Run(dirs[0]+"-"+dirs[1], func(t *testing.T) {
+			oracleSequence(t, base, "ut-diff/retained-rb-time-period-"+dirs[0], map[string]any{
+				"op": "sequence", "searchdirs": []any{dirs[0]}, "modules": module, "steps": []any{
+					map[string]any{"do": "parse", "format": "json", "data_type": "data", "parse_only": true,
+						"data": `{"rb-time-period:c":{"v":["1h","3h"]}}`},
+					map[string]any{"do": "diff", "format": "json", "data_type": "data", "parse_only": true,
+						"data":   `{"rb-time-period:c":{"v":["2h","4h"]}}`,
+						"target": map[string]any{"searchdirs": []any{dirs[1]}, "modules": module}},
+				}})
+		})
+	}
+}
+
+// TestMoveNodes3TieOrderOracle retires D-0061 against libyang: inserting a parsed sibling list
+// moves it whole (lyd_insert_sibling -> lyd_move_nodes_by_schema), and lyds_merge_nodes3 visits
+// the source tree in rb_iter_traversal order, which orders equal-key instances.
+func TestMoveNodes3TieOrderOracle(t *testing.T) {
+	base := t.TempDir()
+	if err := os.WriteFile(filepath.Join(base, "rb-tie-order.yang"), []byte(`module rb-tie-order {
+  yang-version 1.1; namespace "urn:rb-tie-order"; prefix r;
+  list l { config false; key k; leaf k { type uint8; } leaf p { type uint8; } } }`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	for _, count := range []int{7, 11} {
+		var src strings.Builder
+		src.WriteString(`{"rb-tie-order:l":[`)
+		for i := range count {
+			if i > 0 {
+				src.WriteByte(',')
+			}
+			fmt.Fprintf(&src, `{"k":5,"p":%d}`, i)
+		}
+		src.WriteString(`]}`)
+		t.Run(fmt.Sprint(count), func(t *testing.T) {
+			oracleSequence(t, base, fmt.Sprintf("seq/retained-rb-nodes3-ties-%d", count), map[string]any{
+				"op": "sequence", "searchdirs": []any{"."}, "modules": []any{map[string]any{"name": "rb-tie-order"}},
+				"steps": []any{
+					map[string]any{"do": "parse", "format": "json", "data_type": "data", "parse_only": true,
+						"data": `{"rb-tie-order:l":[{"k":2,"p":100},{"k":9,"p":101}]}`},
+					map[string]any{"do": "insert", "format": "json", "data_type": "data", "parse_only": true,
+						"data": src.String()},
+					map[string]any{"do": "dump"},
+				}})
+		})
+	}
+}
