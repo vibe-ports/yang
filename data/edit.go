@@ -790,12 +790,15 @@ func (t *Tree) changeNodeValue(n *Node, v types.Value, hashAmount uint64) {
 			t.work.hashErr = err
 			return
 		}
-		restore, err := t.linkOrigin(target)
+		restore, arm, err := t.linkOrigin(target)
 		if err != nil {
 			return
 		}
 		if err := t.work.checkChangedIndex(target, n, &v, hashAmount); err != nil {
 			t.work.hashErr = err
+			return
+		}
+		if err := arm(); err != nil {
 			return
 		}
 		unlinkRetainingHistory(target)
@@ -1274,15 +1277,25 @@ func (t *Tree) flushMerge(lv *mergeLevel) {
 	if err := t.preflightSplice(lv.parent, sib, lv.pend); err != nil {
 		return
 	}
-	// Splice needs positions; it already walks/copies the sibling slice once.
+	// lyd_merge_sibling_r inserts each pending copy with lyd_insert_node: replay those RB
+	// insertions on a copy of the run's topology, then publish the run once. The copy is
+	// detached until everything is charged; the publication already walks the sibling slice.
 	lo := t.schemaIndex(sib, lv.pend[0].schema)
 	hi := t.retainedRunEnd(sib, lo)
-	for _, d := range lv.pend {
-		d.touch()
-		d.inRB = true
-		d.rbGroup = sib.rbGroups[sib.runLeader(d.schema)]
+	group := sib.rbGroups[sib.list[lo]]
+	current := sib.rbOrders[group]
+	if current == nil {
+		t.work.hashErr = &opError{"LY_EINT", "Missing retained red-black topology for a system-ordered run."}
+		return
 	}
-	if err := t.splice(lv.parent, sib, lo, hi, lv.pend, false); err != nil {
+	if t.work.chargeHash(uint64(len(current.nodes))+1) != nil {
+		return
+	}
+	order := cloneDirtyOrder(current)
+	if err := t.rbReplay(order, lv.pend); err != nil {
+		return
+	}
+	if err := t.rbPublish(lv.parent, sib, lo, hi, group, order, lv.pend); err != nil {
 		return
 	}
 	for i, d := range lv.pend {

@@ -343,8 +343,11 @@ func (t *Tree) diffInsert(parent, n, source *Node, anchor string) error {
 			if ctxOf(first) != ctxOf(source) {
 				return &opError{"LY_EINVAL", "Different contexts mixed in a \"lyd_insert_before\" function call."}
 			}
-			restore, err := t.linkOrigin(n)
+			restore, arm, err := t.linkOrigin(n)
 			if err != nil {
+				return err
+			}
+			if err := arm(); err != nil {
 				return err
 			}
 			unlink(n)

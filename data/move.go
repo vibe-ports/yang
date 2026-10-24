@@ -9,6 +9,7 @@ package data
 
 import (
 	"fmt"
+	"maps"
 	"slices"
 
 	"github.com/vibe-ports/yang/internal/schema"
@@ -148,7 +149,7 @@ func (t *Tree) insertChild(parent, n *Node) error {
 	if err := t.preflightInsertAnchor(parent, n); err != nil {
 		return err
 	}
-	restore, err := t.linkOrigin(n)
+	restore, arm, err := t.linkOrigin(n)
 	if err != nil {
 		return err
 	}
@@ -160,13 +161,16 @@ func (t *Tree) insertChild(parent, n *Node) error {
 	}
 	destination := t.childrenOf(parent)
 	destinationGen := destination.gen
-	if n.siblingsOf() == t.childrenOf(parent) {
-		if err := unlinkCheck(n); err != nil {
-			return err
-		}
-		unlinkRetainingHistory(n)
-	} else if err := unlinkTree(n); err != nil {
+	if err := unlinkCheck(n); err != nil {
 		return err
+	}
+	if err := arm(); err != nil {
+		return err
+	}
+	if n.siblingsOf() == t.childrenOf(parent) {
+		unlinkRetainingHistory(n)
+	} else {
+		unlink(n)
 	}
 	err = t.insert(parent, n, insertDefault)
 	if err != nil {
@@ -214,7 +218,7 @@ func (t *Tree) insertSibling(sibling, n *Node) error {
 	if err := dt.preflightInsertAnchor(parent, n); err != nil {
 		return err
 	}
-	restore, err := dt.linkOrigin(n)
+	restore, arm, err := dt.linkOrigin(n)
 	if err != nil {
 		return err
 	}
@@ -226,13 +230,16 @@ func (t *Tree) insertSibling(sibling, n *Node) error {
 	}
 	destination := dt.childrenOf(parent)
 	destinationGen := destination.gen
-	if n.siblingsOf() == dt.childrenOf(parent) {
-		if err := unlinkCheck(n); err != nil {
-			return err
-		}
-		unlinkRetainingHistory(n)
-	} else if err := unlinkTree(n); err != nil {
+	if err := unlinkCheck(n); err != nil {
 		return err
+	}
+	if err := arm(); err != nil {
+		return err
+	}
+	if n.siblingsOf() == dt.childrenOf(parent) {
+		unlinkRetainingHistory(n)
+	} else {
+		unlink(n)
 	}
 	err = dt.insert(parent, n, insertDefault)
 	if err != nil {
@@ -279,7 +286,7 @@ func (t *Tree) insertAfter(sibling, n *Node) error {
 	if err := dt.preflightInsertAnchor(sibling.parent, n); err != nil {
 		return err
 	}
-	restore, err := dt.linkOrigin(n)
+	restore, arm, err := dt.linkOrigin(n)
 	if err != nil {
 		return err
 	}
@@ -290,6 +297,9 @@ func (t *Tree) insertAfter(sibling, n *Node) error {
 		return err
 	}
 	destinationGen := sib.gen
+	if err := arm(); err != nil {
+		return err
+	}
 	if n.siblingsOf() == sib {
 		unlinkRetainingHistory(n)
 	} else {
@@ -314,10 +324,10 @@ func (t *Tree) insertAfter(sibling, n *Node) error {
 
 // linkOrigin records a linked node's position before an insertion may unlink it.
 // A failed hash lookup or preflight must not strand that node detached.
-func (t *Tree) linkOrigin(n *Node) (func(), error) {
+func (t *Tree) linkOrigin(n *Node) (restore func(), arm func() error, err error) {
 	sib := n.siblingsOf()
 	if sib == nil {
-		return func() {}, nil
+		return func() {}, func() error { return nil }, nil
 	}
 	owner, parent := n.treeOf(), n.parent
 	gen := sib.gen
@@ -331,7 +341,7 @@ func (t *Tree) linkOrigin(n *Node) (func(), error) {
 		var err error
 		at, err = t.originIndex(sib, sib.list, n)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		if !sib.schemaUnordered && !opChild(n.schema) {
 			// Ordinary schema runs are contiguous and monotone. Their first slot
@@ -339,7 +349,7 @@ func (t *Tree) linkOrigin(n *Node) (func(), error) {
 			before := t.work.Load()
 			first := t.upper(sib.list, 0, func(a *Node) bool { return t.sameOrAfter(a, n) })
 			if err := t.work.chargeHash(uint64(t.work.Load() - before)); err != nil { //nolint:gosec // lookup only increments the counter
-				return nil, err
+				return nil, nil, err
 			}
 			leader = sib.list[first]
 		} else {
@@ -348,7 +358,7 @@ func (t *Tree) linkOrigin(n *Node) (func(), error) {
 			leader = n
 			for i := at - 1; i >= 0; i-- {
 				if err := t.work.chargeHash(1); err != nil {
-					return nil, err
+					return nil, nil, err
 				}
 				sib.work.Add(1)
 				if sib.list[i].schema != n.schema {
@@ -361,17 +371,42 @@ func (t *Tree) linkOrigin(n *Node) (func(), error) {
 		var err error
 		at, err = t.originIndex(sib, sib.opq, n)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 	}
 	rb, uns, group := sib.rbTree[leader], sib.unsorted[leader], n.rbGroup
-	return func() {
+	// lyds_unlink removes n from its tree, so a failed insertion must put back that exact
+	// topology. arm, called right before the unlink once every preflight passed, reserves the
+	// O(log R) journal of that removal and arms it; repeated moves stay linear.
+	undo := func() {}
+	arm = func() error {
+		current := sib.rbOrders[group]
+		if !inRB || group == nil || current == nil {
+			return nil
+		}
+		if err := t.reserveHash(current.removalBound()); err != nil {
+			return err
+		}
+		restore := current.armRemovalUndo(n, &t.work)
+		undo = func() {
+			sib.touch()
+			restore()
+			if sib.rbOrders == nil {
+				sib.rbOrders = make(map[*rbGroup]*dirtyOrder)
+			}
+			current.work = sib.work
+			sib.rbOrders[group] = current
+		}
+		return nil
+	}
+	restore = func() {
 		if n.siblingsOf() == nil {
 			n.touch()
 			n.inRB = inRB
 			n.rbGroup = group
 			owner.restoreLink(parent, n, at)
 			sib.gen = gen
+			undo()
 			if rb {
 				markRB(sib, leader)
 			} else {
@@ -383,7 +418,8 @@ func (t *Tree) linkOrigin(n *Node) (func(), error) {
 				delete(sib.unsorted, leader)
 			}
 		}
-	}, nil
+	}
+	return restore, arm, nil
 }
 
 // originIndex locates a linked node from both ends. Each step is charged before
@@ -417,6 +453,39 @@ func runs(nodes []*Node) [][]*Node {
 		i = j
 	}
 	return rs
+}
+
+// runSlots bounds the sibling-slice work of linking run one by one from position at (-1:
+// appended): each link shifts the shorter side, plus every reallocation copy. Charged before the
+// run is taken.
+func runSlots(dst *siblings, run []*Node, at int) uint64 {
+	size, m := uint64(dst.len()), uint64(len(run))
+	shift := uint64(0)
+	if at >= 0 && at < len(dst.list) {
+		shift = uint64(min(at+len(run), len(dst.list)-at)) //nolint:gosec // positions are nonnegative
+	}
+	// a front insertion without headroom copies into 3*len+1 slots (nodeDeque.insertAt); the
+	// headroom it leaves makes later reallocations geometric, so all copies stay within 6*(len+m)
+	return addHashBound(mulHashBound(m, shift+1), 6*(size+m)+2)
+}
+
+// treeRuns joins each run to the following runs whose instances belong to its leader's RB tree.
+// One tree can hold equivalent instances from several contexts (distinct schema nodes); they are
+// contiguous, and lyds_merge_nodes3's traversal or a whole-run move carries them all at once
+// (tree_data_sorted.c:1673-1680). The runs are subslices of one slice, so joining extends them.
+func treeRuns(top *siblings, rs [][]*Node) [][]*Node {
+	var out [][]*Node
+	for _, run := range rs {
+		if k := len(out); k > 0 {
+			lead := out[k-1][0]
+			if g := top.rbGroups[lead]; top.rbTree[lead] && g != nil && run[0].inRB && run[0].rbGroup == g {
+				out[k-1] = out[k-1][:len(out[k-1])+len(run)]
+				continue
+			}
+		}
+		out = append(out, run)
+	}
+	return out
 }
 
 // take unlinks the run from the top level of src like lyd_unlink_ignore_lyds: the nodes keep
@@ -474,6 +543,66 @@ func give(dst *siblings, leader *Node, rb, uns bool, order *dirtyOrder) {
 	}
 }
 
+// rbSnapshot is a sibling set's retained RB state before a whole-run move: the physical order,
+// the run-leader metadata, every tree's exact topology and each node's membership.
+type rbSnapshot struct {
+	sib      *siblings
+	list     []*Node
+	firstRun map[*schema.Node]*Node
+	tree     map[*Node]bool
+	groups   map[*Node]*rbGroup
+	unsorted map[*Node]bool
+	orders   map[*rbGroup]*dirtyOrder
+	inRB     []bool
+	group    []*rbGroup
+}
+
+// snapshotRB copies sib's retained RB state, its cost charged before the copy.
+func (t *Tree) snapshotRB(sib *siblings) (*rbSnapshot, error) {
+	cost := uint64(len(sib.list)) + 1
+	for _, d := range sib.rbOrders {
+		cost += uint64(len(d.nodes)) + 1
+	}
+	if err := t.work.chargeHash(cost); err != nil {
+		return nil, err
+	}
+	s := &rbSnapshot{sib: sib, list: slices.Clone(sib.list), firstRun: maps.Clone(sib.firstRun),
+		tree: maps.Clone(sib.rbTree), groups: maps.Clone(sib.rbGroups), unsorted: maps.Clone(sib.unsorted),
+		inRB: make([]bool, len(sib.list)), group: make([]*rbGroup, len(sib.list))}
+	if sib.rbOrders != nil {
+		s.orders = make(map[*rbGroup]*dirtyOrder, len(sib.rbOrders))
+		for g, d := range sib.rbOrders {
+			s.orders[g] = cloneDirtyOrder(d)
+		}
+	}
+	for i, n := range sib.list {
+		s.inRB[i], s.group[i] = n.inRB, n.rbGroup
+	}
+	return s, nil
+}
+
+// restore puts the snapshot back once every moved node is back at its origin: the same nodes
+// are linked again, so only order, leader metadata, topology and membership are reset.
+func (s *rbSnapshot) restore(t *Tree) {
+	sib := s.sib
+	sib.touch()
+	if len(sib.list) == len(s.list) {
+		sib.list, sib.base = slices.Clone(s.list), nil
+	}
+	sib.firstRun, sib.rbTree, sib.rbGroups, sib.unsorted = s.firstRun, s.tree, s.groups, s.unsorted
+	sib.rbOrders = s.orders
+	for _, d := range sib.rbOrders {
+		d.work = sib.work
+	}
+	for i, n := range s.list {
+		n.touch()
+		n.inRB, n.rbGroup = s.inRB[i], s.group[i]
+	}
+	if sib.opIdx != nil {
+		sib.opBuild(t)
+	}
+}
+
 // moveNodes is lyd_move_nodes: every top-level node of src joins the children of parent (the top
 // level of t when parent is nil).
 func (t *Tree) moveNodes(parent *Node, src *Tree) error {
@@ -488,11 +617,21 @@ func (t *Tree) moveNodes(parent *Node, src *Tree) error {
 			return err
 		}
 	}
-	rs := runs(original)
+	rs := treeRuns(&src.top, runs(original))
 	for _, run := range rs {
 		if err := t.preflightInsertPosition(dst, run[0], insertDefault); err != nil {
 			return err
 		}
+	}
+	// A failure after a run was taken must give both sides back their exact retained trees
+	// (contract: rollback restores topology, ownership and membership, not only the nodes).
+	srcRB, err := t.snapshotRB(&src.top)
+	if err != nil {
+		return err
+	}
+	dstRB, err := t.snapshotRB(dst)
+	if err != nil {
+		return err
 	}
 	inRB := make([]bool, len(original))
 	groups := make([]*rbGroup, len(original))
@@ -539,11 +678,16 @@ func (t *Tree) moveNodes(parent *Node, src *Tree) error {
 				delete(src.top.unsorted, leader)
 			}
 		}
+		srcRB.restore(t)
+		dstRB.restore(t)
 		dst.gen, src.top.gen = dstGen, srcGen
 	}()
 	if dst.len() == 0 {
 		// lyd_move_nodes_at_once: the list keeps its order, its runs their RB trees
 		for _, run := range rs {
+			if err := t.work.chargeHash(runSlots(dst, run, -1)); err != nil {
+				return err
+			}
 			rb, uns, order, err := take(src, run)
 			if err != nil {
 				return err
@@ -584,6 +728,9 @@ func (t *Tree) moveNodes(parent *Node, src *Tree) error {
 				return t.work.hashErr
 			}
 		}
+		if err := t.work.chargeHash(runSlots(dst, run, at)); err != nil {
+			return err
+		}
 		rb, uns, order, err := take(src, run)
 		if err != nil {
 			return err
@@ -606,19 +753,20 @@ func (t *Tree) moveNodes(parent *Node, src *Tree) error {
 	return nil
 }
 
-// merge is lyds_merge: the run of a system-ordered list or leaf-list from src joins its
-// instances in dst.
+// merge is lyds_merge (tree_data_sorted.c:1692-1728): the run of a system-ordered list or
+// leaf-list from src joins its instances in dst.
 //   - the source run has no RB tree (lyds_merge_nodes1, after lyds_additionally_create_rb_tree
 //     when neither has one): its instances are inserted one by one in data order, each after the
 //     equal values;
 //   - only the source run has one (lyds_merge_nodes2): the destination instances join the source
-//     tree, so equal values keep the source instances first. libyang 5.8.6 crashes on most such
-//     inputs (D-0062); the port does the stable merge the C is written to do. A destination run
-//     without a tree is assumed sorted, as the C assumes: one with several unsorted instances
-//     (appended by schema) is merged as if sorted and then counts as sorted;
-//   - both have one (lyds_merge_nodes3): the source tree members are inserted one by one. libyang
-//     visits them in rb_iter order, which decides the order of equal values only; the port uses
-//     physical data order for this deviation (D-0061) while retaining the updated topology.
+//     tree in data order, and that tree becomes the destination's. libyang 5.8.6 crashes on most
+//     such inputs (D-0062); the port keeps the source tree and inserts the destination members
+//     into it, as the C is written to do, so the run is that tree's in-order (equal values keep
+//     the source instances first). The moved instances are hashed in _front/_among/_back order:
+//     the destination leader's tree predecessors backwards, then the rest forwards;
+//   - both have one (lyds_merge_nodes3): the source tree is released and its members are
+//     inserted into the destination tree in rb_iter order (rb_iter_traversal, a post-order),
+//     which decides the order of equal values.
 //
 // Source instances outside the source tree come last, one by one (lyds_merge_nodes1 from next_p).
 func (t *Tree) merge(parent *Node, dst *siblings, src *Tree, run []*Node) error {
@@ -627,83 +775,92 @@ func (t *Tree) merge(parent *Node, dst *siblings, src *Tree, run []*Node) error 
 	}
 	s := run[0].schema
 	srcRB := src.top.rbTree[run[0]]
-	selected := src.top.rbGroups[run[0]]
-	var members, rest []*Node
-	for _, n := range run {
-		if srcRB && n.inRB && n.rbGroup == selected {
-			members = append(members, n)
-		} else {
-			rest = append(rest, n)
-		}
-	}
+	group := src.top.rbGroups[run[0]]
 	_, _, srcOrder, err := take(src, run)
 	if err != nil {
 		return err
 	}
-	if len(members) > 0 && !dst.hasRB(s) {
-		// lyds_merge_nodes2_front/_among/_back: a stable merge, source first on equal values
-		// Splice needs positions; its sibling copy already bounds this scan.
-		group := members[0].rbGroup
-		if srcOrder != nil {
-			dst.touch()
-			if dst.rbOrders == nil {
-				dst.rbOrders = make(map[*rbGroup]*dirtyOrder)
+	if srcRB && srcOrder == nil {
+		t.work.hashErr = &opError{"LY_EINT", "Missing retained red-black topology for a system-ordered run."}
+		return t.work.hashErr
+	}
+	var members, rest []*Node
+	if srcRB {
+		members = srcOrder.postOrder() // lyds_merge_nodes3's visiting order
+	}
+	for _, n := range run {
+		if !srcRB || srcOrder.nodes[n] == nil {
+			rest = append(rest, n)
+		}
+	}
+	// lyds_get_rb_tree of the matched destination leader selects nodes1, 2 or 3 (1701-1725)
+	lo := t.schemaIndex(dst, s)
+	if lo < 0 {
+		t.work.hashErr = &opError{"LY_EINT", "Missing destination run of a merged system-ordered run."}
+		return t.work.hashErr
+	}
+	leader := dst.list[lo]
+	switch {
+	case srcRB && !dst.rbTree[leader]:
+		// lyds_merge_nodes2: the destination run joins the source tree in data order
+		if group == nil {
+			group = &rbGroup{}
+		}
+		hi := t.retainedRunEnd(dst, lo)
+		dstRun := slices.Clone(dst.list[lo:hi])
+		if err := t.rbReplay(srcOrder, dstRun); err != nil {
+			return err
+		}
+		final := srcOrder.ordered()
+		leaderAt := slices.Index(final, dstRun[0])
+		inDst := make(map[*Node]bool, len(dstRun))
+		for _, n := range dstRun {
+			inDst[n] = true
+		}
+		attach := make([]*Node, 0, len(final)-len(dstRun))
+		for i := leaderAt - 1; i >= 0; i-- { // _front: each becomes the first instance in turn
+			if !inDst[final[i]] {
+				attach = append(attach, final[i])
 			}
-			srcOrder.work = &t.work
-			dst.rbOrders[group] = srcOrder
 		}
-		for _, n := range members {
-			n.touch()
-			n.rbGroup = group
+		for _, n := range final[leaderAt+1:] { // _among and _back
+			if !inDst[n] {
+				attach = append(attach, n)
+			}
 		}
-		lo := t.schemaIndex(dst, s)
-		hi := t.retainedRunEnd(dst, lo)
-		for i := lo; i < hi; i++ {
-			dst.list[i].touch()
-			dst.list[i].inRB = true
-			dst.list[i].rbGroup = group
-			t.rbRecordInsert(dst, dst.list[i])
-		}
-		if err := t.splice(parent, dst, lo, hi, members, true); err != nil {
+		if err := t.rbPublish(parent, dst, lo, hi, group, srcOrder, attach); err != nil {
 			return err
 		}
-		markRB(dst, dst.runLeader(s))
+		markRB(dst, dst.list[lo])
 		members = nil
-	}
-	monotone := true
-	for i := 1; i < len(members); i++ {
-		if t.less(members[i], members[i-1]) {
-			monotone = false
-			break
-		}
-	}
-	if len(members) > 1 && monotone && !dst.hasUnsorted(s) {
-		// lyds_merge_nodes3 into a sorted run: one pass, each after the equal values
-		// Splice needs positions; its sibling copy already bounds this scan.
-		group := dst.rbGroups[dst.runLeader(s)]
-		for _, n := range members {
-			n.touch()
-			n.rbGroup = group
-		}
-		lo := t.schemaIndex(dst, s)
+	case srcRB && !dst.unsorted[leader]:
+		// lyds_merge_nodes3 into a run without LAST instances: replay on a copy, publish once
 		hi := t.retainedRunEnd(dst, lo)
-		if err := t.splice(parent, dst, lo, hi, members, false); err != nil {
+		group := dst.rbGroups[leader]
+		current := dst.rbOrders[group]
+		if current == nil {
+			t.work.hashErr = &opError{"LY_EINT", "Missing retained red-black topology for a system-ordered run."}
+			return t.work.hashErr
+		}
+		if err := t.work.chargeHash(uint64(len(current.nodes)) + 1); err != nil {
+			return err
+		}
+		order := cloneDirtyOrder(current)
+		if err := t.rbReplay(order, members); err != nil {
+			return err
+		}
+		if err := t.rbPublish(parent, dst, lo, hi, group, order, members); err != nil {
 			return err
 		}
 		members = nil
 	}
+	// lyds_merge_nodes3 next to LAST instances (each after its RB predecessor), and nodes1
 	for _, n := range append(members, rest...) {
 		n.touch()
-		n.inRB = false
+		n.inRB, n.rbGroup = false, nil
 		if err := t.insert(parent, n, insertDefault); err != nil {
 			return err
 		}
 	}
 	return nil
-}
-
-// less reports whether a orders strictly before b by value, counting the comparison.
-func (t *Tree) less(a, b *Node) bool {
-	t.work.Add(1)
-	return t.compareSorted(a, b) < 0
 }

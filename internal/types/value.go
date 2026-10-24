@@ -112,6 +112,22 @@ func Equal(a, b Value) bool {
 	return a.canon == b.canon // lyplg_type_compare_simple
 }
 
+// CompareBound bounds the work Compare or CompareCompatible can spend on v's side of one
+// comparison: one unit plus every byte or element its sort callback may read (canonical text,
+// binary bytes, set bits, a plugin's fixed-size address) and, for a union, the member-type scan
+// of lyplg_type_sort_union plus its member. A comparison of a and b costs at most
+// CompareBound(a)+CompareBound(b).
+func CompareBound(v Value) uint64 {
+	n := 1 + uint64(len(v.canon)) + uint64(len(v.bin)) + uint64(len(v.bits))
+	if v.ext != nil {
+		n += 16 // an inet address; zone and time-fraction text are within the canonical form
+	}
+	if v.union != nil && v.typ != nil {
+		n += uint64(len(v.typ.Union)) + CompareBound(v.union.member)
+	}
+	return n
+}
+
 // Compare orders two values of the same type like libyang's sort callbacks (user-ordered lists
 // excluded): negative, zero or positive. Values of different base types order by canonical
 // string; a union orders its members as lyplg_type_sort_union (union.c).

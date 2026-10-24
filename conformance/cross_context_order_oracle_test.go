@@ -90,6 +90,54 @@ func TestRetainedRBRound5Oracle(t *testing.T) {
 	}
 }
 
+// TestRetainedRBWiderForeignLeaderOracle: a foreign empty bits value whose type has a wider
+// bitmap becomes the physical leader of a local run but not its RB root. libyang's
+// rb_insert_node compares only its descent, so a later local insertion never reads the
+// foreign value (no D-0121 refusal).
+func TestRetainedRBWiderForeignLeaderOracle(t *testing.T) {
+	base := t.TempDir()
+	const moduleName = "retained-rb-bits"
+	modules := map[string]string{
+		"a": `bit a { position 0; } bit b { position 1; } bit c { position 2; }`,
+		"b": `bit a { position 0; } bit b { position 1; } bit c { position 2; } bit w { position 8; }`,
+	}
+	for dir, bits := range modules {
+		if err := os.MkdirAll(filepath.Join(base, dir), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		text := `module retained-rb-bits { yang-version 1.1; namespace "urn:vibe-ports:yang:retained-rb-bits";
+  prefix r; leaf-list top { type bits { ` + bits + ` } } }`
+		if err := os.WriteFile(filepath.Join(base, dir, moduleName+".yang"), []byte(text), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	module := []any{map[string]any{"name": moduleName}}
+	params := map[string]any{"op": "sequence", "searchdirs": []any{"a"}, "modules": module, "steps": []any{
+		map[string]any{"do": "diff", "format": "json", "data_type": "data", "parse_only": true,
+			"data":   `{"retained-rb-bits:top":[""]}`,
+			"target": map[string]any{"searchdirs": []any{"b"}, "modules": module}},
+		map[string]any{"do": "parse", "format": "json", "data_type": "data", "parse_only": true,
+			"data": `{"retained-rb-bits:top":["a","b"]}`},
+		map[string]any{"do": "diff_apply"},
+		map[string]any{"do": "edit", "format": "json", "data_type": "data",
+			"merge": `{"retained-rb-bits:top":["c"]}`},
+		map[string]any{"do": "dump"},
+	}}
+	got, err := (Yang{}).Run(Request{ID: "ut-diff/retained-rb-wider-foreign-leader", BaseDir: base, Params: params})
+	if err != nil {
+		t.Fatal(err)
+	}
+	want, err := nativeRequestRunner(t)(base, params)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want, _ = withoutSkipped(want, Yang{}.SkippedFields("sequence"))
+	got, _ = withoutSkipped(got, Yang{}.SkippedFields("sequence"))
+	if diff := diffResponses(want, got); diff != "" {
+		t.Fatalf("oracle mismatch: %s\noracle: %#v\nengine: %#v", diff, want, got)
+	}
+}
+
 // TestDiffReviewOracleCases keeps the ordering, indexed-miss, and small retained-delta request
 // shapes live. Their libyang implementation behavior has no hand-written golden here.
 func TestDiffReviewOracleCases(t *testing.T) {

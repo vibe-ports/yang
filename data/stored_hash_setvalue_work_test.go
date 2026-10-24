@@ -60,7 +60,7 @@ func TestStoredHashMaxLeafListSetValueWork(t *testing.T) {
 	}
 	tr.work.hashLimit = 2
 	end := tr.work.beginHashWork()
-	_, err := tr.linkOrigin(tr.top.list[16])
+	_, _, err := tr.linkOrigin(tr.top.list[16])
 	end()
 	if !errors.Is(err, yang.ErrBudget) || tr.work.hashUsed != 2 || tr.top.list[16].Value() != "16" {
 		t.Fatalf("middle-position lookup: error=%v charged=%d", err, tr.work.hashUsed)

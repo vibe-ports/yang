@@ -68,6 +68,29 @@ type dirtyOrder struct {
 	// leaders are the first-instance changes (lyds_link_data_node without a predecessor,
 	// tree_data_sorted.c:1021-1040) of the latest insertions, until applyLeaders applies them.
 	leaders [][2]*Node
+	// undo records, while armed for one removal (armRemovalUndo), every topology node before
+	// remove changes it.
+	undo *removalUndo
+}
+
+type removalUndo struct {
+	target *Node
+	active bool // remove(target) is running: only its writes are journaled
+	saved  map[*dirtyOrderNode]dirtyOrderNode
+	work   *workCounter
+}
+
+// keep records x before remove changes it, each saved node charged within the armed reservation.
+func (d *dirtyOrder) keep(x *dirtyOrderNode) {
+	u := d.undo
+	if u == nil || !u.active || x == nil {
+		return
+	}
+	if _, ok := u.saved[x]; ok {
+		return
+	}
+	u.saved[x] = *x
+	_ = u.work.chargeHash(1) // reserved by armRemovalUndo
 }
 
 type dirtyOrderNode struct {
@@ -134,6 +157,7 @@ func dirtyFix(n *dirtyOrderNode) {
 }
 
 func (d *dirtyOrder) replaceChild(parent, old, x *dirtyOrderNode) {
+	d.keep(parent)
 	switch {
 	case parent == nil:
 		d.root = x
@@ -147,6 +171,9 @@ func (d *dirtyOrder) replaceChild(parent, old, x *dirtyOrderNode) {
 // rotateLeft is rb_rotate_left (tree_data_sorted.c:374-400).
 func (d *dirtyOrder) rotateLeft(n *dirtyOrderNode) {
 	r := n.right
+	d.keep(n)
+	d.keep(r)
+	d.keep(r.left)
 	n.right = r.left
 	if r.left != nil {
 		r.left.parent = n
@@ -161,6 +188,9 @@ func (d *dirtyOrder) rotateLeft(n *dirtyOrderNode) {
 // rotateRight is rb_rotate_right (tree_data_sorted.c:402-428).
 func (d *dirtyOrder) rotateRight(n *dirtyOrderNode) {
 	l := n.left
+	d.keep(n)
+	d.keep(l)
+	d.keep(l.right)
 	n.left = l.right
 	if l.right != nil {
 		l.right.parent = n
@@ -253,26 +283,45 @@ func (d *dirtyOrder) insertNode(n *Node, right bool) (isMax, leftmost bool) {
 // where lyds_link_data_node links the data node (tree_data_sorted.c:669-716,1021-1039).
 // No topology is changed when a comparison is refused.
 func (d *dirtyOrder) insertCompatible(n *Node, compare func(*Node, *Node) (int, bool)) (*Node, bool) {
-	var parent *dirtyOrderNode
-	left := false
+	parent, left, pred, ok := d.search(n, compare)
+	if !ok {
+		return nil, false
+	}
+	d.place(n, parent, left)
+	return pred, true
+}
+
+// search is rb_insert_node's read-only descent (tree_data_sorted.c:684-695): equal values go
+// right. It returns the leaf position and the new node's in-order predecessor, the last node the
+// descent left to the right (lyds_link_data_node's rb_prev, 1026). A refused comparison changes
+// nothing.
+func (d *dirtyOrder) search(n *Node, compare func(*Node, *Node) (int, bool)) (parent *dirtyOrderNode, left bool, pred *Node, ok bool) {
+	var lastRight *dirtyOrderNode
 	for cur := d.root; cur != nil; {
 		if d.work != nil {
 			d.work.Add(1)
 		}
 		parent = cur
-		order, ok := compare(cur.node, n)
-		if !ok {
-			return nil, false
+		order, compatible := compare(cur.node, n)
+		if !compatible {
+			return nil, false, nil, false
 		}
-		left = order > 0
-		if left {
+		if left = order > 0; left {
 			cur = cur.left
 		} else {
-			cur = cur.right
+			lastRight, cur = cur, cur.right
 		}
 	}
-	// All comparisons have succeeded, so topology may now change. Walking the
-	// parent chain avoids allocating a search-path slice for every insertion.
+	if lastRight != nil {
+		pred = lastRight.node
+	}
+	return parent, left, pred, true
+}
+
+// place links n at the leaf position search found and rebalances (rb_set, rb_insert_color,
+// tree_data_sorted.c:697-708).
+func (d *dirtyOrder) place(n *Node, parent *dirtyOrderNode, left bool) {
+	d.undo = nil // a removal journal armed by a move that stopped before its removal is stale
 	for cur := parent; cur != nil; cur = cur.parent {
 		cur.size++
 	}
@@ -290,7 +339,32 @@ func (d *dirtyOrder) insertCompatible(n *Node, compare func(*Node, *Node) (int, 
 		parent.right = x
 	}
 	d.insertColor(x)
-	return d.predecessorNode(x), true
+}
+
+// postOrder is the sequence rb_iter_begin/rb_iter_next visit (rb_iter_traversal,
+// tree_data_sorted.c:294-320): each node after its left and then its right subtree. libyang's
+// walk dismantles the tree as it goes; the caller drops this one afterwards.
+func (d *dirtyOrder) postOrder() []*Node {
+	out := make([]*Node, 0, len(d.nodes))
+	var stack []*dirtyOrderNode
+	var last *dirtyOrderNode
+	for cur := d.root; cur != nil || len(stack) != 0; {
+		if d.work != nil {
+			d.work.Add(1)
+		}
+		if cur != nil {
+			stack, cur = append(stack, cur), cur.left
+			continue
+		}
+		top := stack[len(stack)-1]
+		if top.right != nil && last != top.right {
+			cur = top.right
+			continue
+		}
+		out = append(out, top.node)
+		last, stack = top, stack[:len(stack)-1]
+	}
+	return out
 }
 
 // checkInsertCompatible walks the exact rb_insert_node search path without changing the tree.
@@ -321,36 +395,11 @@ func (d *dirtyOrder) checkInsertCompatible(work *workCounter, n *Node,
 	return true, nil
 }
 
-func (d *dirtyOrder) predecessorNode(n *dirtyOrderNode) *Node {
-	if n.left != nil {
-		n = n.left
-		for n.right != nil {
-			if d.work != nil {
-				d.work.Add(1)
-			}
-			n = n.right
-		}
-		return n.node
-	}
-	for n.parent != nil && n == n.parent.left {
-		if d.work != nil {
-			d.work.Add(1)
-		}
-		n = n.parent
-	}
-	if n.parent != nil && d.work != nil {
-		d.work.Add(1)
-	}
-	if n.parent == nil {
-		return nil
-	}
-	return n.parent.node
-}
-
 func dirtyRed(n *dirtyOrderNode) bool { return n != nil && n.red }
 
 func (d *dirtyOrder) fixSizes(n *dirtyOrderNode) {
 	for ; n != nil; n = n.parent {
+		d.keep(n)
 		dirtyFix(n)
 	}
 }
@@ -364,6 +413,8 @@ func (d *dirtyOrder) removeColor(parent, n *dirtyOrderNode) {
 		if parent.left == n {
 			sibling := parent.right
 			if dirtyRed(sibling) {
+				d.keep(sibling)
+				d.keep(parent)
 				sibling.red, parent.red = false, true
 				d.rotateLeft(parent)
 				sibling = parent.right
@@ -373,20 +424,26 @@ func (d *dirtyOrder) removeColor(parent, n *dirtyOrderNode) {
 				continue
 			}
 			if !dirtyRed(sibling.left) && !dirtyRed(sibling.right) {
+				d.keep(sibling)
 				sibling.red = true
 				n, parent = parent, parent.parent
 				continue
 			}
 			if !dirtyRed(sibling.right) {
 				if sibling.left != nil {
+					d.keep(sibling.left)
 					sibling.left.red = false
 				}
+				d.keep(sibling)
 				sibling.red = true
 				d.rotateRight(sibling)
 				sibling = parent.right
 			}
+			d.keep(sibling)
+			d.keep(parent)
 			sibling.red, parent.red = parent.red, false
 			if sibling.right != nil {
+				d.keep(sibling.right)
 				sibling.right.red = false
 			}
 			d.rotateLeft(parent)
@@ -396,6 +453,8 @@ func (d *dirtyOrder) removeColor(parent, n *dirtyOrderNode) {
 
 		sibling := parent.left
 		if dirtyRed(sibling) {
+			d.keep(sibling)
+			d.keep(parent)
 			sibling.red, parent.red = false, true
 			d.rotateRight(parent)
 			sibling = parent.left
@@ -405,20 +464,26 @@ func (d *dirtyOrder) removeColor(parent, n *dirtyOrderNode) {
 			continue
 		}
 		if !dirtyRed(sibling.left) && !dirtyRed(sibling.right) {
+			d.keep(sibling)
 			sibling.red = true
 			n, parent = parent, parent.parent
 			continue
 		}
 		if !dirtyRed(sibling.left) {
 			if sibling.right != nil {
+				d.keep(sibling.right)
 				sibling.right.red = false
 			}
+			d.keep(sibling)
 			sibling.red = true
 			d.rotateLeft(sibling)
 			sibling = parent.left
 		}
+		d.keep(sibling)
+		d.keep(parent)
 		sibling.red, parent.red = parent.red, false
 		if sibling.left != nil {
+			d.keep(sibling.left)
 			sibling.left.red = false
 		}
 		d.rotateRight(parent)
@@ -426,7 +491,42 @@ func (d *dirtyOrder) removeColor(parent, n *dirtyOrderNode) {
 		break
 	}
 	if n != nil {
+		d.keep(n)
 		n.red = false
+	}
+}
+
+// removalBound bounds the topology nodes one remove can change: the size path to the root (h),
+// per rb_remove_color step the recoloured sibling and parent (2h), the removed slot and its
+// successor with their links (6), and the final case's rotations and recolouring (at most 16).
+// The bound is generous (8h+32); keep journals each node exactly once.
+func (d *dirtyOrder) removalBound() uint64 { return 8*rbHeight(len(d.nodes)) + 32 }
+
+// armRemovalUndo makes the next remove of n journal every node it changes, so a failed move can
+// put back the exact topology. The caller has reserved removalBound; nothing is copied before
+// remove runs, and nothing but that removal is journaled: an insertion or another removal
+// first drops an arm a move left behind when it stopped before unlinking. It returns the
+// restore function.
+func (d *dirtyOrder) armRemovalUndo(n *Node, work *workCounter) func() {
+	old := d.nodes[n]
+	if old == nil {
+		return func() {}
+	}
+	u := &removalUndo{target: n, saved: map[*dirtyOrderNode]dirtyOrderNode{}, work: work}
+	root := d.root
+	d.undo = u
+	return func() {
+		if d.undo == u {
+			d.undo = nil
+		}
+		for x, v := range u.saved {
+			*x = v
+		}
+		d.root = root
+		if d.nodes == nil {
+			d.nodes = make(map[*Node]*dirtyOrderNode)
+		}
+		d.nodes[n] = old
 	}
 }
 
@@ -438,6 +538,17 @@ func (d *dirtyOrder) remove(n *Node) {
 	if old == nil || !old.active {
 		return
 	}
+	if d.undo != nil && d.undo.target != n {
+		d.undo = nil // armed for another node: this removal is not the move's
+	}
+	if d.undo != nil {
+		d.undo.active = true
+	}
+	defer func() { d.undo = nil }()
+	d.keep(old)
+	d.keep(old.left)
+	d.keep(old.right)
+	d.keep(old.parent)
 	delete(d.nodes, n)
 
 	removed := old
@@ -464,6 +575,8 @@ func (d *dirtyOrder) remove(n *Node) {
 			}
 			replacement = replacement.left
 		}
+		d.keep(replacement)
+		d.keep(replacement.right)
 		child, parent, red = replacement.right, replacement.parent, replacement.red
 		if child != nil {
 			child.parent = parent
