@@ -116,7 +116,7 @@ func TestOpRunGaps(t *testing.T) {
 	sn := op.kids.list[1].schema
 	check := func(gaps, run int) {
 		t.Helper()
-		if got := op.kids.opIdx[sn].gaps; got != gaps {
+		if got := op.kids.order.entries[sn].gaps; got != gaps {
 			t.Fatalf("gaps = %d, want %d", got, gaps)
 		}
 		if got := tr.opRun(&op.kids, sn); len(got) != run {
@@ -146,7 +146,7 @@ func TestOpRunGaps(t *testing.T) {
 	if err := unlinkTree(v3); err != nil {
 		t.Fatal(err)
 	}
-	if got := op.kids.opIdx[sn].gaps; got != 0 {
+	if got := op.kids.order.entries[sn].gaps; got != 0 {
 		t.Fatalf("removed singleton run: gaps %d", got)
 	}
 	mustLink(t, tr.insert(op, v3, insertLast))

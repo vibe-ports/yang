@@ -212,6 +212,70 @@ func (s *Seq[T]) Remove(h *Handle[T]) bool {
 	return true
 }
 
+// MoveBefore relocates a live handle before anchor while preserving its
+// identity. A nil anchor moves it to the end. Relative order of all other
+// handles is unchanged. Callers must unregister h from occurrence indexes
+// before moving it and register it again afterwards.
+func (s *Seq[T]) MoveBefore(h, anchor *Handle[T]) bool {
+	if h == nil || h.owner != s || anchor != nil && anchor.owner != s {
+		return false
+	}
+	if h == anchor {
+		return true
+	}
+	from, _ := s.Rank(h)
+	to := s.length
+	if anchor != nil {
+		to, _ = s.Rank(anchor)
+	}
+	if from == to || from+1 == to {
+		return true
+	}
+	s.root = s.removeAt(s.root, from)
+	if s.root != nil {
+		s.root.parent = nil
+	}
+	if h.prev == nil {
+		s.first = h.next
+	} else {
+		h.prev.next = h.next
+	}
+	if h.next == nil {
+		s.last = h.prev
+	} else {
+		h.next.prev = h.prev
+	}
+	h.left, h.right, h.parent, h.prev, h.next = nil, nil, nil, nil, nil
+	h.height, h.size = 1, 1
+	s.length--
+	if from < to {
+		to--
+	}
+	var prev, next *Handle[T]
+	if to == s.length {
+		prev = s.last
+	} else {
+		next = s.Select(to)
+		prev = next.prev
+	}
+	h.prev, h.next = prev, next
+	if prev == nil {
+		s.first = h
+	} else {
+		prev.next = h
+	}
+	if next == nil {
+		s.last = h
+	} else {
+		next.prev = h
+	}
+	s.root = s.insertAt(s.root, to, h)
+	s.root.parent = nil
+	s.length++
+	s.label(h)
+	return true
+}
+
 func nodeSize[T any](n *Handle[T]) int {
 	if n == nil {
 		return 0

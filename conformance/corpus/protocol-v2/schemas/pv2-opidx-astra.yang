@@ -1,0 +1,29 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Hand-written live-oracle fixtures for operation-child index regressions.
+module pv2-opidx-astra {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:pv2-opidx-astra";
+  prefix poa;
+
+  import ietf-yang-metadata { prefix md; }
+  md:annotation tag { type string; }
+
+  rpc r {
+    input {
+      leaf a { type string; }
+      leaf b { type string; }
+      leaf c { type string; }
+      leaf-list v { type uint32; }
+      list outer {
+        list inner {
+          key id;
+          leaf id { type uint32; }
+        }
+      }
+      list dup {
+        ordered-by user;
+        leaf value { type string; }
+      }
+    }
+  }
+}

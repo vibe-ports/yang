@@ -83,8 +83,7 @@ type siblings struct {
 	pending      map[*schema.Node]*dirtyOrder // the parser's dirty runs: the sibling order is their tree's
 	rbTree       map[*Node]bool               // libyang's lyds metadata lives on each run leader
 	rbGroups     map[*Node]*rbGroup           // tree identity follows metadata when its leader moves
-	opIdx        map[*schema.Node]*opEntry    // operation children or unordered copies by schema (opInst)
-	opRanks      [2]rankBits                  // occupied input/output schema ranks, for the next anchor
+	order        *childOrder                  // ordered sequence and occurrence indexes; compatibility records stay above
 	gen          uint64                       // changes with every insertion and removal
 	work         *workCounter                 // the tree's work counter once a node was linked: all and indexOf count visits
 
@@ -318,6 +317,9 @@ func (s *siblings) indexOf(l []*Node, n *Node) int {
 // position caches one interior sibling position until the next insertion or removal. The
 // generation in the key makes mutation invalidate it without any maintenance work.
 func (s *siblings) position(n *Node) int {
+	if at := s.orderPosition(n); at >= 0 {
+		return at
+	}
 	// No cache here: lookups run on read-only paths that concurrent readers share (doc.go), so
 	// they must not write sibling state. The parser keeps its own cache (lydCtx.position).
 	return indexFromEnd(s.work, s.list, n)
@@ -343,8 +345,8 @@ func (s *siblings) runLeader(sn *schema.Node) *Node {
 	if n := s.firstRun[sn]; n != nil {
 		return n
 	}
-	if d := s.opIdx[sn]; d != nil && len(d.list) != 0 {
-		return d.list[0]
+	if n := s.documentFirst(sn); n != nil {
+		return n
 	}
 	return nil
 }
@@ -1270,8 +1272,8 @@ func (s *siblings) leaderInsertBetween(n, prev, next *Node) {
 	s.leaderAppend(n.schema, n)
 }
 
-// opRehashNeighbours gets the neighbours relevant to first-record rehashing in O(1) for a
-// gap-free operation entry. Split entries retain the counted position scan below (#240).
+// opRehashNeighbours gets the physical neighbours relevant to first-record
+// rehashing in O(1), including around a split operation run.
 func (s *siblings) opRehashNeighbours(n *Node) (prev, next *Node, ok bool) {
 	if ord := s.pending[n.schema]; ord != nil {
 		// a run the parser defers: its tree order is the sibling order libyang has
@@ -1280,15 +1282,18 @@ func (s *siblings) opRehashNeighbours(n *Node) (prev, next *Node, ok bool) {
 		}
 		return nil, ord.successor(n), true
 	}
-	d := s.opIdx[n.schema]
-	if d == nil || d.gaps != 0 || len(d.list) == 0 {
+	if s.order == nil {
 		return nil, nil, false
 	}
-	if d.list[0] != n {
-		return d.list[0], nil, true // any same-schema predecessor proves n is not a run start
+	h := s.order.byNode[n]
+	if h == nil {
+		return nil, nil, false
 	}
-	if len(d.list) > 1 {
-		next = d.list[1]
+	if before := s.order.seq.Prev(h); before != nil && before.Value.schema == n.schema {
+		return before.Value, nil, true
+	}
+	if after := s.order.seq.Next(h); after != nil && after.Value.schema == n.schema {
+		next = after.Value
 	}
 	return nil, next, true
 }
@@ -1438,10 +1443,7 @@ func (s *siblings) mixedContexts() bool {
 // maintained document-order index, as do copies outside schema order.
 func (t *Tree) documentFirst(s *siblings, sn *schema.Node) *Node {
 	if opChild(sn) || s.schemaUnordered {
-		if inst := s.opInst(sn); len(inst) > 0 {
-			return inst[0]
-		}
-		return nil
+		return s.documentFirst(sn)
 	}
 	if i := t.schemaIndex(s, sn); i >= 0 {
 		return s.list[i]
@@ -1471,7 +1473,7 @@ func (t *Tree) schemaIndex(s *siblings, sn *schema.Node) int {
 	}
 	if opChild(sn) || s.schemaUnordered {
 		if leader := physicalStart(s, sn, t.schemaLookupOperation(s, sn)); leader != nil {
-			return t.indexFromEnd(s.list, leader)
+			return s.orderPosition(leader)
 		}
 		return -1
 	}
@@ -1540,6 +1542,15 @@ func (t *Tree) findFirstWork(s *siblings, target *Node, work *workCounter) *Node
 		}
 		return nil
 	}
+	sn := target.schema
+	if sn != nil && len(s.list) != 0 {
+		if first := s.list[0]; !sameSet(ctxOf(first), ctxOf(target)) {
+			var err error
+			if sn, err = findSchemaCtx(target.schema, ctxOf(first), first.parent); err != nil {
+				return nil
+			}
+		}
+	}
 	if target.schema != nil && s.ht != nil {
 		if len(s.list) == 0 {
 			// a table kept after its schema children left (lyd_unlink_hash never frees it) or
@@ -1549,14 +1560,18 @@ func (t *Tree) findFirstWork(s *siblings, target *Node, work *workCounter) *Node
 		}
 		// the target's schema node in the siblings' context (libyang hashes module and node
 		// names, so a target of another context finds its instances)
-		sn := target.schema
-		if first := s.list[0]; !sameSet(ctxOf(first), ctxOf(target)) {
-			var err error
-			if sn, err = findSchemaCtx(target.schema, ctxOf(first), first.parent); err != nil {
-				return nil
-			}
-		}
 		if dup {
+			if target.schema.Kind == schema.LeafList && s.order != nil {
+				entry := s.order.entries[sn]
+				leader := physicalStart(s, sn, t.schemaLookupOperation(s, sn))
+				if entry != nil && entry.gaps == 0 {
+					if candidate := s.exactAtOrAfter(sn, target, leader); candidate != nil &&
+						compareSingle(t, candidate, target, true) {
+						return candidate
+					}
+					return nil
+				}
+			}
 			for n := range t.instances(s, sn) {
 				s.visit()
 				if compareSingle(t, n, target, true) {
@@ -1574,6 +1589,12 @@ func (t *Tree) findFirstWork(s *siblings, target *Node, work *workCounter) *Node
 			if htValEqual(t, n, target) {
 				return n
 			}
+		}
+		return nil
+	}
+	if dup && target.schema.Kind == schema.LeafList && s.order != nil {
+		if candidate := s.exactFirst(sn, target); candidate != nil && compareSingle(t, candidate, target, true) {
+			return candidate
 		}
 		return nil
 	}

@@ -146,6 +146,27 @@ func (o *Occurrences[T, S, K]) Next(schema S, key K, h *Handle[T]) *Handle[T] {
 	return next
 }
 
+// LastWhere returns the last instance in physical order for which keep is true.
+// keep must be monotone over the selected occurrences (true values followed by
+// false values). This is useful when physical order is also a caller-defined
+// sorted order, without exposing the occurrence tree representation.
+func (o *Occurrences[T, S, K]) LastWhere(schema S, key K, keep func(T) bool) *Handle[T] {
+	t := o.trees[occKey[S, K]{schema, key}]
+	if t == nil || keep == nil {
+		return nil
+	}
+	var found *Handle[T]
+	for n := t.root; n != nil; {
+		o.charge()
+		if keep(n.handle.Value) {
+			found, n = n.handle, n.right
+		} else {
+			n = n.left
+		}
+	}
+	return found
+}
+
 func occHeight[T any](n *occNode[T]) int {
 	if n == nil {
 		return 0

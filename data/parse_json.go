@@ -591,21 +591,25 @@ func (p *jsonParser) metaAttr(node *Node, idx int) (rc error) {
 					return current
 				}
 				pastRun = func() *Node {
-					if d := sib.opIdx[sn]; d != nil {
-						return sibAt(sib, lc.position(sib, d.list[len(d.list)-1])+1)
+					if sib.order != nil {
+						if d := sib.order.entries[sn]; d != nil {
+							last := sib.order.bySchema.Last(sn, 0)
+							return sibAt(sib, sib.orderPosition(last.Value)+1)
+						}
 					}
 					_, hi := lc.tree.runBounds(sib, prev)
 					return sibAt(sib, hi)
 				}
 				return nil
 			}
-		} else if d := sib.opIdx[node.schema]; d != nil && d.gaps == 0 && d.list[0] == node {
+		} else if sib.order != nil && sib.order.entries[node.schema] != nil &&
+			sib.order.entries[node.schema].gaps == 0 && sib.documentFirst(node.schema) == node {
 			// A contiguous run is its index entry: node->next stays inside it until the run
 			// ends, so the start needs no sibling scan. Past the run node->next is the following
 			// sibling, of another schema node (the entry holds every instance). It ends the
 			// coupling, and only the representation error names it, so it is located on that
 			// error path alone (pastRun).
-			run := d.list
+			run := sib.walkFrom(node)
 			idx = 0
 			next = func(i int) *Node {
 				if i < len(run) {
