@@ -526,7 +526,6 @@ var inventoryGapClasses = map[string]struct {
 	"any-direct":                 {id: "U-0112", exact: "unsupported: native pointer-level any-value calls have no public Go equivalent, U-0112", request: inventoryAnyDirectStep},
 	"any-direct-opaque-source":   {id: "U-0107", exact: "unsupported: opaque source construction has no public Go equivalent, U-0107", request: inventoryAnyDirectStep},
 	"compare-insert-opaq":        {id: "U-0107", exact: "unsupported: compare insert_opaq (lyd_new_opaq / lyd_new_opaq2 are exported in M5 with the envelopes, U-0107)", request: inventoryCompareInsertOpaqStep},
-	"split-validation":           {id: "U-0106", reasons: []string{"split-validation speed path"}},
 	"operation-parent":           {id: "U-0106", reasons: []string{"rpc input into an existing", "operation input into an existing parent", "an rpc request with data_type", "a reply into an opaque request"}},
 	"opaque-construction":        {id: "U-0107", reasons: []string{"edit insert_opaq"}},
 	"canonical-values":           {id: "U-0108", reasons: []string{"change_term canon", "LYD_NEW_VAL_STORE_ONLY and _CANON"}},

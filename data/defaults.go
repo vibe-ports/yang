@@ -7,7 +7,6 @@ package data
 
 import (
 	"errors"
-	"slices"
 
 	"github.com/vibe-ports/yang/internal/schema"
 	"github.com/vibe-ports/yang/internal/types"
@@ -86,13 +85,13 @@ type getnextVal struct{ choices, snodes []*schema.Node }
 
 // getnextOf is lyd_val_getnext_get: the choices and the other schema children of sparent (the
 // top-level nodes of mod when nil), in lys_getnext order with choices not entered.
-func (vc *valCtx) getnextOf(sparent *schema.Node, mod *schema.Module, output bool) getnextVal {
+func (vc *valCtx) getnextOf(sparent *schema.Node, mod *schema.Module, output bool) (getnextVal, error) {
 	k := getnextKey{sparent, mod, output}
 	if sparent != nil {
 		k.mod = nil
 	}
 	if v, ok := vc.getnext[k]; ok {
-		return v
+		return v, nil
 	}
 	opts := schema.GetNextWithChoice
 	if output {
@@ -104,6 +103,9 @@ func (vc *valCtx) getnextOf(sparent *schema.Node, mod *schema.Module, output boo
 	}
 	var v getnextVal
 	for sn := range schema.GetNext(sparent, top, opts) {
+		if err := vc.checkContext(); err != nil {
+			return getnextVal{}, err
+		}
 		if sn.Kind == schema.Choice {
 			v.choices = append(v.choices, sn)
 		} else {
@@ -114,7 +116,7 @@ func (vc *valCtx) getnextOf(sparent *schema.Node, mod *schema.Module, output boo
 		vc.getnext = map[getnextKey]getnextVal{}
 	}
 	vc.getnext[k] = v
-	return v
+	return v, nil
 }
 
 // stop is the test of LY_VAL_ERR_GOTO: go on after an error only when it is LY_EVALID under
@@ -137,25 +139,33 @@ func (vc *valCtx) stop(err error) bool {
 
 // getnextData is lys_getnext_data iterated: the instances among sib of every schema node under
 // parent (lys_getnext with no options: choices and cases entered), in schema order.
-func (vc *valCtx) getnextData(sib *siblings, parent *schema.Node, yield func(*Node) bool) {
+func (vc *valCtx) getnextData(sib *siblings, parent *schema.Node, yield func(*Node) bool) error {
 	for sn := range schema.GetNext(parent, nil, 0) {
+		if err := vc.checkContext(); err != nil {
+			return err
+		}
 		// lys_getnext_data returns lyd_find_sibling_val's match itself, which may belong to
 		// another context, then the following siblings of the same schema node pointer.
 		for i, n := range vc.t.instanceRun(sib, sn) {
+			if err := vc.checkContext(); err != nil {
+				return err
+			}
 			if i > 0 && n.schema != sn {
 				break
 			}
 			if !yield(n) {
-				return
+				return nil
 			}
 		}
 	}
+	return nil
 }
 
 // firstData is lys_getnext_data(NULL, ...): the first instance of a schema node under parent.
-func (vc *valCtx) firstData(sib *siblings, parent *schema.Node) (first *Node) {
-	vc.getnextData(sib, parent, func(n *Node) bool { first = n; return false })
-	return first
+func (vc *valCtx) firstData(sib *siblings, parent *schema.Node) (*Node, error) {
+	var first *Node
+	err := vc.getnextData(sib, parent, func(n *Node) bool { first = n; return false })
+	return first, err
 }
 
 // configR is LYS_CONFIG_R: a state node. lys_compile_config sets no config flag at all on an rpc,
@@ -180,15 +190,24 @@ func (vc *valCtx) newImplicit(parent *Node, sparent *schema.Node, mod *schema.Mo
 		sparent = parent.schema
 	}
 	sib := vc.t.childrenOf(parent)
-	gn := vc.getnextOf(sparent, mod, o&implOutput != 0)
+	gn, err := vc.getnextOf(sparent, mod, o&implOutput != 0)
+	if err != nil {
+		return err
+	}
 	skip := func(sn *schema.Node) bool {
 		return o&implNoState != 0 && configR(sn) || o&implNoConfig != 0 && sn.Config || sn.Status == schema.Obsolete
 	}
 	for _, ch := range gn.choices {
+		if err := vc.checkContext(); err != nil {
+			return err
+		}
 		if skip(ch) {
 			continue
 		}
-		n := vc.firstData(sib, ch)
+		n, err := vc.firstData(sib, ch)
+		if err != nil {
+			return err
+		}
 		switch {
 		case n == nil && ch.DefaultCase != nil:
 			if err := vc.newImplicit(parent, ch.DefaultCase, nil, o); err != nil {
@@ -201,6 +220,9 @@ func (vc *valCtx) newImplicit(parent *Node, sparent *schema.Node, mod *schema.Mo
 		}
 	}
 	for _, sn := range gn.snodes {
+		if err := vc.checkContext(); err != nil {
+			return err
+		}
 		if skip(sn) {
 			continue
 		}
@@ -220,6 +242,9 @@ func (vc *valCtx) newImplicit(parent *Node, sparent *schema.Node, mod *schema.Mo
 				break
 			}
 			for _, d := range sn.Default { // a leaf has one, a leaf-list all of them
+				if err := vc.checkContext(); err != nil {
+					return err
+				}
 				v, diag := types.StoreDefault(sn, d)
 				if diag != nil { // the default fit the type at compile; kept as libyang logs it
 					return vc.log.item(parent, sn, false, "LY_EVALID", codeOf(diag.Code), diag.AppTag, diag.Msg)
@@ -283,7 +308,10 @@ func (vc *valCtx) addImplicit(parent, n *Node) error {
 // agree while the module's nodes are in schema order).
 func (vc *valCtx) modInsert(n *Node) error {
 	t, sib := vc.t, &vc.t.top
-	fi := slices.Index(sib.list, vc.modFirst)
+	fi, err := vc.siblingIndex(sib.list, vc.modFirst)
+	if err != nil {
+		return err
+	}
 	at := t.insertPos(sib, n, insertDefault)
 	moveFirst := at <= fi
 	switch {
@@ -303,11 +331,24 @@ func (vc *valCtx) modInsert(n *Node) error {
 }
 
 // modStart is the index of lyd_validate's *first2 in the top level: modFirst, else 0.
-func (vc *valCtx) modStart() int {
+func (vc *valCtx) modStart() (int, error) {
 	if vc.modFirst == nil {
-		return 0
+		return 0, nil
 	}
-	return max(0, slices.Index(vc.t.top.list, vc.modFirst))
+	i, err := vc.siblingIndex(vc.t.top.list, vc.modFirst)
+	return max(0, i), err
+}
+
+func (vc *valCtx) siblingIndex(nodes []*Node, target *Node) (int, error) {
+	for i, n := range nodes {
+		if err := vc.checkContext(); err != nil {
+			return -1, err
+		}
+		if n == target {
+			return i, nil
+		}
+	}
+	return -1, nil
 }
 
 // newImplicitR is lyd_new_implicit_r: newImplicit, then recursively in every default container
@@ -318,9 +359,16 @@ func (vc *valCtx) newImplicitR(parent *Node, sparent *schema.Node, mod *schema.M
 	}
 	kids := vc.t.childrenOf(parent).list
 	if parent == nil {
-		kids = kids[vc.modStart():] // LY_LIST_FOR(*first): from lyd_validate's first2
+		start, err := vc.modStart()
+		if err != nil {
+			return err
+		}
+		kids = kids[start:] // LY_LIST_FOR(*first): from lyd_validate's first2
 	}
 	for _, c := range kids { // lyd_child_no_keys: keys are not containers
+		if err := vc.checkContext(); err != nil {
+			return err
+		}
 		if c.flags&FlagDefault != 0 && c.schema.Kind == schema.Container {
 			if err := vc.newImplicitR(c, nil, mod, o); err != nil {
 				return err

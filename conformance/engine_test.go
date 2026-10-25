@@ -251,8 +251,6 @@ func TestSequenceValidateModuleChecks(t *testing.T) {
 		want        string
 		unsupported bool
 	}{
-		{"final only", map[string]any{"do": "validate", "module": "vm-a", "final_only": true},
-			"lyd_validate_module_final is not exported (split-validation speed path), U-0106", true},
 		{"final only without module", map[string]any{"do": "validate", "final_only": true},
 			"final_only needs module", false},
 		{"module not implemented", map[string]any{"do": "validate", "module": "missing"},
@@ -722,10 +720,6 @@ var validationUnsupported = map[string]string{
 	"ops/parse-json-rpc-rollback-keys-order":  "U-0106",
 	"ops/parse-xml-rpc-parent-envelope-value": "U-0106",
 	"ops/parse-xml-rpc-parent-input":          "U-0106",
-	"seq/validate-module-final-a":             "U-0106",
-	"seq/validate-module-final-a-none":        "U-0106",
-	"seq/validate-module-final-b":             "U-0106",
-	"seq/validate-module-final-when-absent":   "U-0106",
 	// U-0107: lyd_new_opaq and lyd_new_opaq2 are deferred to M5 with the envelopes.
 	"ut-new/insert-13": "U-0107",
 	"ut-new/insert-14": "U-0107",

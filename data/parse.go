@@ -40,13 +40,18 @@ const (
 	Opaque                      // kept as an opaque node (LYD_PARSE_OPAQ)
 )
 
-// ValidateOptions are libyang's LYD_VALIDATE_* options the M1 fixtures use.
+// ValidateOptions are libyang's LYD_VALIDATE_* options.
 type ValidateOptions struct {
 	NoState     bool // LYD_VALIDATE_NO_STATE
 	Present     bool // LYD_VALIDATE_PRESENT
 	MultiError  bool // LYD_VALIDATE_MULTI_ERROR
 	Operational bool // LYD_VALIDATE_OPERATIONAL
 	NoDefaults  bool // LYD_VALIDATE_NO_DEFAULTS
+	// NotFinal skips only the final recursive pass (must, mandatory, min/max-elements,
+	// unique, unexpected/obsolete nodes and non-presence-container default flags).
+	// Earlier phases, including when and type-plugin validate_tree checks, still run.
+	// Finalize each relevant module with ValidateModuleFinal once the tree is final.
+	NotFinal bool // LYD_VALIDATE_NOT_FINAL
 }
 
 // ParseOptions are libyang's LYD_PARSE_* options the M1 fixtures use, the validation that follows

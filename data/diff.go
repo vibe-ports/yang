@@ -74,8 +74,8 @@ func (t *Tree) ValidateDiff(ctx context.Context, o ValidateOptions) (diff *Tree,
 // lines 174-230, lyd_validate passes it through the mutating phases at lines 2000-2045, cleanup at
 // lines 2061-2068 reverts neither tree, and lyd_validate_module returns that result at lines
 // 2134-2142. Validation observes ctx cancellation and fixed default implicit-node and XPath
-// budgets. lyd_validate_module_final and LYD_VALIDATE_NOT_FINAL remain unexported under U-0106;
-// this is not split-module orchestration.
+// budgets. With NotFinal, the preceding validation phases and their implicit diff still
+// run; finalize each relevant module separately with ValidateModuleFinal.
 func (t *Tree) ValidateModuleDiff(ctx context.Context, module string, o ValidateOptions) (diff *Tree,
 	d []yang.Diagnostic, err error) {
 	mod, d, err := t.validateModuleArgs(module, o)

@@ -12,7 +12,10 @@
 // min/max-elements, unique). Tree.Validate runs the same checks over a whole tree,
 // Tree.ValidateModule over one implemented module's data, and Tree.ValidateDiff and
 // Tree.ValidateModuleDiff also return the implicit diff (the nodes the validation added or
-// removed).
+// removed). ValidateOptions.NotFinal omits only the final recursive pass; when and
+// type-plugin reference checks still run. Once the tree is final, call
+// Tree.ValidateModuleFinal for every relevant module. It runs only the final pass,
+// creates no implicit nodes or diff, and can update non-presence-container default flags.
 //
 // Tree.FindXPath, Tree.EvalXPath and Tree.EvalXPathAs query a tree with XPath 1.0 and the YANG
 // function library (RFC 7950 §10), as lyd_find_xpath and lyd_eval_xpath4: JSON-format expressions,
@@ -36,7 +39,7 @@
 // needs exclusive access to that tree, with no other call on it, read or write, at the same time:
 // NewPath, NewTerm, NewInner, NewList, Insert (also of the tree n leaves, or of a detached parent),
 // SetValue (of n's tree or detached subtree), NewMeta, Remove, Unlink, Validate, ValidateModule,
-// ValidateDiff, ValidateModuleDiff, TrimXPath,
+// ValidateDiff, ValidateModuleDiff, ValidateModuleFinal, TrimXPath,
 // LinkLeafrefs, and Merge, ApplyDiff, MergeDiff, MergeDiffTree, Dup and DupSiblings into it (Dup
 // and DupSiblings only read the tree they copy from); ParseOp with an attached Request (the
 // request's tree);

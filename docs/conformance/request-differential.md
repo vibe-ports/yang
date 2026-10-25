@@ -80,13 +80,13 @@ A=0 and C=0, and checks every B against `inventoryGapClasses`.
 ## Evidence and class counts
 
 The canonical linux/amd64 native run of the single-field matrix (CI tag `oracle`)
-after #247 gives:
+after #247 API part 3 gives:
 
 | Category | Class | Count |
 |---|---|---:|
-| MATCH | Equal execution and output | 135,712 |
+| MATCH | Equal execution and output | 135,719 |
 | A — WRONG | Concrete execution mismatch | 0 |
-| B — GAP | All registered B classes | 1,167 |
+| B — GAP | All registered B classes | 1,160 |
 | C — ARTEFACT | Mutation outside the subject | 0 |
 | DEV — REGISTERED CRASH | Registered signal with the documented engine result | 8 |
 | **Total** | | **136,887** |
@@ -112,13 +112,16 @@ follow-up issue (deferred envelope classes are tracked in
 
 This is the explicit list mirrored by `inventoryGapClasses`. Zero means that
 the single-field matrix contains no instance, not that the capability exists.
-Pairwise counts are reported separately below.
+Pairwise counts are reported separately below. #247 exports `NotFinal` and
+`ValidateModuleFinal`: split-validation requests now execute against the live oracle,
+including the formerly unsupported final-only corpus fixtures. `TestSplitValidationOracle`
+compares phase checks, reference plugins, default flags, implicit diffs and argument errors.
+Historical counts below predate that API expansion.
 
 | B class | Registry ID | Capability gap | Single-field |
 |---|---|---|---:|
 | `ordered-input` | D-0058 | `LYD_PARSE_ORDERED` input ordering | 39 |
 | `any-direct` | U-0112 | `any_direct` step: native pointer-level any-value calls | 228 |
-| `split-validation` | U-0106 | Final-only / not-final validation entry points | 7 |
 | `operation-parent` | U-0106 | Operation input into an existing parent, or reply into an opaque request | 691 |
 | `opaque-construction` | U-0107 | `insert_opaq` construction | 90 |
 | `any-direct-opaque-source` | U-0107 | `any_direct` step: opaque source construction for sibling duplication | 2 |

@@ -275,18 +275,23 @@ func (p *whenPass) drop(i int) {
 // that removed anything, the pass goes on from the first entry of n (libyang refreshes its index
 // with ly_set_contains): that entry is the one resolved next, and the entries between it and i
 // wait for the next pass.
-func (p *whenPass) whenFalse(n *Node, i int) int {
+func (p *whenPass) whenFalse(n *Node, i int) (int, error) {
 	vc := p.vc
 	n.touch()
 	n.flags |= FlagWhenFalse
-	vc.dropTypes(n)
+	if err := vc.dropTypes(n, true); err != nil {
+		return i, err
+	}
 	if p.live <= 1 {
-		return i
+		return i, nil
 	}
 	if p.pos == nil {
 		p.builds++
 		p.pos = make(map[*Node][]int, p.live)
 		for j, q := range vc.nodeWhen.items {
+			if err := vc.checkContext(); err != nil {
+				return i, err
+			}
 			if q != nil {
 				p.pos[q] = append(p.pos[q], j)
 			}
@@ -294,15 +299,18 @@ func (p *whenPass) whenFalse(n *Node, i int) int {
 	}
 	removed := false
 	for d := range n.All() {
+		if err := vc.checkContext(); err != nil {
+			return i, err
+		}
 		if l := p.pos[d]; d != n && len(l) > 0 {
 			p.drop(l[0])
 			removed = true
 		}
 	}
 	if l := p.pos[n]; removed && len(l) > 0 {
-		return l[0]
+		return l[0], nil
 	}
-	return i
+	return i, nil
 }
 
 // del is the autodelete of a WhenTrue node whose when became false. The node is unlinked at the
@@ -326,6 +334,9 @@ func (vc *valCtx) unresWhen() (rc error) {
 	p := &whenPass{vc: vc, live: vc.nodeWhen.len(), initialWhen: slices.Clone(vc.nodeWhen.items),
 		initialFlags: map[*Node]Flags{}}
 	for _, n := range p.initialWhen {
+		if err := vc.checkContext(); err != nil {
+			return err
+		}
 		if n != nil {
 			p.initialFlags[n] = n.flags
 		}
@@ -335,6 +346,9 @@ func (vc *valCtx) unresWhen() (rc error) {
 		if vc.nodeTypes.pos != nil {
 			positions = make(map[*Node]int, len(vc.nodeTypes.pos))
 			for n, at := range vc.nodeTypes.pos {
+				if err := vc.checkContext(); err != nil {
+					return err
+				}
 				positions[n] = at
 			}
 		}
@@ -346,6 +360,9 @@ func (vc *valCtx) unresWhen() (rc error) {
 		}
 	}()
 	for i := vc.nodeWhen.len() - 1; i >= 0; i-- {
+		if err := vc.checkContext(); err != nil {
+			return err
+		}
 		n := vc.nodeWhen.items[i]
 		if n == nil {
 			continue // removed with a when-false ancestor
@@ -372,7 +389,11 @@ func (vc *valCtx) unresWhen() (rc error) {
 			vc.log.warn("When condition \"%s\" not satisfied.", w.Src)
 		default:
 			if vc.opts.MultiError {
-				i = p.whenFalse(n, i)
+				at, err := p.whenFalse(n, i)
+				if err != nil {
+					return err
+				}
+				i = at
 			}
 			err := vc.log.val(n, "", ly.Data, "When condition \"%s\" not satisfied.", w.Src)
 			if rc = err; vc.stop(err) {
@@ -404,7 +425,10 @@ func (p *whenPass) finish() error {
 		if p.vc.diff != nil {
 			_ = p.vc.diff(n, diffDelete)
 		}
-		p.vc.dropTypes(n)
+		// finish must complete queue/link cleanup after a canceled when pass.
+		if err := p.vc.dropTypes(n, false); err != nil {
+			return err
+		}
 	}
 	q := p.vc.nodeWhen
 	live := q.items[:0]
@@ -432,6 +456,9 @@ func (p *whenPass) finish() error {
 // unres is the when and type part of lyd_validate_unres: when passes while the queue shrinks,
 // then the incomplete values from the end of node_types.
 func (vc *valCtx) unres() error {
+	if err := vc.checkContext(); err != nil {
+		return err
+	}
 	var rc error
 	if vc.nodeWhen != nil {
 		for {
@@ -449,6 +476,9 @@ func (vc *valCtx) unres() error {
 	}
 	if vc.nodeTypes != nil {
 		for i := vc.nodeTypes.len() - 1; i >= 0; i-- {
+			if err := vc.checkContext(); err != nil {
+				return err
+			}
 			n := vc.nodeTypes.items[i]
 			if err := vc.validateIncomplete(n); err != nil {
 				if rc = err; vc.stop(err) {
@@ -460,8 +490,14 @@ func (vc *valCtx) unres() error {
 	}
 	if vc.metaTypes != nil && len(*vc.metaTypes) > 0 {
 		q := *vc.metaTypes
-		owners := vc.metaOwners(q)
+		owners, err := vc.metaOwners(q)
+		if err != nil {
+			return err
+		}
 		for i := len(q) - 1; i >= 0; i-- {
+			if err := vc.checkContext(); err != nil {
+				return err
+			}
 			if n := owners[q[i]]; n != nil { // nil: a default="true" metadata the parser dropped
 				if err := vc.validateMetaIncomplete(n, q[i]); err != nil {
 					if rc = err; vc.stop(err) {
@@ -479,22 +515,31 @@ func (vc *valCtx) unres() error {
 // metaOwners maps each queued metadata to the node that holds it.
 // ponytail: one walk of the tree per drain (the XML parser attaches a metadata list to the node it
 // creates next, so the queue cannot record the owner); a parent field on meta if this shows up.
-func (vc *valCtx) metaOwners(q []*meta) map[*meta]*Node {
+func (vc *valCtx) metaOwners(q []*meta) (map[*meta]*Node, error) {
 	want := make(map[*meta]bool, len(q))
 	for _, m := range q {
+		if err := vc.checkContext(); err != nil {
+			return nil, err
+		}
 		want[m] = true
 	}
 	owners := make(map[*meta]*Node, len(q))
 	for top := range vc.t.top.all() {
 		for n := range top.All() {
+			if err := vc.checkContext(); err != nil {
+				return nil, err
+			}
 			for _, m := range n.meta {
+				if err := vc.checkContext(); err != nil {
+					return nil, err
+				}
 				if want[m] {
 					owners[m] = n
 				}
 			}
 		}
 	}
-	return owners
+	return owners, nil
 }
 
 // validateMetaIncomplete is the meta_types part of lyd_validate_unres: lyd_value_validate_incomplete

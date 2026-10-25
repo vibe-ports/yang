@@ -105,6 +105,40 @@ func TestValidateModuleImportOnlyRefused(t *testing.T) {
 	wantSilentArgError(t, diags, err, "Invalid argument module (lyd_validate_module()).")
 }
 
+func TestValidateModuleFinalArguments(t *testing.T) {
+	for _, tc := range []struct {
+		name, module, message string
+		opts                  data.ValidateOptions
+	}{
+		{"present", "vm-a", "!(val_opts & (LYD_VALIDATE_PRESENT | LYD_VALIDATE_NOT_FINAL))", data.ValidateOptions{Present: true}},
+		{"not final", "vm-a", "!(val_opts & (LYD_VALIDATE_PRESENT | LYD_VALIDATE_NOT_FINAL))", data.ValidateOptions{NotFinal: true}},
+		{"both", "vm-a", "!(val_opts & (LYD_VALIDATE_PRESENT | LYD_VALIDATE_NOT_FINAL))", data.ValidateOptions{Present: true, NotFinal: true}},
+		{"unknown", "missing", "module", data.ValidateOptions{}},
+		{"import only", "vm-import", "module", data.ValidateOptions{}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			tr := validateModuleTree(t)
+			ds, err := tr.ValidateModuleFinal(context.Background(), tc.module, tc.opts)
+			wantSilentArgError(t, ds, err, "Invalid argument "+tc.message+" (lyd_validate_module_final()).")
+		})
+	}
+}
+
+func TestValidateModuleFinalScopeAndNoImplicit(t *testing.T) {
+	tr := validateModuleTree(t)
+	if ds, err := tr.ValidateModuleFinal(context.Background(), "vm-a", data.ValidateOptions{}); err != nil || len(ds) != 0 {
+		t.Fatal(ds, err)
+	}
+	for _, path := range []string{"/vm-a:top/dflt", "/vm-b:top/dflt"} {
+		if n, err := tr.Find(path); err != nil || n != nil {
+			t.Fatalf("final-only created %s: %v %v", path, n, err)
+		}
+	}
+	if ds, err := tr.ValidateModuleFinal(context.Background(), "vm-b", data.ValidateOptions{}); err == nil || len(ds) != 1 {
+		t.Fatalf("other module not finalized: %v %v", ds, err)
+	}
+}
+
 func TestValidateModuleDiffArgumentChecks(t *testing.T) {
 	for _, tc := range []struct {
 		name, module, message string

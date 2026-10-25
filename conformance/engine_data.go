@@ -55,6 +55,7 @@ var validateFlags = map[string]func(*data.ValidateOptions){
 	"multi_error": func(o *data.ValidateOptions) { o.MultiError = true },
 	"operational": func(o *data.ValidateOptions) { o.Operational = true },
 	"no_defaults": func(o *data.ValidateOptions) { o.NoDefaults = true },
+	"not_final":   func(o *data.ValidateOptions) { o.NotFinal = true },
 }
 
 var unknownPolicies = map[string]data.UnknownPolicy{"reject": data.Reject, "skip": data.Skip, "opaque": data.Opaque}
@@ -325,7 +326,7 @@ func dataOptions(p map[string]any, exec executionContext) (data.ParseOptions, er
 	for _, f := range list(p["validate_options"]) {
 		set, ok := validateFlags[fmt.Sprint(f)]
 		if !ok {
-			return o, fmt.Errorf("%w: validate option %v (split-validation speed path, U-0106)", ErrUnsupported, f)
+			return o, fmt.Errorf("%w: validate option %v", ErrUnsupported, f)
 		}
 		set(&o.Validate)
 	}

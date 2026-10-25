@@ -216,9 +216,6 @@ func runSequence(r Request, s *yang.Schema, resp map[string]any, exec executionC
 				return fmt.Errorf("%w: %s %s %s", ErrUnsupported, what, k, why)
 			}
 		}
-		if what == "validate" && st["final_only"] == true {
-			return fmt.Errorf("%w: lyd_validate_module_final is not exported (split-validation speed path), U-0106", ErrUnsupported)
-		}
 		phase := what
 		// lyoracle.c collects collectOwner (the step's sctx unless noted) and then
 		// the foreign contexts the step touched: a source node's, the diff
@@ -887,9 +884,12 @@ func stepValidate(s *yang.Schema, st map[string]any, tree *data.Tree, so map[str
 	module := str(st, "module", "")
 	var diff *data.Tree
 	var diags []yang.Diagnostic
-	if module == "" {
+	switch {
+	case st["final_only"] == true:
+		diags, err = tree.ValidateModuleFinal(context.Background(), module, o.Validate)
+	case module == "":
 		diff, diags, err = tree.ValidateDiff(context.Background(), o.Validate)
-	} else {
+	default:
 		diff, diags, err = tree.ValidateModuleDiff(context.Background(), module, o.Validate)
 	}
 	so["implicit_diff"] = nil

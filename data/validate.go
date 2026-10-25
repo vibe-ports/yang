@@ -12,7 +12,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"slices"
 	"strings"
 
 	"github.com/vibe-ports/yang"
@@ -55,9 +54,9 @@ func (vc *valCtx) topList() []*Node {
 
 // firstModuleSibling is lyd_first_module_sibling: the index of the first top-level node of mod,
 // or start unchanged when the module has no data.
-func (vc *valCtx) firstModuleSibling(top []*Node, start int, mod *schema.Module) int {
+func (vc *valCtx) firstModuleSibling(top []*Node, start int, mod *schema.Module) (int, error) {
 	if start >= len(top) {
-		return start
+		return start, nil
 	}
 	first := start
 	cmp := 1
@@ -66,6 +65,9 @@ func (vc *valCtx) firstModuleSibling(top []*Node, start int, mod *schema.Module)
 	}
 	if cmp > 0 { // there may be some preceding data
 		for first > 0 {
+			if err := vc.checkContext(); err != nil {
+				return 0, err
+			}
 			first--
 			if ownerModule(vc.t.context(), top[first]) == mod {
 				cmp = 0
@@ -75,36 +77,45 @@ func (vc *valCtx) firstModuleSibling(top []*Node, start int, mod *schema.Module)
 	}
 	if cmp == 0 { // there may be some preceding data of this module
 		for first > 0 && ownerModule(vc.t.context(), top[first-1]) == mod {
+			if err := vc.checkContext(); err != nil {
+				return 0, err
+			}
 			first--
 		}
-		return first
+		return first, nil
 	}
 	if cmp < 0 { // there may be some following data
 		for i := first; i < len(top); i++ {
+			if err := vc.checkContext(); err != nil {
+				return 0, err
+			}
 			if ownerModule(vc.t.context(), top[i]) == mod {
-				return i
+				return i, nil
 			}
 		}
 	}
-	return start
+	return start, nil
 }
 
 // modules lists the modules lyd_validate traverses: the implemented ones in context order
 // (lyd_mod_next_module), only vc.module for lyd_validate_module, or with Present those of the
 // top-level data in tree order (lyd_data_next_module, which stops at a top-level node of no
 // module).
-func (vc *valCtx) modules() []*schema.Module {
+func (vc *valCtx) modules() ([]*schema.Module, error) {
 	var out []*schema.Module
 	if vc.module != nil {
-		return []*schema.Module{vc.module}
+		return []*schema.Module{vc.module}, nil
 	}
 	if !vc.opts.Present {
 		for _, m := range vc.t.context().Modules {
+			if err := vc.checkContext(); err != nil {
+				return nil, err
+			}
 			if m.Implemented {
 				out = append(out, m)
 			}
 		}
-		return out
+		return out, nil
 	}
 	top := vc.topList()
 	for i := 0; i < len(top); {
@@ -114,10 +125,23 @@ func (vc *valCtx) modules() []*schema.Module {
 		}
 		out = append(out, mod)
 		for i < len(top) && ownerModule(vc.t.context(), top[i]) == mod {
+			if err := vc.checkContext(); err != nil {
+				return nil, err
+			}
 			i++
 		}
 	}
-	return out
+	return out, nil
+}
+
+// checkContext polls independently of XPath and implicit-node accounting: even a
+// tree of ordinary retained leaves must be cancellable. It adds constant work
+// to existing iterations without consuming a smaller, unrelated resource budget.
+func (vc *valCtx) checkContext() error {
+	if vc.budget.ctx != nil {
+		return vc.budget.ctx.Err()
+	}
+	return nil
 }
 
 func (vc *valCtx) implOpts() implOpts {
@@ -137,10 +161,19 @@ func (vc *valCtx) implOpts() implOpts {
 // The queues are shared by all modules: on the parse path the first module drains everything the
 // parser queued (design 07 §1.5).
 func (vc *valCtx) validate(validateSubtree bool) error {
+	if err := vc.checkContext(); err != nil {
+		return err
+	}
 	var rc error
-	mods := vc.modules()
+	mods, err := vc.modules()
+	if err != nil {
+		return err
+	}
 	defer func() { vc.modFirst = nil }()
 	for _, mod := range mods {
+		if err := vc.checkContext(); err != nil {
+			return err
+		}
 		vc.modFirst = nil
 		if err := vc.validateNew(nil, nil, mod); err != nil {
 			if rc = err; vc.stop(err) {
@@ -148,7 +181,11 @@ func (vc *valCtx) validate(validateSubtree bool) error {
 			}
 		}
 		if top := vc.topList(); len(top) > 0 {
-			if i := vc.firstModuleSibling(top, 0, mod); i > 0 && i < len(top) && ownerModule(vc.t.context(), top[i]) == mod {
+			i, err := vc.firstModuleSibling(top, 0, mod)
+			if err != nil {
+				return err
+			}
+			if i > 0 && i < len(top) && ownerModule(vc.t.context(), top[i]) == mod {
 				vc.modFirst = top[i]
 			}
 		}
@@ -167,13 +204,26 @@ func (vc *valCtx) validate(validateSubtree bool) error {
 		}
 		if validateSubtree {
 			top := vc.topList()
-			start := vc.firstModuleSibling(top, 0, mod)
+			start, err := vc.firstModuleSibling(top, 0, mod)
+			if err != nil {
+				return err
+			}
 			if vc.modFirst != nil {
 				// first = *first2; lyd_first_module_sibling(&first, mod): an implicit node put right
 				// before first is found again, one behind data of another module is not walked
-				start = vc.firstModuleSibling(top, vc.modStart(), mod)
+				modStart, err := vc.modStart()
+				if err != nil {
+					return err
+				}
+				start, err = vc.firstModuleSibling(top, modStart, mod)
+				if err != nil {
+					return err
+				}
 			}
 			for i := start; i < len(top) && ownerModule(vc.t.context(), top[i]) == mod; i++ {
+				if err := vc.checkContext(); err != nil {
+					return err
+				}
 				if err := vc.validateTree(top[i]); err != nil {
 					if rc = err; vc.stop(err) {
 						return rc
@@ -187,9 +237,20 @@ func (vc *valCtx) validate(validateSubtree bool) error {
 			}
 		}
 	}
+	// validation.c:2202-2216 gates only the final pass, after lyd_validate_unres
+	// (2197-2199); type-plugin validate_tree callbacks still run there.
+	if err := vc.checkContext(); err != nil {
+		return err
+	}
+	if vc.opts.NotFinal {
+		return rc
+	}
 	for _, mod := range mods {
 		top := vc.topList()
-		first := vc.firstModuleSibling(top, 0, mod)
+		first, err := vc.firstModuleSibling(top, 0, mod)
+		if err != nil {
+			return err
+		}
 		if err := vc.finalR(nil, top[first:], nil, mod); err != nil {
 			if rc = err; vc.stop(err) {
 				return rc
@@ -211,11 +272,17 @@ func hasValidateTree(t *schema.Type) bool {
 func (vc *valCtx) validateTree(root *Node) error {
 	var rc error
 	for n := range root.All() {
+		if err := vc.checkContext(); err != nil {
+			return err
+		}
 		if n.schema == nil {
 			continue // opaque nodes are not validated
 		}
 		if vc.metaTypes != nil {
 			for _, m := range n.meta {
+				if err := vc.checkContext(); err != nil {
+					return err
+				}
 				if ant := annotation(m.mod, m.name); ant != nil && hasValidateTree(ant.Type) {
 					*vc.metaTypes = append(*vc.metaTypes, m)
 				}
@@ -262,6 +329,9 @@ func (vc *valCtx) validateTree(root *Node) error {
 func (vc *valCtx) finalR(parent *Node, sibs []*Node, sparent *schema.Node, mod *schema.Module) error {
 	var rc error
 	for _, n := range sibs {
+		if err := vc.checkContext(); err != nil {
+			return err
+		}
 		var err error
 		switch {
 		case n.schema == nil:
@@ -290,6 +360,9 @@ func (vc *valCtx) finalR(parent *Node, sibs []*Node, sparent *schema.Node, mod *
 		}
 	}
 	for _, n := range sibs {
+		if err := vc.checkContext(); err != nil {
+			return err
+		}
 		if n.schema == nil || n.parent == nil && mod != nil && ownerModule(vc.t.context(), n) != mod {
 			break // condensed condition of the previous loop
 		}
@@ -301,9 +374,32 @@ func (vc *valCtx) finalR(parent *Node, sibs []*Node, sparent *schema.Node, mod *
 				return rc
 			}
 		}
-		npContDfltSet(n)
+		if err := vc.setContainerDefault(n); err != nil {
+			return err
+		}
 	}
 	return rc
+}
+
+// setContainerDefault is npContDfltSet with cancellation during its child scans.
+// Keep the same ancestor order and journal each flag before changing it.
+func (vc *valCtx) setContainerDefault(p *Node) error {
+	for ; p != nil && p.flags&FlagDefault == 0 && isNPCont(p.schema); p = p.parent {
+		if err := vc.checkContext(); err != nil {
+			return err
+		}
+		for c := range p.kids.all() {
+			if err := vc.checkContext(); err != nil {
+				return err
+			}
+			if c.flags&FlagDefault == 0 {
+				return nil
+			}
+		}
+		p.touch()
+		p.flags |= FlagDefault
+	}
+	return nil
 }
 
 // slicesOf is the sibling list of s as libyang links it: schema nodes, then opaque nodes.
@@ -373,8 +469,14 @@ func (vc *valCtx) siblingsSchema(parent *Node, sibs []*Node, sparent *schema.Nod
 		return true
 	}
 	sib := vc.t.childrenOf(parent)
-	gn := vc.getnextOf(sparent, mod, vc.output)
+	gn, err := vc.getnextOf(sparent, mod, vc.output)
+	if err != nil {
+		return err
+	}
 	for _, ch := range gn.choices {
+		if err := vc.checkContext(); err != nil {
+			return err
+		}
 		if vc.opts.NoState && configR(ch) {
 			continue
 		}
@@ -382,7 +484,14 @@ func (vc *valCtx) siblingsSchema(parent *Node, sibs []*Node, sparent *schema.Nod
 			return rc
 		}
 		for _, cs := range ch.Children {
-			if vc.firstData(sib, cs) != nil {
+			if err := vc.checkContext(); err != nil {
+				return err
+			}
+			first, err := vc.firstData(sib, cs)
+			if err != nil {
+				return err
+			}
+			if first != nil {
 				if !keep(vc.siblingsSchema(parent, sibs, cs, mod)) {
 					return rc
 				}
@@ -391,6 +500,9 @@ func (vc *valCtx) siblingsSchema(parent *Node, sibs []*Node, sparent *schema.Nod
 		}
 	}
 	for _, sn := range gn.snodes {
+		if err := vc.checkContext(); err != nil {
+			return err
+		}
 		if vc.opts.NoState && configR(sn) {
 			continue
 		}
@@ -420,7 +532,11 @@ func (vc *valCtx) siblingsSchema(parent *Node, sibs []*Node, sparent *schema.Nod
 // the top level.
 func (vc *valCtx) mandatory(parent *Node, sib *siblings, sn *schema.Node) error {
 	if sn.Kind == schema.Choice {
-		if vc.firstData(sib, sn) != nil {
+		first, err := vc.firstData(sib, sn)
+		if err != nil {
+			return err
+		}
+		if first != nil {
 			return nil
 		}
 	} else if vc.t.schemaLookup(sib, sn) != nil {
@@ -460,6 +576,9 @@ func (vc *valCtx) minmax(parent *Node, sib *siblings, sn *schema.Node) error {
 	var count uint32
 	var last *Node
 	for n := range vc.t.instances(sib, sn) {
+		if err := vc.checkContext(); err != nil {
+			return err
+		}
 		last = n
 		count++
 		if lo > 0 && count == lo {
@@ -570,15 +689,21 @@ func (vc *valCtx) uniqStep() error {
 // instances and returns true for the error. A leaf missing in first counts as different even
 // when it has a default: libyang stores that default into the wrong variable (canon2), so only
 // second's missing leaves take their default.
-func (vc *valCtx) uniqEqual(first, second *Node, u int) bool {
+func (vc *valCtx) uniqEqual(first, second *Node, u int) (bool, error) {
 	sn := first.schema
 	us := sn.Uniques
 	if u >= 0 {
 		us = sn.Uniques[u : u+1]
 	}
 	for _, uniq := range us {
+		if err := vc.checkContext(); err != nil {
+			return false, err
+		}
 		v := 0
 		for ; v < len(uniq); v++ {
+			if err := vc.checkContext(); err != nil {
+				return false, err
+			}
 			a, ok1 := vc.uniqValue(uniq[v], first, false)
 			b, ok2 := vc.uniqValue(uniq[v], second, true)
 			if !ok1 || !ok2 || a != b {
@@ -588,6 +713,9 @@ func (vc *valCtx) uniqEqual(first, second *Node, u int) bool {
 		if v > 0 && v == len(uniq) {
 			var names []string
 			for _, l := range uniq {
+				if err := vc.checkContext(); err != nil {
+					return false, err
+				}
 				names = append(names, relPath(l, sn))
 			}
 			p1, p2 := lydPath(vc.t.context(), first, false), lydPath(vc.t.context(), second, false)
@@ -596,14 +724,14 @@ func (vc *valCtx) uniqEqual(first, second *Node, u int) bool {
 			} else {
 				_ = vc.log.val(second, "data-not-unique", ly.Data, "Unique data leaf(s) \"%s\" not satisfied in \"%s\" and \"%s\".",
 					strings.Join(names, " "), p1, p2)
-				return true
+				return true, nil
 			}
 		}
 		if u >= 0 {
-			return false
+			return false, nil
 		}
 	}
-	return false
+	return false, nil
 }
 
 // relPath is lysc_path_until(leaf, list, LYSC_PATH_LOG): the path from the list, the module
@@ -638,25 +766,44 @@ func (vc *valCtx) unique(sib *siblings, sn *schema.Node) error {
 	clear(vc.uniqDefs)
 	var inst []*Node
 	for _, n := range slicesOf(sib) {
+		if err := vc.checkContext(); err != nil {
+			return err
+		}
 		if n.schema == sn {
 			inst = append(inst, n)
 		}
 	}
 	switch {
 	case len(inst) == 2:
-		if vc.uniqEqual(inst[0], inst[1], -1) {
+		equal, err := vc.uniqEqual(inst[0], inst[1], -1)
+		if err != nil {
+			return err
+		}
+		if equal {
 			return errLogged
 		}
 	case len(inst) > 2:
 		tables := make([]map[string][]*Node, len(sn.Uniques))
 		for i := range tables {
+			if err := vc.checkContext(); err != nil {
+				return err
+			}
 			tables[i] = map[string][]*Node{}
 		}
 		for _, n := range inst {
+			if err := vc.checkContext(); err != nil {
+				return err
+			}
 			for u, uniq := range sn.Uniques {
+				if err := vc.checkContext(); err != nil {
+					return err
+				}
 				var key strings.Builder
 				ok := true
 				for _, l := range uniq {
+					if err := vc.checkContext(); err != nil {
+						return err
+					}
 					val, has := vc.uniqValue(l, n, true)
 					if !has {
 						ok = false
@@ -674,7 +821,11 @@ func (vc *valCtx) unique(sib *siblings, sn *schema.Node) error {
 					if err := vc.uniqStep(); err != nil {
 						return err
 					}
-					if vc.uniqEqual(n, prev, u) {
+					equal, err := vc.uniqEqual(n, prev, u)
+					if err != nil {
+						return err
+					}
+					if equal {
 						return errLogged
 					}
 				}
@@ -738,19 +889,33 @@ func (t *Tree) validateModule(ctx context.Context, mod *schema.Module, o Validat
 }
 
 // validateModuleFinal is lyd_validate_module_final: only the final checks (lyd_validate_final_r)
-// of the top-level data of mod, on a tree that is final. LYD_VALIDATE_PRESENT is refused.
+// of the top-level data of mod, on a tree that is final (validation.c:2313-2340).
+// The public wrapper resolves the module before this NULL-context option check.
 func (t *Tree) validateModuleFinal(ctx context.Context, mod *schema.Module, o ValidateOptions, b Budget) ([]yang.Diagnostic, error) {
-	if o.Present {
-		return nil, argErr("!(val_opts & (LYD_VALIDATE_PRESENT | LYD_VALIDATE_NOT_FINAL))", "lyd_validate_module_final")
+	if o.Present || o.NotFinal {
+		return nil, &ValidationError{err: argErr("!(val_opts & (LYD_VALIDATE_PRESENT | LYD_VALIDATE_NOT_FINAL))",
+			"lyd_validate_module_final"), rc: "LY_EINVAL"}
 	}
 	if ctx == nil {
 		ctx = context.Background()
+	}
+	if err := ctx.Err(); err != nil {
+		return nil, err
 	}
 	vc := &valCtx{t: t, log: &logger{set: t.context()}, opts: o, module: mod, budget: xpathBudget{ctx: ctx, max: b.MaxXPathSteps}}
 	// lyd_mod_next_module: the first top-level node of mod, none (an empty sibling set, so
 	// only mod's schema-level checks run) when mod has no data
 	top := vc.topList()
-	first := slices.IndexFunc(top, func(n *Node) bool { return ownerModule(t.context(), n) == mod })
+	first := -1
+	for i, n := range top {
+		if err := vc.checkContext(); err != nil {
+			return nil, err
+		}
+		if ownerModule(t.context(), n) == mod {
+			first = i
+			break
+		}
+	}
 	if first < 0 {
 		// no data of mod: libyang's siblings are NULL, so the whens of absent mandatory and
 		// min-elements nodes are evaluated over their temporary node alone, without the other
@@ -758,7 +923,14 @@ func (t *Tree) validateModuleFinal(ctx context.Context, mod *schema.Module, o Va
 		vc.t = newTree(t.context())
 		top, first = nil, 0
 	}
+	journal := beginHashTransaction(t)
 	err := vc.finalR(nil, top[first:], nil, mod)
+	if t.work.hashErr != nil {
+		err = t.work.hashErr
+		journal.end(&err)
+		return vc.log.diags, err
+	}
+	journal.end(nil) // native validation errors retain preceding default-flag changes
 	if err == nil || errors.Is(err, errLogged) {
 		err = vc.log.result()
 	}

@@ -36,12 +36,24 @@ func (vc *valCtx) validateNew(parent *Node, sparent *schema.Node, mod *schema.Mo
 	nodes := slices.Clone(sib.list) // autodelete only removes; removed nodes are skipped below
 	if mod != nil {
 		// lyd_owner_module: an augment's node in mod's top-level choice is mod's data
-		nodes = slices.DeleteFunc(nodes, func(n *Node) bool { return ownerModule(vc.t.context(), n) != mod })
+		kept := nodes[:0]
+		for _, n := range nodes {
+			if err := vc.checkContext(); err != nil {
+				return err
+			}
+			if ownerModule(vc.t.context(), n) == mod {
+				kept = append(kept, n)
+			}
+		}
+		nodes = kept
 	}
 	dups := dupIndex{sib: sib}
 	explicit := map[*schema.Node]bool{}
 	var lastDflt *schema.Node
 	for _, n := range nodes {
+		if err := vc.checkContext(); err != nil {
+			return err
+		}
 		if !vc.linkedIn(n, sib) || n.flags&(FlagNew|FlagDefault) == 0 {
 			continue
 		}
@@ -49,10 +61,14 @@ func (vc *valCtx) validateNew(parent *Node, sparent *schema.Node, mod *schema.Mo
 			// remove old default(s) of the new node if an explicit instance exists
 			lastDflt = n.schema
 			var gone bool
+			var err error
 			if n.schema.Kind == schema.LeafList {
-				gone = vc.autodelLeafListDflt(sib, n)
+				gone, err = vc.autodelLeafListDflt(sib, n)
 			} else {
-				gone = vc.autodelContLeafDflt(sib, n)
+				gone, err = vc.autodelContLeafDflt(sib, n)
+			}
+			if err != nil {
+				return err
 			}
 			if vc.t.work.hashErr != nil {
 				return vc.t.work.hashErr
@@ -70,8 +86,14 @@ func (vc *valCtx) validateNew(parent *Node, sparent *schema.Node, mod *schema.Mo
 			n.touch()
 			n.flags &^= FlagNew // this node is valid
 		}
-		if n.flags&FlagDefault != 0 && vc.autodelCaseDflt(sib, n, explicit) {
-			continue
+		if n.flags&FlagDefault != 0 {
+			gone, err := vc.autodelCaseDflt(sib, n, explicit)
+			if err != nil {
+				return err
+			}
+			if gone {
+				continue
+			}
 		}
 		if vc.t.work.hashErr != nil {
 			return vc.t.work.hashErr
@@ -84,7 +106,14 @@ func (vc *valCtx) validateNew(parent *Node, sparent *schema.Node, mod *schema.Mo
 // choices included.
 func (vc *valCtx) validateChoices(sib *siblings, sparent *schema.Node, mod *schema.Module) error {
 	var rc error
-	for _, ch := range vc.getnextOf(sparent, mod, vc.output).choices {
+	gn, err := vc.getnextOf(sparent, mod, vc.output)
+	if err != nil {
+		return err
+	}
+	for _, ch := range gn.choices {
+		if err := vc.checkContext(); err != nil {
+			return err
+		}
 		if len(sib.list) == 0 {
 			break
 		}
@@ -107,8 +136,11 @@ func (vc *valCtx) validateChoices(sib *siblings, sparent *schema.Node, mod *sche
 func (vc *valCtx) validateCases(sib *siblings, ch *schema.Node) error {
 	var oldCase, newCase *schema.Node
 	for _, cs := range ch.Children {
+		if err := vc.checkContext(); err != nil {
+			return err
+		}
 		found := 0
-		vc.getnextData(sib, cs, func(n *Node) bool {
+		err := vc.getnextData(sib, cs, func(n *Node) bool {
 			if n.flags&FlagNew != 0 {
 				found = 2 // a new case data found, nothing more to look for
 				return false
@@ -116,6 +148,9 @@ func (vc *valCtx) validateCases(sib *siblings, ch *schema.Node) error {
 			found = 1
 			return true
 		})
+		if err != nil {
+			return err
+		}
 		var prev *schema.Node
 		switch found {
 		case 1:
@@ -134,7 +169,12 @@ func (vc *valCtx) validateCases(sib *siblings, ch *schema.Node) error {
 	if oldCase != nil && newCase != nil {
 		// auto-delete the old case: diff entries in data order, then the nodes
 		var del []*Node
-		vc.getnextData(sib, oldCase, func(n *Node) bool { del = append(del, n); return true })
+		if err := vc.getnextData(sib, oldCase, func(n *Node) bool { del = append(del, n); return true }); err != nil {
+			return err
+		}
+		if err := vc.checkContext(); err != nil {
+			return err
+		}
 		for _, n := range del {
 			if vc.diff != nil {
 				if err := vc.diff(n, diffDelete); err != nil {
@@ -149,7 +189,7 @@ func (vc *valCtx) validateCases(sib *siblings, ch *schema.Node) error {
 			freeSubtreeLinks(vc.t.context(), n) // lyd_free_tree
 		}
 	}
-	return nil
+	return vc.checkContext()
 }
 
 // hasDefault is lyd_val_has_default: a leaf or leaf-list with a default, or an NP container.
@@ -164,78 +204,129 @@ func hasDefault(sn *schema.Node) bool {
 }
 
 // instances returns the instances of sn among sib.
-func (vc *valCtx) instances(sib *siblings, sn *schema.Node) []*Node {
-	return slices.Collect(vc.t.instances(sib, sn))
+func (vc *valCtx) instances(sib *siblings, sn *schema.Node) ([]*Node, error) {
+	var inst []*Node
+	for n := range vc.t.instances(sib, sn) {
+		if err := vc.checkContext(); err != nil {
+			return nil, err
+		}
+		inst = append(inst, n)
+	}
+	return inst, nil
+}
+
+func (vc *valCtx) hasExplicit(inst []*Node) (bool, error) {
+	for _, n := range inst {
+		if err := vc.checkContext(); err != nil {
+			return false, err
+		}
+		if n.flags&FlagDefault == 0 {
+			return true, nil
+		}
+	}
+	return false, nil
 }
 
 // autodelLeafListDflt is lyd_validate_autodel_leaflist_dflt: with an explicit instance, every
 // default instance goes. It reports whether n itself went.
-func (vc *valCtx) autodelLeafListDflt(sib *siblings, n *Node) bool {
-	inst := vc.instances(sib, n.schema)
-	if !slices.ContainsFunc(inst, func(i *Node) bool { return i.flags&FlagDefault == 0 }) {
-		return false // no explicit instance, keep defaults as they are
+func (vc *valCtx) autodelLeafListDflt(sib *siblings, n *Node) (bool, error) {
+	inst, err := vc.instances(sib, n.schema)
+	if err != nil {
+		return false, err
+	}
+	has, err := vc.hasExplicit(inst)
+	if err != nil || !has {
+		return false, err // no explicit instance, keep defaults as they are
 	}
 	return vc.autodelDefaults(inst, n)
 }
 
 // autodelContLeafDflt is lyd_validate_autodel_cont_leaf_dflt: with an explicit instance, every
 // default instance goes; without one, a single old default instance goes.
-func (vc *valCtx) autodelContLeafDflt(sib *siblings, n *Node) bool {
-	inst := vc.instances(sib, n.schema)
-	if slices.ContainsFunc(inst, func(i *Node) bool { return i.flags&FlagDefault == 0 }) {
+func (vc *valCtx) autodelContLeafDflt(sib *siblings, n *Node) (bool, error) {
+	inst, err := vc.instances(sib, n.schema)
+	if err != nil {
+		return false, err
+	}
+	has, err := vc.hasExplicit(inst)
+	if err != nil {
+		return false, err
+	}
+	if has {
 		return vc.autodelDefaults(inst, n)
 	}
 	for _, i := range inst {
+		if err := vc.checkContext(); err != nil {
+			return false, err
+		}
 		if i.flags&FlagDefault != 0 && i.flags&FlagNew == 0 {
-			vc.autodel([]*Node{i}, false)
-			return i == n
+			err := vc.autodel([]*Node{i}, false)
+			return i == n, err
 		}
 	}
-	return false
+	return false, nil
 }
 
 // autodelDefaults deletes the default instances of inst in one batch; it reports whether n went.
-func (vc *valCtx) autodelDefaults(inst []*Node, n *Node) bool {
-	del := slices.DeleteFunc(inst, func(i *Node) bool { return i.flags&FlagDefault == 0 })
-	vc.autodel(del, false)
-	return slices.Contains(del, n)
+func (vc *valCtx) autodelDefaults(inst []*Node, n *Node) (bool, error) {
+	del := inst[:0]
+	gone := false
+	for _, i := range inst {
+		if err := vc.checkContext(); err != nil {
+			return false, err
+		}
+		if i.flags&FlagDefault != 0 {
+			del = append(del, i)
+			gone = gone || i == n
+		}
+	}
+	err := vc.autodel(del, false)
+	return gone, err
 }
 
 // autodelCaseDflt is lyd_validate_autodel_case_dflt: a default node of a non-default case that
 // has no explicit data any more goes. Whether a case has explicit data is computed once per
 // validateNew call (explicit), deleting defaults does not change it.
-func (vc *valCtx) autodelCaseDflt(sib *siblings, n *Node, explicit map[*schema.Node]bool) bool {
+func (vc *valCtx) autodelCaseDflt(sib *siblings, n *Node, explicit map[*schema.Node]bool) (bool, error) {
 	cs := n.schema.Parent
 	if cs == nil || cs.Kind != schema.Case {
-		return false // not a descendant of a case
+		return false, nil // not a descendant of a case
 	}
 	if cs.Parent.DefaultCase == cs {
-		return false // data of a default case, kept
+		return false, nil // data of a default case, kept
 	}
 	has, ok := explicit[cs]
 	if !ok {
-		vc.getnextData(sib, cs, func(i *Node) bool {
+		err := vc.getnextData(sib, cs, func(i *Node) bool {
 			has = i.flags&FlagDefault == 0
 			return !has
 		})
+		if err != nil {
+			return false, err
+		}
 		explicit[cs] = has
 	}
 	if has {
-		return false
+		return false, nil
 	}
-	vc.autodel([]*Node{n}, false)
-	return true
+	err := vc.autodel([]*Node{n}, false)
+	return true, err
 }
 
 // autodel is lyd_validate_autodel_node_del for a batch, in order: the diff of each node (an NP
 // container's children instead of the container unless npContDiff), the node_types entries of
 // each subtree (ly_set_rm_index per node in DFS order), then the nodes, unlinked in one pass.
 // Autodelete never reaches a key (keys have no defaults, cases hold no keys).
-func (vc *valCtx) autodel(del []*Node, npContDiff bool) {
+func (vc *valCtx) autodel(del []*Node, npContDiff bool) error {
+	if err := vc.checkContext(); err != nil {
+		return err
+	}
 	if err := vc.t.preflightUnlinkAll(del); err != nil {
 		vc.t.work.hashErr = err
-		return
+		return err
 	}
+	// Diff entries describe the unlink below. Once emission begins, complete
+	// the queue updates, unlink and link cleanup before returning cancellation.
 	for _, n := range del {
 		if vc.diff == nil {
 			break
@@ -249,15 +340,19 @@ func (vc *valCtx) autodel(del []*Node, npContDiff bool) {
 		}
 	}
 	for _, n := range del {
-		vc.dropTypes(n)
+		if err := vc.dropTypes(n, false); err != nil {
+			return err
+		}
 	}
 	if err := vc.t.unlinkAll(del); err != nil {
 		vc.t.work.hashErr = err
-		return
+		return err
 	}
 	for _, n := range del {
+		// Complete link cleanup after the atomic unlink, even when canceled.
 		freeSubtreeLinks(vc.t.context(), n) // lyd_free_tree
 	}
+	return vc.checkContext()
 }
 
 // dropTypes removes the terms of n's subtree from node_types the way libyang does
@@ -265,11 +360,16 @@ func (vc *valCtx) autodel(del []*Node, npContDiff bool) {
 // libyang removes only terms whose type has a validate_tree callback; every queued term has one,
 // so the set removed is the same, and removing any other term could only drop a node that is
 // being freed (the safer side: libyang would keep a freed node queued).
-func (vc *valCtx) dropTypes(n *Node) {
+func (vc *valCtx) dropTypes(n *Node, cancellable bool) error {
 	if vc.nodeTypes == nil || vc.nodeTypes.len() == 0 {
-		return
+		return nil
 	}
 	for d := range n.All() {
+		if cancellable {
+			if err := vc.checkContext(); err != nil {
+				return err
+			}
+		}
 		if !d.isTerm() {
 			continue
 		}
@@ -277,6 +377,7 @@ func (vc *valCtx) dropTypes(n *Node) {
 			vc.nodeTypes.rmIndex(i)
 		}
 	}
+	return nil
 }
 
 // dupIndex finds equal siblings for the duplicate check: the parent's children table when it has
@@ -290,19 +391,22 @@ type dupIndex struct {
 
 // bucket iterates the instances that hash like k, the children table's chain in registration
 // order when the parent has one (lazily: duplicates stops at the first equal instance).
-func (d *dupIndex) bucket(k idxKey, work *workCounter) iter.Seq[*Node] {
+func (d *dupIndex) bucket(k idxKey, work *workCounter, check func() error) (iter.Seq[*Node], error) {
 	if d.sib.ht != nil {
-		return d.sib.bucketNodes(k)
+		return d.sib.bucketNodes(k), nil
 	}
 	if d.tmp == nil {
 		d.tmp = map[idxKey][]*Node{}
 		for _, n := range d.sib.list {
+			if err := check(); err != nil {
+				return nil, err
+			}
 			if hk, ok := indexedKey(n, work); ok {
 				d.tmp[hk] = append(d.tmp[hk], n)
 			}
 		}
 	}
-	return slices.Values(d.tmp[k])
+	return slices.Values(d.tmp[k]), nil
 }
 
 // duplicates is lyd_validate_duplicates: another instance equal to the new node n (by keys or
@@ -319,7 +423,14 @@ func (vc *valCtx) duplicates(d *dupIndex, n *Node) error {
 		}
 		return nil
 	}
-	for m := range d.bucket(k, &vc.t.work) {
+	bucket, err := d.bucket(k, &vc.t.work, vc.checkContext)
+	if err != nil {
+		return err
+	}
+	for m := range bucket {
+		if err := vc.checkContext(); err != nil {
+			return err
+		}
 		if vc.t.work.hashErr != nil {
 			return vc.t.work.hashErr
 		}

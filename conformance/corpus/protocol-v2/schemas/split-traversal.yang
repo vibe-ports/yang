@@ -1,0 +1,22 @@
+// SPDX-License-Identifier: BSD-3-Clause
+module split-traversal {
+  yang-version 1.1;
+  namespace "urn:split-traversal";
+  prefix s;
+
+  leaf-list top { config false; type string; }
+  container nested {
+    leaf-list values { config false; type string; max-elements 100000; }
+    choice selected {
+      case one { leaf-list case-values { config false; type string; } }
+      case two { leaf alternative { type string; } }
+    }
+    leaf-list defaults { type string; default "default"; }
+    list entry {
+      key k;
+      unique v;
+      leaf k { type string; }
+      leaf v { type string; }
+    }
+  }
+}

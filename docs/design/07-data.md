@@ -329,9 +329,31 @@ the first parameter (cancellation checked every 1k nodes and between XPath evalu
 options struct (lead default, maintainer may revisit). Exported knobs are only those the M1 fixtures
 use (`unknown`, `parse_only`, the `data_type` presets = NoState/Operational, the oracle's
 MultiError, NoDefaults/Present for §5's fixtures, and StoreOnly/JSONNull/JSONStringDatatypes for
-the utests fixtures, #198); `LYD_PARSE_ORDERED`, `WHEN_TRUE`, `LYD_VALIDATE_NOT_FINAL` exist
-internally where the port needs them and are exported later, when a fixture or user asks. The PRs and their tests call
+the utests fixtures, #198); `LYD_PARSE_ORDERED` exists internally where the port needs it and is exported later, when a fixture or user asks. `WhenTrue` is public; #247 also exports split validation as described below. The PRs and their tests call
 the internal twins (`parse`/`validate` over `*schema.Set`, §0.4) with hand-built sets; D12 wraps them.
+
+**Split validation** (#247, public API approved 2026-10-24). `ValidateOptions.NotFinal bool`
+propagates through parse-time validation, `Validate`, `ValidateDiff`, `ValidateModule` and
+`ValidateModuleDiff`. It skips only the final recursive pass: must, mandatory, min/max-elements,
+unique, unexpected/obsolete nodes and NP-container default flags. Earlier validation phases,
+including type-plugin `validate_tree` callbacks, still run (v5.8.6 `validation.c:2043-2075`,
+`2197-2216`; `tree_data_common.c:538-562`). This follows the implementation despite the header's
+claim about skipping plugin checks. False preserves existing behavior.
+
+```go
+func (t *Tree) ValidateModuleFinal(ctx context.Context, module string, o ValidateOptions) ([]yang.Diagnostic, error)
+```
+
+This is a mutation requiring exclusive access: it updates NP-container default flags
+(`validation.c:1883`, `tree_data_common.c:1177-1204`) but creates no implicit nodes or diff.
+It runs the final pass for one implemented module, using the existing module-name resolution
+convention. Callers must finalize every relevant module once the tree is final; this is not full
+validation after arbitrary intervening edits. `Present` or `NotFinal` returns `LY_EINVAL` with
+no diagnostic, matching the NULL logging context (`validation.c:2322`). Unknown or import-only
+modules also return silent `LY_EINVAL`. Native validation errors can leave partial mutations;
+stored-hash budget failures restore journaled changes. Existing cancellation and budgets apply.
+Non-empty unkeyed `ValidateOptions` literals must migrate to keyed fields; keyed and empty
+literals remain compatible.
 
 **XPath queries** (M3, #81). One option struct and one result struct for the seven C entry points:
 ```go
@@ -902,7 +924,6 @@ of a registry entry. So #105 cannot pass with them unsupported; they must agree.
 | `lyd_insert_before`, `lyd_insert_after`, `lyd_unlink_siblings` | user-ordered positioning and sibling-run operations belong to `ApplyEdit` (M6, `yang:insert`); single-tree `lyd_unlink_tree` is `Node.Unlink` |
 | `LYD_DUP_NO_EXT`, `LYD_DUP_WITH_PRIV`, `lyd_dup_meta_single` | nothing to act on (no extension data, no private pointers); metadata copies come with Dup |
 | `struct lyd_leafref_links_rec`, LY_EDENIED/LY_ENOTFOUND of `lyd_leafref_get_links` | two slices carry the record; the error cases are "no links" |
-| `lyd_validate_module_final`, `LYD_VALIDATE_NOT_FINAL` | a split-validation speed path (sysrepo-style); #100 ports and tests it in Go, the engine refuses `final_only` under **U-0106** |
 | `lyd_validate_op`'s `diff` | no user yet; ValidateDiff is the shape to copy |
 | `LYD_PARSE_ORDERED`, `LYD_PARSE_NO_NEW` | D-0058; NO_NEW is internal validation plumbing |
 | `lyd_parse_op` with a parent for `RPC_YANG`/`NOTIF_YANG` (a nested action or notification parsed into an existing parent) | no fixture or user; ParseOp returns the operation with its parents in a new tree instead. `Request` is refused with OpRPC/OpNotif (§6.1.1); allowing it later is additive |

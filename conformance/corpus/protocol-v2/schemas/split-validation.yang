@@ -1,0 +1,38 @@
+// SPDX-License-Identifier: BSD-3-Clause
+module split-validation {
+  yang-version 1.1;
+  namespace "urn:split-validation";
+  prefix s;
+
+  container top {
+    presence "Exercise validation phases independently.";
+    leaf required { type string; mandatory true; }
+    leaf d { type string; default "implicit"; }
+    leaf target { type string; }
+    leaf ref { type leafref { path "../target"; } }
+    leaf iid { type instance-identifier; }
+    leaf union-ref {
+      type union {
+        type leafref { path "../target"; }
+        type enumeration { enum fallback; }
+      }
+    }
+    leaf conditional { when "../target = 'on'"; type string; }
+    leaf must { type string; must ". = 'ok'"; }
+    leaf obsolete { type string; status obsolete; }
+    leaf number { type uint8; }
+    leaf state { config false; type string; }
+    leaf-list values { type string; min-elements 2; max-elements 3; }
+    list item {
+      key k;
+      unique v;
+      leaf k { type string; }
+      leaf v { type string; }
+    }
+  }
+  container flags {
+    container nested {
+      leaf d { type string; default "implicit"; }
+    }
+  }
+}
