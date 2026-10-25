@@ -4,9 +4,16 @@
 // data nodes and charge work through optional, caller-owned hooks.
 package opidx
 
-import "math"
+import (
+	"fmt"
+	"math"
+	"math/bits"
+)
 
-const tagUniverse uint64 = 1 << 63
+const (
+	tagBits            = 63
+	tagUniverse uint64 = 1 << tagBits
+)
 
 // Handle is a stable identity in a Seq. A removed handle cannot be inserted
 // again; callers create a fresh handle for a later occurrence.
@@ -21,24 +28,141 @@ type Handle[T any] struct {
 	tag         uint64
 }
 
+type seqHeader[T any] struct {
+	root, first, last *Handle[T]
+	length            int
+	scale             int
+}
+
+type seqCheckpoint[T any] struct {
+	id         uint64
+	header     seqHeader[T]
+	before     map[*Handle[T]]Handle[T]
+	created    []*Handle[T]
+	createdSet map[*Handle[T]]struct{}
+}
+
+// Checkpoint identifies a mutation journal position. Checkpoints are completed
+// in last-in, first-out order.
+type Checkpoint[T any] struct {
+	seq *Seq[T]
+	id  uint64
+}
+
 // Seq maintains physical order, positions, and constant-time order labels.
 // Insertions have amortized O(log n) structural and relabel work; remove,
 // rank, and select take O(log n). First, Last, Next, Prev, and Compare are O(1).
+// A Seq must not be copied after first use.
 type Seq[T any] struct {
 	root, first, last *Handle[T]
 	length            int
 	scale             int
 	work              func(uint64)
+	checkpointID      uint64
+	checkpoints       []*seqCheckpoint[T]
 }
 
-// SetWorkHook sets a synchronous callback for node visits, rotations, and
-// relabels. It must not mutate this sequence. Nil disables counting.
+// SetWorkHook sets a synchronous callback for node visits, rotations, splits,
+// joins, relabels, and journal before-images. It must not mutate this sequence.
+// Nil disables counting.
 func (s *Seq[T]) SetWorkHook(hook func(uint64)) { s.work = hook }
 
 func (s *Seq[T]) charge() {
 	if s.work != nil {
 		s.work(1)
 	}
+}
+
+func (s *Seq[T]) header() seqHeader[T] {
+	return seqHeader[T]{s.root, s.first, s.last, s.length, s.scale}
+}
+
+func (s *Seq[T]) restoreHeader(h seqHeader[T]) {
+	s.root, s.first, s.last, s.length, s.scale = h.root, h.first, h.last, h.length, h.scale
+}
+
+// touch records h before its first mutation after every active checkpoint.
+func (s *Seq[T]) touch(h *Handle[T]) {
+	if h == nil {
+		return
+	}
+	for _, checkpoint := range s.checkpoints {
+		if _, ok := checkpoint.before[h]; ok {
+			continue
+		}
+		if _, created := checkpoint.createdSet[h]; created {
+			continue
+		}
+		checkpoint.before[h] = *h
+		s.charge()
+	}
+}
+
+func (s *Seq[T]) trackCreated(h *Handle[T]) {
+	for _, checkpoint := range s.checkpoints {
+		checkpoint.created = append(checkpoint.created, h)
+		checkpoint.createdSet[h] = struct{}{}
+		s.charge()
+	}
+}
+
+// Checkpoint starts a mutation journal. Creating one takes constant time.
+func (s *Seq[T]) Checkpoint() *Checkpoint[T] {
+	s.checkpointID++
+	checkpoint := &seqCheckpoint[T]{
+		id:         s.checkpointID,
+		header:     s.header(),
+		before:     make(map[*Handle[T]]Handle[T]),
+		createdSet: make(map[*Handle[T]]struct{}),
+	}
+	s.checkpoints = append(s.checkpoints, checkpoint)
+	s.charge() // the sequence-header before-image
+	return &Checkpoint[T]{seq: s, id: checkpoint.id}
+}
+
+func (s *Seq[T]) topCheckpoint(checkpoint *Checkpoint[T]) (*seqCheckpoint[T], bool) {
+	if checkpoint == nil || checkpoint.seq != s || len(s.checkpoints) == 0 {
+		return nil, false
+	}
+	top := s.checkpoints[len(s.checkpoints)-1]
+	return top, top.id == checkpoint.id
+}
+
+// Commit keeps the changes after checkpoint. Nested checkpoints must be
+// completed in last-in, first-out order.
+func (s *Seq[T]) Commit(checkpoint *Checkpoint[T]) bool {
+	if _, ok := s.topCheckpoint(checkpoint); !ok {
+		return false
+	}
+	last := len(s.checkpoints) - 1
+	s.checkpoints[last] = nil
+	s.checkpoints = s.checkpoints[:last]
+	checkpoint.seq = nil
+	return true
+}
+
+// Rollback restores the exact sequence state at checkpoint. Handles allocated
+// after it are detached. Nested checkpoints must be completed in LIFO order.
+func (s *Seq[T]) Rollback(checkpoint *Checkpoint[T]) bool {
+	top, ok := s.topCheckpoint(checkpoint)
+	if !ok {
+		return false
+	}
+	for h, before := range top.before {
+		*h = before
+		s.charge()
+	}
+	for _, h := range top.created {
+		h.left, h.right, h.parent, h.prev, h.next, h.owner = nil, nil, nil, nil, nil, nil
+		h.height, h.size, h.tag = 0, 0, 0
+		s.charge()
+	}
+	s.restoreHeader(top.header)
+	last := len(s.checkpoints) - 1
+	s.checkpoints[last] = nil
+	s.checkpoints = s.checkpoints[:last]
+	checkpoint.seq = nil
+	return true
 }
 
 // Len returns the number of live handles.
@@ -82,12 +206,12 @@ func (s *Seq[T]) Compare(a, b *Handle[T]) (int, bool) {
 	}
 }
 
-// Rank returns a zero-based position. The bool is false for a foreign or
-// removed handle.
+// Rank returns a zero-based position. The bool is false for a foreign or removed handle.
 func (s *Seq[T]) Rank(h *Handle[T]) (int, bool) {
 	if h == nil || h.owner != s {
 		return 0, false
 	}
+	s.charge()
 	rank := nodeSize(h.left)
 	for h.parent != nil {
 		s.charge()
@@ -104,7 +228,11 @@ func (s *Seq[T]) Select(rank int) *Handle[T] {
 	if rank < 0 || rank >= s.length {
 		return nil
 	}
-	for n := s.root; n != nil; {
+	return s.selectNode(s.root, rank)
+}
+
+func (s *Seq[T]) selectNode(root *Handle[T], rank int) *Handle[T] {
+	for n := root; n != nil; {
 		s.charge()
 		left := nodeSize(n.left)
 		switch {
@@ -120,8 +248,38 @@ func (s *Seq[T]) Select(rank int) *Handle[T] {
 	return nil
 }
 
-// InsertBefore inserts value before anchor. A nil anchor appends. A foreign or
-// removed anchor is rejected without changing the sequence.
+// LowerBound returns the first rank at or after lo for which pred is true, or
+// Len if none exists. pred must be monotone (false values followed by true values).
+func (s *Seq[T]) LowerBound(lo int, pred func(T) bool) int { return s.bound(lo, pred) }
+
+// UpperBound is the upper-bound counterpart of LowerBound. Callers supply the
+// strict predicate (for example value > key instead of value >= key).
+func (s *Seq[T]) UpperBound(lo int, pred func(T) bool) int { return s.bound(lo, pred) }
+
+func (s *Seq[T]) bound(lo int, pred func(T) bool) int {
+	if lo < 0 {
+		lo = 0
+	}
+	if lo >= s.length || pred == nil {
+		return s.length
+	}
+	answer, base := s.length, 0
+	for n := s.root; n != nil; {
+		s.charge()
+		rank := base + nodeSize(n.left)
+		switch {
+		case rank < lo:
+			base, n = rank+1, n.right
+		case pred(n.Value):
+			answer, n = rank, n.left
+		default:
+			base, n = rank+1, n.right
+		}
+	}
+	return answer
+}
+
+// InsertBefore inserts value before anchor. A nil anchor appends.
 func (s *Seq[T]) InsertBefore(anchor *Handle[T], value T) *Handle[T] {
 	if anchor != nil && anchor.owner != s {
 		return nil
@@ -156,18 +314,21 @@ func (s *Seq[T]) InsertAfter(anchor *Handle[T], value T) *Handle[T] {
 
 func (s *Seq[T]) insert(rank int, prev, next *Handle[T], value T) *Handle[T] {
 	h := &Handle[T]{Value: value, owner: s, height: 1, size: 1, prev: prev, next: next}
+	s.trackCreated(h)
 	if prev == nil {
 		s.first = h
 	} else {
+		s.touch(prev)
 		prev.next = h
 	}
 	if next == nil {
 		s.last = h
 	} else {
+		s.touch(next)
 		next.prev = h
 	}
 	s.root = s.insertAt(s.root, rank, h)
-	s.root.parent = nil
+	s.setParent(s.root, nil)
 	s.length++
 	if s.scale == 0 {
 		s.scale = 1
@@ -188,20 +349,9 @@ func (s *Seq[T]) Remove(h *Handle[T]) bool {
 		return false
 	}
 	s.root = s.removeAt(s.root, rank)
-	if s.root != nil {
-		s.root.parent = nil
-	}
-	if h.prev == nil {
-		s.first = h.next
-	} else {
-		h.prev.next = h.next
-	}
-	if h.next == nil {
-		s.last = h.prev
-	} else {
-		h.next.prev = h.prev
-	}
-	h.left, h.right, h.parent, h.prev, h.next, h.owner = nil, nil, nil, nil, nil, nil
+	s.setParent(s.root, nil)
+	s.unlink(h)
+	s.detach(h)
 	s.length--
 	if s.length == 0 {
 		s.scale = 0
@@ -212,10 +362,7 @@ func (s *Seq[T]) Remove(h *Handle[T]) bool {
 	return true
 }
 
-// MoveBefore relocates a live handle before anchor while preserving its
-// identity. A nil anchor moves it to the end. Relative order of all other
-// handles is unchanged. Callers must unregister h from occurrence indexes
-// before moving it and register it again afterwards.
+// MoveBefore relocates a live handle before anchor while preserving its identity.
 func (s *Seq[T]) MoveBefore(h, anchor *Handle[T]) bool {
 	if h == nil || h.owner != s || anchor != nil && anchor.owner != s {
 		return false
@@ -228,52 +375,195 @@ func (s *Seq[T]) MoveBefore(h, anchor *Handle[T]) bool {
 	if anchor != nil {
 		to, _ = s.Rank(anchor)
 	}
-	if from == to || from+1 == to {
+	return s.MoveRange(from, from+1, to)
+}
+
+// Splice removes delete handles at lo and inserts values in their place. It
+// returns handles for inserted values. Invalid ranges are rejected before mutation.
+func (s *Seq[T]) Splice(lo, deleteCount int, values []T) ([]*Handle[T], bool) {
+	if lo < 0 || deleteCount < 0 || lo > s.length || deleteCount > s.length-lo {
+		return nil, false
+	}
+	inserted := make([]*Handle[T], len(values))
+	for i, value := range values {
+		inserted[i] = &Handle[T]{Value: value, owner: s, height: 1, size: 1}
+		s.trackCreated(inserted[i])
+	}
+	s.spliceHandles(lo, deleteCount, inserted)
+	return inserted, true
+}
+
+// ReplaceRange replaces [lo, hi) with values.
+func (s *Seq[T]) ReplaceRange(lo, hi int, values []T) ([]*Handle[T], bool) {
+	if hi < lo {
+		return nil, false
+	}
+	return s.Splice(lo, hi-lo, values)
+}
+
+// ReplaceHandles republishes [lo, hi) in the order given by handles without
+// changing their identities. Every handle must occur exactly once in that
+// range. It is the bulk primitive for stable-sort and retained-order replay.
+func (s *Seq[T]) ReplaceHandles(lo, hi int, handles []*Handle[T]) bool {
+	if lo < 0 || hi < lo || hi > s.length || len(handles) != hi-lo {
+		return false
+	}
+	allowed := make(map[*Handle[T]]struct{}, len(handles))
+	for h, remaining := s.Select(lo), len(handles); remaining > 0; h, remaining = h.next, remaining-1 {
+		s.charge()
+		allowed[h] = struct{}{}
+	}
+	seen := make(map[*Handle[T]]struct{}, len(handles))
+	for _, h := range handles {
+		s.charge()
+		if h == nil || h.owner != s {
+			return false
+		}
+		if _, duplicate := seen[h]; duplicate {
+			return false
+		}
+		if _, ok := allowed[h]; !ok {
+			return false
+		}
+		seen[h] = struct{}{}
+	}
+	if len(handles) == 0 {
 		return true
 	}
-	s.root = s.removeAt(s.root, from)
-	if s.root != nil {
-		s.root.parent = nil
-	}
-	if h.prev == nil {
-		s.first = h.next
-	} else {
-		h.prev.next = h.next
-	}
-	if h.next == nil {
-		s.last = h.prev
-	} else {
-		h.next.prev = h.prev
-	}
-	h.left, h.right, h.parent, h.prev, h.next = nil, nil, nil, nil, nil
-	h.height, h.size = 1, 1
-	s.length--
-	if from < to {
-		to--
-	}
 	var prev, next *Handle[T]
-	if to == s.length {
-		prev = s.last
-	} else {
-		next = s.Select(to)
-		prev = next.prev
+	if lo > 0 {
+		prev = s.Select(lo - 1)
 	}
-	h.prev, h.next = prev, next
+	if hi < s.length {
+		next = s.Select(hi)
+	}
+	left, tail := s.split(s.root, lo)
+	_, right := s.split(tail, hi-lo)
+	middle := s.build(handles, 0, len(handles), nil)
+	s.root = s.join(s.join(left, middle), right)
+	s.setParent(s.root, nil)
+	for i, h := range handles {
+		s.touch(h)
+		h.prev = valueAtHandle(handles, i-1, prev)
+		h.next = valueAtHandle(handles, i+1, next)
+	}
 	if prev == nil {
-		s.first = h
+		s.first = handles[0]
 	} else {
-		prev.next = h
+		s.touch(prev)
+		prev.next = handles[0]
 	}
 	if next == nil {
-		s.last = h
+		s.last = handles[len(handles)-1]
 	} else {
-		next.prev = h
+		s.touch(next)
+		next.prev = handles[len(handles)-1]
 	}
-	s.root = s.insertAt(s.root, to, h)
-	s.root.parent = nil
-	s.length++
-	s.label(h)
+	s.labelRange(handles[0], handles[len(handles)-1], len(handles))
 	return true
+}
+
+func (s *Seq[T]) spliceHandles(lo, deleteCount int, inserted []*Handle[T]) {
+	var prev, next *Handle[T]
+	if lo > 0 {
+		prev = s.Select(lo - 1)
+	}
+	if lo+deleteCount < s.length {
+		next = s.Select(lo + deleteCount)
+	}
+	left, tail := s.split(s.root, lo)
+	removed, right := s.split(tail, deleteCount)
+	removedHandles := make([]*Handle[T], 0, deleteCount)
+	s.collect(removed, &removedHandles)
+	middle := s.build(inserted, 0, len(inserted), nil)
+	s.root = s.join(s.join(left, middle), right)
+	s.setParent(s.root, nil)
+	if prev != nil {
+		s.touch(prev)
+		prev.next = valueAtHandle(inserted, 0, next)
+	} else {
+		s.first = valueAtHandle(inserted, 0, next)
+	}
+	if next != nil {
+		s.touch(next)
+		next.prev = valueAtHandle(inserted, len(inserted)-1, prev)
+	} else {
+		s.last = valueAtHandle(inserted, len(inserted)-1, prev)
+	}
+	for i, h := range inserted {
+		s.touch(h)
+		h.prev = valueAtHandle(inserted, i-1, prev)
+		h.next = valueAtHandle(inserted, i+1, next)
+	}
+	for _, h := range removedHandles {
+		s.detach(h)
+	}
+	s.length += len(inserted) - deleteCount
+	s.adjustScale()
+	if len(inserted) != 0 && s.length != 0 {
+		s.labelRange(inserted[0], inserted[len(inserted)-1], len(inserted))
+	}
+}
+
+// MoveRange moves [lo, hi) before the position before in the original sequence.
+func (s *Seq[T]) MoveRange(lo, hi, before int) bool {
+	if lo < 0 || hi < lo || hi > s.length || before < 0 || before > s.length {
+		return false
+	}
+	if lo == hi || before >= lo && before <= hi {
+		return true
+	}
+	count := hi - lo
+	left, tail := s.split(s.root, lo)
+	run, right := s.split(tail, count)
+	runFirst, runLast := s.minimum(run), s.maximum(run)
+	oldPrev, oldNext := runFirst.prev, runLast.next
+	remainder := s.join(left, right)
+	s.setParent(remainder, nil)
+	destination := before
+	if before > hi {
+		destination -= count
+	}
+	a, b := s.split(remainder, destination)
+	prev, next := s.maximum(a), s.minimum(b)
+	s.root = s.join(s.join(a, run), b)
+	s.setParent(s.root, nil)
+	if oldPrev != nil {
+		s.touch(oldPrev)
+		oldPrev.next = oldNext
+	} else {
+		s.first = oldNext
+	}
+	if oldNext != nil {
+		s.touch(oldNext)
+		oldNext.prev = oldPrev
+	} else {
+		s.last = oldPrev
+	}
+	s.touch(runFirst)
+	s.touch(runLast)
+	runFirst.prev, runLast.next = prev, next
+	if prev == nil {
+		s.first = runFirst
+	} else {
+		s.touch(prev)
+		prev.next = runFirst
+	}
+	if next == nil {
+		s.last = runLast
+	} else {
+		s.touch(next)
+		next.prev = runLast
+	}
+	s.labelRange(runFirst, runLast, count)
+	return true
+}
+
+func valueAtHandle[T any](handles []*Handle[T], at int, fallback *Handle[T]) *Handle[T] {
+	if at < 0 || at >= len(handles) {
+		return fallback
+	}
+	return handles[at]
 }
 
 func nodeSize[T any](n *Handle[T]) int {
@@ -290,49 +580,59 @@ func nodeHeight[T any](n *Handle[T]) int {
 	return n.height
 }
 
-func fixNode[T any](n *Handle[T]) {
+func (s *Seq[T]) setParent(n, parent *Handle[T]) {
+	if n != nil && n.parent != parent {
+		s.touch(n)
+		n.parent = parent
+	}
+}
+
+func (s *Seq[T]) fixNode(n *Handle[T]) {
+	s.touch(n)
 	n.size = 1 + nodeSize(n.left) + nodeSize(n.right)
 	n.height = 1 + max(nodeHeight(n.left), nodeHeight(n.right))
-	if n.left != nil {
-		n.left.parent = n
-	}
-	if n.right != nil {
-		n.right.parent = n
-	}
+	s.setParent(n.left, n)
+	s.setParent(n.right, n)
 }
 
 func (s *Seq[T]) rotateLeft(n *Handle[T]) *Handle[T] {
 	s.charge()
 	r := n.right
+	s.touch(n)
+	s.touch(r)
 	n.right = r.left
 	r.left = n
 	r.parent = n.parent
-	fixNode(n)
-	fixNode(r)
+	s.fixNode(n)
+	s.fixNode(r)
 	return r
 }
 
 func (s *Seq[T]) rotateRight(n *Handle[T]) *Handle[T] {
 	s.charge()
 	l := n.left
+	s.touch(n)
+	s.touch(l)
 	n.left = l.right
 	l.right = n
 	l.parent = n.parent
-	fixNode(n)
-	fixNode(l)
+	s.fixNode(n)
+	s.fixNode(l)
 	return l
 }
 
 func (s *Seq[T]) balance(n *Handle[T]) *Handle[T] {
-	fixNode(n)
+	s.fixNode(n)
 	if nodeHeight(n.left)-nodeHeight(n.right) > 1 {
 		if nodeHeight(n.left.left) < nodeHeight(n.left.right) {
+			s.touch(n)
 			n.left = s.rotateLeft(n.left)
 		}
 		return s.rotateRight(n)
 	}
 	if nodeHeight(n.right)-nodeHeight(n.left) > 1 {
 		if nodeHeight(n.right.right) < nodeHeight(n.right.left) {
+			s.touch(n)
 			n.right = s.rotateRight(n.right)
 		}
 		return s.rotateLeft(n)
@@ -345,6 +645,7 @@ func (s *Seq[T]) insertAt(n *Handle[T], rank int, h *Handle[T]) *Handle[T] {
 		return h
 	}
 	s.charge()
+	s.touch(n)
 	if rank <= nodeSize(n.left) {
 		n.left = s.insertAt(n.left, rank, h)
 	} else {
@@ -355,6 +656,7 @@ func (s *Seq[T]) insertAt(n *Handle[T], rank int, h *Handle[T]) *Handle[T] {
 
 func (s *Seq[T]) removeAt(n *Handle[T], rank int) *Handle[T] {
 	s.charge()
+	s.touch(n)
 	left := nodeSize(n.left)
 	switch {
 	case rank < left:
@@ -369,6 +671,7 @@ func (s *Seq[T]) removeAt(n *Handle[T], rank int) *Handle[T] {
 
 func (s *Seq[T]) popMin(n *Handle[T]) (*Handle[T], *Handle[T]) {
 	s.charge()
+	s.touch(n)
 	if n.left == nil {
 		return n.right, n
 	}
@@ -378,101 +681,418 @@ func (s *Seq[T]) popMin(n *Handle[T]) (*Handle[T], *Handle[T]) {
 }
 
 func (s *Seq[T]) join(left, right *Handle[T]) *Handle[T] {
+	s.charge()
 	if left == nil {
 		return right
 	}
 	if right == nil {
 		return left
 	}
-	s.charge()
 	if nodeHeight(left) > nodeHeight(right)+1 {
+		s.touch(left)
 		left.right = s.join(left.right, right)
 		return s.balance(left)
 	}
 	if nodeHeight(right) > nodeHeight(left)+1 {
+		s.touch(right)
 		right.left = s.join(left, right.left)
 		return s.balance(right)
 	}
 	var root *Handle[T]
 	right, root = s.popMin(right)
+	s.touch(root)
 	root.left, root.right = left, right
 	return s.balance(root)
 }
 
-// The tag-range relabeling rule follows Bender et al., section 3. The root
-// range has 2^63 slots. Rebuilding when size crosses a factor of two updates
-// the density threshold and costs O(1) amortized per intervening mutation.
+func (s *Seq[T]) joinRoot(left, root, right *Handle[T]) *Handle[T] {
+	s.charge()
+	if nodeHeight(left) > nodeHeight(right)+1 {
+		s.touch(left)
+		left.right = s.joinRoot(left.right, root, right)
+		return s.balance(left)
+	}
+	if nodeHeight(right) > nodeHeight(left)+1 {
+		s.touch(right)
+		right.left = s.joinRoot(left, root, right.left)
+		return s.balance(right)
+	}
+	s.touch(root)
+	root.left, root.right = left, right
+	s.fixNode(root)
+	return root
+}
+
+func (s *Seq[T]) split(root *Handle[T], rank int) (*Handle[T], *Handle[T]) {
+	s.charge()
+	if root == nil {
+		return nil, nil
+	}
+	leftSize := nodeSize(root.left)
+	if rank <= leftSize {
+		left, middle := s.split(root.left, rank)
+		right := root.right
+		s.touch(root)
+		root.left, root.right, root.parent = nil, nil, nil
+		root.height, root.size = 1, 1
+		result := s.joinRoot(middle, root, right)
+		s.setParent(left, nil)
+		s.setParent(result, nil)
+		return left, result
+	}
+	middle, right := s.split(root.right, rank-leftSize-1)
+	left := root.left
+	s.touch(root)
+	root.left, root.right, root.parent = nil, nil, nil
+	root.height, root.size = 1, 1
+	result := s.joinRoot(left, root, middle)
+	s.setParent(result, nil)
+	s.setParent(right, nil)
+	return result, right
+}
+
+func (s *Seq[T]) build(handles []*Handle[T], lo, hi int, parent *Handle[T]) *Handle[T] {
+	if lo >= hi {
+		return nil
+	}
+	mid := lo + (hi-lo)/2
+	h := handles[mid]
+	s.charge()
+	s.touch(h)
+	h.parent = parent
+	h.left = s.build(handles, lo, mid, h)
+	h.right = s.build(handles, mid+1, hi, h)
+	h.size = hi - lo
+	h.height = 1 + max(nodeHeight(h.left), nodeHeight(h.right))
+	return h
+}
+
+func (s *Seq[T]) collect(root *Handle[T], out *[]*Handle[T]) {
+	if root == nil {
+		return
+	}
+	s.collect(root.left, out)
+	s.charge()
+	*out = append(*out, root)
+	s.collect(root.right, out)
+}
+
+func (s *Seq[T]) minimum(root *Handle[T]) *Handle[T] {
+	for root != nil {
+		s.charge()
+		if root.left == nil {
+			return root
+		}
+		root = root.left
+	}
+	return nil
+}
+
+func (s *Seq[T]) maximum(root *Handle[T]) *Handle[T] {
+	for root != nil {
+		s.charge()
+		if root.right == nil {
+			return root
+		}
+		root = root.right
+	}
+	return nil
+}
+
+func (s *Seq[T]) unlink(h *Handle[T]) {
+	if h.prev == nil {
+		s.first = h.next
+	} else {
+		s.touch(h.prev)
+		h.prev.next = h.next
+	}
+	if h.next == nil {
+		s.last = h.prev
+	} else {
+		s.touch(h.next)
+		h.next.prev = h.prev
+	}
+}
+
+func (s *Seq[T]) detach(h *Handle[T]) {
+	s.touch(h)
+	h.left, h.right, h.parent, h.prev, h.next, h.owner = nil, nil, nil, nil, nil, nil
+	h.height, h.size, h.tag = 0, 0, 0
+}
+
+func (s *Seq[T]) adjustScale() {
+	switch {
+	case s.length == 0:
+		s.scale = 0
+	case s.scale == 0 || s.length > 2*s.scale || s.length < s.scale/2:
+		s.scale = s.length
+		s.rebuildTags()
+	}
+}
+
+// The tag-range relabeling rule follows Bender et al., section 3.
 func (s *Seq[T]) rebuildTags() {
-	step := tagUniverse / uint64(s.length+1) //nolint:gosec // a sequence length is nonnegative and bounded by addressable memory
+	step := tagUniverse / uint64(s.length+1) //nolint:gosec
 	i := uint64(1)
 	for h := s.first; h != nil; h = h.next {
 		s.charge()
+		s.touch(h)
 		h.tag = i * step
 		i++
 	}
 }
 
-func (s *Seq[T]) label(h *Handle[T]) {
+func (s *Seq[T]) labelRange(first, last *Handle[T], count int) {
 	lo, hi := uint64(0), tagUniverse
-	if h.prev != nil {
-		lo = h.prev.tag
+	if first.prev != nil {
+		lo = first.prev.tag
 	}
-	if h.next != nil {
-		hi = h.next.tag
+	if last.next != nil {
+		hi = last.next.tag
 	}
-	if hi-lo > 1 {
-		h.tag = lo + (hi-lo)/2
-		return
+	if hi > lo && hi-lo > uint64(count) { //nolint:gosec
+		step := (hi - lo) / uint64(count+1) //nolint:gosec
+		i := uint64(1)
+		for h := first; ; h = h.next {
+			s.charge()
+			s.touch(h)
+			h.tag = lo + i*step
+			i++
+			if h == last {
+				return
+			}
+		}
 	}
-	anchor := h.prev
+
+	// The moved or inserted run may carry labels from another part of the
+	// sequence, so expand from its physical neighbors instead of inspecting
+	// labels inside the run. This is the range form of label's density search.
+	anchor := first.prev
 	if anchor == nil {
-		anchor = h.next
+		anchor = last.next
 	}
-	// Threshold at the root is at least 2*scale / tagUniverse. For any
-	// size within [scale/2, 2*scale], a non-overflowing range exists.
-	t := math.Pow(float64(tagUniverse)/float64(2*s.scale), 1.0/63)
-	for bits := uint(1); bits <= 63; bits++ {
-		width := uint64(1) << bits
+	t := math.Pow(float64(tagUniverse)/float64(2*s.scale), 1.0/tagBits)
+	for widthBits := uint(1); widthBits <= tagBits; widthBits++ {
+		width := uint64(1) << widthBits
 		base := anchor.tag & ^(width - 1)
-		// The range encloses the predecessor (or the successor for a
-		// prepend). The other neighbor can be in the next range.
-		start := h
+		start := first
 		for start.prev != nil && start.prev.tag >= base {
 			s.charge()
 			start = start.prev
 		}
-		end := h
+		end := last
 		for end.next != nil && end.next.tag < base+width {
 			s.charge()
 			end = end.next
 		}
-		count := 0
-		for p := start; ; p = p.next {
+		items := 0
+		for h := start; ; h = h.next {
 			s.charge()
-			count++
-			if p == end {
+			items++
+			if h == end {
 				break
 			}
 		}
-		if float64(count) > float64(width)/math.Pow(t, float64(bits)) && bits != 63 {
+		if float64(items) > float64(width)/math.Pow(t, float64(widthBits)) && widthBits != tagBits {
 			continue
 		}
-		step := width / uint64(count+1)
+		step := width / uint64(items+1)
 		if step == 0 {
 			continue
 		}
 		index := uint64(1)
-		for p := start; ; p = p.next {
+		for h := start; ; h = h.next {
 			s.charge()
-			p.tag = base + index*step
+			s.touch(h)
+			h.tag = base + index*step
 			index++
-			if p == end {
-				break
+			if h == end {
+				return
 			}
 		}
-		return
 	}
-	// The root always has room for an in-memory Go slice of handles. Keep a
-	// deterministic recovery path if a future platform changes that premise.
 	s.rebuildTags()
+}
+
+func (s *Seq[T]) label(h *Handle[T]) {
+	s.labelRange(h, h, 1)
+}
+
+// CheckInvariants validates balance, sizes, parents, threads, labels,
+// ownership, and identical tree in-order and threaded traversal orders.
+func (s *Seq[T]) CheckInvariants() error {
+	if s.length == 0 {
+		if s.root != nil || s.first != nil || s.last != nil || s.scale != 0 {
+			return fmt.Errorf("empty sequence retains structural state")
+		}
+		return nil
+	}
+	if s.scale <= 0 {
+		return fmt.Errorf("nonempty sequence has invalid label scale")
+	}
+	if s.root == nil || s.first == nil || s.last == nil {
+		return fmt.Errorf("nonempty sequence has a nil root or endpoint")
+	}
+	if s.root.parent != nil {
+		return fmt.Errorf("root has a parent")
+	}
+	tree := make(map[*Handle[T]]struct{}, s.length)
+	threadNext := s.first
+	var walk func(*Handle[T], *Handle[T]) (int, int, error)
+	walk = func(n, parent *Handle[T]) (int, int, error) {
+		if n == nil {
+			return 0, 0, nil
+		}
+		if _, duplicate := tree[n]; duplicate {
+			return 0, 0, fmt.Errorf("tree contains a duplicate handle")
+		}
+		tree[n] = struct{}{}
+		if n.owner != s || n.parent != parent {
+			return 0, 0, fmt.Errorf("tree handle has invalid owner or parent")
+		}
+		ls, lh, err := walk(n.left, n)
+		if err != nil {
+			return 0, 0, err
+		}
+		if threadNext != n {
+			return 0, 0, fmt.Errorf("tree/thread order differs")
+		}
+		threadNext = threadNext.next
+		rs, rh, err := walk(n.right, n)
+		if err != nil {
+			return 0, 0, err
+		}
+		if n.size != ls+rs+1 {
+			return 0, 0, fmt.Errorf("subtree size is %d, want %d", n.size, ls+rs+1)
+		}
+		height := 1 + max(lh, rh)
+		if n.height != height || absInt(lh-rh) > 1 {
+			return 0, 0, fmt.Errorf("AVL height or balance is invalid")
+		}
+		return n.size, height, nil
+	}
+	size, _, err := walk(s.root, nil)
+	if err != nil {
+		return err
+	}
+	if size != s.length || len(tree) != s.length {
+		return fmt.Errorf("tree has %d handles, length is %d", size, s.length)
+	}
+	thread := make(map[*Handle[T]]struct{}, s.length)
+	var previous *Handle[T]
+	count := 0
+	for h := s.first; h != nil; h = h.next {
+		if _, duplicate := thread[h]; duplicate {
+			return fmt.Errorf("thread contains a cycle or duplicate")
+		}
+		thread[h] = struct{}{}
+		if _, ok := tree[h]; !ok {
+			return fmt.Errorf("thread handle is absent from tree")
+		}
+		if h.owner != s || h.prev != previous {
+			return fmt.Errorf("thread handle has invalid owner or predecessor")
+		}
+		if previous != nil && previous.tag >= h.tag {
+			return fmt.Errorf("order labels are not strictly increasing")
+		}
+		previous = h
+		count++
+	}
+	if previous != s.last || count != s.length || s.first.prev != nil || s.last.next != nil {
+		return fmt.Errorf("thread endpoints or length are invalid")
+	}
+	if len(thread) != len(tree) {
+		return fmt.Errorf("tree/thread handle sets differ")
+	}
+	return nil
+}
+
+func absInt(value int) int {
+	if value < 0 {
+		return -value
+	}
+	return value
+}
+
+func saturatingAdd(a, b uint64) uint64 {
+	if ^uint64(0)-a < b {
+		return ^uint64(0)
+	}
+	return a + b
+}
+func saturatingMul(a, b uint64) uint64 {
+	if a != 0 && b > ^uint64(0)/a {
+		return ^uint64(0)
+	}
+	return a * b
+}
+
+func (s *Seq[T]) structuralWorkBound(items int) uint64 {
+	if items < 0 {
+		return ^uint64(0)
+	}
+	total := saturatingAdd(uint64(s.length), uint64(items)) //nolint:gosec // lengths are nonnegative
+	total = saturatingAdd(total, 1)
+	depth := uint64(bits.Len64(total) + 1) //nolint:gosec // bits.Len64 is at most 64
+	factor := saturatingMul(64, saturatingAdd(uint64(len(s.checkpoints)), 1))
+	structural := saturatingMul(factor, saturatingAdd(total, depth))
+	// A mutation calls labelRange at most once, on at most total handles.
+	// At each of tagBits widths, expanding both ends visits at most N-count
+	// handles and counting the enclosed run visits at most N: at most 2*N
+	// charges per width, even when consecutive widths scan the same handles.
+	// Allow N more for the final relabel (or fallback rebuild), and N for a
+	// scale-change rebuild before labelRange. Journal before-images are already
+	// covered by structural: each handle is saved at most once per checkpoint.
+	relabel := saturatingMul(2*tagBits+2, total)
+	return saturatingAdd(structural, relabel)
+}
+
+// LowerBoundWorkBound conservatively bounds one LowerBound or UpperBound.
+func (s *Seq[T]) LowerBoundWorkBound() uint64 {
+	length := saturatingAdd(uint64(s.length), 1) //nolint:gosec // length is nonnegative
+	return 2*uint64(bits.Len64(length)) + 2      //nolint:gosec // bits.Len64 is in [0, 64]
+}
+
+// UpperBoundWorkBound conservatively bounds one UpperBound.
+func (s *Seq[T]) UpperBoundWorkBound() uint64 { return s.LowerBoundWorkBound() }
+
+// InsertWorkBound conservatively bounds one point insertion, including a possible label rebuild.
+func (s *Seq[T]) InsertWorkBound() uint64 { return s.structuralWorkBound(1) }
+
+// RemoveWorkBound conservatively bounds one point removal.
+func (s *Seq[T]) RemoveWorkBound() uint64 { return s.structuralWorkBound(0) }
+
+// MoveWorkBound conservatively bounds moving count existing handles.
+func (s *Seq[T]) MoveWorkBound(count int) uint64 { return s.structuralWorkBound(count) }
+
+// SpliceWorkBound conservatively bounds a splice before it mutates the tree.
+func (s *Seq[T]) SpliceWorkBound(deleteCount, insertCount int) uint64 {
+	if deleteCount < 0 || insertCount < 0 || deleteCount > s.length {
+		return ^uint64(0)
+	}
+	return s.structuralWorkBound(insertCount + deleteCount)
+}
+
+// ReplaceRangeWorkBound conservatively bounds replacing delete handles with insert values.
+func (s *Seq[T]) ReplaceRangeWorkBound(deleteCount, insertCount int) uint64 {
+	return s.SpliceWorkBound(deleteCount, insertCount)
+}
+
+// ReplaceHandlesWorkBound conservatively bounds republishing count handles.
+func (s *Seq[T]) ReplaceHandlesWorkBound(count int) uint64 { return s.structuralWorkBound(count) }
+
+// CheckpointWorkBound bounds creation of a checkpoint and its header before-image.
+func (s *Seq[T]) CheckpointWorkBound() uint64 { return 1 }
+
+// CommitWorkBound bounds committing the most recent checkpoint.
+func (s *Seq[T]) CommitWorkBound() uint64 { return 0 }
+
+// RollbackWorkBound bounds restoring checkpoint. An invalid or non-top token
+// performs no work and has a zero bound.
+func (s *Seq[T]) RollbackWorkBound(checkpoint *Checkpoint[T]) uint64 {
+	top, ok := s.topCheckpoint(checkpoint)
+	if !ok {
+		return 0
+	}
+	return saturatingAdd(uint64(len(top.before)), uint64(len(top.created)))
 }
