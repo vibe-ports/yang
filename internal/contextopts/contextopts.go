@@ -30,6 +30,15 @@ func LoadRevision(ctx any, name string, revision *string, features []string) ([]
 // NodeSchema is installed by data when it is initialized.
 var NodeSchema func(any) *snap.Schema
 
+// NewImplicitOptions are the native value flags for NewImplicitNode.
+type NewImplicitOptions struct {
+	Output, StoreOnly, Canonical bool
+}
+
+// NewImplicitNode calls a schema constructor with a nil module and a literal
+// local name. The public data API instead accepts qualified names.
+var NewImplicitNode func(tree, parent any, kind, name, value string, keys []string, options NewImplicitOptions) error
+
 // NewPathUpdateContext returns the context of the term the tree's last NewPath updated (it
 // logs that update's store diagnostics), nil when that call updated no term.
 var NewPathUpdateContext func(any) *snap.Schema

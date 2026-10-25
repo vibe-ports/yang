@@ -4,6 +4,7 @@ package data
 
 import (
 	"errors"
+	"fmt"
 	"os"
 	"slices"
 	"strings"
@@ -230,6 +231,40 @@ func TestNewNodes(t *testing.T) {
 	if _, got := run(func() (*Node, error) { return nil, b.changeTerm(nil, "x", true) }); !strings.HasPrefix(got,
 		"LY_EINVAL | LY_EINVAL LYVE_SUCCESS Invalid argument term (lyd_change_term_canon()).") {
 		t.Errorf("change of nil: %s", got)
+	}
+}
+
+// TestNewList2PublicWorkMatchesInternal compares the new public wrapper with the internal
+// lyd_new_list2 path present on main. Descending keys are the adverse insertion order for a
+// system-ordered list; exporting the path must add no uncounted scan or smaller budget.
+func TestNewList2PublicWorkMatchesInternal(t *testing.T) {
+	set, a := newTestSet(t)
+	measure := func(public bool) int64 {
+		tr := newTree(set)
+		tr.work.visits, tr.work.shifts = true, true
+		for i := 63; i >= 0; i-- {
+			keys := fmt.Sprintf("[a='%d']", i)
+			if public {
+				if _, err := tr.NewList2(nil, "a:l11", keys, NewOptions{}); err != nil {
+					t.Fatal(err)
+				}
+				continue
+			}
+			end := tr.work.beginHashWork()
+			b := newBuilder{set: set, log: &logger{set: set}, work: &tr.work, tree: tr}
+			n, err := b.newList2(nil, a, "l11", keys, newValOptions{})
+			_, err = tr.placed(b, nil, n, err)
+			end()
+			if err != nil {
+				t.Fatal(err)
+			}
+		}
+		return tr.work.Load()
+	}
+	baseline, exported := measure(false), measure(true)
+	t.Logf("descending NewList2 counted work: internal(main)=%d exported(head)=%d", baseline, exported)
+	if exported != baseline {
+		t.Fatalf("descending NewList2 counted work: internal(main)=%d exported(head)=%d", baseline, exported)
 	}
 }
 

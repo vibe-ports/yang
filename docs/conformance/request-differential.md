@@ -116,18 +116,18 @@ Pairwise counts are reported separately below. #247 exports `NotFinal` and
 `ValidateModuleFinal`: split-validation requests now execute against the live oracle,
 including the formerly unsupported final-only corpus fixtures. `TestSplitValidationOracle`
 compares phase checks, reference plugins, default flags, implicit diffs and argument errors.
-Historical counts below predate that API expansion.
+Historical counts below predate that API expansion. Canonical/store-only
+constructors, canonical changes and `NewList2` now execute through their public
+APIs too, retiring `canonical-values` (U-0108) and `list2` (U-0109).
 
 | B class | Registry ID | Capability gap | Single-field |
 |---|---|---|---:|
 | `ordered-input` | D-0058 | `LYD_PARSE_ORDERED` input ordering | 39 |
 | `any-direct` | U-0112 | `any_direct` step: native pointer-level any-value calls | 230 |
 | `operation-parent` | U-0106 | Operation input into an existing parent, or reply into an opaque request | 691 |
-| `canonical-values` | U-0108 | Canonical/store-only constructor and change-term options | 8 |
-| `list2` | U-0109 | `lyd_new_list2` inputs/diagnostics unavailable through `NewPath` | 12 |
 | `reply-non-operation-parent` | U-0110 | Reply into a parent that is not an RPC/action; `ParseOpOptions.Request` rejects it before parsing | 0 |
 | `cross-context-diff` | D-0069 | Diff matching between populated trees from separate schema snapshots (#236) | 0 |
-| **Total** | | | **980** |
+| **Total** | | | **960** |
 
 The classifier requires the relevant step and the exact unsupported reason.
 
@@ -367,10 +367,11 @@ keeps a separate context per build call within a request, so a root and a
 target context with the same configuration stay distinct, as in plain
 `Yang.Run`.
 
-The counts below are the pre-#247 capture. Its two notification-envelope rows
-and the opaque-construction row are now retired; the next canonical pairwise
-recapture is expected to move their 185,171 results from B to MATCH. The current single-field native run is
-recorded in the B-class section above.
+The counts below are the pre-#247 capture. Its two notification-envelope rows,
+the opaque-construction row, the canonical-values row and the list2 row are now
+retired; the next canonical pairwise recapture is expected to move their 185,736
+results from B to MATCH. The current single-field native run is recorded in the
+B-class section above.
 
 | Category | Class | Count |
 |---|---|---:|

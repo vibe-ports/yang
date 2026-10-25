@@ -561,16 +561,17 @@ a fixture with `assert` (extractor, inventory §5.4).
 | metadata | annotation lookup + store, `default`, `yang:operation`, with-defaults tags | full RFC 7952 / origin inheritance M4–M5 |
 | opaque nodes | `unknown: opaque`, printing, validation error, `NewOpaque` (#247) | `Node.Attrs` and the envelopes in M5 (§6.1.5) |
 | diff | implicit diff (create/delete/none); since #137 Diff, ApplyDiff, MergeDiff, ReverseDiff (PoC #133) | anydata/anyxml values in diffs (M5) |
-| edits | NewPath(Update), Find, Remove, Unlink, Merge without options | M4: NewTerm, NewInner, NewList, Insert, SetValue, Dup, DupSiblings (§6.1.2, §6.1.3); `ApplyEdit` M6 |
+| edits | NewPath(Update), Find, Remove, Unlink, Merge without options | M4: NewTerm, NewInner, NewList, NewList2, Insert, SetValue, SetValueCanonical, Dup, DupSiblings (§6.1.2, §6.1.3); `ApplyEdit` M6 |
 | leafref links (`LY_CTX_LEAFREF_LINKING`) | ported internally (data/links.go) | M4: `Options.LeafrefLinking`, `LeafrefLinks`, `LinkLeafrefs` (§6.1.3) |
 | extension data (`LYD_EXT`, schema-mount, yang-data, structure) | never reached: compile rejects schema-mount (U-0024); a data node of a yang-data/structure tree fails the parse with `ErrUnsupported` (U-0060) | later |
 | LYB, `lyd_parse_value_fragment` | no | out of v1 |
 | NETCONF/RESTCONF envelopes (`LYD_TYPE_*_NETCONF`, `LYD_TYPE_*_RESTCONF`) | no | M5, parse only (§6.1.5, decided 2026-10-10); transport and message building stay out of v1 (PLAN §1) |
 
-### 6.1 M4 exported API (#92, proposal for the maintainer)
+### 6.1 Exported data API (#92, extended by #247)
 
-Status: proposal, 2026-10-10. Nothing below is exported until the maintainer approves it; #93, #96
-and #98 port the engine work unexported, and #97 and #99 wire the conformance engine to this API.
+The M4 surface is shipped. The #247 additions were approved by the maintainer on 2026-10-24 and
+land incrementally; this section records declarations once implemented. #93, #96 and #98 ported
+the original engine work, and #97 and #99 wired the conformance engine to its public API.
 libyang references are v5.8.6: `tree_data.c` (TD), `tree_data_new.c` (TDN), `validation.c` (VAL),
 `parser_xml.c` (PX), `parser_json.c` (PJ).
 
@@ -592,12 +593,18 @@ type ValidateOpOptions struct{ Operational *Tree } // dep_tree, the -O operation
 func (t *Tree) ValidateOp(ctx context.Context, typ OpType, o ValidateOpOptions) ([]yang.Diagnostic, error)
 
 // tree building (§6.1.2); name is "module:node" or, below parent, "node" of parent's module
-type NewOptions struct{ Output bool } // LYD_NEW_VAL_OUTPUT
+type NewOptions struct {
+	Output bool // LYD_NEW_VAL_OUTPUT
+	StoreOnly bool // LYD_NEW_VAL_STORE_ONLY
+	Canonical bool // LYD_NEW_VAL_CANON
+}
 func (t *Tree) NewTerm(parent *Node, name, value string, o NewOptions) (*Node, error)
 func (t *Tree) NewInner(parent *Node, name string, o NewOptions) (*Node, error)
 func (t *Tree) NewList(parent *Node, name string, keys []string, o NewOptions) (*Node, error)
+func (t *Tree) NewList2(parent *Node, name, keys string, o NewOptions) (*Node, error)
 func (t *Tree) Insert(parent, n *Node) error // lyd_insert_child; parent nil: lyd_insert_sibling at the top level
 func (n *Node) SetValue(value string) (changed bool, err error) // lyd_change_term
+func (n *Node) SetValueCanonical(value string) (changed bool, err error) // lyd_change_term_canon
 
 // duplication and leafref links (§6.1.3)
 type DupOptions struct{ Recursive, NoMeta, WithParents, WithFlags, NoSort bool } // LYD_DUP_*
@@ -628,8 +635,8 @@ Rules this follows, from the package as shipped: options structs, never position
 (`lyd_new_inner`'s `output` is `NewOptions.Output`); a call that libyang lets log on success
 returns `(…, []yang.Diagnostic, error)` (ParseOp, ValidateOp, ValidateModule, Dup, DupSiblings,
 LinkLeafrefs, as Parse, Validate and the queries); calls that log only on failure return
-`(…, error)` with the diagnostics in the `*ValidationError` (NewTerm, NewInner, NewList, Insert,
-SetValue, as NewPath and NewMeta: their value stores and schema checks log only on the failing
+`(…, error)` with the diagnostics in the `*ValidationError` (NewTerm, NewInner, NewList, NewList2, Insert,
+SetValue, SetValueCanonical, as NewPath and NewMeta: their value stores and schema checks log only on the failing
 path, and none of them evaluates XPath or copies across snapshots; LeafrefLinks logs nothing); every LY_CHECK_ARG_RET /
 LOGARG refusal is an LY_EINVAL `*ValidationError` built with `argErr` (§0.5, #160/#168), with
 libyang's text of the check; results that are sets are slices (`[]*Node`, as FindXPath), walks stay
@@ -637,7 +644,7 @@ libyang's text of the check; results that are sets are slices (`[]*Node`, as Fin
 NewMeta and Merge are, so that a nil parent means the top level of that tree (Go has no unlinked
 sibling lists: a parentless node is a top-level node of some tree, §2). Names follow the
 libyang function minus `lyd_` and the existing Go names (New*, Find*, Validate*); the one
-exception is SetValue, the setter twin of `Node.Value`.
+exceptions are SetValue and SetValueCanonical, the setter twins of `Node.Value`.
 
 Concurrency (data/doc.go): **read** = may run with other reads of the same tree; **mutation** =
 exclusive access to the tree it changes. Each item below names its class; doc.go's lists get the
@@ -718,15 +725,17 @@ without changing this contract. doc.go states this rule when ValidateOp is expor
   ParseOp returns no tree on failure (libyang frees it); a failed parse with Request removes the
   nodes it added (libyang frees its `parsed` set, TD:483), so Request's tree is as before.
 
-#### 6.1.2 Tree building: NewTerm, NewInner, NewList, Insert, SetValue
+#### 6.1.2 Tree building: NewTerm, NewInner, NewList, NewList2, Insert, SetValue
 
 | Go | libyang | class |
 |---|---|---|
 | `t.NewTerm(parent, name, value, o)` | `lyd_new_term(parent, module, name, value, options, &node)` (TDN:738) | mutation of t |
 | `t.NewInner(parent, name, o)` | `lyd_new_inner(parent, module, name, output, &node)` (TDN:446) | mutation of t |
 | `t.NewList(parent, name, keys, o)` | `lyd_new_list` (TDN:528) / `lyd_new_list3` with string values (TDN:628) | mutation of t |
+| `t.NewList2(parent, name, keys, o)` | `lyd_new_list2` (TDN:577) | mutation of t |
 | `t.Insert(parent, n)` | `lyd_insert_child(parent, n)` (TD:1095); parent nil: `lyd_insert_sibling(first top-level, n, &first)` (TD:1114) | mutation of t, of n's tree when n comes from another tree, and of trees linked to either (§6.1) |
 | `n.SetValue(value)` | `lyd_change_term(n, value)` (TDN:1296) | mutation of n's tree and of trees linked to it (§6.1) |
+| `n.SetValueCanonical(value)` | `lyd_change_term_canon(n, value)` (TDN:1304) | mutation of n's tree and of trees linked to it (§6.1) |
 
 - `parent` nil: the node becomes a top-level node of t. This is `lyd_new_*(NULL, …)` followed by
   `lyd_insert_sibling` into t, exactly the lyoracle `insert_term`/`insert_inner` steps (#99).
@@ -739,8 +748,9 @@ without changing this contract. doc.go states this rule when ValidateOp is expor
   (_lyd_new_term())." A name that does not resolve keeps libyang's message and code ("Term node
   "%s" not found.", "Inner node (container, notif, RPC, or action) "%s" not found.", "List node
   "%s" not found."; logged LY_EINVAL, returned LY_ENOTFOUND: `RC()` is "LY_ENOTFOUND").
-- `value` and `keys` are JSON-format (`LY_VALUE_JSON`, as NewPath): identityref values are
-  `module:identity`. Store errors are the type plugin's diagnostics.
+- By default, `value` and `keys` are JSON-format (`LY_VALUE_JSON`, as NewPath): identityref values
+  are `module:identity`. Canonical changes that format only where specified below. Store errors
+  are the type plugin's diagnostics.
 - `NewList`: `keys` in schema key order, one value per key (`lyd_new_list`'s variadic keys).
   It mirrors libyang: the keys are taken in order, one per key of the schema
   (`for (key_s = lysc_node_child(…); key_s && (key_s->flags & LYS_KEY); …)`), so extra values are
@@ -748,9 +758,19 @@ without changing this contract. doc.go states this rule when ValidateOp is expor
   list with nil keys is lyd_new_list3's "Missing list "%s" keys." (LY_EINVAL). Too few values is
   an error: libyang would read past the end of its varargs or array, which Go cannot do, so it is
   LY_EINVAL `argErr("keys", "lyd_new_list")` (#196 does this).
+- `NewList2`: `keys` is exactly a list-key predicate sequence. It first resolves a list schema
+  node, compiles predicate values in JSON format, and creates keys by storing their canonical text
+  again in JSON format; the second store can select another union member. Empty `keys` succeeds
+  without keys only for a keyless list. Its lookup, return codes and diagnostics are those of
+  `lyd_new_list2`, not `NewPath`.
 - `NewOptions.Output` is `LYD_NEW_VAL_OUTPUT` / `lyd_new_inner`'s `output`: below an rpc/action,
   look the node up in output instead of input. That is what a server needs to build a reply under
   the request node.
+- `NewOptions.StoreOnly` is `LYD_NEW_VAL_STORE_ONLY`; it applies to NewTerm, NewList and NewList2.
+  `NewOptions.Canonical` is `LYD_NEW_VAL_CANON`, a caller promise that the supplied value is
+  canonical; it applies to NewTerm and NewList. Their combination is LY_EINVAL for NewTerm and
+  NewList. NewInner ignores both value options. NewList2 ignores Canonical, including when
+  StoreOnly is also set; StoreOnly does not bypass the preceding JSON predicate compilation.
 - `Insert`'s oracle fixtures are seq/insert-* (the lyoracle step `insert`): moves between parents
   and from another tree, a whole sibling list, an empty tree, and the schema, key and argument
   refusals.
@@ -765,6 +785,13 @@ without changing this contract. doc.go states this rule when ValidateOp is expor
   When the value changes and `LeafrefLinking` is on, n's leafref link records are dropped
   (`lyd_change_term_val` calls `lyd_free_leafref_nodes`; data/links.go `freeLinks`). The Default flag of n and its NP-container ancestors is cleared, as NewPath's Update
   path already does (`lyd_change_term_val`).
+- `SetValueCanonical` has the same result and mutation contract as SetValue but supplies
+  `LY_VALUE_CANON` to the type store. The caller promises canonical input; it does not
+  canonicalize arbitrary input.
+
+Adding StoreOnly and Canonical to NewOptions breaks non-empty unkeyed literals at compile time;
+keyed and empty literals remain source-compatible. Both fields default to false, preserving the
+previous constructor behavior.
 
 #### 6.1.3 Duplication and leafref links
 
@@ -940,8 +967,7 @@ of a registry entry. So #105 cannot pass with them unsupported; they must agree.
 
 | libyang | why not |
 |---|---|
-| `lyd_new_list2` (keys as a predicate string) | `NewPath("/m:l[k='v']", …)` already does it, with the same predicate parser |
-| `LYD_NEW_VAL_STORE_ONLY`, `LYD_NEW_VAL_CANON`, `lyd_new_term_raw`, `lyd_new_term_bin`, `lyd_change_term_canon` | speed knobs over the JSON value form; no fixture uses them; add when a user shows a need |
+| `lyd_new_term_raw`, `lyd_new_term_bin` | raw binary representations are outside the string-valued constructor API |
 | `lyd_new_attr*` | no request builds opaque attributes; `lyd_new_opaq`/`_opaq2` are `Tree.NewOpaque` since #247 (§6.1.5) |
 | `lyd_insert_before`, `lyd_insert_after`, `lyd_unlink_siblings` | user-ordered positioning and sibling-run operations belong to `ApplyEdit` (M6, `yang:insert`); single-tree `lyd_unlink_tree` is `Node.Unlink` |
 | `LYD_DUP_NO_EXT`, `LYD_DUP_WITH_PRIV`, `lyd_dup_meta_single` | nothing to act on (no extension data, no private pointers); metadata copies come with Dup |

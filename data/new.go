@@ -479,11 +479,19 @@ func (b newBuilder) changeTerm(n *Node, value string, canon bool) error {
 	return rcError("LY_ENOT")
 }
 
-// NewOptions are the options of NewTerm, NewInner and NewList.
+// NewOptions are the options of NewTerm, NewInner, NewList and NewList2.
 type NewOptions struct {
 	// Output is LYD_NEW_VAL_OUTPUT (lyd_new_inner's output): below an rpc or action the node is
-	// looked up in its output instead of its input.
+	// looked up in its output instead of its input (src/tree_data.h:1287-1288).
 	Output bool
+	// StoreOnly is LYD_NEW_VAL_STORE_ONLY: store values with no or minimum validation
+	// (src/tree_data.h:1289). It applies to NewTerm, NewList and NewList2 and is ignored by
+	// NewInner.
+	StoreOnly bool
+	// Canonical is LYD_NEW_VAL_CANON: the caller promises that values are in canonical form
+	// (src/tree_data.h:1290-1292). It applies to NewTerm and NewList, is ignored by NewInner and
+	// NewList2, and must not be combined with StoreOnly where it applies.
+	Canonical bool
 }
 
 // builder checks the arguments the exported tree-building calls add to libyang's (parent a node
@@ -527,26 +535,30 @@ func (t *Tree) placed(b newBuilder, parent, n *Node, err error) (*Node, error) {
 	return n, nil
 }
 
-// NewTerm is lyd_new_term: a leaf or leaf-list instance of name with the JSON-format value, a
+// NewTerm is lyd_new_term (src/tree_data_new.c:694-742): a leaf or leaf-list instance of name
+// with a JSON-format value, or a canonical value with o.Canonical, a
 // child of parent (a node of t, or a detached node of its snapshot) or, with parent nil, a
 // top-level node of t (then lyd_insert_sibling). name is "module:node", or "node" below a parent
 // (the parent's module); the
 // module must be implemented in t's snapshot. Errors are a *ValidationError with libyang's
 // diagnostics and return code: a name that does not resolve is "Term node … not found."
-// (LY_ENOTFOUND), a value the type rejects the type's diagnostics.
+// (LY_ENOTFOUND), a value the type rejects the type's diagnostics. o.StoreOnly suppresses most
+// value restriction checks; combining it with o.Canonical is LY_EINVAL.
 func (t *Tree) NewTerm(parent *Node, name, value string, o NewOptions) (*Node, error) {
 	defer t.work.beginHashWork()()
 	b, mod, local, err := t.builder(parent, name, "_lyd_new_term")
 	if err != nil {
 		return nil, err
 	}
-	n, err := b.newTerm(parent, mod, local, value, newValOptions{output: o.Output})
+	n, err := b.newTerm(parent, mod, local, value,
+		newValOptions{output: o.Output, storeOnly: o.StoreOnly, canon: o.Canonical})
 	return t.placed(b, parent, n, err)
 }
 
-// NewInner is lyd_new_inner: a container, notification, rpc or action of name, placed as NewTerm
-// places its node. A non-presence container is created with the Default flag, which inserting a
-// child into it clears.
+// NewInner is lyd_new_inner (src/tree_data_new.c:446-481): a container, notification, rpc or
+// action of name, placed as NewTerm places its node. A non-presence container is created with the
+// Default flag, which inserting a child into it clears. StoreOnly and Canonical do not apply to
+// inner nodes and are ignored.
 func (t *Tree) NewInner(parent *Node, name string, o NewOptions) (*Node, error) {
 	defer t.work.beginHashWork()()
 	b, mod, local, err := t.builder(parent, name, "lyd_new_inner")
@@ -557,17 +569,36 @@ func (t *Tree) NewInner(parent *Node, name string, o NewOptions) (*Node, error) 
 	return t.placed(b, parent, n, err)
 }
 
-// NewList is lyd_new_list: a list instance of name with the JSON-format key values in schema key
-// order, placed as NewTerm places its node. Values past the list's keys are ignored, all of them
-// for a keyless list, as libyang ignores them; nil keys of a keyed list is "Missing list … keys."
-// and fewer values than keys an LY_EINVAL argument error, "keys".
+// NewList is lyd_new_list (src/tree_data_new.c:528-574): a list instance of name with key values
+// in schema key order, placed as NewTerm places its node. Values are in JSON format unless
+// o.Canonical is set; o.StoreOnly suppresses most value restriction checks, and combining the two
+// is LY_EINVAL. Values past the list's keys are ignored, all of them for a keyless list, as
+// libyang ignores them; nil keys of a keyed list is "Missing list … keys." and fewer values than
+// keys an LY_EINVAL argument error, "keys".
 func (t *Tree) NewList(parent *Node, name string, keys []string, o NewOptions) (*Node, error) {
 	defer t.work.beginHashWork()()
 	b, mod, local, err := t.builder(parent, name, "lyd_new_list")
 	if err != nil {
 		return nil, err
 	}
-	n, err := b.newList(parent, mod, local, keys, newValOptions{output: o.Output}, "lyd_new_list")
+	n, err := b.newList(parent, mod, local, keys,
+		newValOptions{output: o.Output, storeOnly: o.StoreOnly, canon: o.Canonical}, "lyd_new_list")
+	return t.placed(b, parent, n, err)
+}
+
+// NewList2 is lyd_new_list2 (src/tree_data_new.c:577-625): keys is a sequence of list-key
+// predicates, "[key1='value1'][key2='value2']". Predicate values are compiled in JSON format and
+// their canonical text is stored again when the keys are created (src/tree_data_new.c:154-177).
+// An empty keys string creates a keyless list but is invalid for a keyed list. Output and
+// StoreOnly apply; Canonical is ignored, including when StoreOnly is also set.
+func (t *Tree) NewList2(parent *Node, name, keys string, o NewOptions) (*Node, error) {
+	defer t.work.beginHashWork()()
+	b, mod, local, err := t.builder(parent, name, "lyd_new_list2")
+	if err != nil {
+		return nil, err
+	}
+	n, err := b.newList2(parent, mod, local, keys,
+		newValOptions{output: o.Output, storeOnly: o.StoreOnly})
 	return t.placed(b, parent, n, err)
 }
 
@@ -620,12 +651,24 @@ func (t *Tree) NewOpaque(parent *Node, name, value string, o OpaqueOptions) (*No
 // Default flag of a default node and of its non-presence container parents (LY_EEXIST), or
 // changes nothing (LY_ENOT). An opaque or non-term n is an LY_EINVAL *ValidationError.
 func (n *Node) SetValue(value string) (changed bool, err error) {
+	return n.setValue(value, false)
+}
+
+// SetValueCanonical is lyd_change_term_canon (src/tree_data_new.c:1304-1309): the leaf or
+// leaf-list instance n takes value interpreted as canonical input. The caller must supply the
+// canonical form. As with SetValue, changed is true only for an actual value change; clearing a
+// Default flag without changing the value returns false, nil.
+func (n *Node) SetValueCanonical(value string) (changed bool, err error) {
+	return n.setValue(value, true)
+}
+
+func (n *Node) setValue(value string, canonical bool) (changed bool, err error) {
 	var set *schema.Set
 	if n != nil {
 		set = ctxOf(n)
 	}
 	b := newBuilder{set: set, log: &logger{set: set}}
-	err = b.log.done(b.changeTerm(n, value, false))
+	err = b.log.done(b.changeTerm(n, value, canonical))
 	var ve *ValidationError
 	if errors.As(err, &ve) && ve.Diags == nil && (ve.rc == "LY_EEXIST" || ve.rc == "LY_ENOT") {
 		return false, nil

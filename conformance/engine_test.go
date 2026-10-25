@@ -719,36 +719,6 @@ var validationUnsupported = map[string]string{
 	"ops/parse-json-rpc-rollback-keys-order":  "U-0106",
 	"ops/parse-xml-rpc-parent-envelope-value": "U-0106",
 	"ops/parse-xml-rpc-parent-input":          "U-0106",
-	// U-0109: insert-14 builds its opaque parent, then lyd_new_list2 under it.
-	"ut-new/insert-14": "U-0109",
-	// U-0108: canonical/store-only constructors and lyd_change_term_canon are not exported.
-	"ut-new/change-01": "U-0108",
-	"ut-new/change-03": "U-0108",
-	"ut-new/insert-23": "U-0108",
-	"ut-new/insert-24": "U-0108",
-	"ut-new/insert-25": "U-0108",
-	"ut-new/insert-36": "U-0108",
-	"ut-new/insert-37": "U-0108",
-	"ut-new/insert-38": "U-0108",
-	"ut-new/insert-44": "U-0108",
-	"ut-new/insert-46": "U-0108",
-	"ut-new/insert-48": "U-0108",
-	"ut-new/insert-50": "U-0108",
-	// U-0109: NewPath cannot reproduce lyd_new_list2's accepted inputs and diagnostics.
-	"ut-new/insert-27": "U-0109",
-	"ut-new/insert-28": "U-0109",
-	"ut-new/insert-29": "U-0109",
-	"ut-new/insert-30": "U-0109",
-	"ut-new/insert-32": "U-0109",
-	"ut-new/insert-33": "U-0109",
-	"ut-new/insert-34": "U-0109",
-	"ut-new/insert-35": "U-0109",
-	"ut-new/insert-51": "U-0109",
-	"ut-new/insert-53": "U-0109",
-	"ut-new/insert-57": "U-0109",
-	"ut-new/insert-58": "U-0109",
-	"ut-new/insert-59": "U-0109",
-	"ut-new/path-05":   "U-0109",
 }
 
 // validationAllowed reports whether fixture id may be unsupported with this reason.

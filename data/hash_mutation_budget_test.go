@@ -805,6 +805,10 @@ func TestPublicHashMutationChargePoints(t *testing.T) {
 			tr, root := base()
 			return tr, func() error { _, err := tr.NewOpaque(root, "x", "v", OpaqueOptions{Module: "m"}); return err }
 		},
+		"NewList2": func() (*Tree, func() error) {
+			tr, root := base()
+			return tr, func() error { _, err := tr.NewList2(root, "l", "[k='key']", NewOptions{}); return err }
+		},
 		"NewTerm": func() (*Tree, func() error) {
 			tr, root := base()
 			return tr, func() error { _, err := tr.NewTerm(root, "s", "new", NewOptions{}); return err }
@@ -832,6 +836,10 @@ func TestPublicHashMutationChargePoints(t *testing.T) {
 		"SetValue": func() (*Tree, func() error) {
 			tr, root := base()
 			return tr, func() error { _, err := root.kids.list[3].SetValue("new"); return err }
+		},
+		"SetValueCanonical": func() (*Tree, func() error) {
+			tr, root := base()
+			return tr, func() error { _, err := root.kids.list[3].SetValueCanonical("new"); return err }
 		},
 		"Remove": func() (*Tree, func() error) { tr, root := base(); return tr, root.kids.list[3].Remove },
 		"TrimXPath": func() (*Tree, func() error) {

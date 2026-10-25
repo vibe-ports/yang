@@ -56,22 +56,7 @@ var seqUnsupported = map[string]string{
 
 // seqOptionUnsupported is the reason a step's options cannot be expressed with the public API,
 // "" when they can.
-func seqOptionUnsupported(what string, st map[string]any) string {
-	switch what {
-	case "edit":
-		for _, k := range []string{"insert_term", "insert_list"} {
-			x, _ := st[k].(map[string]any)
-			for _, o := range list(x["options"]) {
-				if o != "output" {
-					return fmt.Sprintf("edit %s option %v (LYD_NEW_VAL_STORE_ONLY and _CANON are not exported, U-0108)", k, o)
-				}
-			}
-		}
-	case "change_term":
-		if st["canon"] == true {
-			return "change_term canon (lyd_change_term_canon is not exported, U-0108)"
-		}
-	}
+func seqOptionUnsupported(_ string, _ map[string]any) string {
 	return ""
 }
 
@@ -563,6 +548,17 @@ func runSequence(r Request, s *yang.Schema, resp map[string]any, exec executionC
 				}
 			}
 		}
+		// Schema constructors log on the selected parent's context, for both
+		// implicit-module lookup failures and explicit-module context mismatches.
+		// Keep selector logs separate, and retain constructor logs until that
+		// context is collected (step_edit itself collects only sctx).
+		if what == "edit" && len(diags) > 0 && (st["insert_term"] != nil || st["insert_inner"] != nil ||
+			st["insert_list"] != nil || st["insert_list2"] != nil) {
+			if owner := contextopts.NodeSchema(selectors.parent); owner != nil && snap.Set(owner) != snap.Set(s) {
+				pending[pk(owner)] = append(pending[pk(owner)], diags...)
+				diags = nil
+			}
+		}
 		// lyd_new_path's LY_CHECK_CTX_EQUAL_RET logs in the selected parent's context
 		// (LOGERR(CTX1)); step_edit collects only sctx, so that item waits in the parent's queue.
 		const newPathMixed = `Different contexts mixed in a "lyd_new_path" function call.`
@@ -979,7 +975,7 @@ func stepEdit(r Request, s *yang.Schema, st map[string]any, tree *data.Tree, det
 			}
 		}
 	case st["insert_list2"] != nil:
-		err = stepInsertList2(s, st, tree, selectors)
+		err = stepInsertList2(s, st, tree, detachedSchema, selectors)
 	case st["insert_opaq"] != nil:
 		err = stepInsertOpaq(st, tree, selectors)
 	case st["insert_term"] != nil || st["insert_inner"] != nil || st["insert_list"] != nil:
@@ -1046,22 +1042,6 @@ func stepEdit(r Request, s *yang.Schema, st map[string]any, tree *data.Tree, det
 	if findDiags != nil {
 		diags = slices.Concat(findDiags, diags)
 	}
-	// The constructors use both _lyd_new_term and lyd_new_inner/lyd_new_list3
-	// as their diagnostic function names; all log context mismatches on parent.
-	if len(diags) == 1 && strings.HasPrefix(diags[0].Msg, "Different contexts mixed in a \"") {
-		for _, kind := range []string{"insert_term", "insert_inner", "insert_list"} {
-			o, _ := st[kind].(map[string]any)
-			if o == nil || str(o, "module", "") == "" {
-				continue
-			}
-			parent := selectors.parent
-			if parent != nil && snap.Set(contextopts.NodeSchema(parent)) != snap.Set(s) {
-				// lyoracle.c: step_edit collects sctx, while _lyd_new_* logs this
-				// context mismatch on the attached or detached parent's context.
-				return tree, nil, rc, err
-			}
-		}
-	}
 	return tree, diags, rc, err
 }
 
@@ -1125,17 +1105,32 @@ func stepInsert(s *yang.Schema, st map[string]any, tree *data.Tree, detachedSche
 		// An omitted module is resolved in the retained parent's context.
 		tree = data.NewTree(detachedSchema)
 	}
-	name := str(o, "name", "")
-	if m := str(o, "module", ""); m != "" {
-		name = m + ":" + name
+	name := constructorName(o)
+	var opts data.NewOptions
+	for _, option := range list(o["options"]) {
+		switch option {
+		case "output":
+			opts.Output = true
+		case "store_only":
+			opts.StoreOnly = true
+		case "canon":
+			opts.Canonical = true
+		}
 	}
-	opts := data.NewOptions{Output: len(list(o["options"])) > 0} // only "output" gets here
 	var err error
 	switch kind {
 	case "term":
-		_, err = tree.NewTerm(parent, name, str(o, "value", ""), opts)
+		if implicitLiteralName(o) {
+			err = newImplicitConstructor(tree, parent, kind, name, str(o, "value", ""), nil, opts)
+		} else {
+			_, err = tree.NewTerm(parent, name, str(o, "value", ""), opts)
+		}
 	case "inner":
-		_, err = tree.NewInner(parent, name, opts)
+		if implicitLiteralName(o) {
+			err = newImplicitConstructor(tree, parent, kind, name, "", nil, opts)
+		} else {
+			_, err = tree.NewInner(parent, name, opts)
+		}
 	default:
 		var keys []string // absent: lyd_new_list3's NULL array
 		if ks, ok := o["keys"].([]any); ok {
@@ -1145,7 +1140,11 @@ func stepInsert(s *yang.Schema, st map[string]any, tree *data.Tree, detachedSche
 				keys = append(keys, v)
 			}
 		}
-		_, err = tree.NewList(parent, name, keys, opts)
+		if implicitLiteralName(o) {
+			err = newImplicitConstructor(tree, parent, kind, name, "", keys, opts)
+		} else {
+			_, err = tree.NewList(parent, name, keys, opts)
+		}
 	}
 	return err
 }
@@ -1300,7 +1299,11 @@ func stepChange(st map[string]any, so map[string]any, selectors *stepSelectors) 
 		selectors.node = n
 	}
 	dflt := n.Flags()&data.FlagDefault != 0
-	changed, err := n.SetValue(str(st, "value", ""))
+	change := n.SetValue
+	if st["canon"] == true {
+		change = n.SetValueCanonical
+	}
+	changed, err := change(str(st, "value", ""))
 	switch {
 	case err != nil:
 		rc, rerr := rcOf(err)
@@ -1369,52 +1372,56 @@ func linksJSONRoots(roots []*data.Node) []any {
 	return out
 }
 
-// stepInsertList2 is step_edit's insert_list2 (lyd_new_list2) through Tree.NewPath, which design 07
-// §6.1.7 names its replacement: the path of the list instance with the predicates, "/" + module +
-// ":" + name + keys at the top level, else below the node at "parent".
-func stepInsertList2(s *yang.Schema, st map[string]any, tree *data.Tree, selectors *stepSelectors) error {
+// stepInsertList2 is step_edit's insert_list2 through Tree.NewList2 (lyd_new_list2).
+func stepInsertList2(s *yang.Schema, st map[string]any, tree *data.Tree, detachedSchema *yang.Schema,
+	selectors *stepSelectors) error {
 	o, _ := st["insert_list2"].(map[string]any)
-	name, mod := str(o, "name", ""), str(o, "module", "")
 	if err := checkRequest(Request{}, s, o, execStepEdit, []requestRule{{0, requestModule}}); err != nil {
 		return err
 	}
-	switch {
-	case str(o, "parent_opaq", "") != "": // NewPath cannot build under an opaque node
-		return fmt.Errorf("%w: insert_list2 under an opaque parent (U-0109: NewPath builds from the "+
-			"schema tree, not under opaque nodes)", ErrUnsupported)
-	case len(list(o["options"])) > 0: // NewPath has no LYD_NEW_VAL_OUTPUT
-		return fmt.Errorf("%w: insert_list2 options %v (U-0109: NewPath selects an operation's input "+
-			"nodes only)", ErrUnsupported, list(o["options"]))
-	case !onlyPredicates(str(o, "keys", "")):
-		return fmt.Errorf("%w: insert_list2 keys %q are not only predicates (U-0109: NewPath would "+
-			"take the rest as a path)", ErrUnsupported, str(o, "keys", ""))
+	parent := selectors.parent
+	if o["detached_parent"] == true && str(o, "module", "") == "" && detachedSchema != nil {
+		// An omitted module is resolved in the retained parent's context.
+		tree = data.NewTree(detachedSchema)
 	}
-	// lyd_new_list2 finds a list schema node first ("List node … not found." otherwise); NewPath
-	// would build any node the path names
-	var sn *yang.SchemaNode
-	if _, present, _ := strField(o, "parent"); present {
-		if pn := selectors.parent; pn != nil && pn.Schema() != nil {
-			sn = pn.Schema().Child(mod, name)
+	name := constructorName(o)
+	var opts data.NewOptions
+	for _, option := range list(o["options"]) {
+		switch option {
+		case "output":
+			opts.Output = true
+		case "store_only":
+			opts.StoreOnly = true
+		case "canon":
+			opts.Canonical = true
 		}
-	} else if m := s.Implemented(mod); m != nil {
-		sn = topChild(m.Top(), name)
 	}
-	if sn == nil || sn.Kind() != yang.KindList {
-		return fmt.Errorf("%w: insert_list2 of %s, not a list (U-0109: lyd_new_list2's not-found error is not "+
-			"NewPath's)", ErrUnsupported, name)
+	if implicitLiteralName(o) {
+		return newImplicitConstructor(tree, parent, "list2", name, str(o, "keys", ""), nil, opts)
 	}
+	_, err := tree.NewList2(parent, name, str(o, "keys", ""), opts)
+	return err
+}
+
+// constructorName adapts separate native module/name arguments to the qualified Go API.
+// Implicit literal names use NewImplicitNode so neither qualification nor module
+// resolution in the tree's first-root context changes the native arguments.
+func constructorName(o map[string]any) string {
+	name, mod := str(o, "name", ""), str(o, "module", "")
 	if mod != "" {
-		name = mod + ":" + name
+		return mod + ":" + name
 	}
-	path := "/" + name + str(o, "keys", "")
-	if p, present, _ := strField(o, "parent"); present {
-		path = p + path
-	}
-	if _, err := tree.NewPath(path, "", data.NewPathOptions{}); err != nil {
-		return fmt.Errorf("%w: insert_list2 failed through NewPath (U-0109: lyd_new_path's error items, "+
-			"not lyd_new_list2's): %v", ErrUnsupported, err)
-	}
-	return nil
+	return name
+}
+
+func implicitLiteralName(o map[string]any) bool {
+	return str(o, "module", "") == "" && strings.Contains(str(o, "name", ""), ":")
+}
+
+func newImplicitConstructor(tree *data.Tree, parent *data.Node, kind, name, value string, keys []string, o data.NewOptions) error {
+	return contextopts.NewImplicitNode(tree, parent, kind, name, value, keys, contextopts.NewImplicitOptions{
+		Output: o.Output, StoreOnly: o.StoreOnly, Canonical: o.Canonical,
+	})
 }
 
 // topChild is the top-level data node name among nodes, looking through choice and case.
@@ -1432,29 +1439,6 @@ func topChild(nodes iter.Seq[*yang.SchemaNode], name string) *yang.SchemaNode {
 		}
 	}
 	return nil
-}
-
-// onlyPredicates reports whether keys is a run of [...] predicates (quotes respected) and nothing
-// else, as lyd_new_list2's keys are; NewPath would read anything after them as more path.
-func onlyPredicates(keys string) bool {
-	depth, quote := 0, byte(0)
-	for i := 0; i < len(keys); i++ {
-		switch c := keys[i]; {
-		case quote != 0:
-			if c == quote {
-				quote = 0
-			}
-		case depth > 0 && (c == '\'' || c == '"'):
-			quote = c
-		case c == '[':
-			depth++
-		case c == ']' && depth > 0:
-			depth--
-		case depth == 0 && c != ' ' && c != '\t' && c != '\n':
-			return false
-		}
-	}
-	return true
 }
 
 // stepMove is step_insert: Tree.Insert of the node at "node", or the node retained by unlink with
