@@ -72,9 +72,8 @@ func TestDiffCrossContextSortedRunMissUsesAnchor(t *testing.T) {
 	}
 }
 
-// TestDiffCrossContextSortedRunUsesRBTraversal pins rb_insert_node's comparison path after its
-// deterministic rotation. int16 reads each int8 union payload at int16 width until inserting -1
-// rotates -2 to the root; the final int8 comparator then puts 0 after -1.
+// TestDiffCrossContextSortedRunUsesRBTraversal refuses the integer-width profile change.
+// Its old C union reinterpretation is deliberately outside D-0121's closed profile.
 func TestDiffCrossContextSortedRunUsesRBTraversal(t *testing.T) {
 	module := func(typ string) string {
 		return `module review-rb-order { yang-version 1.1; namespace "urn:review-rb-order"; prefix r;
@@ -84,18 +83,10 @@ func TestDiffCrossContextSortedRunUsesRBTraversal(t *testing.T) {
 	firstSet, secondSet := reviewDiffSet(t, module("int16")), reviewDiffSet(t, module("int8"))
 	first := parseOnlyXML(t, firstSet, `<top xmlns="urn:review-rb-order"><v>1</v></top>`)
 	second := parseOnlyXML(t, secondSet, `<top xmlns="urn:review-rb-order"><v>-2</v><v>-1</v><v>0</v></top>`)
-	diff, err := Diff(first, second, DiffOptions{})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if got, want := names(topOf(diff).Children()), []string{"v=1", "v=-2", "v=-1", "v=0"}; !slices.Equal(got, want) {
-		t.Fatalf("diff order = %v, want native RB order %v", got, want)
-	}
+	requireD0121Refusal(t, first, second)
 }
 
-// TestDiffCrossContextIntegerCallbackReadsZeroedStringStorage covers different sort callbacks
-// whose C storage comparison is nevertheless defined. string_store zeroes the value union, so
-// the int8 callback compares -1 with zero and links string "2" after it.
+// TestDiffCrossContextIntegerCallbackReadsZeroedStringStorage: The former integer/string reinterpretation is now refused by the closed D-0121 profile.
 func TestDiffCrossContextIntegerCallbackReadsZeroedStringStorage(t *testing.T) {
 	module := func(typ string) string {
 		return `module review-int-string { yang-version 1.1; namespace "urn:review-int-string"; prefix r;
@@ -105,17 +96,10 @@ func TestDiffCrossContextIntegerCallbackReadsZeroedStringStorage(t *testing.T) {
 	firstSet, secondSet := reviewDiffSet(t, module("int8")), reviewDiffSet(t, module("string"))
 	first := parseOnlyXML(t, firstSet, `<top xmlns="urn:review-int-string"><v>-1</v></top>`)
 	second := parseOnlyXML(t, secondSet, `<top xmlns="urn:review-int-string"><v>2</v></top>`)
-	diff, err := Diff(first, second, DiffOptions{})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if got, want := names(topOf(diff).Children()), []string{"v=-1", "v=2"}; !slices.Equal(got, want) {
-		t.Fatalf("diff order = %v, want zero-initialized storage order %v", got, want)
-	}
+	requireD0121Refusal(t, first, second)
 }
 
-// TestDiffCrossContextIntegerCallbackReadsBooleanStorage covers scalar storage with a distinct
-// callback. boolean_store writes 1 into the zeroed union, so int8 orders true after -1.
+// TestDiffCrossContextIntegerCallbackReadsBooleanStorage: The former integer/boolean reinterpretation is now refused in both profile directions.
 func TestDiffCrossContextIntegerCallbackReadsBooleanStorage(t *testing.T) {
 	module := func(typ string) string {
 		return `module review-int-boolean { yang-version 1.1; namespace "urn:review-int-boolean"; prefix r;
@@ -125,13 +109,7 @@ func TestDiffCrossContextIntegerCallbackReadsBooleanStorage(t *testing.T) {
 	firstSet, secondSet := reviewDiffSet(t, module("int8")), reviewDiffSet(t, module("boolean"))
 	first := parseOnlyXML(t, firstSet, `<top xmlns="urn:review-int-boolean"><v>-1</v></top>`)
 	second := parseOnlyXML(t, secondSet, `<top xmlns="urn:review-int-boolean"><v>true</v></top>`)
-	diff, err := Diff(first, second, DiffOptions{})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if got, want := names(topOf(diff).Children()), []string{"v=-1", "v=true"}; !slices.Equal(got, want) {
-		t.Fatalf("diff order = %v, want boolean union payload order %v", got, want)
-	}
+	requireD0121Refusal(t, first, second)
 }
 
 type crossContextBuiltInCase struct {
@@ -157,45 +135,13 @@ var crossContextBuiltIns = []crossContextBuiltInCase{
 }
 
 func crossContextBuiltInSupported(first, second string) bool {
-	switch first {
-	case "string", "empty", "instance-identifier", "leafref":
-		// lyplg_type_sort_simple reads only canonical strings: defined for any second value
-		return true
-	case "binary":
-		// lyplg_type_sort_binary reads its fixed-memory struct: all-zero string or empty
-		// storage is the empty binary
-		switch second {
-		case "string", "empty", "leafref":
-			return true
-		}
+	if first == "leafref" {
+		first = "string"
 	}
-	store := func(name string) string {
-		switch name {
-		case "int8", "int16", "int32", "int64":
-			return "int"
-		case "uint8", "uint16", "uint32", "uint64":
-			return "uint"
-		case "leafref":
-			return "string" // stored using its target realtype
-		default:
-			return name
-		}
+	if second == "leafref" {
+		second = "string"
 	}
-	if store(first) == store(second) {
-		return true
-	}
-	scalar := func(name string) bool {
-		switch name {
-		case "int8", "int16", "int32", "int64", "uint8", "uint16", "uint32", "uint64",
-			"boolean", "decimal64", "string", "empty", "leafref":
-			return true
-		}
-		return false
-	}
-	if scalar(first) {
-		return scalar(second)
-	}
-	return false
+	return first == second // diagonal cases reuse one schema snapshot, including union
 }
 
 // TestDiffCrossContextPluginStorageRefused covers a string-based plugin that writes fixed_mem.
@@ -266,9 +212,7 @@ func crossContextBuiltInXML(value string) string {
 	return `<top xmlns="urn:review-built-in-matrix" xmlns:r="urn:review-built-in-matrix"><anchor>a</anchor><other>b</other>` + v + `</top>`
 }
 
-// TestDiffCrossContextBuiltInTypeMatrix makes every built-in callback/storage pair explicit.
-// Defined storage must diff; incompatible pointer and fixed-buffer reinterpretations must return
-// D-0121 instead of quietly using schema order.
+// TestDiffCrossContextBuiltInTypeMatrix: Every built-in pair has an explicit profile expectation; diagonal cases use one context.
 func TestDiffCrossContextBuiltInTypeMatrix(t *testing.T) {
 	sets := make(map[string]*schema.Set, len(crossContextBuiltIns))
 	for _, tc := range crossContextBuiltIns {
@@ -281,6 +225,7 @@ func TestDiffCrossContextBuiltInTypeMatrix(t *testing.T) {
 				first := parseOnlyXML(t, sets[firstType.name], crossContextBuiltInXML(firstType.first))
 				second := parseOnlyXML(t, sets[secondType.name], crossContextBuiltInXML(secondType.second))
 				diff, err := Diff(first, second, DiffOptions{})
+
 				if crossContextBuiltInSupported(firstType.name, secondType.name) {
 					if err != nil {
 						t.Fatalf("defined storage pair refused: %v", err)

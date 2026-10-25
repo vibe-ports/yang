@@ -23,3 +23,7 @@ fixtures:
           data: '<top xmlns="urn:vibe-ports:yang:diff-cross-context"><keyless><value>one</value><nested><value>same</value></nested></keyless><keyless><value>two</value><nested><value>new</value></nested></keyless></top>'
           target: {searchdirs: [schemas], modules: [{name: diff-cross-context}]}
     golden: golden/cross-context-keyless.json
+    assert:
+      verdict: invalid
+      rc: LY_EINVAL
+      deviation: D-0121

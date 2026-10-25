@@ -17,3 +17,7 @@ fixtures:
           data: '<top xmlns="urn:vibe-ports:yang:diff-cross-context-lyb"><address>1.2.3.4</address></top>'
           target: {searchdirs: [schemas/cross-context-lyb-b], modules: [{name: diff-cross-context-lyb}]}
     golden: golden/cross-context-ipv4-string.json
+    assert:
+      verdict: invalid
+      rc: LY_EINVAL
+      deviation: D-0121

@@ -293,6 +293,7 @@ func TestRetainedRBRandomMixedContextMutations(t *testing.T) {
 	checkTreeRetainedRB(t, tr)
 	rng := rand.New(rand.NewPCG(0x301, 5)) //nolint:gosec // deterministic mutation sequence
 	for step := range 4096 {
+		tr.work.hashErr, tr.work.hashUsed = nil, 0 // a new operation, including the direct insert seam
 		op := rng.IntN(8)
 		switch op {
 		case 0, 1:
@@ -311,14 +312,16 @@ func TestRetainedRBRandomMixedContextMutations(t *testing.T) {
 		case 2:
 			if len(tr.top.list) > 2 {
 				if err := tr.top.list[rng.IntN(len(tr.top.list))].Remove(); err != nil {
-					t.Fatalf("step %d remove: %v", step, err)
+					assertStage4Refusal(t, err, "top", "lyd_unlink")
 				}
 			}
 		case 3:
 			if len(tr.top.list) > 0 {
 				n := tr.top.list[rng.IntN(len(tr.top.list))]
 				if err := n.Unlink(); err != nil {
-					t.Fatalf("step %d unlink: %v", step, err)
+					assertStage4Refusal(t, err, "top", "lyd_unlink")
+					checkTreeRetainedRB(t, tr)
+					continue
 				}
 				if err := tr.Insert(nil, n); err != nil {
 					t.Fatalf("step %d reinsert: %v", step, err)
@@ -328,7 +331,7 @@ func TestRetainedRBRandomMixedContextMutations(t *testing.T) {
 			if len(tr.top.list) > 0 {
 				n := tr.top.list[rng.IntN(len(tr.top.list))]
 				if _, err := n.SetValue(fmt.Sprint(rng.IntN(512))); err != nil {
-					t.Fatalf("step %d SetValue: %v", step, err)
+					assertStage4Refusal(t, err, "top", "lyd_unlink")
 				}
 			}
 		case 5:
@@ -365,7 +368,7 @@ func TestRetainedRBRandomMixedContextMutations(t *testing.T) {
 			if len(tr.top.list) > 128 {
 				remove := slices.Clone(tr.top.list[:len(tr.top.list)/2])
 				if err := tr.unlinkAll(remove); err != nil {
-					t.Fatalf("step %d unlinkAll: %v", step, err)
+					assertStage4Refusal(t, (&logger{}).done(err), "top", "lyd_unlink")
 				}
 			}
 		}

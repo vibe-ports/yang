@@ -18,9 +18,7 @@ import (
 	"github.com/vibe-ports/yang/internal/types"
 )
 
-// TestDiffUint8ToHexString: lyplg_type_store_hex_string zeroes the value and writes only its
-// canonical string, so lyplg_type_sort_uint reads a zero union for it and the cross-context
-// comparison is defined (no D-0121).
+// TestDiffUint8ToHexString: Scalar/hex-string direct sorting is refused under the closed D-0121 profile.
 func TestDiffUint8ToHexString(t *testing.T) {
 	module := func(typ string) string {
 		return `module rb-hex { yang-version 1.1; namespace "urn:rb-hex"; prefix r;
@@ -29,9 +27,7 @@ func TestDiffUint8ToHexString(t *testing.T) {
 	}
 	first := parseOnlyXML(t, reviewDiffSet(t, module("uint8")), `<c xmlns="urn:rb-hex"><v>1</v></c>`)
 	second := parseOnlyXML(t, reviewDiffSet(t, module("yang:hex-string")), `<c xmlns="urn:rb-hex"><v>aa</v></c>`)
-	if diff, err := Diff(first, second, DiffOptions{}); err != nil || diff == nil {
-		t.Fatalf("uint8/hex-string Diff = (%v, %v), want the native diff", diff, err)
-	}
+	requireD0121Refusal(t, first, second)
 }
 
 // TestForeignSchemaIndexKeepsOwnContextIdentity: with mixed siblings [A:output/x, A:input/x, B:z]
@@ -166,11 +162,9 @@ func childValues(c *Node) string {
 	return strings.Join(got, " ")
 }
 
-// TestPreflightUsesRegisteredLeader: the storage preflight descends the tree of the leader
-// lyd_insert_node will use (the registered A:b, an all-string tree), not the physical first
-// instance B:a, whose enumeration callback would refuse the string.
+// TestPreflightUsesRegisteredLeader: The preflight selects the registered leader; both contexts now use the accepted string profile.
 func TestPreflightUsesRegisteredLeader(t *testing.T) {
-	tr, c := mixedLeaderTree(t, "enumeration { enum a; }")
+	tr, c := mixedLeaderTree(t, "string;")
 	if _, err := tr.NewPath("v[.='aa']", "", NewPathOptions{Parent: c}); err != nil {
 		t.Fatalf("insert past the foreign enumeration = %v, want the native insertion", err)
 	}
@@ -231,17 +225,7 @@ func TestDiffUserOrderedConfigToStateSchema(t *testing.T) {
 	}
 	first := parseOnlyXML(t, reviewDiffSet(t, module("true")), `<c xmlns="urn:rb-uo"><v>a</v><v>b</v></c>`)
 	second := parseOnlyXML(t, reviewDiffSet(t, module("false")), `<c xmlns="urn:rb-uo"><v>b</v><v>a</v></c>`)
-	diff, err := Diff(first, second, DiffOptions{})
-	if err != nil {
-		t.Fatal(err)
-	}
-	var b strings.Builder
-	if err := diff.PrintXML(&b, PrintOptions{}); err != nil {
-		t.Fatal(err)
-	}
-	if out := b.String(); !strings.Contains(out, `yang:orig-value="a"`) || strings.Contains(out, "position") {
-		t.Fatalf("diff = %s, want value/orig-value attributes", out)
-	}
+	requireD0121Refusal(t, first, second)
 }
 
 // TestBatchMergeHashCharge: a batch charges each comparison's own cost and its rebalancing as it
@@ -373,11 +357,7 @@ func TestDiffCrossContextLeafListLinear(t *testing.T) {
 	}
 }
 
-// TestRelocationRollbackRestoresDualTrees: a node held by an earlier tree besides its own (rbDual)
-// leaves both when lyd_change_node_value relocates it (unlink, then reinsertion). Every budget
-// refusal of the relocation leaves the retained trees unchanged, and a reinsertion that fails
-// after the unlink (linkOrigin's restore) puts back every topology and the dual membership, not
-// only the node's own tree.
+// TestRelocationRollbackRestoresDualTrees: Raw rollback restores dual trees; public relocation is refused before retaining detached members.
 func TestRelocationRollbackRestoresDualTrees(t *testing.T) {
 	const module = `module rb-lead { yang-version 1.1; namespace "urn:rb-lead"; prefix r;
   container c { leaf-list v { type string; } } }`
@@ -445,6 +425,13 @@ func TestRelocationRollbackRestoresDualTrees(t *testing.T) {
 		err := tr.work.hashErr
 		tr.work.hashLimit, tr.work.hashErr = 0, nil
 		if err == nil {
+			break
+		}
+		if strings.Contains(fmt.Sprint(err), "D-0121") {
+			if after := state(sib); after != before {
+				t.Fatal("class refusal changed the retained trees")
+			}
+			checkTreeRetainedRB(t, tr)
 			break
 		}
 		if !errors.Is(err, yang.ErrBudget) {

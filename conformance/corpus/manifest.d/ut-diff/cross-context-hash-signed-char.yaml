@@ -20,3 +20,7 @@ fixtures:
           data: '<v xmlns="urn:vibe-ports:yang:cross-context-hash-signed-char">same</v>'
           target: {searchdirs: [schemas/cross-context-hash-signed-char-b], modules: [{name: e}]}
     golden: golden/cross-context-hash-signed-char.json
+    assert:
+      verdict: invalid
+      rc: LY_EINVAL
+      deviation: D-0121

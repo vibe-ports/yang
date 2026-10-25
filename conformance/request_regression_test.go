@@ -45,6 +45,16 @@ func TestLoggedPairwiseExecution(t *testing.T) {
 				t.Fatal("native request digest or transport failure")
 			}
 			got, err := inventoryRun(Request{BaseDir: "corpus/protocol-v2", Params: p})
+			if tc.ID == "cross-context-diff" {
+				// The immutable native recording populates a user-ordered run in both
+				// contexts. D-0121 now refuses that class even when this final array
+				// transition happens to produce a deterministic native response.
+				if err != nil {
+					t.Fatal(err)
+				}
+				assertD0121Response(t, got)
+				return
+			}
 			category, class := inventoryClassification(tc.Response, got, err, "")
 			wantCategory, wantClass := "MATCH", "equal"
 			if tc.Gap != "" {

@@ -59,8 +59,7 @@ func crossContextUserOrderedSet(t *testing.T, module string) *schema.Set {
 }
 
 // TestDiffCrossContextUserOrderedRefusal covers the native assertion/out-of-bounds boundary in
-// lyd_diff_userord_attrs. D-0121 turns that undefined behavior into an explicit refusal while
-// retaining the adjacent in-range case.
+// lyd_diff_userord_attrs. D-0121 turns that undefined behavior into an explicit refusal including the formerly accepted final transition.
 func TestDiffCrossContextUserOrderedRefusal(t *testing.T) {
 	for _, tc := range crossContextUserOrderedCases {
 		t.Run(tc.name+"/prepend", func(t *testing.T) {
@@ -71,11 +70,9 @@ func TestDiffCrossContextUserOrderedRefusal(t *testing.T) {
 		})
 		t.Run(tc.name+"/delete-before", func(t *testing.T) {
 			setA, setB := crossContextUserOrderedSet(t, tc.module), crossContextUserOrderedSet(t, tc.module)
-			if diff, err := diffUserOrderedNoPanic(t,
+			requireD0121Refusal(t,
 				parseOnlyXML(t, setA, tc.xml([]string{"a", "b"})),
-				parseOnlyXML(t, setB, tc.xml([]string{"b"}))); err != nil {
-				t.Fatalf("in-range cross-context Diff = (%v, %v), want no error", diff, err)
-			}
+				parseOnlyXML(t, setB, tc.xml([]string{"b"})))
 		})
 	}
 }

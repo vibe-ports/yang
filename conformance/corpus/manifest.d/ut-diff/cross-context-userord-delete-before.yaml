@@ -17,3 +17,7 @@ fixtures:
           data: '<v xmlns="urn:vibe-ports:yang:cross-context-userord-delete-before">b</v>'
           target: {searchdirs: [schemas/cross-context-userord-delete-before], modules: [{name: diff-cross-context-userord}]}
     golden: golden/cross-context-userord-delete-before.json
+    assert:
+      verdict: invalid
+      rc: LY_EINVAL
+      deviation: D-0121

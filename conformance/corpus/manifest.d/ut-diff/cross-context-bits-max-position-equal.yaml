@@ -17,3 +17,7 @@ fixtures:
           data: '<top xmlns="urn:vibe-ports:yang:diff-cross-context-bits-max"><v>lo</v></top>'
           target: {searchdirs: [schemas/cross-context-bits-max-b], modules: [{name: diff-cross-context-bits-max}]}
     golden: golden/cross-context-bits-max-position-equal.json
+    assert:
+      verdict: invalid
+      rc: LY_EINVAL
+      deviation: D-0121

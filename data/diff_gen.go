@@ -137,7 +137,7 @@ func diffNodesLookupLimit(first, second *Node, o DiffOptions, nosiblings bool, f
 		return nil, d.work.lookupErr
 	}
 	if d.work.hashErr != nil {
-		return nil, d.work.hashErr
+		return nil, lg.done(d.work.hashErr)
 	}
 	if d.top.len() == 0 {
 		return nil, nil
@@ -328,9 +328,8 @@ func (t *Tree) findMatch(sib *siblings, target *Node, defaults bool, cache *dupC
 type userord struct {
 	schema *schema.Node
 	pos    int
-	inst   []*Node // allocated slots; slots at or after count model native out-of-count writes
+	inst   []*Node // virtual instance array; only slots below count are live
 	count  int
-	unsafe bool // a previous native out-of-count transition makes the next access undefined
 }
 
 // userordGet is lyd_diff_userord_get: the entry of sn, created with the instances of first's
@@ -369,13 +368,11 @@ func (t *Tree) userordAttrs(first, second *Node, o DiffOptions, u *userord) (dif
 		sn = second.schema
 	}
 	firstPos := 0
-	wasUnsafe := u.unsafe
 	if first != nil {
 		firstPos = slices.Index(u.inst[:u.count], first)
 		if firstPos < 0 {
 			// LY_ARRAY_FOR leaves first_pos at the logical count after the release assertion.
 			firstPos = u.count
-			u.unsafe = true
 		}
 	}
 	secondPos := u.pos
@@ -388,7 +385,7 @@ func (t *Tree) userordAttrs(first, second *Node, o DiffOptions, u *userord) (dif
 			"in two schema contexts leave libyang's diff bookkeeping out of range, a diff of such data is not "+
 			"supported (D-0121) (lyd_diff()).", sn.Name)}
 	}
-	if wasUnsafe && second != nil {
+	if first != nil && firstPos >= u.count || second != nil && secondPos > u.count {
 		return 0, a, refuse()
 	}
 	u.pos++
@@ -416,11 +413,7 @@ func (t *Tree) userordAttrs(first, second *Node, o DiffOptions, u *userord) (dif
 		return 0, a, errNoChange
 	}
 	if op == diffReplace && firstPos < secondPos {
-		// The release build reaches the write with an underflowed move range. Preserve the
-		// observed slots for this last operation, but refuse before a later operation consumes
-		// that undefined state. This keeps defined sweeps 06 and 37 compatible while refusing
-		// the crashing three-operation shapes 04, 20 and 22.
-		u.unsafe = true
+		return 0, a, refuse()
 	}
 	str := func(s string) *string { return &s }
 	pred := func(pos int) *string { // the anchor: the instance before pos, "" for the first
@@ -474,9 +467,6 @@ func (t *Tree) userordAttrs(first, second *Node, o DiffOptions, u *userord) (dif
 	}
 	switch op { // the change applied to the virtual order
 	case diffCreate:
-		if secondPos > u.count {
-			u.unsafe = true
-		}
 		ensure(max(u.count+1, secondPos+1))
 		if secondPos < u.count {
 			copy(u.inst[secondPos+1:u.count+1], u.inst[secondPos:u.count])
@@ -487,8 +477,6 @@ func (t *Tree) userordAttrs(first, second *Node, o DiffOptions, u *userord) (dif
 		if firstPos < u.count {
 			copy(u.inst[firstPos:u.count-1], u.inst[firstPos+1:u.count])
 			u.count--
-		} else {
-			u.unsafe = true
 		}
 	case diffReplace:
 		ensure(max(u.count+1, secondPos+1))
@@ -719,12 +707,29 @@ func (t *Tree) diffSiblingsR(first, second *Node, o DiffOptions, nosiblings bool
 	if ss != nil {
 		t.foreignSchemaInput[ss] = true
 	}
+	checkedUserord := make(map[*schema.Node]bool)
+	checkUserord := func(n *Node, other *siblings) error {
+		if other == nil || !isUserOrdered(n.schema) || checkedUserord[n.schema] {
+			return nil
+		}
+		if err := t.work.chargeLookup(1); err != nil {
+			return err
+		}
+		checkedUserord[n.schema] = true
+		if m := t.schemaLookup(other, n.schema); m != nil && m.schema != n.schema {
+			return &opError{"LY_EINVAL", fmt.Sprintf("Invalid arguments - the user-ordered run of %q is populated in both schema contexts with distinct compiled schema identities (D-0121) (lyd_diff()).", n.Name())}
+		}
+		return t.work.lookupErr
+	}
 	for _, f := range fromNode(first) {
 		if f.schema == nil {
 			continue
 		}
 		if f.flags&FlagDefault != 0 && !o.Defaults {
 			continue // default nodes skipped
+		}
+		if err := checkUserord(f, ss); err != nil {
+			return err
 		}
 		m, err := t.findMatch(ss, f, o.Defaults, secondCache)
 		if err != nil {
@@ -787,6 +792,9 @@ func (t *Tree) diffSiblingsR(first, second *Node, o DiffOptions, nosiblings bool
 		}
 		if s.flags&FlagDefault != 0 && !o.Defaults {
 			continue
+		}
+		if err := checkUserord(s, fs); err != nil {
+			return err
 		}
 		m, err := t.findMatch(fs, s, o.Defaults, firstCache)
 		if err != nil {

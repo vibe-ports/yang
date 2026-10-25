@@ -23,3 +23,7 @@ fixtures:
           data: '<top xmlns="urn:vibe-ports:yang:diff-cross-context-key-change"><l><k>0</k></l></top>'
           target: {searchdirs: [schemas/cross-context-key-change-keyed], modules: [{name: diff-cross-context-key-change}]}
     golden: golden/cross-context-keyless-gains-key.json
+    assert:
+      verdict: invalid
+      rc: LY_EINVAL
+      deviation: D-0121

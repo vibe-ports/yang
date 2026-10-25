@@ -17,3 +17,7 @@ fixtures:
           data: '<top xmlns="urn:vibe-ports:yang:diff-cross-context"><x><x><a>new</a></x></x><keyless><value>new</value></keyless></top>'
           target: {searchdirs: [schemas], modules: [{name: diff-cross-context}]}
     golden: golden/cross-context-mixed-order.json
+    assert:
+      verdict: invalid
+      rc: LY_EINVAL
+      deviation: D-0121

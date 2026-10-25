@@ -19,3 +19,7 @@ fixtures:
           data: '<top xmlns="urn:vibe-ports:yang:diff-cross-context-int-string-order"><v>2</v></top>'
           target: {searchdirs: [schemas/cross-context-int-string-order-b], modules: [{name: diff-cross-context-int-string-order}]}
     golden: golden/cross-context-int-string-order.json
+    assert:
+      verdict: invalid
+      rc: LY_EINVAL
+      deviation: D-0121

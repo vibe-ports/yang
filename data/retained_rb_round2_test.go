@@ -45,19 +45,13 @@ func timePeriodSets(t *testing.T) (str, period *schema.Set) {
 	return str, period
 }
 
-// TestDiffStringTimePeriodCompatible: time-period is stored by lyplg_type_store_string and its
-// sort callback reads only canonical text (time_period.c:41-75), so a cross-context comparison
-// with a string value is defined in both directions (no D-0121).
+// TestDiffStringTimePeriodCompatible: String/time-period direct sorting is refused despite both callbacks reading canonical text.
 func TestDiffStringTimePeriodCompatible(t *testing.T) {
 	str, period := timePeriodSets(t)
 	for _, sets := range [][2]*schema.Set{{str, period}, {period, str}} {
 		first := parseOnlyXML(t, sets[0], `<c xmlns="urn:rb-time-period"><v>1h</v><v>3h</v></c>`)
 		second := parseOnlyXML(t, sets[1], `<c xmlns="urn:rb-time-period"><v>2h</v><v>4h</v></c>`)
-		diff, err := Diff(first, second, DiffOptions{})
-		if err != nil || diff == nil {
-			t.Fatalf("string/time-period Diff = (%v, %v), want a diff", diff, err)
-		}
-		checkTreeRetainedRB(t, diff)
+		requireD0121Refusal(t, first, second)
 	}
 }
 
@@ -137,9 +131,7 @@ func TestDiffDisjointForeignAnchorWorkCharged(t *testing.T) {
 	}
 }
 
-// TestSetValueForeignReinsertionRefusalReported: SetValue's unlink/change/reinsert can reach a
-// foreign enumeration comparator, which dereferences the string value's enum_item (D-0121). The
-// refusal must be the result, with the old value and the retained topology restored.
+// TestSetValueForeignReinsertionRefusalReported: The foreign enumeration is refused before insertion can set up the old unsafe reinsertion.
 func TestSetValueForeignReinsertionRefusalReported(t *testing.T) {
 	module := func(typ string) string {
 		return `module rb-setvalue { yang-version 1.1; namespace "urn:rb-setvalue"; prefix r;
@@ -152,28 +144,15 @@ func TestSetValueForeignReinsertionRefusalReported(t *testing.T) {
 	// it; the new value aa descends d, a and then b, whose enumeration callback reads aa's
 	// string storage as an enum_item pointer.
 	foreign := retainedRBTerm(t, retainedRBTopNamed(t, enumSet, "v"), "b")
-	mustLink(t, tr.insert(nil, foreign, insertDefault))
-	var c *Node
-	for _, n := range tr.top.list {
-		if n.Value() == "c" {
-			c = n
-		}
-	}
-	before := retainedRBValues(&tr.top)
-	changed, err := c.SetValue("aa")
-	if err == nil || changed || !strings.Contains(err.Error(), "D-0121") {
-		t.Fatalf("SetValue = (%t, %v), want the D-0121 refusal", changed, err)
-	}
-	if c.Value() != "c" || !slices.Equal(retainedRBValues(&tr.top), before) {
-		t.Fatalf("refused SetValue changed the run: %v", retainedRBValues(&tr.top))
+	err := (&logger{}).done(tr.insert(nil, foreign, insertDefault))
+	assertStage4Refusal(t, err, "v", "lyd_insert_node")
+	if got := retainedRBValues(&tr.top); !slices.Equal(got, []string{"a", "c", "d"}) {
+		t.Fatalf("refused insertion changed the run: %v", got)
 	}
 	checkTreeRetainedRB(t, tr)
 }
 
-// TestDiffKeylessStateToKeyedConfigOrder: rb_compare_lists compares the first children of a
-// keyless retained list unconditionally (tree_data_sorted.c:244-253): the retained keyless
-// instances 2, 1 are ordered by their first child when the tree is built, and the created k=3
-// sorts after them ([1 2 3], as libyang; conformance/TestRBCompareListsOracle).
+// TestDiffKeylessStateToKeyedConfigOrder: A run populated in both contexts is refused when one side needs user-order bookkeeping.
 func TestDiffKeylessStateToKeyedConfigOrder(t *testing.T) {
 	first := parseOnlyXML(t, reviewDiffSet(t, `module rb-keyless { yang-version 1.1; namespace "urn:rb-keyless";
   prefix r; container c { list l { config false; leaf k { type uint8; } } } }`),
@@ -181,17 +160,7 @@ func TestDiffKeylessStateToKeyedConfigOrder(t *testing.T) {
 	second := parseOnlyXML(t, reviewDiffSet(t, `module rb-keyless { yang-version 1.1; namespace "urn:rb-keyless";
   prefix r; container c { list l { key k; leaf k { type uint8; } } } }`),
 		`<c xmlns="urn:rb-keyless"><l><k>3</k></l></c>`)
-	diff, err := Diff(first, second, DiffOptions{})
-	if err != nil {
-		t.Fatal(err)
-	}
-	var got []string
-	for _, l := range topOf(diff).kids.list {
-		got = append(got, l.kids.list[0].Value())
-	}
-	if !slices.Equal(got, []string{"1", "2", "3"}) {
-		t.Fatalf("diff list order = %v, want [1 2 3]", got)
-	}
+	requireD0121Refusal(t, first, second)
 }
 
 func retainedRBTopNamed(t *testing.T, set *schema.Set, name string) *schema.Node {
@@ -260,11 +229,11 @@ func TestRBCompareListsShapes(t *testing.T) {
 		{"keyless-to-keyed-other-context", func() *Node { return instance(setOf("keyless", keyless), `<l><k>2</k></l>`, false) },
 			func() *Node {
 				return instance(setOf("keyed-uint", `list l { key k; leaf k { type uint8; } }`), `<l><k>3</k></l>`, false)
-			}, -1, true},
+			}, 0, false},
 		{"keyed-string-before-binary", func() *Node { return instance(setOf("keyed", keyed), `<l><k>AQ==</k></l>`, false) },
-			func() *Node { return instance(setOf("bin", keyedBin), `<l><k>Ag==</k></l>`, false) }, -1, true},
+			func() *Node { return instance(setOf("bin", keyedBin), `<l><k>Ag==</k></l>`, false) }, 0, false},
 		{"keyed-binary-before-string", func() *Node { return instance(setOf("bin", keyedBin), `<l><k>Ag==</k></l>`, false) },
-			func() *Node { return instance(setOf("keyed", keyed), `<l><k>AQ==</k></l>`, false) }, 1, true}, // zeroed {NULL, 0}
+			func() *Node { return instance(setOf("keyed", keyed), `<l><k>AQ==</k></l>`, false) }, 0, false}, // cross-profile sorting is refused
 		{"keyed-enumeration-before-string", func() *Node {
 			return instance(setOf("enum", `list l { key k; leaf k { type enumeration { enum a; } } }`), `<l><k>a</k></l>`, false)
 		}, func() *Node { return instance(setOf("keyed", keyed), `<l><k>a</k></l>`, false) }, 0, false},
@@ -353,9 +322,7 @@ func retainedRBLeaf(t *testing.T, set *schema.Set, name, value string) *Node {
 	return nil
 }
 
-// TestDiffPluginSortZeroStorage: lyplg_type_sort_ipv4_address reads the second value's
-// fixed-memory struct (LYD_VALUE_GET); a string value's storage is all zero, so it reads
-// 0.0.0.0 without a zone and the comparison is defined (corpus ut-diff/cross-context-ipv4-string).
+// TestDiffPluginSortZeroStorage: Plugin/string reinterpretation is refused, including the formerly accepted all-zero struct.
 func TestDiffPluginSortZeroStorage(t *testing.T) {
 	module := func(typ string) string {
 		return `module rb-zero { yang-version 1.1; namespace "urn:rb-zero"; prefix r;
@@ -365,11 +332,7 @@ func TestDiffPluginSortZeroStorage(t *testing.T) {
 	const doc = `<top xmlns="urn:rb-zero"><address>1.2.3.4</address></top>`
 	first := parseOnlyXML(t, reviewDiffSet(t, module("inet:ipv4-address;")), doc)
 	second := parseOnlyXML(t, reviewDiffSet(t, module("string;")), doc)
-	diff, err := Diff(first, second, DiffOptions{})
-	if err != nil || diff == nil {
-		t.Fatalf("ipv4/string Diff = (%v, %v), want the native create/delete diff", diff, err)
-	}
-	checkTreeRetainedRB(t, diff)
+	requireD0121Refusal(t, first, second)
 	// an enumeration callback dereferences enum_item: that pair stays refused
 	firstEnum := parseOnlyXML(t, reviewDiffSet(t, module("enumeration { enum a; enum b; }")), `<top xmlns="urn:rb-zero"><address>a</address></top>`)
 	secondStr := parseOnlyXML(t, reviewDiffSet(t, module("string;")), `<top xmlns="urn:rb-zero"><address>b</address></top>`)

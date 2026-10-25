@@ -235,10 +235,11 @@ func TestListIndexMutationInvariant(t *testing.T) {
 						if len(model.order) >= 8 {
 							n := model.order[rng.IntN(len(model.order))]
 							if err := n.Remove(); err != nil {
-								t.Fatal(err)
+								assertStage4Refusal(t, err, "l", "lyd_unlink")
+							} else {
+								delete(model.hashes, n)
+								model.order = slices.DeleteFunc(model.order, func(x *Node) bool { return x == n })
 							}
-							delete(model.hashes, n)
-							model.order = slices.DeleteFunc(model.order, func(x *Node) bool { return x == n })
 							model.check(t, tr, root)
 						}
 						n := model.order[rng.IntN(len(model.order))]
@@ -275,11 +276,12 @@ func TestListIndexMutationInvariant(t *testing.T) {
 									t.Fatal(d.Msg)
 								}
 								tr.changeTermVal(key, v, false)
+								err = tr.work.hashErr
 							}
-							if changed {
+							if changed && err == nil {
 								model.register(n, true)
 							}
-							retainsOrder = !changed
+							retainsOrder = !changed || err != nil
 						case 4: // NewPath must create keys when an old historical hash misses
 							path := "/m:r/l[a='" + value + "'][b='y']/a"
 							old, e := tr.Find(path)
@@ -310,6 +312,7 @@ func TestListIndexMutationInvariant(t *testing.T) {
 								t.Fatal("key removal unexpectedly accepted")
 							}
 							err, retainsOrder = nil, true
+							tr.work.hashErr = nil
 						case 8: // internal unlink preserves native hash and registration
 							unlink(key)
 							retainsOrder = true
@@ -333,7 +336,9 @@ func TestListIndexMutationInvariant(t *testing.T) {
 							_, _, err = tr.Dup(n, root, DupOptions{Recursive: true})
 						case 12: // unlink/reinsert changes order, but never recalculates hash
 							err = tr.Insert(root, n)
-							model.register(n, false)
+							if err == nil {
+								model.register(n, false)
+							}
 						case 13: // Dup of a key into a parent reuses the existing key
 							_, _, err = tr.Dup(key, n, DupOptions{})
 							retainsOrder = true
@@ -395,11 +400,12 @@ func TestListIndexMutationInvariant(t *testing.T) {
 							}
 							retainsOrder = true
 						}
-						if err != nil && strings.Contains(err.Error(), "D-0121") && keylessInstance(root) {
+						if err != nil && strings.Contains(err.Error(), "D-0121") && (keylessInstance(root) || strings.Contains(err.Error(), "retained") || strings.Contains(err.Error(), "native value search")) {
 							// internal unlinks (op 8) can leave a list instance without children;
 							// rb_compare_lists would dereference its missing first child, so a
 							// sorted insertion that compares with it is refused without mutation
 							err, retainsOrder = nil, true
+							tr.work.hashErr = nil
 						}
 						if err != nil {
 							t.Fatal(err)

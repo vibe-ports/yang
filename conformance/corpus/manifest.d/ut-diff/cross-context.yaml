@@ -23,3 +23,7 @@ fixtures:
           data: '<df xmlns="urn:libyang:tests:defaults"><foo>2</foo><llist>1</llist><llist>2</llist><llist>3</llist><ul><l1>a</l1><l2>1</l2></ul><ul><l1>b</l1><l2>3</l2></ul><kll>x</kll><kll>x</kll></df>'
           target: {searchdirs: [schemas], modules: [{name: defaults}]}
     golden: golden/cross-context.json
+    assert:
+      verdict: invalid
+      rc: LY_EINVAL
+      deviation: D-0121

@@ -19,3 +19,7 @@ fixtures:
           data: '<top xmlns="urn:vibe-ports:yang:ut-diff:sweep:37"><c0>a</c0><c0>d</c0><c1>b</c1><c3>b</c3><c3>d</c3><c3>c</c3></top>'
           target: {searchdirs: [schemas/sweep-37-b], modules: [{name: diff-sweep-37}]}
     golden: golden/sweep-37.json
+    assert:
+      verdict: invalid
+      rc: LY_EINVAL
+      deviation: D-0121

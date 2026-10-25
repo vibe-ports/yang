@@ -19,3 +19,7 @@ fixtures:
           data: '<top xmlns="urn:vibe-ports:yang:diff-cross-context-uint-width-order"><v>2</v></top>'
           target: {searchdirs: [schemas/cross-context-uint-width-order-b], modules: [{name: diff-cross-context-uint-width-order}]}
     golden: golden/cross-context-uint-width-order.json
+    assert:
+      verdict: invalid
+      rc: LY_EINVAL
+      deviation: D-0121

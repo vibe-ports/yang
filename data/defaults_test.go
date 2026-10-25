@@ -357,8 +357,9 @@ func TestAutodelWork(t *testing.T) {
 		t.Fatal(err)
 	}
 	// Include the charged preflight batch scan and fixed root bookkeeping, and the
-	// retained RB topology removal of each instance (rb_remove, #242).
-	if top.kids.len() != 1 || typ.len() != 0 || int(tr.work.Load()) > 6*n+16 {
+	// retained RB topology removal of each instance (rb_remove, #242), and the
+	// linear reachability proofs at both autodelete preflights (D-0121).
+	if top.kids.len() != 1 || typ.len() != 0 || int(tr.work.Load()) > 12*n+16 {
 		t.Fatalf("%d left, %d queued, %d steps", top.kids.len(), typ.len(), int(tr.work.Load()))
 	}
 	charged := 0

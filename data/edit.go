@@ -134,7 +134,7 @@ func (n *Node) Unlink() error {
 	}
 	defer n.beginHashWork()()
 	if err := preflightUnlink(n); err != nil {
-		return err
+		return (&logger{}).done(err)
 	}
 	return (&logger{}).done(unlinkTree(n))
 }
@@ -161,6 +161,7 @@ func (n *Node) beginHashWork() func() {
 func (t *Tree) Merge(src *Tree) (result error) {
 	defer t.work.beginHashWork()()
 	lg := &logger{set: t.context()}
+	defer func() { result = lg.done(result) }()
 	if src == nil {
 		return nil
 	}
@@ -862,6 +863,10 @@ func (t *Tree) changeNodeValue(n *Node, v types.Value, hashAmount uint64) {
 		}
 	}
 	if relocate {
+		if err := retainedRemovalRefusal(sib, target); err != nil {
+			t.work.hashErr = err
+			return
+		}
 		// A cold anchor lookup during reinsertion can still exhaust the quota.
 		// Preserve the old native snapshot until the node is linked again.
 		oldValue, oldHash := n.value, target.hash

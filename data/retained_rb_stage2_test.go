@@ -595,11 +595,9 @@ func TestFailedForeignMoveRestoresRBTopology(t *testing.T) {
 	checkRBShape(t, &src.top, src.top.list[0], &ref.ref)
 }
 
-// TestForeignLeaderNotCompared: rb_insert_node compares only the nodes on its descent. A foreign
-// minimum with a wider bitmap becomes the physical leader but not the tree root, so a narrower
-// local insertion never compares it.
+// TestForeignLeaderNotCompared: A foreign minimum with a different declaration in the same bitmap byte width becomes the leader.
 func TestForeignLeaderNotCompared(t *testing.T) {
-	a, b := reviewDiffSet(t, retainedRBBitsModuleA), reviewDiffSet(t, retainedRBBitsModuleB)
+	a, b := reviewDiffSet(t, retainedRBBitsModuleA), reviewDiffSet(t, strings.ReplaceAll(retainedRBBitsModuleB, "position 8", "position 3"))
 	schemaA, schemaB := retainedRBTop(t, a), retainedRBTop(t, b)
 	tr := newTree(a)
 	for _, v := range []string{"a", "b"} {

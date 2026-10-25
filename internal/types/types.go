@@ -226,9 +226,16 @@ func store(t *schema.Type, lex string, f Format, h Hints, pc PrefixCtx, ctx *sch
 	return storeArgsDispatch(&storeArgs{t: t, lex: lex, f: f, h: h, pc: pc, ctx: ctx, only: only})
 }
 
-func storeArgsDispatch(a *storeArgs) (Value, *Diag) {
+func storeArgsDispatch(a *storeArgs) (v Value, diag *Diag) {
 	t := a.t
-	if p := pluginFor(t); p != nil {
+	p := pluginFor(t)
+	defer func() {
+		// A leafref returns its target's stored value, including its cached profile.
+		if v.typ == t {
+			v.sortPlugin, v.sortVariant = p, sortStorageVariant(t, p)
+		}
+	}()
+	if p != nil {
 		return p.store(a)
 	}
 	switch t.Base {
