@@ -331,9 +331,7 @@ func runSequence(r Request, s *yang.Schema, resp map[string]any, exec executionC
 				if str(st, "module", "") == "" && diff != nil && !empty(diff) {
 					applySchema = contextopts.TreeSchema(diff)
 				}
-				if tree, err = emptyTree(applySchema); err != nil {
-					return err
-				}
+				tree = emptyTree(applySchema)
 			}
 			if name := str(st, "module", ""); name != "" && diff != nil {
 				err = contextopts.ApplyDiffModule(tree, diff, s, name)
@@ -752,10 +750,10 @@ func (s *stepSelectors) take() []yang.Diagnostic {
 
 // emptyTree is the NULL tree of the oracle's sequence, which lyd_new_path and lyd_validate_all
 // fill.
-func emptyTree(s *yang.Schema) (*data.Tree, error) {
+func emptyTree(s *yang.Schema) *data.Tree {
 	t := data.NewTree(s)
 	contextopts.EnableContextDiagnostics(t)
-	return t, nil
+	return t
 }
 
 // stepCompare is step_compare: Node.Equal of the node at first in the tree and the node at second
@@ -884,9 +882,7 @@ func stepValidate(s *yang.Schema, st map[string]any, tree *data.Tree, so map[str
 		return nil, nil, err
 	}
 	if tree == nil {
-		if tree, err = emptyTree(s); err != nil {
-			return nil, nil, err
-		}
+		tree = emptyTree(s)
 	}
 	module := str(st, "module", "")
 	var diff *data.Tree
@@ -921,9 +917,7 @@ func stepEdit(r Request, s *yang.Schema, st map[string]any, tree *data.Tree, det
 	var err error
 	var findDiags []yang.Diagnostic // a set parent's lookup log, before lyd_new_path's
 	if tree == nil {
-		if tree, err = emptyTree(s); err != nil {
-			return nil, nil, rc, err
-		}
+		tree = emptyTree(s)
 	}
 	switch {
 	case st["merge_self"] == true:
@@ -1441,13 +1435,9 @@ func stepMove(r Request, s *yang.Schema, st map[string]any, tree *data.Tree, det
 	selectors *stepSelectors) (*data.Tree, *yang.Schema, []yang.Diagnostic, string, bool, error) {
 	var err error
 	if tree == nil {
-		if tree, err = emptyTree(s); err != nil {
-			return nil, nil, nil, "", false, err
-		}
+		tree = emptyTree(s)
 	} else if st["detached"] == true && empty(tree) && detached != nil && snap.Set(s) != snap.Set(contextopts.TreeSchema(tree)) {
-		if tree, err = emptyTree(s); err != nil {
-			return nil, nil, nil, "", false, err
-		}
+		tree = emptyTree(s)
 	}
 	src, path := tree, str(st, "node", "")
 	useDetached := st["detached"] == true

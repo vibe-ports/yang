@@ -255,11 +255,7 @@ func mergeOptions(p map[string]any, key string) (data.MergeDiffOptions, error) {
 // result becomes again.
 func mergeInto(s *yang.Schema, reg **data.Tree, merge func(*data.Tree) error) error {
 	if *reg == nil {
-		t, err := emptyTree(s)
-		if err != nil {
-			return err
-		}
-		*reg = t
+		*reg = emptyTree(s)
 	}
 	err := merge(*reg)
 	if empty(*reg) {
