@@ -116,9 +116,11 @@ type Tree struct {
 	// The inputs are immutable for that operation, so the cache needs no mutation invalidation.
 	foreignSchema      map[foreignSchemaCacheKey]map[foreignSchemaIndexKey][]int
 	foreignSchemaInput map[*siblings]bool
-	schemaLineage      map[*schema.Node]schemaLineageID
-	lineageComponents  map[schemaLineageComponent]schemaLineageID
-	nextLineageID      schemaLineageID
+	// foreignInstance indexes the instances of those inputs for cross-context first-match lookups.
+	foreignInstance   map[*siblings]map[foreignInstanceKey][]*Node
+	schemaLineage     map[*schema.Node]schemaLineageID
+	lineageComponents map[schemaLineageComponent]schemaLineageID
+	nextLineageID     schemaLineageID
 }
 
 // workCounter counts the work of a tree for tests (work, not time): comparisons made by

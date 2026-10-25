@@ -381,21 +381,63 @@ func (t *Tree) linkOrigin(n *Node) (restore func(), arm func() error, err error)
 	undo := func() {}
 	arm = func() error {
 		current := sib.rbOrders[group]
-		if !inRB || group == nil || current == nil {
+		if !inRB || group == nil {
 			return nil
 		}
-		if err := t.reserveHash(current.removalBound()); err != nil {
+		// unlink also drops n from the earlier trees that hold it (dropDual): journal each of
+		// those removals and n's dual membership with its own tree's
+		dual := slices.Clone(sib.rbDual[n])
+		var orders []*dirtyOrder
+		bound := uint64(0)
+		if current != nil {
+			bound = current.removalBound()
+		}
+		for _, g := range dual {
+			if d := sib.rbOrders[g]; d != nil && d.nodes[n] != nil {
+				orders = append(orders, d)
+				bound = addHashBound(bound, d.removalBound())
+			}
+		}
+		if current == nil && len(dual) == 0 {
+			return nil
+		}
+		if err := t.reserveHash(bound); err != nil {
 			return err
 		}
-		restore := current.armRemovalUndo(n, &t.work)
+		var restores []func()
+		if current != nil {
+			restores = append(restores, current.armRemovalUndo(n, &t.work))
+		}
+		for _, d := range orders {
+			restores = append(restores, d.armRemovalUndo(n, &t.work))
+		}
 		undo = func() {
 			sib.touch()
-			restore()
+			for _, r := range restores {
+				r()
+			}
 			if sib.rbOrders == nil {
 				sib.rbOrders = make(map[*rbGroup]*dirtyOrder)
 			}
-			current.work = sib.work
-			sib.rbOrders[group] = current
+			if current != nil {
+				current.work = sib.work
+				sib.rbOrders[group] = current
+			}
+			for _, d := range orders {
+				d.work = sib.work
+			}
+			if len(dual) != 0 {
+				if sib.rbDual == nil {
+					sib.rbDual, sib.rbDualCount = map[*Node][]*rbGroup{}, map[*rbGroup]int{}
+				}
+				if sib.rbDualCount == nil {
+					sib.rbDualCount = map[*rbGroup]int{}
+				}
+				sib.rbDual[n] = dual
+				for _, g := range dual {
+					sib.rbDualCount[g]++
+				}
+			}
 		}
 		return nil
 	}
