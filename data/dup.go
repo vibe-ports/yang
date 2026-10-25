@@ -631,6 +631,12 @@ type DupOptions struct {
 	NoMeta      bool // LYD_DUP_NO_META: without metadata
 	WithParents bool // LYD_DUP_WITH_PARENTS: the node's parents too, up to parent or the top level
 	WithFlags   bool // LYD_DUP_WITH_FLAGS: all the flags, not only Default (copies are New)
+	// NoSort is LYD_DUP_NO_LYDS: copies of (leaf-)list instances are inserted after the instances
+	// of their schema node (LYD_INSERT_NODE_LAST_BY_SCHEMA, then LAST for the following instances
+	// of a run) instead of at their value-ordered position, so a copy into a populated run leaves
+	// it unsorted. Later ordinary insertions rebuild the order index of the run. Source
+	// compatibility: non-empty unkeyed DupOptions literals must become keyed.
+	NoSort bool
 }
 
 func (o DupOptions) opts() dupOpts {
@@ -638,7 +644,7 @@ func (o DupOptions) opts() dupOpts {
 	for _, f := range []struct {
 		on bool
 		o  dupOpts
-	}{{o.Recursive, dupRecursive}, {o.NoMeta, dupNoMeta}, {o.WithParents, dupWithParents}, {o.WithFlags, dupWithFlags}} {
+	}{{o.Recursive, dupRecursive}, {o.NoMeta, dupNoMeta}, {o.WithParents, dupWithParents}, {o.WithFlags, dupWithFlags}, {o.NoSort, dupNoLyds}} {
 		if f.on {
 			d |= f.o
 		}

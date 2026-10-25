@@ -578,7 +578,7 @@ func (t *Tree) Insert(parent, n *Node) error // lyd_insert_child; parent nil: ly
 func (n *Node) SetValue(value string) (changed bool, err error) // lyd_change_term
 
 // duplication and leafref links (§6.1.3)
-type DupOptions struct{ Recursive, NoMeta, WithParents, WithFlags bool } // LYD_DUP_*
+type DupOptions struct{ Recursive, NoMeta, WithParents, WithFlags, NoSort bool } // LYD_DUP_*
 func (t *Tree) Dup(n, parent *Node, o DupOptions) (*Node, []yang.Diagnostic, error)         // lyd_dup_single(_to_ctx)
 func (t *Tree) DupSiblings(n, parent *Node, o DupOptions) (*Node, []yang.Diagnostic, error) // lyd_dup_siblings(_to_ctx)
 func (t *Tree) LinkLeafrefs(ctx context.Context) ([]yang.Diagnostic, error) // lyd_leafref_link_node_tree
@@ -764,8 +764,11 @@ without changing this contract. doc.go states this rule when ValidateOp is expor
   `*ValidationError` with all of them.
 - DupSiblings copies n and the siblings that follow it (`LY_LIST_FOR(node, orig)`), not the
   whole sibling list: the siblings before n are not copied.
-- `DupOptions`: `Recursive`, `NoMeta`, `WithParents`, `WithFlags` (`LYD_DUP_RECURSIVE`,
-  `_NO_META`, `_WITH_PARENTS`, `_WITH_FLAGS`).
+- `DupOptions`: `Recursive`, `NoMeta`, `WithParents`, `WithFlags`, `NoSort` (`LYD_DUP_RECURSIVE`,
+  `_NO_META`, `_WITH_PARENTS`, `_WITH_FLAGS`, `_NO_LYDS`). `NoSort` (#247) inserts copies of
+  (leaf-)list instances LAST_BY_SCHEMA, then LAST for the rest of a run (tree_data.c:2461-2478),
+  so a copy into a populated run is unsorted; later ordinary insertion rebuilds the order index.
+  Default false keeps the sorted copy. Non-empty unkeyed `DupOptions` literals must become keyed.
 - Leafref links: `yang.Options.LeafrefLinking` sets `schema.Set.LeafrefLinking` (already there).
   Parse and Validate then link resolved leafrefs (data/unres.go) as libyang does. `LinkLeafrefs`
   links a tree that was built without validation (NewPath, NewTerm). An empty tree is LY_EINVAL
@@ -897,7 +900,6 @@ of a registry entry. So #105 cannot pass with them unsupported; they must agree.
 | `LYD_NEW_VAL_STORE_ONLY`, `LYD_NEW_VAL_CANON`, `lyd_new_term_raw`, `lyd_new_term_bin`, `lyd_change_term_canon` | speed knobs over the JSON value form; no fixture uses them; add when a user shows a need |
 | `lyd_new_opaq`, `lyd_new_opaq2`, `lyd_new_attr*` | not in M4: exported in M5 with the envelopes (§6.1.5); internal until then (#98) |
 | `lyd_insert_before`, `lyd_insert_after`, `lyd_unlink_siblings` | user-ordered positioning and sibling-run operations belong to `ApplyEdit` (M6, `yang:insert`); single-tree `lyd_unlink_tree` is `Node.Unlink` |
-| `LYD_DUP_NO_LYDS` | leaves (leaf-)list instances unsorted, against the tree's own order invariant; a speed knob. seq/dup-no-lyds stays unsupported under **U-0105** |
 | `LYD_DUP_NO_EXT`, `LYD_DUP_WITH_PRIV`, `lyd_dup_meta_single` | nothing to act on (no extension data, no private pointers); metadata copies come with Dup |
 | `struct lyd_leafref_links_rec`, LY_EDENIED/LY_ENOTFOUND of `lyd_leafref_get_links` | two slices carry the record; the error cases are "no links" |
 | `lyd_validate_module_final`, `LYD_VALIDATE_NOT_FINAL` | a split-validation speed path (sysrepo-style); #100 ports and tests it in Go, the engine refuses `final_only` under **U-0106** |

@@ -592,7 +592,7 @@ func xpathKind(req map[string]any) string {
 var xpathUnsupported = map[string]string{
 	// native evidence for TrimXPath's run and link cleanup; the Go side is TestRBTreeRunEmptied
 	// and the Go-expressible seq/trim-lyds-all-indexed, seq/trim-links-lkorder-* fixtures
-	// step 2 parses with LYD_PARSE_ORDERED (D-0058) before step 3's LYD_DUP_NO_LYDS (U-0105): the
+	// step 2 parses with LYD_PARSE_ORDERED (D-0058) before step 3's LYD_DUP_NO_LYDS (DupOptions.NoSort): the
 	// engine refuses at the first unsupported step it executes
 	"seq/trim-lyds-emptied-run":     "D-0058",
 	"seq/trim-lyds-partial-run":     "D-0058",
@@ -710,9 +710,8 @@ var validationUnsupported = map[string]string{
 	"ut-new/any-create-xml":                  "U-0112",
 	// D-0058: LYD_PARSE_ORDERED input order is not exported.
 	"seq/trim-links-referrer-first": "D-0058",
-	// U-0105: LYD_DUP_NO_LYDS is not exported.
-	"seq/trim-lyds-emptied-run": "D-0058", // parse ordered (step 2) before dup no_lyds (U-0105, step 3)
-	"seq/trim-lyds-partial-run": "D-0058",
+	"seq/trim-lyds-emptied-run":     "D-0058", // parse ordered (step 2) before dup no_lyds (step 3)
+	"seq/trim-lyds-partial-run":     "D-0058",
 	// U-0106: an rpc input parsed into an existing request (Request is for replies only).
 	"ops/parse-json-rpc-parent-opaque-meta":   "U-0106",
 	"ops/opidx-meta-doc-first":                "U-0106",

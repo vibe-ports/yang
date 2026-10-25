@@ -657,7 +657,7 @@ func TestRBTreeRunEmptied(t *testing.T) {
 	// issue #101/#208: 3,5 are indexed, 9 and 1 are appended outside the tree (LYD_DUP_NO_LYDS),
 	// then a bulk trim removes indexed nodes and 4 is inserted sorted. The native orders are the
 	// goldens of seq/trim-lyds-emptied-run and seq/trim-lyds-partial-run, which the conformance
-	// engine reports unsupported (no_lyds is not exported, U-0105): when the last indexed instance
+	// engine reports unsupported (their ordered parse is D-0058; dup no_lyds is DupOptions.NoSort): when the last indexed instance
 	// goes, the next sorted insertion rebuilds and re-sorts the run; while one survives, 4 goes
 	// into the remaining index and the appended instances stay where they are.
 	for _, tc := range []struct {

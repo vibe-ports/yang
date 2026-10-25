@@ -72,12 +72,6 @@ func seqOptionUnsupported(what string, st map[string]any) string {
 		if st["canon"] == true {
 			return "change_term canon (lyd_change_term_canon is not exported, U-0108)"
 		}
-	case "dup":
-		for _, o := range list(st["options"]) {
-			if o == "no_lyds" {
-				return "dup option no_lyds (LYD_DUP_NO_LYDS is not exported, U-0105)"
-			}
-		}
 	}
 	return ""
 }
@@ -1210,6 +1204,8 @@ func stepDup(r Request, s *yang.Schema, st map[string]any, tree *data.Tree, deta
 			o.WithParents = true
 		case "with_flags":
 			o.WithFlags = true
+		case "no_lyds":
+			o.NoSort = true
 		}
 	}
 	dst, ds := tree, s

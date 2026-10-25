@@ -118,7 +118,6 @@ Pairwise counts are reported separately below.
 |---|---|---|---:|
 | `ordered-input` | D-0058 | `LYD_PARSE_ORDERED` input ordering | 39 |
 | `any-direct` | U-0112 | `any_direct` step: native pointer-level any-value calls | 228 |
-| `dup-no-lyds` | U-0105 | Duplication without value ordering | 2 |
 | `split-validation` | U-0106 | Final-only / not-final validation entry points | 7 |
 | `operation-parent` | U-0106 | Operation input into an existing parent, or reply into an opaque request | 691 |
 | `opaque-construction` | U-0107 | `insert_opaq` construction | 90 |
@@ -373,7 +372,6 @@ recorded in the B-class section above.
 |---|---|---:|
 | MATCH | Equal execution and output | 4,951,222 |
 | A — WRONG | Concrete execution mismatch | **0** |
-| B — GAP | `dup-no-lyds` (U-0105) | 91 |
 | B — GAP | `split-validation` (U-0106) | 792 |
 | B — GAP | `operation-parent` (U-0106) | 41,841 |
 | B — GAP | `opaque-construction` (U-0107) | 3,469 |
