@@ -121,16 +121,13 @@ Historical counts below predate that API expansion.
 | B class | Registry ID | Capability gap | Single-field |
 |---|---|---|---:|
 | `ordered-input` | D-0058 | `LYD_PARSE_ORDERED` input ordering | 39 |
-| `any-direct` | U-0112 | `any_direct` step: native pointer-level any-value calls | 228 |
+| `any-direct` | U-0112 | `any_direct` step: native pointer-level any-value calls | 230 |
 | `operation-parent` | U-0106 | Operation input into an existing parent, or reply into an opaque request | 691 |
-| `opaque-construction` | U-0107 | `insert_opaq` construction | 90 |
-| `any-direct-opaque-source` | U-0107 | `any_direct` step: opaque source construction for sibling duplication | 2 |
-| `compare-insert-opaq` | U-0107 | `compare` step with `insert_opaq` construction | 88 |
 | `canonical-values` | U-0108 | Canonical/store-only constructor and change-term options | 8 |
 | `list2` | U-0109 | `lyd_new_list2` inputs/diagnostics unavailable through `NewPath` | 12 |
 | `reply-non-operation-parent` | U-0110 | Reply into a parent that is not an RPC/action; `ParseOpOptions.Request` rejects it before parsing | 0 |
 | `cross-context-diff` | D-0069 | Diff matching between populated trees from separate schema snapshots (#236) | 0 |
-| **Total** | | | **1,167** |
+| **Total** | | | **980** |
 
 The classifier requires the relevant step and the exact unsupported reason.
 
@@ -140,8 +137,12 @@ message types (#95) run through the engine's envelope parser for `data`, XPath
 and sequence parse/diff requests, including `print_subtree` and empty-input
 error ordering. Live-oracle requests in `issue247_oracle_test.go` cover every
 retired envelope class without generated goldens.
-Existing IDs retain their scope. In particular, U-0107 covers opaque construction,
-not envelope parsing.
+Existing IDs retain their scope. U-0107 now covers only opaque attribute
+construction (`lyd_new_attr*`), not envelope parsing: `insert_opaq` edits and
+`compare` roots run through `Tree.NewOpaque` (#247), with live-oracle requests
+in `issue247_api4_oracle_test.go`. The two `any_direct` opaque-source cases
+still need `lyd_new_any` and pointer-level any-value children, so they count
+under `any-direct` (U-0112).
 
 ## DEV crash class list
 
@@ -367,8 +368,8 @@ target context with the same configuration stay distinct, as in plain
 `Yang.Run`.
 
 The counts below are the pre-#247 capture. Its two notification-envelope rows
-are now retired; the next canonical pairwise recapture is expected to move
-their 181,702 results from B to MATCH. The current single-field native run is
+and the opaque-construction row are now retired; the next canonical pairwise
+recapture is expected to move their 185,171 results from B to MATCH. The current single-field native run is
 recorded in the B-class section above.
 
 | Category | Class | Count |

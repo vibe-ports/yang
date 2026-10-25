@@ -801,6 +801,10 @@ func TestPublicHashMutationChargePoints(t *testing.T) {
 			tr, root := base()
 			return tr, func() error { _, err := tr.NewList(root, "l", []string{"key"}, NewOptions{}); return err }
 		},
+		"NewOpaque": func() (*Tree, func() error) {
+			tr, root := base()
+			return tr, func() error { _, err := tr.NewOpaque(root, "x", "v", OpaqueOptions{Module: "m"}); return err }
+		},
 		"NewTerm": func() (*Tree, func() error) {
 			tr, root := base()
 			return tr, func() error { _, err := tr.NewTerm(root, "s", "new", NewOptions{}); return err }

@@ -37,7 +37,7 @@
 // a read-only argument is read the same way: the source of Merge, the diff given to ApplyDiff,
 // MergeDiff or MergeDiffTree (its src subtree). Every call that changes a tree is a mutation and
 // needs exclusive access to that tree, with no other call on it, read or write, at the same time:
-// NewPath, NewTerm, NewInner, NewList, Insert (also of the tree n leaves, or of a detached parent),
+// NewPath, NewTerm, NewInner, NewList, NewOpaque, Insert (also of the tree n leaves, or of a detached parent),
 // SetValue (of n's tree or detached subtree), NewMeta, Remove, Unlink, Validate, ValidateModule,
 // ValidateDiff, ValidateModuleDiff, ValidateModuleFinal, TrimXPath,
 // LinkLeafrefs, and Merge, ApplyDiff, MergeDiff, MergeDiffTree, Dup and DupSiblings into it (Dup

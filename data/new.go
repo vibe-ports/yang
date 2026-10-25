@@ -571,6 +571,50 @@ func (t *Tree) NewList(parent *Node, name string, keys []string, o NewOptions) (
 	return t.placed(b, parent, n, err)
 }
 
+// OpaqueOptions are the options of NewOpaque.
+type OpaqueOptions struct {
+	// Format selects the constructor: FormatJSON (the zero value) is lyd_new_opaq, FormatXML
+	// lyd_new_opaq2; any other format is an LY_EINVAL argument error.
+	Format Format
+	// Prefix is the node's prefix, nil for none (libyang's NULL). With FormatJSON a given prefix,
+	// "" included, must equal Module (LY_EINVAL otherwise); with FormatXML it is stored as given.
+	Prefix *string
+	// Module is the JSON module name (lyd_new_opaq's module_name); FormatXML ignores it.
+	Module string
+	// Namespace is the XML namespace (lyd_new_opaq2's module_ns); FormatJSON ignores it.
+	Namespace string
+}
+
+// NewOpaque is lyd_new_opaq (FormatJSON) and lyd_new_opaq2 (FormatXML): an opaque node of name
+// with value, appended as the last child of parent (a node of t, or a detached node of its
+// snapshot; LYD_INSERT_NODE_LAST) or, with parent nil, a top-level node of t (then
+// lyd_insert_sibling). name is the opaque node's name as given: it is not split at ":" and no
+// schema node or module is looked up, so Module and Namespace need not name a module of the
+// snapshot. The prefix is copied. A JSON value "[null]" gets libyang's empty-value hint.
+// A leaf or leaf-list parent (D-0113) and a NUL byte in any string (D-0111) are refused.
+func (t *Tree) NewOpaque(parent *Node, name, value string, o OpaqueOptions) (*Node, error) {
+	defer t.work.beginHashWork()()
+	set := t.context()
+	b := newBuilder{set: set, log: &logger{set: set}, work: &t.work, tree: t}
+	module, xml := o.Module, false
+	switch o.Format {
+	case FormatJSON:
+	case FormatXML:
+		module, xml = o.Namespace, true
+	default:
+		return nil, b.log.done(argErr("format", "lyd_new_opaq"))
+	}
+	if parent != nil && treeOf(parent) != nil && treeOf(parent) != t {
+		fn := "lyd_new_opaq"
+		if xml {
+			fn = "lyd_new_opaq2"
+		}
+		return nil, b.log.done(argErr("parent (not in the tree)", fn))
+	}
+	n, err := b.newOpaq(parent, name, value, o.Prefix, module, xml)
+	return t.placed(b, parent, n, err)
+}
+
 // SetValue is lyd_change_term: the leaf or leaf-list instance n takes the JSON-format value.
 // changed is true when the value changed; setting the same value is no error: it clears the
 // Default flag of a default node and of its non-presence container parents (LY_EEXIST), or

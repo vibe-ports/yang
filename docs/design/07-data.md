@@ -559,7 +559,7 @@ a fixture with `assert` (extractor, inventory §5.4).
 | rpc/action/notification/reply (`lyd_parse_op`, `lyd_validate_op`) | data-tree parse rejects op nodes as libyang does | M4: `ParseOp`, `ValidateOp` (§6.1.1); U-0044 goes with #97 (§6.1.6) |
 | anydata/anyxml | instances parsed in JSON and XML input (`lydjson_parse_any`, `lydxml_subtree_any`; `ParseOptions.AnyDataStrict`) | public any edits, diff values and pointer-level probes: U-0112 |
 | metadata | annotation lookup + store, `default`, `yang:operation`, with-defaults tags | full RFC 7952 / origin inheritance M4–M5 |
-| opaque nodes | `unknown: opaque`, printing, validation error | `NewOpaq`, `Node.Attrs` and the envelopes in M5 (§6.1.5) |
+| opaque nodes | `unknown: opaque`, printing, validation error, `NewOpaque` (#247) | `Node.Attrs` and the envelopes in M5 (§6.1.5) |
 | diff | implicit diff (create/delete/none); since #137 Diff, ApplyDiff, MergeDiff, ReverseDiff (PoC #133) | anydata/anyxml values in diffs (M5) |
 | edits | NewPath(Update), Find, Remove, Unlink, Merge without options | M4: NewTerm, NewInner, NewList, Insert, SetValue, Dup, DupSiblings (§6.1.2, §6.1.3); `ApplyEdit` M6 |
 | leafref links (`LY_CTX_LEAFREF_LINKING`) | ported internally (data/links.go) | M4: `Options.LeafrefLinking`, `LeafrefLinks`, `LinkLeafrefs` (§6.1.3) |
@@ -612,7 +612,16 @@ func (t *Tree) ValidateModule(ctx context.Context, module string, o ValidateOpti
 func (t *Tree) ValidateModuleDiff(ctx context.Context, module string, o ValidateOptions) (*Tree, []yang.Diagnostic, error)
 // ParseOptions.WhenTrue bool                                             // LYD_PARSE_WHEN_TRUE
 
-// M5 (§6.1.5, envelopes): OpType values, OpResult.Envelope, NewOpaq, Node.Attrs
+// M5 (§6.1.5, envelopes): OpType values, OpResult.Envelope, Node.Attrs
+
+// opaque construction (§6.1.5, #247)
+type OpaqueOptions struct {
+	Format    Format  // FormatJSON (zero): lyd_new_opaq; FormatXML: lyd_new_opaq2; other: LY_EINVAL
+	Prefix    *string // nil: NULL
+	Module    string  // JSON module name; ignored for FormatXML
+	Namespace string  // XML namespace; ignored for FormatJSON
+}
+func (t *Tree) NewOpaque(parent *Node, name, value string, o OpaqueOptions) (*Node, error)
 ```
 
 Rules this follows, from the package as shipped: options structs, never positional bools
@@ -884,9 +893,22 @@ const ( OpRPCNetconf OpType = iota + 4; OpNotifNetconf; OpReplyNetconf; OpRPCRes
 // OpResult gains Envelope *Tree: the opaque envelope nodes (lyd_parse_op's tree); also returned on failure, as libyang does
 type Attr struct{ Name, Prefix, Module, Value string }  // lyd_attr: Module is the XML namespace or JSON module name
 func (n *Node) Attrs() []Attr                           // read; opaque nodes only, nil otherwise
-type OpaqOptions struct{ Prefix, Module, Namespace string } // Module: lyd_new_opaq (JSON), Namespace: lyd_new_opaq2 (XML)
-func (t *Tree) NewOpaq(parent *Node, name, value string, o OpaqOptions) (*Node, error) // mutation
 ```
+The opaque constructor sketched here shipped with #247 as `OpaqueOptions` and `Tree.NewOpaque`
+(maintainer approval 2026-10-24, reversing the 2026-10-20 "no public constructor" decision for
+envelope parsing: #247 needs direct construction for edits, comparison and duplication sources;
+envelope printing and reply building stay out). It is a mutation of t (TDN:966 `lyd_new_opaq`,
+TDN:997 `lyd_new_opaq2`):
+- `Format` selects the function; `FormatJSON` is the zero value, another format is LY_EINVAL.
+  JSON reads `Module`, XML reads `Namespace`; the other field is ignored. Neither needs to name a
+  module of the snapshot.
+- `name` is the opaque name as given: no `module:node` split and no schema lookup.
+- `Prefix` nil is libyang's NULL. A JSON prefix, `""` included, must equal `Module`
+  (`!prefix || !strcmp(prefix, module_name)`); an XML prefix is stored as given. It is copied.
+- A JSON value `"[null]"` gets `LYD_VALHINT_EMPTY`. A child is appended last
+  (`LYD_INSERT_NODE_LAST`); parent nil makes a top-level node of t, as NewTerm does. Parent
+  ownership is NewTerm's: a node of t or a detached node of its snapshot.
+- The safe refusals stay: a leaf or leaf-list parent (D-0113) and a NUL byte (D-0111).
 #95 moved to M5, next to anydata (then U-0043, retired with #107/#108), where `<config>`/`<data>` first parse; #94 belongs
 with it, since it has nothing to check before the envelopes. Keep
 everything above the envelope layer (sessions, framing, error-reply building, envelope printing)
@@ -920,7 +942,7 @@ of a registry entry. So #105 cannot pass with them unsupported; they must agree.
 |---|---|
 | `lyd_new_list2` (keys as a predicate string) | `NewPath("/m:l[k='v']", …)` already does it, with the same predicate parser |
 | `LYD_NEW_VAL_STORE_ONLY`, `LYD_NEW_VAL_CANON`, `lyd_new_term_raw`, `lyd_new_term_bin`, `lyd_change_term_canon` | speed knobs over the JSON value form; no fixture uses them; add when a user shows a need |
-| `lyd_new_opaq`, `lyd_new_opaq2`, `lyd_new_attr*` | not in M4: exported in M5 with the envelopes (§6.1.5); internal until then (#98) |
+| `lyd_new_attr*` | no request builds opaque attributes; `lyd_new_opaq`/`_opaq2` are `Tree.NewOpaque` since #247 (§6.1.5) |
 | `lyd_insert_before`, `lyd_insert_after`, `lyd_unlink_siblings` | user-ordered positioning and sibling-run operations belong to `ApplyEdit` (M6, `yang:insert`); single-tree `lyd_unlink_tree` is `Node.Unlink` |
 | `LYD_DUP_NO_EXT`, `LYD_DUP_WITH_PRIV`, `lyd_dup_meta_single` | nothing to act on (no extension data, no private pointers); metadata copies come with Dup |
 | `struct lyd_leafref_links_rec`, LY_EDENIED/LY_ENOTFOUND of `lyd_leafref_get_links` | two slices carry the record; the error cases are "no links" |

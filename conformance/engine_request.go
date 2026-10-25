@@ -1025,8 +1025,8 @@ func requestStepData(c *requestCheck) error {
 }
 
 // requestCompareInput accepts the ordinary parsed second tree or a single opaque
-// root constructed by the oracle. The latter reaches values an XML parser must
-// reject, and remains unsupported by the Go engine until opaque constructors are public.
+// root constructed by the oracle (Tree.NewOpaque in the engine). The latter reaches values an
+// XML parser must reject.
 func requestCompareInput(c *requestCheck) error {
 	if err := requestRead("data", false)(c); err != nil {
 		return err

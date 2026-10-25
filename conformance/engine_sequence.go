@@ -51,8 +51,7 @@ var seqContextKeys = set("searchdirs", "modules", "context_options")
 
 // seqUnsupported are the oracle's step kinds and edits package data has no public API for.
 var seqUnsupported = map[string]string{
-	"insert_opaq": "(lyd_new_opaq / lyd_new_opaq2 are exported in M5 with the envelopes, U-0107)",
-	"any_direct":  "(native pointer-level any-value calls have no public Go equivalent, U-0112)",
+	"any_direct": "(native pointer-level any-value calls have no public Go equivalent, U-0112)",
 }
 
 // seqOptionUnsupported is the reason a step's options cannot be expressed with the public API,
@@ -283,6 +282,15 @@ func runSequence(r Request, s *yang.Schema, resp map[string]any, exec executionC
 			}
 		case "compare":
 			phase = "parse"
+			if st["insert_opaq"] != nil {
+				phase = "edit" // compare_other collects the construction in phase edit (lyoracle.c:3372)
+			}
+			// step_compare collects only inside compare_other, in the second root's context
+			// (lyoracle.c:2497, :3372): a target's other_ctx, whose logs stepCompare returns
+			// itself, or none with self:true. The retained context's queue stays pending.
+			if st["target"] != nil || st["self"] == true {
+				collectStepOwner = false
+			}
 			diags, err = stepCompare(r, s, st, tree, so)
 		case "diff":
 			phase = "" // the diagnostics carry theirs
@@ -489,9 +497,6 @@ func runSequence(r Request, s *yang.Schema, resp map[string]any, exec executionC
 				so["direct"] = map[string]any{"repeated_keys": 2, "collision_shaped_key": "Aa/BB"}
 				rc = "LY_EINVAL"
 				break
-			}
-			if c := str(st, "case", ""); c == "dup_siblings_into_empty_anydata" || c == "dup_siblings_into_empty_anyxml" {
-				return fmt.Errorf("%w: opaque source construction has no public Go equivalent, U-0107", ErrUnsupported)
 			}
 			return fmt.Errorf("%w: native pointer-level any-value calls have no public Go equivalent, U-0112", ErrUnsupported)
 		case "detached_dump":
@@ -784,7 +789,13 @@ func stepCompare(r Request, s *yang.Schema, st map[string]any, tree *data.Tree, 
 	}
 	other := tree
 	var diags []yang.Diagnostic
-	if st["self"] != true {
+	if io, ok := st["insert_opaq"].(map[string]any); ok && st["self"] != true {
+		// compare_other (lyoracle.c:3366-3372): one parentless opaque root in the other context
+		other = data.NewTree(otherSchema)
+		if _, err := other.NewOpaque(nil, str(io, "name", ""), str(io, "value", ""), opaqueOptions(io)); err != nil {
+			return diagsOf(err), err
+		}
+	} else if st["self"] != true {
 		var err error
 		other, diags, err = stepParse(r, otherSchema, st, execStepCompare, nil)
 		if err != nil || other == nil {
@@ -969,6 +980,8 @@ func stepEdit(r Request, s *yang.Schema, st map[string]any, tree *data.Tree, det
 		}
 	case st["insert_list2"] != nil:
 		err = stepInsertList2(s, st, tree, selectors)
+	case st["insert_opaq"] != nil:
+		err = stepInsertOpaq(st, tree, selectors)
 	case st["insert_term"] != nil || st["insert_inner"] != nil || st["insert_list"] != nil:
 		err = stepInsert(s, st, tree, detachedSchema, selectors)
 	case st["delete"] != nil:
@@ -1134,6 +1147,28 @@ func stepInsert(s *yang.Schema, st map[string]any, tree *data.Tree, detachedSche
 		}
 		_, err = tree.NewList(parent, name, keys, opts)
 	}
+	return err
+}
+
+// opaqueOptions are the lyd_new_opaq / lyd_new_opaq2 arguments of an insert_opaq object: "xml"
+// true selects lyd_new_opaq2 with "module" as the namespace, a null or absent "prefix" is NULL.
+func opaqueOptions(o map[string]any) data.OpaqueOptions {
+	m := str(o, "module", "")
+	opts := data.OpaqueOptions{Module: m, Namespace: m}
+	if o["xml"] == true {
+		opts.Format = data.FormatXML
+	}
+	if p, present, _ := strField(o, "prefix"); present {
+		opts.Prefix = &p
+	}
+	return opts
+}
+
+// stepInsertOpaq is step_edit's insert_opaq (lyoracle.c:2673-2679): Tree.NewOpaque under the
+// selected parent, else a top-level node of the tree (lyd_insert_sibling).
+func stepInsertOpaq(st map[string]any, tree *data.Tree, selectors *stepSelectors) error {
+	o, _ := st["insert_opaq"].(map[string]any)
+	_, err := tree.NewOpaque(selectors.parent, str(o, "name", ""), str(o, "value", ""), opaqueOptions(o))
 	return err
 }
 
