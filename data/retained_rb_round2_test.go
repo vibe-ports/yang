@@ -377,3 +377,47 @@ func TestDiffPluginSortZeroStorage(t *testing.T) {
 		t.Fatalf("enumeration/string Diff error = %v, want D-0121", err)
 	}
 }
+
+// TestTimePeriodCompareChargesBothTexts: compareTimePeriod runs strtol over both canonical texts,
+// so a long period compared with short ones is charged its own length per comparison, not the
+// shorter text's (CompareCost).
+func TestTimePeriodCompareChargesBothTexts(t *testing.T) {
+	_, period := timePeriodSets(t)
+	const digits = 1 << 14
+	long := strings.Repeat("0", digits) + "5h"
+	insert := func(run int) uint64 {
+		var data strings.Builder
+		data.WriteString(`<c xmlns="urn:rb-time-period">`)
+		for i := range run {
+			fmt.Fprintf(&data, "<v>%dh</v>", 2*i)
+		}
+		data.WriteString(`</c>`)
+		tr := parseOnlyXML(t, period, data.String())
+		if _, err := tr.NewPath("/rb-time-period:c/v", long, NewPathOptions{}); err != nil {
+			t.Fatal(err)
+		}
+		return tr.work.hashUsed
+	}
+	one, many := insert(2), insert(64)
+	// 64 members: at least four more comparisons on the descent, each reading the long text
+	if many < one+4*digits {
+		t.Fatalf("64-member insertion charged %d units, 2-member %d: comparisons charge the short text only", many, one)
+	}
+	// a quota that covers the 2-member insertion and three long comparisons more refuses the
+	// 64-member one (the uncharged texts of base fit: 49,310 units)
+	insertLimited := func(run int, limit uint64) error {
+		var data strings.Builder
+		data.WriteString(`<c xmlns="urn:rb-time-period">`)
+		for i := range run {
+			fmt.Fprintf(&data, "<v>%dh</v>", 2*i)
+		}
+		data.WriteString(`</c>`)
+		tr := parseOnlyXML(t, period, data.String())
+		tr.work.hashLimit = limit
+		_, err := tr.NewPath("/rb-time-period:c/v", long, NewPathOptions{})
+		return err
+	}
+	if err := insertLimited(64, one+3*digits); !errors.Is(err, yang.ErrBudget) {
+		t.Fatalf("low quota: NewPath = %v, want ErrBudget", err)
+	}
+}

@@ -375,7 +375,10 @@ func TestDiffCrossContextDisjointSchemaLookupScaling(t *testing.T) {
 // envelope. Four hashed children share 256 16-KiB ancestry components. Interned parent identities
 // keep the Diff allocation linear; concatenated ancestry prefixes exceed a GiB here.
 func TestDiffCrossContextDeepLineageMemory(t *testing.T) {
-	const depth = 256
+	depth := 256
+	if raceEnabled {
+		depth = 128 // quadratic ancestry strings would still need 256 MiB
+	}
 	long := strings.Repeat("n", 16<<10)
 	leafPrefix := long[:len(long)-1]
 
@@ -435,7 +438,7 @@ func TestDiffCrossContextDeepLineageMemory(t *testing.T) {
 		t.Fatalf("Diff allocated %d bytes for shared lineage, want linear storage below 64 MiB", allocated)
 	}
 
-	diff, err = diffNodesLookupLimit(topOf(first), topOf(second), DiffOptions{}, false, first, second, depth/2, 0)
+	diff, err = diffNodesLookupLimit(topOf(first), topOf(second), DiffOptions{}, false, first, second, uint64(depth/2), 0) //nolint:gosec // a small positive depth
 	if diff != nil || !errors.Is(err, yang.ErrBudget) {
 		t.Fatalf("lineage lookup limit: Diff = (%v, %v), want nil, ErrBudget", diff, err)
 	}

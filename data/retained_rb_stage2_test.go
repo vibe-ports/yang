@@ -291,7 +291,11 @@ func TestRetainedRBShapeFollowsInsertionHistory(t *testing.T) {
 			}
 		}
 	}
-	for step := range 2048 {
+	steps := 2048
+	if raceEnabled {
+		steps = 384 // every step checks the whole tree: quadratic under the race detector
+	}
+	for step := range steps {
 		switch rng.IntN(4) {
 		case 0, 1:
 			sn := schemaA

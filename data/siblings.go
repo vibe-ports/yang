@@ -1706,6 +1706,28 @@ func (t *Tree) foreignInstances(s *siblings, target *Node) (iter.Seq[*Node], err
 	}, nil
 }
 
+// foreignTableSchema is the schema node of s's instances that a foreign sn matches by schema
+// lineage, the comparison of lyd_hash_table_val_equal; nil when s has none. A running
+// cross-context diff uses its charged lineage index, other callers a charged sibling scan.
+func (t *Tree) foreignTableSchema(s *siblings, sn *schema.Node, work *workCounter) (*schema.Node, error) {
+	if t.work.lookupDepth != 0 && t.foreignSchemaInput[s] {
+		if i := t.foreignSchemaIndex(s, sn, true); i >= 0 {
+			return s.list[i].schema, nil
+		}
+		return nil, t.work.lookupErr
+	}
+	for _, n := range s.list {
+		s.visit()
+		if err := chargeComparison(work); err != nil {
+			return nil, err
+		}
+		if n.schema == sn || compareSchemaEqual(n.schema, sn, true) {
+			return n.schema, nil
+		}
+	}
+	return nil, nil
+}
+
 // foreignInstancesErr is the lookup quota refusal that ended a foreignInstances walk.
 func (t *Tree) foreignInstancesErr() error {
 	if t.work.lookupDepth == 0 {
@@ -1856,9 +1878,11 @@ func (t *Tree) findFirstWork(s *siblings, target *Node, work *workCounter) (*Nod
 				}
 				return nil, t.foreignInstancesErr()
 			}
+			// With the table, lyd_hash_table_val_equal matches the target's schema by lineage
+			// (lyd_compare_schema_equal), which also finds operation output nodes.
 			var err error
-			if sn, err = findSchemaCtx(target.schema, ctxOf(first), first.parent); err != nil {
-				return nil, nil
+			if sn, err = t.foreignTableSchema(s, target.schema, work); sn == nil || err != nil {
+				return nil, err
 			}
 		}
 	}

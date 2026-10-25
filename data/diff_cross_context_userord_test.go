@@ -86,7 +86,11 @@ func TestDiffCrossContextUserOrderedRefusal(t *testing.T) {
 func TestDiffCrossContextUserOrderedNoPanic(t *testing.T) {
 	type pair struct{ first, second []string }
 	rng := rand.New(rand.NewSource(0xD0121)) //nolint:gosec // deterministic test data
-	pairs := make([]pair, 2000)
+	count := 2000
+	if raceEnabled {
+		count = 400 // fewer random pairs under the race detector
+	}
+	pairs := make([]pair, count)
 	for i := range pairs {
 		pairs[i] = pair{randomUserOrderedValues(rng), randomUserOrderedValues(rng)}
 	}

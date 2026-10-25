@@ -311,7 +311,11 @@ func TestTrimManyRunsLinear(t *testing.T) {
 // TestMergeBatchesConsumeCumulatively: each batch charges its comparisons as they run, so many
 // batches of long common-prefix strings in one Merge exhaust the operation's quota.
 func TestMergeBatchesConsumeCumulatively(t *testing.T) {
-	const values, prefixLen = 512, 1024
+	const prefixLen = 1024
+	values := uint64(512)
+	if raceEnabled {
+		values = 192 // fewer insertions under the race detector; the floor keeps its form
+	}
 	prefix := strings.Repeat("x", prefixLen)
 	merge := func(runs int, limit uint64) (uint64, error) {
 		set := manyRunsSet(t, runs)
@@ -361,7 +365,11 @@ func TestDiffCrossContextLeafListLinear(t *testing.T) {
 		second := parseOnlyXML(t, reviewDiffSet(t, module), data.String())
 		return diffNodesLookupLimit(topOf(first), topOf(second), DiffOptions{}, false, first, second, lookupLimit, hashLimit)
 	}
-	for _, n := range []uint64{1024, 4096} {
+	sizes := []uint64{1024, 4096}
+	if raceEnabled {
+		sizes = sizes[:1]
+	}
+	for _, n := range sizes {
 		// linear quotas (measured at 2048 values: 6n lookup, 40n hash units); the per-instance
 		// scans charged about 2n*n hash units (8,465,744 at 2048 values)
 		if d, err := diff(int(n), 8*n, 64*n); d != nil || err != nil { //nolint:gosec // a small constant

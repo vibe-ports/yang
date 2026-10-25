@@ -384,18 +384,21 @@ func dupInserts(t *schema.Type) bool {
 }
 
 // CompareCost bounds the work the first value's sort callback does comparing a with b, from what
-// it reads: the shorter canonical string for the canonical sorts (and for values of different
-// bases, which Compare orders canonically), the shorter binary, both set-bit lists, a plugin's
+// it reads: the shorter canonical string for the canonical sorts, both canonical strings for
+// time periods (strtol reads each to its end) and for values of different bases, the shorter binary, both set-bit lists, a plugin's
 // fixed struct plus the shorter canonical text (zone, fractions), a union's member scan plus
 // its member's comparison; a fixed-size scalar or an enumeration costs one unit.
 func CompareCost(a, b Value) uint64 {
 	short := uint64(min(len(a.canon), len(b.canon)))
+	both := uint64(len(a.canon)) + uint64(len(b.canon))
 	if a.typ == nil || b.typ == nil || a.typ.Base != b.typ.Base {
-		return 1 + short
+		return 1 + both // a cross-base callback may read either text to its end
 	}
 	switch sortCallback(a.typ) {
-	case "simple", "time-period":
+	case "simple":
 		return 1 + short
+	case "time-period":
+		return 1 + both // compareTimePeriod runs strtol over each canonical text
 	}
 	if a.union != nil {
 		n := 1 + uint64(len(a.typ.Union))
