@@ -449,6 +449,10 @@ func (s *siblings) removeRBNode(n *Node) {
 // nodes pointing at the unlinked node; the port drops them so no tree keeps a node that left
 // the siblings.
 func (s *siblings) dropDual(n *Node) {
+	if s.rbDual[n] == nil {
+		return
+	}
+	s.touch() // the journal restores the membership maps with the trees
 	for _, group := range s.rbDual[n] {
 		if order := s.rbOrders[group]; order != nil && order.nodes[n] != nil {
 			order.work = s.work
@@ -1654,6 +1658,62 @@ func (t *Tree) foreignSchemaIndex(s *siblings, sn *schema.Node, table bool) int 
 	return -1
 }
 
+type foreignInstanceKey struct {
+	module, name string
+	hash         uint32
+}
+
+// foreignInstances is the candidate sequence of the linear branches of lyd_find_sibling_first
+// that compare every sibling with a target of another context (tree_data.c:3239-3251). Equal
+// instances have equal module and node names (compareSchemaEqual) and equal stored hashes
+// (hashEqual gates lyd_compare_single_data), so while a cross-context diff runs over its
+// immutable inputs the siblings are indexed by those once, charged to the lookup quota, and the
+// target's bucket keeps their order: the same first match, without a scan per instance. Other
+// callers keep the full sibling walk.
+func (t *Tree) foreignInstances(s *siblings, target *Node) (iter.Seq[*Node], error) {
+	if t.work.lookupDepth == 0 || !t.foreignSchemaInput[s] || target.schema == nil || target.schema.Module == nil {
+		return s.all(), nil
+	}
+	if t.foreignInstance == nil {
+		t.foreignInstance = make(map[*siblings]map[foreignInstanceKey][]*Node)
+	}
+	index := t.foreignInstance[s]
+	if index == nil {
+		// no capacity hint: the index grows only after each sibling's charge succeeded
+		index = make(map[foreignInstanceKey][]*Node)
+		for _, n := range s.list {
+			s.visit()
+			if err := t.work.chargeLookup(1); err != nil {
+				return nil, err
+			}
+			if n.schema != nil && n.schema.Module != nil {
+				k := foreignInstanceKey{n.schema.Module.Name, n.schema.Name, n.hash}
+				index[k] = append(index[k], n)
+			}
+		}
+		t.foreignInstance[s] = index
+	}
+	if err := t.work.chargeLookup(1); err != nil {
+		return nil, err
+	}
+	bucket := index[foreignInstanceKey{target.schema.Module.Name, target.schema.Name, target.hash}]
+	return func(yield func(*Node) bool) {
+		for _, n := range bucket {
+			if t.work.chargeLookup(1) != nil || !yield(n) {
+				return // a refused charge is the diff's sticky lookup error
+			}
+		}
+	}, nil
+}
+
+// foreignInstancesErr is the lookup quota refusal that ended a foreignInstances walk.
+func (t *Tree) foreignInstancesErr() error {
+	if t.work.lookupDepth == 0 {
+		return nil
+	}
+	return t.work.lookupErr
+}
+
 // foreignSchemaKey is the lineage key lyd_compare_schema_equal matches by. Building it is charged
 // to the running diff's lookup quota, or outside a diff to the mutation's hash quota: both are
 // reset at their operation boundary and their failure is returned, never a silently missing key.
@@ -1761,7 +1821,11 @@ func (t *Tree) findFirstWork(s *siblings, target *Node, work *workCounter) (*Nod
 	}
 	dup := isDupInstList(target.schema)
 	if target.schema != nil && s.mixedContexts() {
-		for n := range s.all() {
+		candidates, err := t.foreignInstances(s, target)
+		if err != nil {
+			return nil, err
+		}
+		for n := range candidates {
 			first, second := n, target
 			if s.ht != nil {
 				first, second = target, n
@@ -1771,7 +1835,7 @@ func (t *Tree) findFirstWork(s *siblings, target *Node, work *workCounter) (*Nod
 				return n, err
 			}
 		}
-		return nil, nil
+		return nil, t.foreignInstancesErr()
 	}
 	sn := target.schema
 	if sn != nil && len(s.list) != 0 {
@@ -1780,13 +1844,17 @@ func (t *Tree) findFirstWork(s *siblings, target *Node, work *workCounter) (*Nod
 			// siblings directly. Mapping first would lose operation output nodes
 			// because lyd_find_schema_ctx walks lys_getnext with input options.
 			if s.ht == nil {
-				for n := range s.all() {
+				candidates, err := t.foreignInstances(s, target)
+				if err != nil {
+					return nil, err
+				}
+				for n := range candidates {
 					equal, err := compareSingleWork(t, work, n, target, dup)
 					if err != nil || equal {
 						return n, err
 					}
 				}
-				return nil, nil
+				return nil, t.foreignInstancesErr()
 			}
 			var err error
 			if sn, err = findSchemaCtx(target.schema, ctxOf(first), first.parent); err != nil {

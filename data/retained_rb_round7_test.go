@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"runtime"
+	"slices"
 	"strconv"
 	"strings"
 	"testing"
@@ -14,6 +15,7 @@ import (
 	"github.com/vibe-ports/yang"
 	"github.com/vibe-ports/yang/internal/compile"
 	"github.com/vibe-ports/yang/internal/schema"
+	"github.com/vibe-ports/yang/internal/types"
 )
 
 // TestDiffUint8ToHexString: lyplg_type_store_hex_string zeroes the value and writes only its
@@ -342,5 +344,115 @@ func TestMergeBatchesConsumeCumulatively(t *testing.T) {
 	}
 	if _, err := merge(8, 3*one); !errors.Is(err, yang.ErrBudget) {
 		t.Fatalf("8 batches within 3 batches' quota: error %v, want ErrBudget", err)
+	}
+}
+
+// TestDiffCrossContextLeafListLinear: identical top-level leaf-lists from independently compiled
+// contexts take lyd_find_sibling_first's linear cross-context branch for every instance, in both
+// passes. The diff-time instance index keeps the matches linear and on the enforced quotas.
+func TestDiffCrossContextLeafListLinear(t *testing.T) {
+	const module = `module rb-ll { yang-version 1.1; namespace "urn:rb-ll"; prefix r; leaf-list l { type string; } }`
+	diff := func(n int, lookupLimit, hashLimit uint64) (*Tree, error) {
+		var data strings.Builder
+		for i := range n {
+			fmt.Fprintf(&data, `<l xmlns="urn:rb-ll">v%d</l>`, i)
+		}
+		first := parseOnlyXML(t, reviewDiffSet(t, module), data.String())
+		second := parseOnlyXML(t, reviewDiffSet(t, module), data.String())
+		return diffNodesLookupLimit(topOf(first), topOf(second), DiffOptions{}, false, first, second, lookupLimit, hashLimit)
+	}
+	for _, n := range []uint64{1024, 4096} {
+		// linear quotas (measured at 2048 values: 6n lookup, 40n hash units); the per-instance
+		// scans charged about 2n*n hash units (8,465,744 at 2048 values)
+		if d, err := diff(int(n), 8*n, 64*n); d != nil || err != nil { //nolint:gosec // a small constant
+			t.Fatalf("%d values within linear quotas: Diff = (%v, %v)", n, d, err)
+		}
+	}
+	if d, err := diff(1024, 512, 0); d != nil || !errors.Is(err, yang.ErrBudget) {
+		t.Fatalf("lookup limit below one index build: Diff = (%v, %v), want nil, ErrBudget", d, err)
+	}
+}
+
+// TestRelocationRollbackRestoresDualTrees: a node held by an earlier tree besides its own (rbDual)
+// leaves both when lyd_change_node_value relocates it (unlink, then reinsertion). Every budget
+// refusal of the relocation leaves the retained trees unchanged, and a reinsertion that fails
+// after the unlink (linkOrigin's restore) puts back every topology and the dual membership, not
+// only the node's own tree.
+func TestRelocationRollbackRestoresDualTrees(t *testing.T) {
+	const module = `module rb-lead { yang-version 1.1; namespace "urn:rb-lead"; prefix r;
+  container c { leaf-list v { type string; } } }`
+	setA, setB := reviewDiffSet(t, module), reviewDiffSet(t, module)
+	build := func() (*Tree, *Node) {
+		first := parseOnlyXML(t, setA, `<c xmlns="urn:rb-lead"><v>b</v><v>c</v><v>d</v><v>e</v></c>`)
+		diff, err := Diff(first, parseOnlyXML(t, setB, `<c xmlns="urn:rb-lead"><v>a</v></c>`), DiffOptions{})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := diff.Merge(parseOnlyXML(t, setA, `<c xmlns="urn:rb-lead"><v>f</v></c>`)); err != nil {
+			t.Fatal(err)
+		}
+		c := topOf(diff)
+		for _, n := range c.kids.list {
+			if len(c.kids.rbDual[n]) != 0 {
+				return diff, n
+			}
+		}
+		t.Fatal("fixture has no node with dual tree membership")
+		return nil, nil
+	}
+	state := func(sib *siblings) string {
+		var dual []string
+		for n, groups := range sib.rbDual {
+			dual = append(dual, fmt.Sprintf("%p=%v", n, groups))
+		}
+		for g, count := range sib.rbDualCount {
+			dual = append(dual, fmt.Sprintf("%p#%d", g, count))
+		}
+		slices.Sort(dual)
+		// the retained trees, their leaders and memberships (not the exact-registration counter)
+		full := snapshotHashBudgetSiblings(sib)
+		_, trees, _ := strings.Cut(full, " rb=")
+		return trees + fmt.Sprint(dual)
+	}
+	// the reinsertion fails after the unlink
+	tr, n := build()
+	sib := n.siblingsOf()
+	before := state(sib)
+	restore, arm, err := tr.linkOrigin(n)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := arm(); err != nil {
+		t.Fatal(err)
+	}
+	unlinkRetainingHistory(n)
+	restore()
+	if after := state(sib); after != before {
+		t.Fatalf("restored relocation changed the retained trees:\n%s\n%s", before, after)
+	}
+	checkTreeRetainedRB(t, tr)
+	// every budget refusal of the whole relocation, outside SetValue's #257 journal
+	for limit := uint64(1); ; limit++ {
+		tr, n := build()
+		sib := n.siblingsOf()
+		before := state(sib)
+		v, diag := types.Store(n.schema.Type, "zz", types.FormatJSON, types.JSONHints("string"), nil, n.schema)
+		if diag != nil {
+			t.Fatal(diag)
+		}
+		tr.work.hashUsed, tr.work.hashErr, tr.work.hashLimit = 0, nil, limit
+		tr.changeNodeValue(n, v, 0)
+		err := tr.work.hashErr
+		tr.work.hashLimit, tr.work.hashErr = 0, nil
+		if err == nil {
+			break
+		}
+		if !errors.Is(err, yang.ErrBudget) {
+			t.Fatalf("limit %d: relocation = %v, want ErrBudget", limit, err)
+		}
+		if after := state(sib); after != before {
+			t.Fatalf("limit %d: refused relocation changed the retained trees:\n%s\n%s", limit, before, after)
+		}
+		checkTreeRetainedRB(t, tr)
 	}
 }

@@ -653,16 +653,3 @@ func (s *siblings) refreshExact(n *Node, change func()) {
 		s.order.byExact.Insert(n.schema, key, h)
 	}
 }
-
-func (s *siblings) rbPredecessor(t *Tree, n *Node) *Node {
-	if s.order == nil || n == nil || n.rbGroup == nil {
-		return nil
-	}
-	h := s.order.byRB.LastWhere(n.schema, n.rbGroup, func(candidate *Node) bool {
-		return t.compareSorted(candidate, n) <= 0
-	})
-	if h == nil {
-		return nil
-	}
-	return h.Value
-}
