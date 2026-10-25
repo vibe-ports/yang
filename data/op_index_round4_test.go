@@ -84,6 +84,8 @@ func TestOpIndexNotificationSpliceMaintainsExistingOrder(t *testing.T) {
 		n.inRB = true
 	}
 	markRB(&notif.kids, notif.kids.list[0])
+	// the run's retained native topology (#242), as lyds_additionally_create_rb_tree builds it
+	dst.buildRBOrder(&notif.kids, notif.kids.rbGroups[notif.kids.list[0]], notif.kids.list)
 	if err := dst.Merge(src); err != nil {
 		t.Fatal(err)
 	}

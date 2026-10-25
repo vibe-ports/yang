@@ -1,0 +1,19 @@
+fixtures:
+  - id: ut-diff/cross-context-empty-key-finalize-union
+    dir: ut-diff
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # src/plugins_types/union.c:50,654-666 prefixes the empty string member with its one-byte index; src/tree_data_hash.c:56-66 then hashes it as non-empty before B's empty b key triggers src/hash_table.c:58-62 finalization, so the list hashes differ
+    rfc: []   # libyang union LYB and list-instance hashing, no RFC
+    areas: [diff]
+    request:
+      op: sequence
+      searchdirs: [schemas/cross-context-empty-union-key-a]
+      modules: [{name: diff-cross-context-empty-union-key}]
+      steps:
+        - {do: parse, format: xml, data_type: data, parse_only: true, data: '<l xmlns="urn:vibe-ports:yang:diff-cross-context-empty-union-key"><a/></l>'}
+        - do: diff
+          format: xml
+          data_type: data
+          parse_only: true
+          data: '<l xmlns="urn:vibe-ports:yang:diff-cross-context-empty-union-key"><a/><b/></l>'
+          target: {searchdirs: [schemas/cross-context-empty-union-key-b], modules: [{name: diff-cross-context-empty-union-key}]}
+    golden: golden/cross-context-empty-key-finalize-union.json

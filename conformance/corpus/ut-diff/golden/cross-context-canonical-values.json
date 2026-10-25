@@ -1,0 +1,224 @@
+{
+  "context_diagnostics": [],
+  "failed_step": null,
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "diff-cross-context",
+      "revision": null
+    }
+  ],
+  "op": "sequence",
+  "protocol": 2,
+  "rc": {
+    "err": 0,
+    "name": "LY_SUCCESS"
+  },
+  "steps": [
+    {
+      "diagnostics": [],
+      "do": "parse",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [],
+          "opaque": null,
+          "path": "/diff-cross-context:top",
+          "schema": "/diff-cross-context:top",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/diff-cross-context:top/identity",
+          "schema": "/diff-cross-context:top/identity",
+          "value": {
+            "canonical": "diff-cross-context:derived",
+            "type": "identityref",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/diff-cross-context:top/identities[.='diff-cross-context:derived']",
+          "schema": "/diff-cross-context:top/identities",
+          "value": {
+            "canonical": "diff-cross-context:derived",
+            "type": "identityref",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/diff-cross-context:top/instance",
+          "schema": "/diff-cross-context:top/instance",
+          "value": {
+            "canonical": "/diff-cross-context:top/x/x/a",
+            "type": "instance-identifier",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/diff-cross-context:top/instances[.='/diff-cross-context:top/x/x/b']",
+          "schema": "/diff-cross-context:top/instances",
+          "value": {
+            "canonical": "/diff-cross-context:top/x/x/b",
+            "type": "instance-identifier",
+            "typedef": null,
+            "union_member": null
+          }
+        }
+      ]
+    },
+    {
+      "diagnostics": [],
+      "diff": null,
+      "diff_typed": [],
+      "do": "diff",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [],
+          "opaque": null,
+          "path": "/diff-cross-context:top",
+          "schema": "/diff-cross-context:top",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/diff-cross-context:top/identity",
+          "schema": "/diff-cross-context:top/identity",
+          "value": {
+            "canonical": "diff-cross-context:derived",
+            "type": "identityref",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/diff-cross-context:top/identities[.='diff-cross-context:derived']",
+          "schema": "/diff-cross-context:top/identities",
+          "value": {
+            "canonical": "diff-cross-context:derived",
+            "type": "identityref",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/diff-cross-context:top/instance",
+          "schema": "/diff-cross-context:top/instance",
+          "value": {
+            "canonical": "/diff-cross-context:top/x/x/a",
+            "type": "instance-identifier",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/diff-cross-context:top/instances[.='/diff-cross-context:top/x/x/b']",
+          "schema": "/diff-cross-context:top/instances",
+          "value": {
+            "canonical": "/diff-cross-context:top/x/x/b",
+            "type": "instance-identifier",
+            "typedef": null,
+            "union_member": null
+          }
+        }
+      ]
+    }
+  ],
+  "verdict": "valid"
+}

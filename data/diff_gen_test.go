@@ -149,9 +149,8 @@ func TestDiffDetachedUserOrdered(t *testing.T) {
 	}
 }
 
-// TestDiffMixedSnapshots: top-level nodes have nil data parents, so that check alone must not
-// allow trees compiled in different schema snapshots to be diffed (D-0069: libyang matches them by
-// schema lineage, not ported yet, #236).
+// TestDiffMixedSnapshots checks all public diff entry points match identical populated trees
+// compiled in separate schema snapshots by schema lineage, as libyang does.
 func TestDiffMixedSnapshots(t *testing.T) {
 	set1, set2 := utDiffSet(t), utDiffSet(t)
 	first := parseOnlyXML(t, set1, `<df xmlns="urn:libyang:tests:defaults"><foo>1</foo></df>`)
@@ -163,12 +162,42 @@ func TestDiffMixedSnapshots(t *testing.T) {
 	} {
 		t.Run(name, func(t *testing.T) {
 			got, err := diff()
-			var ve *ValidationError
-			if got != nil || !errors.As(err, &ve) || ve.RC() != "LY_EINVAL" {
-				t.Fatalf("Diff = (%v, %v)", got, err)
+			if got != nil || err != nil {
+				t.Fatalf("Diff = (%v, %v), want nil, nil", got, err)
 			}
 		})
 	}
+}
+
+// TestDiffCrossContextStateLeafListRefused retains the original #242 reproducer. Native
+// lyd_diff_userord_attrs runs beyond its context-keyed instance array; D-0121 refuses that
+// undefined state without constructing a partial diff.
+func TestDiffCrossContextStateLeafListRefused(t *testing.T) {
+	module := func(hi uint32) string {
+		return fmt.Sprintf(`module m { namespace "urn:m"; prefix m;
+			container top { presence "retain"; leaf-list v { config false; type bits {
+				bit lo { position 0; } bit hi { position %d; }
+			} } } }`, hi)
+	}
+	compileSet := func(yang string) *schema.Set {
+		dir := t.TempDir()
+		if err := os.WriteFile(filepath.Join(dir, "m.yang"), []byte(yang), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		ctx, _, err := compile.NewContext(compile.Options{NoYangLibrary: true}, os.DirFS(dir))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, diags, err := ctx.Load("m", "", nil); err != nil {
+			t.Fatal(err, diags)
+		}
+		return ctx.Snapshot()
+	}
+	firstSet := compileSet(module(4294967294))
+	secondSet := compileSet(module(4294967293))
+	input := `<top xmlns="urn:m"><v>hi</v><v>lo</v><v>lo hi</v></top>`
+	first, second := parseOnlyXML(t, firstSet, input), parseOnlyXML(t, secondSet, input)
+	requireD0121Refusal(t, first, second)
 }
 
 // TestDiffEmptyMixedSnapshots: an empty tree is libyang's NULL even when it names a different

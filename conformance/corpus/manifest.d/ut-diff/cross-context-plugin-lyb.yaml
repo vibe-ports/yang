@@ -1,0 +1,19 @@
+fixtures:
+  - id: ut-diff/cross-context-plugin-lyb
+    dir: ut-diff
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: []   # libyang LY_VALUE_LYB hashing across contexts, no RFC
+    areas: [diff]
+    request:
+      op: sequence
+      searchdirs: [schemas, ../types/schemas]
+      modules: [{name: diff-cross-context-plugins}]
+      steps:
+        - {do: parse, format: xml, data_type: data, parse_only: true, data: '<top xmlns="urn:vibe-ports:yang:diff-cross-context-plugins" xmlns:dcp="urn:vibe-ports:yang:diff-cross-context-plugins"><target><id>a</id></target><date>2024-01-02Z</date><time>12:34:56.25Z</time><xpath>count(/dcp:top/dcp:target)</xpath><node-instance-id>/dcp:top/dcp:target[dcp:id=&apos;a&apos;]</node-instance-id><instance-id-keys>[dcp:id=&apos;a&apos;]</instance-id-keys></top>'}
+        - do: diff
+          format: xml
+          data_type: data
+          parse_only: true
+          data: '<top xmlns="urn:vibe-ports:yang:diff-cross-context-plugins" xmlns:dcp="urn:vibe-ports:yang:diff-cross-context-plugins"><target><id>a</id></target><date>2024-01-02Z</date><time>12:34:56.25Z</time><xpath>count(/dcp:top/dcp:target)</xpath><node-instance-id>/dcp:top/dcp:target[dcp:id=&apos;a&apos;]</node-instance-id><instance-id-keys>[dcp:id=&apos;a&apos;]</instance-id-keys></top>'
+          target: {searchdirs: [schemas, ../types/schemas], modules: [{name: diff-cross-context-plugins}]}
+    golden: golden/cross-context-plugin-lyb.json

@@ -861,6 +861,7 @@ func (lc *lydCtx) appendSorted(parent, n *Node) (bool, error) {
 		// a run without an RB tree gets one (lyds_additionally_create_rb_tree), sorting it.
 		create := !sib.rbTree[leader]
 		if create {
+			insertionOrder := slices.Clone(run)
 			lc.tree.applyRunReorderHash(sib, run, reorderExact)
 			for _, old := range run {
 				lc.tree.work.Add(1)
@@ -868,6 +869,7 @@ func (lc *lydCtx) appendSorted(parent, n *Node) (bool, error) {
 				old.inRB = true
 			}
 			markRB(sib, leader)
+			lc.tree.buildRBOrder(sib, sib.rbGroups[leader], insertionOrder)
 		}
 		var moved bool
 		ord, moved = newDirtyOrder(&lc.tree.work, run, lc.tree.compareSorted, create)
@@ -883,6 +885,14 @@ func (lc *lydCtx) appendSorted(parent, n *Node) (bool, error) {
 	n.touch()
 	n.inRB = true
 	n.rbGroup = sib.rbGroups[ord.first()]
+	// Keep the native topology used outside the parser in the same insertion sequence as ord.
+	// The parser's own tree remains authoritative for its deferred physical publication.
+	if _, ok := lc.tree.rbInsert(sib, n, func(a, b *Node) (int, bool) {
+		return lc.tree.compareSorted(a, b), true
+	}); !ok {
+		lc.tree.work.hashErr = &opError{"LY_EINT", "Missing retained red-black topology for a system-ordered run."}
+		return false, lc.tree.work.hashErr
+	}
 	// rb_insert_node precedes lyd_insert_hash. The fourth child can build the
 	// table in link, which reads the pending logical order, so publish n there
 	// before linking it into the physical sibling slice.

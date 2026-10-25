@@ -35,6 +35,12 @@ func TestMergeDistinctSourceRBGroups(t *testing.T) {
 	}
 	src.top.rbTree = map[*Node]bool{src.top.list[0]: true}
 	src.top.rbGroups = map[*Node]*rbGroup{src.top.list[0]: groupA}
+	// the selected tree's retained topology, built in its native insertion order
+	selected := &dirtyOrder{work: &src.work}
+	for _, n := range src.top.list[:2] {
+		_, _ = selected.insertCompatible(n, func(a, b *Node) (int, bool) { return compareSorted(a, b), true })
+	}
+	src.top.rbOrders = map[*rbGroup]*dirtyOrder{groupA: selected}
 	for _, value := range []string{"15", "30"} {
 		if _, err := dst.NewTerm(nil, "m:s", value, NewOptions{}); err != nil {
 			t.Fatal(err)

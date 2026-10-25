@@ -1,0 +1,23 @@
+fixtures:
+  - id: ut-diff/cross-context-foreign-creates-hashed
+    dir: ut-diff
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    # Expected ordering rests on libyang v5.8.6 src/diff.c:332-376,383-527,1225-1375,
+    # src/tree_data.c:503-592,801-835, and src/tree_data_hash.c:167-203; tree_data.h:858 sets
+    # LYD_HT_MIN_ITEMS to 4. tree_data.c:522-536 uses the hash anchor only for equal contexts,
+    # while :536-590 is used for a foreign create even after the five-child diff parent gains children_ht.
+    rfc: []   # libyang data diff construction, schema ordering, and child hash-table mechanics, no RFC
+    areas: [diff]
+    request:
+      op: sequence
+      searchdirs: [schemas/cross-context-foreign-creates-hashed-a]
+      modules: [{name: diff-cross-context-foreign-creates-hashed}]
+      steps:
+        - {do: parse, format: xml, data_type: data, parse_only: true, data: '<top xmlns="urn:vibe-ports:yang:diff-cross-context-foreign-creates-hashed"><a>A</a><b>B</b></top>'}
+        - do: diff
+          format: xml
+          data_type: data
+          parse_only: true
+          data: '<top xmlns="urn:vibe-ports:yang:diff-cross-context-foreign-creates-hashed"><c>C</c><d>D</d><e>E</e></top>'
+          target: {searchdirs: [schemas/cross-context-foreign-creates-hashed-b], modules: [{name: diff-cross-context-foreign-creates-hashed}]}
+    golden: golden/cross-context-foreign-creates-hashed.json

@@ -526,7 +526,6 @@ var inventoryGapClasses = map[string]struct {
 	"any-direct":                 {id: "U-0112", exact: "unsupported: native pointer-level any-value calls have no public Go equivalent, U-0112", request: inventoryAnyDirectStep},
 	"operation-parent":           {id: "U-0106", reasons: []string{"rpc input into an existing", "operation input into an existing parent", "an rpc request with data_type", "a reply into an opaque request"}},
 	"reply-non-operation-parent": {id: "U-0110", reasons: []string{"reply into a non-operation parent"}},
-	"cross-context-diff":         {id: "D-0069", reasons: []string{"cross-context diff of populated trees"}},
 }
 
 func inventoryAnyDirectStep(p map[string]any) bool {

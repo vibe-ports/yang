@@ -1,0 +1,14 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Hand-written conformance fixture (this repo).
+module diff-cross-context-int-boolean-order {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:diff-cross-context-int-boolean-order";
+  prefix d;
+
+  container top {
+    presence "retain";
+    leaf-list v {
+      type int8;
+    }
+  }
+}

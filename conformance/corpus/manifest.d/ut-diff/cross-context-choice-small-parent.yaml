@@ -1,0 +1,19 @@
+fixtures:
+  - id: ut-diff/cross-context-choice-small-parent
+    dir: ut-diff
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: []   # libyang data diff lookup mechanics, no RFC
+    areas: [diff]
+    request:
+      op: sequence
+      searchdirs: [schemas/cross-context-choice-a]
+      modules: [{name: diff-cross-context-choice}]
+      steps:
+        - {do: parse, format: xml, data_type: data, parse_only: true, data: '<small xmlns="urn:vibe-ports:yang:diff-cross-context-choice"><x>1</x><y>same</y></small>'}
+        - do: diff
+          format: xml
+          data_type: data
+          parse_only: true
+          data: '<small xmlns="urn:vibe-ports:yang:diff-cross-context-choice"><x>1</x><y>same</y></small>'
+          target: {searchdirs: [schemas/cross-context-choice-b], modules: [{name: diff-cross-context-choice}]}
+    golden: golden/cross-context-choice-small-parent.json

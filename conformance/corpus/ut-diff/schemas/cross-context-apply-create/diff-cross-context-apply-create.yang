@@ -1,0 +1,21 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Hand-written conformance fixture (this repo).
+module diff-cross-context-apply-create {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:diff-cross-context-apply-create";
+  prefix dcac;
+
+  container parent {
+    presence "retain the parent when it has no child";
+    leaf child { type string; }
+  }
+
+  container sibling {
+    presence "keep an existing top-level sibling during apply";
+  }
+
+  container created {
+    presence "create this whole top-level subtree";
+    leaf value { type string; }
+  }
+}
