@@ -329,6 +329,13 @@ func runSequence(r Request, s *yang.Schema, resp map[string]any, exec executionC
 				err = tree.ApplyDiff(diff, data.ApplyDiffOptions{Module: str(st, "module", "")})
 			}
 			diags = diagsOf(err)
+			if owner := contextopts.ErrorSchema(err); owner != nil && snap.Set(owner) != snap.Set(s) &&
+				(diffOwner == nil || snap.Set(owner) != snap.Set(diffOwner)) {
+				// The harness collects the request and retained-diff contexts, not every
+				// context retained by a mixed diff. In particular, lyd_insert_check_schema
+				// logs on schema->module->ctx (libyang v5.8.6 tree_data.c:1074-1081).
+				diags = nil
+			}
 		case "trim":
 			phase = "xpath"
 			var o data.XPathOptions

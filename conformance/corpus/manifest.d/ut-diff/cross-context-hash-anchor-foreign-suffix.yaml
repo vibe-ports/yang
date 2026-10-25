@@ -1,0 +1,22 @@
+fixtures:
+  - id: ut-diff/cross-context-hash-anchor-foreign-suffix
+    dir: ut-diff
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    # tree_data.c:522-535 calls lys_getnext(new_node->schema, local_parent, ...). With a foreign
+    # schema node, tree_schema.c:301-332 follows its next sibling before it can restart from the
+    # local parent; c is therefore b's anchor, rather than the local-context a.
+    rfc: []   # libyang cross-context diff insertion and schema traversal mechanics, no RFC
+    areas: [diff]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      modules: [{name: diff-cross-context-hash-anchor}]
+      steps:
+        - {do: parse, format: xml, data_type: data, parse_only: true, data: '<t xmlns="urn:vibe-ports:yang:diff-cross-context-hash-anchor"><a>x</a><c>x</c><d>x</d><e>old</e></t>'}
+        - do: diff
+          format: xml
+          data_type: data
+          parse_only: true
+          data: '<t xmlns="urn:vibe-ports:yang:diff-cross-context-hash-anchor"><b>y</b><e>new</e></t>'
+          target: {searchdirs: [schemas], modules: [{name: diff-cross-context-hash-anchor}]}
+    golden: golden/cross-context-hash-anchor-foreign-suffix.json

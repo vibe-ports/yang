@@ -83,9 +83,15 @@ type siblings struct {
 	pending      map[*schema.Node]*dirtyOrder // the parser's dirty runs: the sibling order is their tree's
 	rbTree       map[*Node]bool               // libyang's lyds metadata lives on each run leader
 	rbGroups     map[*Node]*rbGroup           // tree identity follows metadata when its leader moves
+	rbOrders     map[*rbGroup]*dirtyOrder     // retained native RB shape for asymmetric cross-context comparisons
 	order        *childOrder                  // ordered sequence and occurrence indexes; compatibility records stay above
 	gen          uint64                       // changes with every insertion and removal
 	work         *workCounter                 // the tree's work counter once a node was linked: all and indexOf count visits
+	// rbDual lists the earlier trees that still hold a node besides its own (rbPos: a run that
+	// starts a new tree keeps its instances' nodes in a foreign leader's tree, as libyang's rb
+	// nodes do); rbDualCount counts such foreign entries per tree. Both make removal O(1) trees.
+	rbDual      map[*Node][]*rbGroup
+	rbDualCount map[*rbGroup]int
 
 	schemaUnordered bool                // a copy or move retained a different schema order
 	contexts        map[*schema.Set]int // linked schema nodes by retained context; lookups only read its size
@@ -393,24 +399,66 @@ func (s *siblings) runGone(n *Node) {
 
 // rb_remove_node empties only the selected tree. Adjacent runs of the same
 // schema can have different trees after a separator is removed.
-func (s *siblings) clearEmptyRBGroup(group *rbGroup) {
+func (s *siblings) clearEmptyRBGroup(group *rbGroup) bool {
 	s.touch()
 	if group == nil {
+		return false
+	}
+	// The tree's own members are its topology nodes less those it holds for other runs. Its
+	// leader was its last member: a single unlink drops it with runGone, a bulk one clears the
+	// leaders of all emptied trees in one pass (clearEmptyLeaders).
+	if order := s.rbOrders[group]; order != nil && len(order.nodes) > s.rbDualCount[group] {
+		return false
+	}
+	delete(s.rbOrders, group)
+	delete(s.rbDualCount, group)
+	return true
+}
+
+// clearEmptyLeaders drops the run-leader state that still selects an emptied tree: one pass over
+// the leaders for a whole bulk removal.
+func (s *siblings) clearEmptyLeaders(emptied map[*rbGroup]bool) {
+	if len(emptied) == 0 {
 		return
 	}
-	for _, n := range s.list {
+	for leader, group := range s.rbGroups {
 		if s.work != nil {
 			s.work.Add(1)
 		}
-		if n.inRB && n.rbGroup == group {
-			return
-		}
-	}
-	for leader, selected := range s.rbGroups {
-		if selected == group {
+		if emptied[group] {
 			s.runGone(leader)
 		}
 	}
+}
+
+// removeRBNode is lyds_unlink's rb_remove_node. The sibling set is touched before the retained
+// topology changes so #257's transaction can restore both its group map and every RB node.
+func (s *siblings) removeRBNode(n *Node) {
+	s.touch()
+	if n == nil || !n.inRB || n.rbGroup == nil {
+		return
+	}
+	if order := s.rbOrders[n.rbGroup]; order != nil {
+		order.work = s.work
+		order.remove(n)
+	}
+	s.dropDual(n)
+}
+
+// dropDual removes n from the earlier trees that still hold it (rbDual). libyang leaves those rb
+// nodes pointing at the unlinked node; the port drops them so no tree keeps a node that left
+// the siblings.
+func (s *siblings) dropDual(n *Node) {
+	for _, group := range s.rbDual[n] {
+		if order := s.rbOrders[group]; order != nil && order.nodes[n] != nil {
+			order.work = s.work
+			order.remove(n)
+		}
+		if s.rbDualCount[group]--; s.rbDualCount[group] <= 0 {
+			delete(s.rbDualCount, group)
+		}
+	}
+	delete(s.rbDual, n)
 }
 
 // len is the number of siblings, opaque ones included.
@@ -1510,6 +1558,9 @@ func (t *Tree) schemaIndex(s *siblings, sn *schema.Node) int {
 	// The linear branch of lyd_find_sibling_schema compares only module and
 	// node names for foreign contexts. Its table callback compares schema lineage.
 	if s.foreignFor(sn) {
+		if t.work.lookupDepth != 0 && t.foreignSchemaInput[s] {
+			return t.foreignSchemaIndex(s, sn, s.ht != nil)
+		}
 		for i, n := range s.list {
 			s.visit()
 			if schemaLookupMatch(n.schema, sn, s.ht != nil) {
@@ -1535,6 +1586,122 @@ func (t *Tree) schemaIndex(s *siblings, sn *schema.Node) int {
 		return i
 	}
 	return -1
+}
+
+type foreignSchemaCacheKey struct {
+	s     *siblings
+	table bool
+}
+
+type schemaLineageID uint32
+
+type schemaLineageComponent struct {
+	parent schemaLineageID
+	module string
+	name   string
+	kind   schema.Kind
+}
+
+type foreignSchemaIndexKey struct {
+	module  string
+	name    string
+	lineage schemaLineageID
+}
+
+// foreignSchemaIndex is the diff-time equivalent of lyd_find_sibling_schema's cross-context
+// comparisons. The C lookup compares module/name only without children_ht and complete schema
+// lineage with it (libyang v5.8.6 src/tree_data_common.c:1101-1137). Building this index once per
+// sibling set replaces the two repeated scans in diff.c:1252-1254 and 1339-1341.
+func (t *Tree) foreignSchemaIndex(s *siblings, sn *schema.Node, table bool) int {
+	if t.foreignSchema == nil {
+		t.foreignSchema = make(map[foreignSchemaCacheKey]map[foreignSchemaIndexKey][]int)
+	}
+	cacheKey := foreignSchemaCacheKey{s: s, table: table}
+	index := t.foreignSchema[cacheKey]
+	if index == nil {
+		// no capacity hint: the index grows only after each sibling's charge succeeded
+		index = make(map[foreignSchemaIndexKey][]int)
+		for i, n := range s.list {
+			s.visit()
+			if err := t.work.chargeLookup(1); err != nil {
+				return -1
+			}
+			key, ok, err := t.foreignSchemaKey(n.schema, table)
+			if err != nil || !ok { // a lookup budget error is returned at the diff boundary
+				return -1
+			}
+			index[key] = append(index[key], i)
+		}
+		t.foreignSchema[cacheKey] = index
+	}
+	if err := t.work.chargeLookup(1); err != nil {
+		return -1
+	}
+	key, valid, err := t.foreignSchemaKey(sn, table)
+	if err != nil || !valid {
+		return -1
+	}
+	// The key is the foreign match; a candidate of sn's own context must be sn itself
+	// (lyd_find_sibling_schema compares schema pointers there), so check each in order.
+	for _, i := range index[key] {
+		if err := t.work.chargeLookup(1); err != nil {
+			return -1
+		}
+		if schemaLookupMatch(s.list[i].schema, sn, table) {
+			return i
+		}
+	}
+	return -1
+}
+
+// foreignSchemaKey is the lineage key lyd_compare_schema_equal matches by. Building it is charged
+// to the running diff's lookup quota, or outside a diff to the mutation's hash quota: both are
+// reset at their operation boundary and their failure is returned, never a silently missing key.
+func (t *Tree) foreignSchemaKey(sn *schema.Node, table bool) (foreignSchemaIndexKey, bool, error) {
+	if sn == nil || sn.Module == nil {
+		return foreignSchemaIndexKey{}, false, nil
+	}
+	if !table {
+		return foreignSchemaIndexKey{module: sn.Module.Name, name: sn.Name}, true, nil
+	}
+	charge := t.work.chargeHash
+	if t.work.lookupDepth != 0 {
+		charge = t.work.chargeLookup
+	}
+	if t.schemaLineage == nil {
+		t.schemaLineage = make(map[*schema.Node]schemaLineageID)
+		t.lineageComponents = make(map[schemaLineageComponent]schemaLineageID)
+	}
+	if id, ok := t.schemaLineage[sn]; ok {
+		return foreignSchemaIndexKey{lineage: id}, true, nil
+	}
+	var missing []*schema.Node
+	for n := sn; n != nil; n = n.Parent {
+		if _, ok := t.schemaLineage[n]; ok {
+			break
+		}
+		missing = append(missing, n)
+	}
+	for i := len(missing) - 1; i >= 0; i-- {
+		n := missing[i]
+		if n.Module == nil {
+			return foreignSchemaIndexKey{}, false, nil
+		}
+		if err := charge(1); err != nil {
+			return foreignSchemaIndexKey{}, false, err
+		}
+		component := schemaLineageComponent{
+			parent: t.schemaLineage[n.Parent], module: n.Module.Name, name: n.Name, kind: n.Kind,
+		}
+		id, ok := t.lineageComponents[component]
+		if !ok {
+			t.nextLineageID++
+			id = t.nextLineageID
+			t.lineageComponents[component] = id
+		}
+		t.schemaLineage[n] = id
+	}
+	return foreignSchemaIndexKey{lineage: t.schemaLineage[sn]}, true, nil
 }
 
 // foreignFor reports whether a lookup of sn in s compares schema names, as

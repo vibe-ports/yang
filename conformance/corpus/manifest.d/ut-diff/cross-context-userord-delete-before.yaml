@@ -1,0 +1,19 @@
+fixtures:
+  - id: ut-diff/cross-context-userord-delete-before
+    dir: ut-diff
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/src/diff.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # lyd_diff_userord_get keys by schema pointer: deleting a mutates the context-A entry; context-B v creates a fresh [a,b] entry, so b at target position 0 compares with a and is replace with orig-value=a
+    rfc: []   # libyang cross-context diff bookkeeping, no RFC
+    areas: [diff]
+    request:
+      op: sequence
+      searchdirs: [schemas/cross-context-userord-delete-before]
+      modules: [{name: diff-cross-context-userord}]
+      steps:
+        - {do: parse, format: xml, data_type: data, parse_only: true, data: '<v xmlns="urn:vibe-ports:yang:cross-context-userord-delete-before">a</v><v xmlns="urn:vibe-ports:yang:cross-context-userord-delete-before">b</v>'}
+        - do: diff
+          format: xml
+          data_type: data
+          parse_only: true
+          data: '<v xmlns="urn:vibe-ports:yang:cross-context-userord-delete-before">b</v>'
+          target: {searchdirs: [schemas/cross-context-userord-delete-before], modules: [{name: diff-cross-context-userord}]}
+    golden: golden/cross-context-userord-delete-before.json

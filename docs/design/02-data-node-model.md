@@ -73,8 +73,8 @@ type Tree struct { set *schema.Set; top siblings; … } // pins the schema snaps
 What the slice changed, and why:
 - **System order is a sort at insertion, not at print.** libyang keeps system-ordered runs sorted
   (`lyds_insert`), and edits, merge and duplication depend on it, so the port keeps them sorted too;
-  where libyang's run merging is shape-dependent or undefined, the port does a stable merge (D-0061,
-  D-0062).
+  each run retains libyang's RB topology, so shape-dependent run merging replays the native tree
+  (D-0061 retired); where it is undefined the port keeps the source tree (D-0062).
 - **The index is the children hash table, not a per-list key map.** Duplicate detection and sibling
   lookups go through it, as in libyang; XPath steps still scan (`xpath.ChildLookup` over it is [#16](https://github.com/vibe-ports/yang/issues/16)).
 - **Opaque nodes live in their own slice**, always after schema nodes; schema nodes stay in schema

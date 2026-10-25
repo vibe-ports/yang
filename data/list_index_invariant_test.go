@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"math/rand/v2"
 	"slices"
+	"strings"
 	"testing"
 
 	"github.com/vibe-ports/yang/internal/schema"
@@ -190,6 +191,16 @@ func (m *listIndexModel) checkProbe(t *testing.T, tr *Tree, root, probe *Node) [
 		t.Fatal("indexed lookup differs from brute-force positional comparison in registration order")
 	}
 	return matches
+}
+
+// keylessInstance reports whether a list instance under root has no term first child.
+func keylessInstance(root *Node) bool {
+	for _, c := range root.kids.list {
+		if c.schema.Kind == schema.List && !isTermNode(firstChild(c)) {
+			return true
+		}
+	}
+	return false
 }
 
 func TestListIndexMutationInvariant(t *testing.T) {
@@ -383,6 +394,12 @@ func TestListIndexMutationInvariant(t *testing.T) {
 								}
 							}
 							retainsOrder = true
+						}
+						if err != nil && strings.Contains(err.Error(), "D-0121") && keylessInstance(root) {
+							// internal unlinks (op 8) can leave a list instance without children;
+							// rb_compare_lists would dereference its missing first child, so a
+							// sorted insertion that compares with it is refused without mutation
+							err, retainsOrder = nil, true
 						}
 						if err != nil {
 							t.Fatal(err)

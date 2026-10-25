@@ -406,11 +406,10 @@ func TestStoredHashValueRelinkBudgetKeepsOldValue(t *testing.T) {
 	if x.Value() != "a" || x.hash != oldHash || x.parent != op || op.kids.list[0] != x {
 		t.Fatal("failed value change left the old instance detached or rehashed")
 	}
-	tr.work.hashLimit = 128 // removal also updates the ordered operation index
+	tr.work.hashLimit = 128 // removal updates the ordered operation index and charges its RB work
 	if err := op.kids.list[1].Remove(); err != nil {
 		t.Fatal(err)
 	}
-	tr.work.hashLimit = 128 // the surviving instance also updates its secondary discriminator
 	if changed, err := x.SetValue("b"); err != nil || !changed {
 		t.Fatalf("alone value change: changed=%t error=%v; want indexed hash update", changed, err)
 	}

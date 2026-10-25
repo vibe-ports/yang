@@ -74,6 +74,9 @@ var DrainContextDiagnostics func(any) []ContextDiagnostic
 // contexts. It is used only by the conformance adapter, which models libyang context logs.
 var EnableContextDiagnostics func(any)
 
+// ErrorSchema returns the context where a validation error's diagnostics were logged.
+var ErrorSchema func(error) *snap.Schema
+
 // CheckDupContexts checks ordinary duplication's operand contexts.
 var CheckDupContexts func(any, any) error
 

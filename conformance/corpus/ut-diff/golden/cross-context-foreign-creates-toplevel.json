@@ -1,0 +1,224 @@
+{
+  "context_diagnostics": [],
+  "failed_step": null,
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "diff-cross-context-foreign-creates-toplevel",
+      "revision": null
+    }
+  ],
+  "op": "sequence",
+  "protocol": 2,
+  "rc": {
+    "err": 0,
+    "name": "LY_SUCCESS"
+  },
+  "steps": [
+    {
+      "diagnostics": [],
+      "do": "parse",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/diff-cross-context-foreign-creates-toplevel:a",
+          "schema": "/diff-cross-context-foreign-creates-toplevel:a",
+          "value": {
+            "canonical": "A",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/diff-cross-context-foreign-creates-toplevel:b",
+          "schema": "/diff-cross-context-foreign-creates-toplevel:b",
+          "value": {
+            "canonical": "B",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        }
+      ]
+    },
+    {
+      "diagnostics": [],
+      "diff": {
+        "json": "{\n  \"diff-cross-context-foreign-creates-toplevel:c\": \"C\",\n  \"@diff-cross-context-foreign-creates-toplevel:c\": {\n    \"yang:operation\": \"create\"\n  },\n  \"diff-cross-context-foreign-creates-toplevel:d\": \"D\",\n  \"@diff-cross-context-foreign-creates-toplevel:d\": {\n    \"yang:operation\": \"create\"\n  },\n  \"diff-cross-context-foreign-creates-toplevel:a\": \"A\",\n  \"@diff-cross-context-foreign-creates-toplevel:a\": {\n    \"yang:operation\": \"delete\"\n  },\n  \"diff-cross-context-foreign-creates-toplevel:b\": \"B\",\n  \"@diff-cross-context-foreign-creates-toplevel:b\": {\n    \"yang:operation\": \"delete\"\n  }\n}\n",
+        "xml": "<c xmlns=\"urn:vibe-ports:yang:diff-cross-context-foreign-creates-toplevel\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"create\">C</c>\n<d xmlns=\"urn:vibe-ports:yang:diff-cross-context-foreign-creates-toplevel\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"create\">D</d>\n<a xmlns=\"urn:vibe-ports:yang:diff-cross-context-foreign-creates-toplevel\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"delete\">A</a>\n<b xmlns=\"urn:vibe-ports:yang:diff-cross-context-foreign-creates-toplevel\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"delete\">B</b>\n"
+      },
+      "diff_typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [
+            {
+              "module": "yang",
+              "name": "operation",
+              "value": "create"
+            }
+          ],
+          "opaque": null,
+          "path": "/diff-cross-context-foreign-creates-toplevel:c",
+          "schema": "/diff-cross-context-foreign-creates-toplevel:c",
+          "value": {
+            "canonical": "C",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [
+            {
+              "module": "yang",
+              "name": "operation",
+              "value": "create"
+            }
+          ],
+          "opaque": null,
+          "path": "/diff-cross-context-foreign-creates-toplevel:d",
+          "schema": "/diff-cross-context-foreign-creates-toplevel:d",
+          "value": {
+            "canonical": "D",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [
+            {
+              "module": "yang",
+              "name": "operation",
+              "value": "delete"
+            }
+          ],
+          "opaque": null,
+          "path": "/diff-cross-context-foreign-creates-toplevel:a",
+          "schema": "/diff-cross-context-foreign-creates-toplevel:a",
+          "value": {
+            "canonical": "A",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [
+            {
+              "module": "yang",
+              "name": "operation",
+              "value": "delete"
+            }
+          ],
+          "opaque": null,
+          "path": "/diff-cross-context-foreign-creates-toplevel:b",
+          "schema": "/diff-cross-context-foreign-creates-toplevel:b",
+          "value": {
+            "canonical": "B",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        }
+      ],
+      "do": "diff",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/diff-cross-context-foreign-creates-toplevel:a",
+          "schema": "/diff-cross-context-foreign-creates-toplevel:a",
+          "value": {
+            "canonical": "A",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/diff-cross-context-foreign-creates-toplevel:b",
+          "schema": "/diff-cross-context-foreign-creates-toplevel:b",
+          "value": {
+            "canonical": "B",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        }
+      ]
+    }
+  ],
+  "verdict": "valid"
+}

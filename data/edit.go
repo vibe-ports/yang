@@ -42,18 +42,27 @@ var (
 // done turns an operation's error into its result: the logged diagnostics as a
 // *ValidationError, other errors (budget, not found) as they are.
 func (l *logger) done(err error) error {
+	var contextual *loggedContextError
+	errors.As(err, &contextual)
+	finish := func(result error) error {
+		var ve *ValidationError
+		if contextual != nil && errors.As(result, &ve) {
+			ve.set = contextual.set
+		}
+		return result
+	}
 	var oe *opError
 	if errors.As(err, &oe) {
 		err = l.logErr(oe.Err, "%s", oe.Msg)
 	}
 	if errors.Is(err, errLogged) {
-		return l.result()
+		return finish(l.result())
 	}
 	var rc rcError
 	if errors.As(err, &rc) {
-		return &ValidationError{Diags: l.diags, rc: string(rc)}
+		return finish(&ValidationError{Diags: l.diags, rc: string(rc), set: l.set})
 	}
-	return err
+	return finish(err)
 }
 
 // NewPath is lyd_new_path: it creates the nodes of a JSON path
@@ -889,12 +898,15 @@ func (t *Tree) changeNodeValue(n *Node, v types.Value, hashAmount uint64) {
 			t.work.hashErr = err
 			return
 		}
-		restore, err := t.linkOrigin(target)
+		restore, arm, err := t.linkOrigin(target)
 		if err != nil {
 			return
 		}
 		if err := t.work.checkChangedIndex(target, n, &v, hashAmount); err != nil {
 			t.work.hashErr = err
+			return
+		}
+		if err := arm(); err != nil {
 			return
 		}
 		unlinkRetainingHistory(target)
@@ -915,6 +927,10 @@ func (t *Tree) changeNodeValue(n *Node, v types.Value, hashAmount uint64) {
 				s.key.keySlot = s.old
 			}
 			restore()
+			// the refused reinsertion is the change's result (SetValue, diff, Merge)
+			if t.work.hashErr == nil {
+				t.work.hashErr = linkErr
+			}
 		}
 		return
 	}
@@ -1725,7 +1741,7 @@ func (t *Tree) mergeSibling(lv *mergeLevel, src *Node) error {
 		for e := range d.All() {
 			e.flags |= FlagNew // required for validation
 		}
-		if sortedSupported(d) && sib.hasRB(d.schema) && !sib.hasUnsorted(d.schema) {
+		if sortedSupported(d) && t.sortedRunBatchable(sib, d) {
 			// the run is sorted: lyd_insert_node puts d after its equal values, as splice does
 			lv.pend, lv.first = append(lv.pend, d), append(lv.first, firstInst)
 			return nil
@@ -1872,17 +1888,27 @@ func (t *Tree) flushMerge(lv *mergeLevel) error {
 	if err := t.preflightSplice(lv.parent, sib, lv.pend); err != nil {
 		return err
 	}
-	// Splice needs positions; it already walks/copies the sibling slice once.
-	lo := t.schemaIndex(sib, lv.pend[0].schema)
-	hi := lo
-	for hi < len(sib.list) && sib.list[hi].schema == lv.pend[0].schema {
-		hi++
+	// lyd_merge_sibling_r inserts each pending copy with lyd_insert_node: replay those RB
+	// insertions on a copy of the run's topology, then publish the run once. The copy is
+	// detached until everything is charged; the publication already walks the sibling slice.
+	lo := t.sortedLeaderIndex(sib, lv.pend[0]) // lyd_insert_node's leader (lyd_find_sibling_schema)
+	if lo < 0 {
+		return &opError{"LY_EINT", "Missing retained red-black topology for a system-ordered run."}
 	}
-	for _, d := range lv.pend {
-		d.inRB = true
-		d.rbGroup = sib.rbGroups[sib.runLeader(d.schema)]
+	hi := t.retainedRunEnd(sib, lo)
+	group := sib.rbGroups[sib.list[lo]]
+	current := sib.rbOrders[group]
+	if current == nil {
+		return &opError{"LY_EINT", "Missing retained red-black topology for a system-ordered run."}
 	}
-	if err := t.splice(lv.parent, sib, lo, hi, lv.pend, false); err != nil {
+	if err := t.work.chargeHash(uint64(len(current.nodes)) + 1); err != nil {
+		return err
+	}
+	order := cloneDirtyOrder(current)
+	if err := t.rbReplay(order, lv.pend); err != nil {
+		return err
+	}
+	if err := t.rbPublish(lv.parent, sib, lo, hi, group, order, lv.pend); err != nil {
 		return err
 	}
 	for i, d := range lv.pend {

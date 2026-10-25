@@ -1,0 +1,21 @@
+fixtures:
+  - id: ut-diff/sweep/sweep-30
+    dir: ut-diff
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    # Expected behavior rests on libyang v5.8.6 src/diff.c:383-527,1225-1375 and
+    # src/tree_data.c:503-592,712-730,778-835; the oracle golden decides the exact diff tree.
+    rfc: []   # deterministic differential coverage of libyang diff mechanics, no RFC
+    areas: [diff]
+    request:
+      op: sequence
+      searchdirs: [schemas/sweep-30-a]
+      modules: [{name: diff-sweep-30}]
+      steps:
+        - {do: parse, format: xml, data_type: data, parse_only: true, data: '<top xmlns="urn:vibe-ports:yang:ut-diff:sweep:30"><c0><key>k0</key><value>c</value></c0><c1>-2</c1><c1>0</c1><c1>1</c1><c2>0</c2></top>'}
+        - do: diff
+          format: xml
+          data_type: data
+          parse_only: true
+          data: '<top xmlns="urn:vibe-ports:yang:ut-diff:sweep:30"><c1>1</c1><c2>0</c2><c2>-2</c2></top>'
+          target: {searchdirs: [schemas/sweep-30-b], modules: [{name: diff-sweep-30}]}
+    golden: golden/sweep-30.json

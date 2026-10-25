@@ -54,7 +54,7 @@ func TestParseDeferredRunHashThreshold(t *testing.T) {
 	}
 }
 
-// A regular link or a merge splice can attach a node beside a deferred parser
+// A regular link or a merge batch publication can attach a node beside a deferred parser
 // run without adding it to that run's RB tree. Table construction still reads it.
 func TestPendingOrderIncludesOtherLinks(t *testing.T) {
 	for _, splice := range []bool{false, true} {
@@ -75,7 +75,10 @@ func TestPendingOrderIncludesOtherLinks(t *testing.T) {
 			sib.pending = map[*schema.Node]*dirtyOrder{f.ll: ord}
 			n := f.term(t, f.ll, "1")
 			if splice {
-				mustLink(t, tr.splice(parent, sib, 0, len(sib.list), []*Node{n}, true))
+				// a batch publication of another topology in front of the deferred run
+				d := &dirtyOrder{work: &tr.work}
+				d.place(n, nil, false)
+				mustLink(t, tr.rbPublish(parent, sib, 0, 0, &rbGroup{}, d, []*Node{n}))
 			} else {
 				mustLink(t, tr.insert(parent, n, insertLast))
 			}

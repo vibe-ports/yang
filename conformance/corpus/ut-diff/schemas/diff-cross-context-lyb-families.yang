@@ -1,0 +1,32 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Hand-written conformance fixture (this repo).
+module diff-cross-context-lyb-families {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:diff-cross-context-lyb-families";
+  prefix dcclf;
+
+  import ietf-inet-types { prefix inet; }
+  import ietf-yang-types { prefix yang-types; }
+  import libnetconf2-netconf-server { prefix np2; }
+
+  container top {
+    leaf-list binary-value { type binary; }
+    leaf-list boolean-value { type boolean; }
+    leaf-list decimal-value { type decimal64 { fraction-digits 2; } }
+    leaf-list empty-value { type empty; }
+    leaf-list ipv4-zone { type inet:ipv4-address; }
+    leaf-list ipv4-no-zone { type inet:ipv4-address-no-zone; }
+    leaf-list ipv4-prefix { type inet:ipv4-prefix; }
+    leaf-list ipv6-zone { type inet:ipv6-address; }
+    leaf-list ipv6-no-zone { type inet:ipv6-address-no-zone; }
+    leaf-list ipv6-prefix { type inet:ipv6-prefix; }
+    leaf-list hex-value { type yang-types:hex-string; }
+    leaf-list time-period { type np2:time-period; }
+    leaf-list union-value {
+      type union {
+        type uint16;
+        type string;
+      }
+    }
+  }
+}

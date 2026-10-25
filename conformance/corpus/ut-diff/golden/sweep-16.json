@@ -1,0 +1,473 @@
+{
+  "context_diagnostics": [],
+  "failed_step": null,
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "diff-sweep-16",
+      "revision": null
+    }
+  ],
+  "op": "sequence",
+  "protocol": 2,
+  "rc": {
+    "err": 0,
+    "name": "LY_SUCCESS"
+  },
+  "steps": [
+    {
+      "diagnostics": [],
+      "do": "parse",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [],
+          "opaque": null,
+          "path": "/diff-sweep-16:top",
+          "schema": "/diff-sweep-16:top",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/diff-sweep-16:top/c1[.='a']",
+          "schema": "/diff-sweep-16:top/c1",
+          "value": {
+            "canonical": "a",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/diff-sweep-16:top/c1[.='b']",
+          "schema": "/diff-sweep-16:top/c1",
+          "value": {
+            "canonical": "b",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/diff-sweep-16:top/c2[.='0']",
+          "schema": "/diff-sweep-16:top/c2",
+          "value": {
+            "canonical": "0",
+            "type": "int16",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/diff-sweep-16:top/c2[.='1']",
+          "schema": "/diff-sweep-16:top/c2",
+          "value": {
+            "canonical": "1",
+            "type": "int16",
+            "typedef": null,
+            "union_member": null
+          }
+        }
+      ]
+    },
+    {
+      "diagnostics": [],
+      "diff": {
+        "json": "{\n  \"diff-sweep-16:top\": {\n    \"@\": {\n      \"yang:operation\": \"none\"\n    },\n    \"diff-sweep-16:c3\": [\n      -2,\n      0,\n      1\n    ],\n    \"@diff-sweep-16:c3\": [\n      {\n        \"yang:operation\": \"create\"\n      },\n      {\n        \"yang:operation\": \"create\"\n      },\n      {\n        \"yang:operation\": \"create\"\n      }\n    ],\n    \"diff-sweep-16:c0\": [\n      \"a\",\n      \"c\",\n      \"d\"\n    ],\n    \"@diff-sweep-16:c0\": [\n      {\n        \"yang:operation\": \"create\"\n      },\n      {\n        \"yang:operation\": \"create\"\n      },\n      {\n        \"yang:operation\": \"create\"\n      }\n    ],\n    \"c1\": [\n      \"a\"\n    ],\n    \"@c1\": [\n      {\n        \"yang:operation\": \"delete\"\n      }\n    ],\n    \"diff-sweep-16:c1\": [\n      \"c\"\n    ],\n    \"@diff-sweep-16:c1\": [\n      {\n        \"yang:operation\": \"create\"\n      }\n    ],\n    \"c2\": [\n      1\n    ],\n    \"@c2\": [\n      {\n        \"yang:operation\": \"delete\"\n      }\n    ]\n  }\n}\n",
+        "xml": "<top xmlns=\"urn:vibe-ports:yang:ut-diff:sweep:16\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\">\n  <c3 yang:operation=\"create\">-2</c3>\n  <c3 yang:operation=\"create\">0</c3>\n  <c3 yang:operation=\"create\">1</c3>\n  <c0 yang:operation=\"create\">a</c0>\n  <c0 yang:operation=\"create\">c</c0>\n  <c0 yang:operation=\"create\">d</c0>\n  <c1 yang:operation=\"delete\">a</c1>\n  <c1 yang:operation=\"create\">c</c1>\n  <c2 yang:operation=\"delete\">1</c2>\n</top>\n"
+      },
+      "diff_typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [
+            {
+              "module": "yang",
+              "name": "operation",
+              "value": "none"
+            }
+          ],
+          "opaque": null,
+          "path": "/diff-sweep-16:top",
+          "schema": "/diff-sweep-16:top",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [
+            {
+              "module": "yang",
+              "name": "operation",
+              "value": "create"
+            }
+          ],
+          "opaque": null,
+          "path": "/diff-sweep-16:top/diff-sweep-16:c3[.='-2']",
+          "schema": "/diff-sweep-16:top/c3",
+          "value": {
+            "canonical": "-2",
+            "type": "int8",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [
+            {
+              "module": "yang",
+              "name": "operation",
+              "value": "create"
+            }
+          ],
+          "opaque": null,
+          "path": "/diff-sweep-16:top/diff-sweep-16:c3[.='0']",
+          "schema": "/diff-sweep-16:top/c3",
+          "value": {
+            "canonical": "0",
+            "type": "int8",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [
+            {
+              "module": "yang",
+              "name": "operation",
+              "value": "create"
+            }
+          ],
+          "opaque": null,
+          "path": "/diff-sweep-16:top/diff-sweep-16:c3[.='1']",
+          "schema": "/diff-sweep-16:top/c3",
+          "value": {
+            "canonical": "1",
+            "type": "int8",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [
+            {
+              "module": "yang",
+              "name": "operation",
+              "value": "create"
+            }
+          ],
+          "opaque": null,
+          "path": "/diff-sweep-16:top/diff-sweep-16:c0[.='a']",
+          "schema": "/diff-sweep-16:top/c0",
+          "value": {
+            "canonical": "a",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [
+            {
+              "module": "yang",
+              "name": "operation",
+              "value": "create"
+            }
+          ],
+          "opaque": null,
+          "path": "/diff-sweep-16:top/diff-sweep-16:c0[.='c']",
+          "schema": "/diff-sweep-16:top/c0",
+          "value": {
+            "canonical": "c",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [
+            {
+              "module": "yang",
+              "name": "operation",
+              "value": "create"
+            }
+          ],
+          "opaque": null,
+          "path": "/diff-sweep-16:top/diff-sweep-16:c0[.='d']",
+          "schema": "/diff-sweep-16:top/c0",
+          "value": {
+            "canonical": "d",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [
+            {
+              "module": "yang",
+              "name": "operation",
+              "value": "delete"
+            }
+          ],
+          "opaque": null,
+          "path": "/diff-sweep-16:top/c1[.='a']",
+          "schema": "/diff-sweep-16:top/c1",
+          "value": {
+            "canonical": "a",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [
+            {
+              "module": "yang",
+              "name": "operation",
+              "value": "create"
+            }
+          ],
+          "opaque": null,
+          "path": "/diff-sweep-16:top/diff-sweep-16:c1[.='c']",
+          "schema": "/diff-sweep-16:top/c1",
+          "value": {
+            "canonical": "c",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [
+            {
+              "module": "yang",
+              "name": "operation",
+              "value": "delete"
+            }
+          ],
+          "opaque": null,
+          "path": "/diff-sweep-16:top/c2[.='1']",
+          "schema": "/diff-sweep-16:top/c2",
+          "value": {
+            "canonical": "1",
+            "type": "int16",
+            "typedef": null,
+            "union_member": null
+          }
+        }
+      ],
+      "do": "diff",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [],
+          "opaque": null,
+          "path": "/diff-sweep-16:top",
+          "schema": "/diff-sweep-16:top",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/diff-sweep-16:top/c1[.='a']",
+          "schema": "/diff-sweep-16:top/c1",
+          "value": {
+            "canonical": "a",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/diff-sweep-16:top/c1[.='b']",
+          "schema": "/diff-sweep-16:top/c1",
+          "value": {
+            "canonical": "b",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/diff-sweep-16:top/c2[.='0']",
+          "schema": "/diff-sweep-16:top/c2",
+          "value": {
+            "canonical": "0",
+            "type": "int16",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/diff-sweep-16:top/c2[.='1']",
+          "schema": "/diff-sweep-16:top/c2",
+          "value": {
+            "canonical": "1",
+            "type": "int16",
+            "typedef": null,
+            "union_member": null
+          }
+        }
+      ]
+    }
+  ],
+  "verdict": "valid"
+}

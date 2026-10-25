@@ -178,7 +178,8 @@ func TestInsertWork(t *testing.T) {
 				t.Fatalf("position %d holds %s", i, k.value.Canonical())
 			}
 		}
-		if limit := n * (3*bits.Len(n) + 4); int(tr.work.Load()) > limit {
+		// rb_insert_node descends the retained tree (height up to 2*log2 n), then recolours
+		if limit := n * (5*bits.Len(n) + 4); int(tr.work.Load()) > limit {
 			t.Fatalf("reversed %v: %d comparisons, limit %d", reversed, int(tr.work.Load()), limit)
 		}
 	}

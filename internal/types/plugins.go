@@ -15,6 +15,15 @@ type plugin struct {
 	// validate: the record's validate_value is lyplg_type_validate_value_string (hex-string);
 	// the other records have none.
 	validate bool
+	// stringStore: the record's store callback is the built-in lyplg_type_store_string
+	// (time_period.c), so its values have string storage. No other libyang record reuses a
+	// built-in store callback.
+	stringStore bool
+	// canonOnly: the store callback zeroes the value and writes only its canonical string
+	// (lyplg_type_store_string, lyplg_type_store_hex_string), so the whole lyd_value union is
+	// zero. The others (inet, date, time, date-and-time, xpath1.0, node-instance-identifier,
+	// instance-identifier-keys) write fixed or dynamic memory.
+	canonOnly bool
 }
 
 // pluginKey is (module, revision, typedef); revision "" matches every revision.

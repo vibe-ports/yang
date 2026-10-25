@@ -152,6 +152,18 @@ func (n *Node) touch() {
 	}
 }
 
+// setWork binds s and its retained RB topologies to work: a topology must not keep the tree it
+// was built in alive, or charge it, after its subtree moved to another tree.
+func (s *siblings) setWork(work *workCounter) {
+	s.work = work
+	for _, d := range s.rbOrders {
+		d.work = work
+	}
+	for _, d := range s.pending {
+		d.work = work
+	}
+}
+
 // rebind records the work counter of s before bindSubtreeWork moves it to another tree.
 func (s *siblings) rebind(work *workCounter) {
 	if s.work == work {
@@ -311,15 +323,31 @@ func (j *hashTransaction) captureSiblings(s *siblings) {
 	saved.rbTree = maps.Clone(s.rbTree)
 	saved.rbGroups = maps.Clone(s.rbGroups)
 	saved.order = cloneChildOrder(s)
+	saved.rbDualCount = maps.Clone(s.rbDualCount)
+	if s.rbDual != nil {
+		saved.rbDual = make(map[*Node][]*rbGroup, len(s.rbDual))
+		for n, groups := range s.rbDual {
+			saved.rbDual[n] = slices.Clone(groups)
+		}
+	}
+	if s.rbOrders != nil {
+		saved.rbOrders = make(map[*rbGroup]*dirtyOrder, len(s.rbOrders))
+		for group, order := range s.rbOrders {
+			saved.rbOrders[group] = cloneDirtyOrder(order)
+		}
+	}
 	saved.contexts = maps.Clone(s.contexts) // a handful of contexts: not charged
 	j.siblings[s] = saved
 	objects := 1 + uint64(len(s.list)+len(s.opq)+len(s.ht)+len(s.leaders)+len(s.firstRun)+
 		len(s.exactByNode)+len(s.history)+len(s.leaderByNode)+len(s.unsorted)+len(s.rbTree)+len(s.rbGroups)+
-		len(s.pending))
+		len(s.rbOrders)+len(s.pending))
 	if s.order != nil {
 		// Sequence handles, occurrence nodes/maps, entry metadata, and sparse
 		// rank nodes are all private rollback copies.
 		objects += 6 + 6*uint64(len(s.order.byNode)) + 2*uint64(len(s.order.entries))
+	}
+	for _, order := range s.rbOrders {
+		objects += uint64(len(order.nodes))
 	}
 	for _, c := range s.ht {
 		j.captureChain(c, &objects)
@@ -377,7 +405,7 @@ func (j *hashTransaction) restore() {
 	}
 	// after the sibling sets: a set rebound before its capture was captured with the new counter
 	for s, work := range j.works {
-		s.work = work
+		s.setWork(work)
 	}
 	for s := range j.siblings {
 		s.setOrderHooks()

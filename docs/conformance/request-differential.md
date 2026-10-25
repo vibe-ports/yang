@@ -126,7 +126,6 @@ APIs too, retiring `canonical-values` (U-0108) and `list2` (U-0109).
 | `any-direct` | U-0112 | `any_direct` step: native pointer-level any-value calls | 230 |
 | `operation-parent` | U-0106 | Operation input into an existing parent, or reply into an opaque request | 691 |
 | `reply-non-operation-parent` | U-0110 | Reply into a parent that is not an RPC/action; `ParseOpOptions.Request` rejects it before parsing | 0 |
-| `cross-context-diff` | D-0069 | Diff matching between populated trees from separate schema snapshots (#236) | 0 |
 | **Total** | | | **960** |
 
 The classifier requires the relevant step and the exact unsupported reason.
@@ -385,7 +384,7 @@ B-class section above.
 | B — GAP | `notification-netconf` (U-0110) | 89,905 |
 | B — GAP | `notification-restconf` (U-0110) | 91,797 |
 | B — GAP | `reply-non-operation-parent` (U-0110) | 3,893 |
-| B — GAP | `cross-context-diff` (D-0069) | 1,272 |
+| B — GAP | `cross-context-diff` (D-0069 at capture; resolved by #242) | 1,272 |
 | C — ARTEFACT | Mutation outside the subject | **0** |
 | DEV | `dup-term-parent` (D-0123) | 240 |
 | DEV | `op-parse-term-parent` (U-0106) | 1 |
@@ -460,7 +459,7 @@ The fixes retain the generator and comparator unchanged.
 |---|---:|---|---|
 | Missing diff input with `data_node` | 52 | MATCH: resolve `data_node` even when the parsed second tree is NULL | `lyoracle.c:2365–2382` makes parsing conditional on input, then resolves the selector unconditionally |
 | XPath envelope type with absent/null input | 4 | MATCH: preserve the `LY_EINVAL` input diagnostic | `lyoracle.c:1284,1317,1529–1532` passes NULL input into the operation parser and reports data-error |
-| Populated diff trees in separate target contexts | 554 | B `cross-context-diff`, D-0069: unsupported matching, already tracked by #236 | `lyoracle.c:2366–2386` builds the target, parses, resolves selectors, then diffs across contexts |
+| Populated diff trees in separate target contexts | 554 | B at capture; MATCH since #242: sibling schemas and instances are matched by lineage across contexts, and diff insertion retains libyang's mixed-context anchor order | `lyoracle.c:2366–2386` builds the target, parses, resolves selectors, then diffs across contexts |
 | Relative delete path after removing `merge` / `merge_file` | 2 | MATCH: `Tree.Find` evaluates relative paths from the retained first node's children | `lyoracle.c:2305` starts lookup at the retained first node |
 | `diff_merge` with both parent and source selectors | 1 | MATCH: resolve the parent before the source node | `lyoracle.c:2446–2450` checks the parent before evaluating `src_node` |
 | **Total** | **613** | | |
@@ -469,9 +468,8 @@ The 52 missing-input selector cases comprise four cases in each of the twelve
 `diff/<data_type>` seeds (including `reply-with-rpc`), plus four in `step/diff`.
 Both inline and file input mutations cover absent and null values.
 
-The diff capability check occurs after parsing and both selector checks, and
-requires two populated trees from distinct snapshots. Empty-tree diff cases
-and request errors retain their concrete results. Relative delete lookup now
+Cross-context diff matching occurs after parsing and both selector checks.
+Empty-tree diff cases and request errors retain their concrete results. Relative delete lookup now
 uses the shared `Tree.Find` implementation; an empty tree still produces the
 oracle's `LY_ENOTFOUND`.
 
