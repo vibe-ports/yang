@@ -44,7 +44,7 @@ func init() {
 			return nil
 		}
 		defer t.work.beginHashWork()()
-		if err := t.work.chargeHash(uint64(t.top.SchemaLen()) + uint64(t.top.OpaqueLen())); err != nil {
+		if err := t.work.chargeHash(uint64(t.top.SchemaLen()) + uint64(t.top.OpaqueLen())); err != nil { //nolint:gosec // sibling counts are nonnegative
 			return err
 		}
 		roots := t.top.nodes()

@@ -867,7 +867,7 @@ func (lc *lydCtx) appendSorted(parent, n *Node) (bool, error) {
 	// changing the authoritative graph. Existing slots are paid once when deferral starts.
 	publication := uint64(3)
 	if sib.pending[n.schema] == nil && pred != run.At(run.Len()-1) {
-		publication += 3 * uint64(runLen)
+		publication += 3 * uint64(runLen) //nolint:gosec // sibling counts are nonnegative
 	}
 	if pred == nil {
 		publication = addHashBound(publication, sib.transferCost(leader, n))

@@ -671,7 +671,7 @@ func (t *Tree) moveNodes(parent *Node, src *Tree) (result error) {
 			j.restore()
 		}
 	}()
-	if err := t.work.chargeHash(8*(uint64(src.top.SchemaLen())+uint64(src.top.OpaqueLen())) + 1); err != nil {
+	if err := t.work.chargeHash(8*(uint64(src.top.SchemaLen())+uint64(src.top.OpaqueLen())) + 1); err != nil { //nolint:gosec // sibling counts are nonnegative
 		return err
 	}
 	original := slices.Collect(src.top.all())

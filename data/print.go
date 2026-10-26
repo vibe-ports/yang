@@ -112,10 +112,10 @@ func (o PrintOptions) isDefault(n *Node) bool {
 					t = newTree(ctxOf(root))
 					if root.schema == nil {
 						// No work binding or journal exists on this fresh view.
-						t.top.Build(nil, []*Node{root}) //nolint:errcheck // unbound storage cannot fail journal capture
+						t.top.Build(nil, []*Node{root}) //nolint:errcheck,gosec // unbound storage cannot fail journal capture
 					} else {
 						// No work binding or journal exists on this fresh view.
-						t.top.Build([]*Node{root}, nil) //nolint:errcheck // unbound storage cannot fail journal capture
+						t.top.Build([]*Node{root}, nil) //nolint:errcheck,gosec // unbound storage cannot fail journal capture
 						t.top.contexts = map[*schema.Set]int{ctxOf(root): 1}
 					}
 					dc.views[root] = t

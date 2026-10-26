@@ -334,7 +334,7 @@ func anyFollowing(child *Node, work *workCounter) ([]*Node, error) {
 		return nil, nil
 	}
 	if sib := child.siblingsOf(); sib != nil {
-		if err := work.chargeHash(2*(uint64(sib.SchemaLen())+uint64(sib.OpaqueLen())) + 1); err != nil {
+		if err := work.chargeHash(2*(uint64(sib.SchemaLen())+uint64(sib.OpaqueLen())) + 1); err != nil { //nolint:gosec // sibling counts are nonnegative
 			return nil, err
 		}
 		nodes := sib.nodes()
@@ -413,7 +413,7 @@ func (n *Node) clearAny() error {
 		return err
 	}
 	if old.work != nil {
-		if err := old.work.chargeHash(uint64(old.SchemaLen()) + uint64(old.OpaqueLen()) + 1); err != nil {
+		if err := old.work.chargeHash(uint64(old.SchemaLen()) + uint64(old.OpaqueLen()) + 1); err != nil { //nolint:gosec // sibling counts are nonnegative
 			return err
 		}
 	}
@@ -421,7 +421,7 @@ func (n *Node) clearAny() error {
 	if work == nil {
 		work = &workCounter{}
 	}
-	if err := work.chargeHash(uint64(old.SchemaLen()) + uint64(old.OpaqueLen())); err != nil {
+	if err := work.chargeHash(uint64(old.SchemaLen()) + uint64(old.OpaqueLen())); err != nil { //nolint:gosec // sibling counts are nonnegative
 		return err
 	}
 	nodes, err := ownedNodes(old.nodes(), work)

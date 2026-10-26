@@ -397,6 +397,7 @@ func (j *hashTransaction) captureSiblings(s *siblings) error {
 	if err := j.charge(uint64(len(s.history) + len(s.rbDual) + len(s.rbMore))); err != nil {
 		return err
 	}
+	//nolint:gosec // all terms are existing nonnegative collection sizes
 	objects := 1 + uint64(s.SchemaLen()+s.OpaqueLen()+len(s.ht)+len(s.leaders)+len(s.firstRun)+
 		len(s.exactByNode)+len(s.history)+len(s.leaderByNode)+len(s.unsorted)+len(s.rbTree)+len(s.rbGroups)+
 		len(s.rbOrders)+len(s.pending)+len(s.contexts)+len(s.rbDual)+len(s.rbDualCount)+len(s.rbMore))

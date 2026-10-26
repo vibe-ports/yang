@@ -22,7 +22,7 @@ func ownedNodes(roots []*Node, work *workCounter) ([]*Node, error) {
 		if n.any != nil {
 			sib = &n.any.children
 		}
-		if err := work.chargeHash(1 + uint64(sib.SchemaLen()) + uint64(sib.OpaqueLen())); err != nil {
+		if err := work.chargeHash(1 + uint64(sib.SchemaLen()) + uint64(sib.OpaqueLen())); err != nil { //nolint:gosec // sibling counts are nonnegative
 			return nil, err
 		}
 		nodes = append(nodes, n)

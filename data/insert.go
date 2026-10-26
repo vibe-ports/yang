@@ -1973,7 +1973,7 @@ func bindSubtreeWork(root *Node, work *workCounter) error {
 		if sib.work == work {
 			continue // bound with all its descendants already
 		}
-		if err := work.chargeHash(1 + uint64(sib.SchemaLen()+sib.OpaqueLen()+len(sib.rbOrders)+len(sib.pending))); err != nil {
+		if err := work.chargeHash(1 + uint64(sib.SchemaLen()+sib.OpaqueLen()+len(sib.rbOrders)+len(sib.pending))); err != nil { //nolint:gosec // sibling counts are nonnegative
 			return err
 		}
 		if err := sib.rebind(work); err != nil {
@@ -2017,7 +2017,7 @@ func subtreeBindingBound(root *Node, work *workCounter, force bool) (uint64, err
 		if !force && sib.work == work {
 			continue
 		}
-		children := uint64(sib.SchemaLen() + sib.OpaqueLen())
+		children := uint64(sib.SchemaLen() + sib.OpaqueLen()) //nolint:gosec // sibling counts are nonnegative
 		if err := work.chargeHash(1 + children); err != nil {
 			return 0, err
 		}
@@ -2561,7 +2561,7 @@ func (t *Tree) unlinkAllDefaults(ns, defaults []*Node) (result error) {
 		if sib == nil || sets[sib] != nil {
 			continue
 		}
-		if err := t.work.chargeHash(8*(uint64(sib.SchemaLen())+uint64(sib.OpaqueLen())) + 1); err != nil {
+		if err := t.work.chargeHash(8*(uint64(sib.SchemaLen())+uint64(sib.OpaqueLen())) + 1); err != nil { //nolint:gosec // sibling counts are nonnegative
 			return err
 		}
 		if err := sib.touch(); err != nil {
