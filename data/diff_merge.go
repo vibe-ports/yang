@@ -173,7 +173,9 @@ func copyYangMeta(src, n *Node, name string, mod *schema.Module) bool {
 		return false
 	}
 	m := *src.meta[i]
-	n.touch()
+	if err := n.touch(); err != nil {
+		return false
+	}
 	n.meta = append(n.meta, &m)
 	return true
 }
@@ -231,7 +233,9 @@ func (t *Tree) diffMergeReplace(dm *Node, cur diffOp, src *Node) error {
 					}
 				}
 			}
-			dm.touch()
+			if err := dm.touch(); err != nil {
+				return err
+			}
 			dm.flags = dm.flags&^FlagDefault | src.flags&FlagDefault
 		default: // anydata, anyxml values await the public diff surface (U-0112)
 			return fmt.Errorf("data: merging a replace of %s %q: %w", nodetypeStr(dm.schema.Kind), dm.schema.Name, ErrUnsupported)
@@ -414,7 +418,9 @@ func (t *Tree) diffMergeMetadata(src, trg *Node) error {
 				trgOrig = slices.Delete(trgOrig, i, i+1)
 			default:
 				c := *m
-				trg.touch()
+				if err := trg.touch(); err != nil {
+					return err
+				}
 				trg.meta = append(trg.meta, &c)
 			}
 		case "meta-delete":
@@ -422,7 +428,9 @@ func (t *Tree) diffMergeMetadata(src, trg *Node) error {
 				removeMeta(trg, m1)
 			} else {
 				c := *m
-				trg.touch()
+				if err := trg.touch(); err != nil {
+					return err
+				}
 				trg.meta = append(trg.meta, &c)
 			}
 		case "meta-replace":
@@ -449,7 +457,9 @@ func (t *Tree) diffMergeMetadata(src, trg *Node) error {
 			}
 		default:
 			c, o := *r, *srcOrig[i]
-			trg.touch()
+			if err := trg.touch(); err != nil {
+				return err
+			}
 			trg.meta = append(trg.meta, &c, &o)
 		}
 	}

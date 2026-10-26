@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"math/bits"
 	"reflect"
 	"testing"
 
@@ -428,7 +429,7 @@ func TestLeafrefForms(t *testing.T) {
 		if err != nil || found != tc.found {
 			t.Errorf("%s=%s: found %v, %v", tc.sn.Name, tc.lex, found, err)
 		}
-		unlink(n)
+		_ = unlink(n)
 	}
 	// deref(): the targets of a leafref, the node of an instance-identifier
 	v, _ := types.Store(lk.Type, "k1", types.FormatJSON, types.JSONHints("string"), nil, lk)
@@ -549,9 +550,9 @@ func TestUnresWork(t *testing.T) {
 		vc.t.work.Store(0)
 		vc.t.work.visits = true
 		_ = vc.unres()
-		// Include the charged preflight batch scan and fixed root bookkeeping, and the
-		// retained RB topology removal of each instance (rb_remove, #242).
-		if vc.posBuilds > 2 || vc.nodeTypes.scans > 2*n || int(vc.t.work.Load()) > 6*n+16 || vc.nodeWhen.len() != 0 {
+		// Native distinct-value search/removal is O(log n) per instance, plus linear
+		// batch publication. The old 6*n bound covered membership-only removal.
+		if vc.posBuilds > 2 || vc.nodeTypes.scans > 2*n || int(vc.t.work.Load()) > (8+4*bits.Len(uint(n)))*n+16 || vc.nodeWhen.len() != 0 {
 			t.Fatalf("whenTrue %v: %d position maps, %d queue scans, %d unlink steps, %d queued",
 				whenTrue, vc.posBuilds, vc.nodeTypes.scans, int(vc.t.work.Load()), vc.nodeWhen.len())
 		}

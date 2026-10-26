@@ -225,7 +225,7 @@ func TestEventTimeEnvelopeGoldens(t *testing.T) {
 				t.Errorf("eventTime %+v, want %+v %+v %s", et, *w.Opaque, *w.Value, wantNS)
 			}
 			if et != nil {
-				unlink(et) // libyang moves it under the envelope
+				_ = unlink(et) // libyang moves it under the envelope
 			}
 			if g := typedDump(tree); !reflect.DeepEqual(g, opWant.dump()) {
 				t.Errorf("notification\n got  %q\n want %q", g, opWant.dump())

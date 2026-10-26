@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/vibe-ports/yang"
+	"github.com/vibe-ports/yang/internal/contextopts"
 	"github.com/vibe-ports/yang/internal/schema"
 	"github.com/vibe-ports/yang/internal/types"
 )
@@ -442,7 +443,7 @@ func TestAnyOpaqueContextCopy(t *testing.T) {
 }
 
 func TestAnyPayloadLinkCleanup(t *testing.T) {
-	for _, action := range []string{"clear", "remove", "subtree", "trim"} {
+	for _, action := range []string{"clear", "remove", "subtree", "trim", "discard"} {
 		t.Run(action, func(t *testing.T) {
 			outer, a, _ := anyFixture()
 			payload, _, _ := anyFixture()
@@ -467,6 +468,8 @@ func TestAnyPayloadLinkCleanup(t *testing.T) {
 				freeSubtreeLinks(outer.set, n)
 			case "trim":
 				_, err = outer.TrimXPath("/*[false()]", XPathOptions{})
+			case "discard":
+				err = contextopts.DiscardTree(outer)
 			}
 			if err != nil || outside.links != nil || leaf.links != nil {
 				t.Fatalf("payload links survived %s: %v", action, err)

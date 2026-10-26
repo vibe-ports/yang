@@ -22,7 +22,7 @@ func TestSiblingLowerBoundProbes(t *testing.T) {
 			positions[nodes[i]] = i
 		}
 		var sib siblings
-		sib.Build(nodes, nil)
+		mustLink(t, sib.Build(nodes, nil))
 		for lo := 0; lo <= size; lo++ {
 			for hi := lo; hi <= size; hi++ {
 				for cut := lo; cut <= hi; cut++ {

@@ -93,8 +93,17 @@ func (l *logger) finish(err error) error {
 // validateOpNode is _lyd_validate_op with validate_subtree: opNode merged into dep (without dep,
 // the top node of its tree moved into a tree of its own), validated, and moved back (a detached
 // operation stays detached). Implicit nodes count against b.MaxNodes, as for Validate.
-func validateOpNode(ctx context.Context, set *schema.Set, opNode *Node, dep *Tree, oo opOpts, b Budget) ([]yang.Diagnostic, error) {
+func validateOpNode(ctx context.Context, set *schema.Set, opNode *Node, dep *Tree, oo opOpts, b Budget) (_ []yang.Diagnostic, err error) {
 	opTree := opNode.treeOf() // nil: a detached operation
+	// A budget failure leaves the moved subtree for the journals of both trees to restore
+	// (restore below). ValidateOp opens them; any other caller gets its own here.
+	for _, owner := range []*Tree{opTree, dep} {
+		if owner != nil {
+			if j := beginHashTransaction(owner); j != nil {
+				defer j.end(&err)
+			}
+		}
+	}
 	t := dep
 	if t == nil {
 		t = newTree(set)
@@ -107,36 +116,118 @@ func validateOpNode(ctx context.Context, set *schema.Set, opNode *Node, dep *Tre
 	if err != nil {
 		return nil, err
 	}
-	// move the operation's subtree into t, under its parent there
-	sib := sub.siblingsOf()
-	oparent := sub.parent
-	at := -1 // the position among its siblings (an opaque node: among the opaque ones)
-	switch {
-	case sib == nil: // a detached operation
-	case sub.schema != nil:
-		at = sib.schemaSpan().Index(sub)
-	default:
-		at = sib.opaqueSpan().Index(sub)
+	sourceSib, sourceParent, sourceOwner := sub.siblingsOf(), sub.parent, sub.treeOf()
+	if sourceOwner == nil {
+		sourceOwner = t
 	}
-	unlink(sub)
+	at := -1
+	var recovery uint64
+	if sourceSib != nil {
+		list := sourceSib.schemaSpan()
+		if sub.schema == nil {
+			list = sourceSib.opaqueSpan()
+		}
+		var err error
+		at, err = t.originIndex(sourceSib, list, sub)
+		if err != nil {
+			return nil, err
+		}
+		cost, err := sourceOwner.linkBound(sourceParent, sourceSib, sub, at)
+		if err != nil {
+			return nil, err
+		}
+		binding, err := subtreeBindingBound(sub, &sourceOwner.work, true)
+		if err != nil {
+			return nil, err
+		}
+		cost = addHashBound(cost, binding)
+		recovery = addHashBound(4*cost+64, 2*linkSlots(sourceSib, sub, at))
+		if err := t.work.chargeHash(recovery); err != nil {
+			return nil, err
+		}
+	}
+	// Reserve source removal and exact restoration before either forest changes.
+	restoreOrigin, arm, err := t.linkOrigin(sub)
+	if err != nil {
+		return nil, err
+	}
+	if err := preflightUnlink(sub); err != nil {
+		return nil, err
+	}
+	if err := arm(); err != nil {
+		return nil, err
+	}
+	if err := unlink(sub); err != nil {
+		return nil, err
+	}
 	linkErr := t.insert(tparent, sub, insertDefault)
-	restore := func() {
-		unlink(sub)
-		switch {
-		case opTree != nil:
-			opTree.restoreLink(oparent, sub, at)
-		case oparent != nil: // a subtree of a detached operation tree: back under its parent there
-			t.restoreLink(oparent, sub, at)
-		} // a detached top node stays detached
+	// A move back that fails (a D-0121 removal refusal as well as a budget error) cannot leave
+	// the operation in the dependency: both journals restore the trees on any error.
+	abandon := func(err error) error {
+		for _, owner := range []*Tree{t, opTree} {
+			if owner != nil && owner.work.journal != nil {
+				owner.work.journal.rollback = true
+			}
+		}
+		return err
+	}
+	restore := func(failedMove bool) error {
+		if t.work.hashErr != nil {
+			return t.work.hashErr
+		}
+		if opTree != nil && opTree.work.hashErr != nil {
+			return opTree.work.hashErr
+		}
+		for _, owner := range []*Tree{t, opTree} {
+			if owner != nil && owner.work.journal != nil && owner.work.journal.err != nil {
+				return owner.work.journal.err
+			}
+		}
+		if !failedMove && sourceSib != nil {
+			// Validation can create implicit children. Bind their complete resulting subtree
+			// before unlinking from the temporary owner, while quota failure can roll back.
+			bound, err := bindSubtreeBound(sub, &sourceOwner.work)
+			if err != nil {
+				return err
+			}
+			if err := sourceOwner.reserveHash(bound); err != nil {
+				return err
+			}
+			if err := bindSubtreeWork(sub, &sourceOwner.work); err != nil {
+				return err
+			}
+		}
+		if sub.siblingsOf() != nil {
+			// An exhausted operation rolls back both journals at the public boundary. Do not
+			// attempt another charged mutation with its failed allowance.
+			if t.work.hashErr != nil {
+				return t.work.hashErr
+			}
+			if err := unlink(sub); err != nil {
+				return err
+			}
+		}
+		if failedMove {
+			restoreOrigin()
+		} else if sourceSib != nil {
+			// _lyd_validate_op restores only positional links and hashes. The removed RB node
+			// remains a nonmember; hash leadership must not move lyds metadata implicitly.
+			sourceOwner.restoreLink(sourceParent, sub, at, recovery)
+		}
+		return nil
 	}
 	if linkErr != nil {
-		restore()
+		if err := restore(true); err != nil {
+			return nil, abandon(err)
+		}
 		return nil, linkErr
 	}
 	vc := &valCtx{t: t, log: &logger{set: t.context()}, nodeWhen: &nodeSet{}, nodeTypes: &nodeSet{}, metaTypes: &[]*meta{},
 		budget: xpathBudget{ctx: ctx, max: b.MaxXPathSteps}, output: oo.reply, op: oo, charge: implicitCharge(ctx, b)}
 	err = vc.validateOp(opNode)
-	restore()
+	if restoreErr := restore(false); restoreErr != nil {
+		return vc.log.diags, abandon(restoreErr)
+	}
 	if err == nil || errors.Is(err, errLogged) {
 		err = vc.log.result()
 	}

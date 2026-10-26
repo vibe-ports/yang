@@ -62,7 +62,9 @@ func (t *Tree) reverseValue(n *Node) error {
 	if rc := t.changeTerm(n, m.value.Canonical()); rc != "" {
 		return &diffError{rc: rc} // LY_ENOT or LY_EEXIST returned, nothing logged
 	}
-	n.touch()
+	if err := n.touch(); err != nil {
+		return err
+	}
 	n.flags = flags
 	return t.metaChange(n, m, cur)
 }
@@ -77,7 +79,9 @@ func (t *Tree) reverseDefault(n *Node) error {
 	if orig == cur {
 		return nil // no default state change to reverse
 	}
-	n.touch()
+	if err := n.touch(); err != nil {
+		return err
+	}
 	n.flags &^= FlagDefault
 	if orig {
 		n.flags |= FlagDefault

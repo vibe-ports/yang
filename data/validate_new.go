@@ -83,7 +83,9 @@ func (vc *valCtx) validateNew(parent *Node, sparent *schema.Node, mod *schema.Mo
 					return rc
 				}
 			}
-			n.touch()
+			if err := n.touch(); err != nil {
+				return err
+			}
 			n.flags &^= FlagNew // this node is valid
 		}
 		if n.flags&FlagDefault != 0 {

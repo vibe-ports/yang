@@ -4,6 +4,7 @@ package data
 
 import (
 	"context"
+	"errors"
 	"go/ast"
 	"go/parser"
 	"go/token"
@@ -98,7 +99,9 @@ func TestSiblingFacadeModel(t *testing.T) {
 				}
 				at := lo + rng.IntN(hi-lo+1)
 				n := fresh(opaque)
-				s.InsertAt(at, n)
+				if _, err := s.InsertAt(at, n); err != nil {
+					t.Fatal(err)
+				}
 				model = slices.Insert(model, at, n)
 				if !opaque {
 					schemaLen++
@@ -106,7 +109,9 @@ func TestSiblingFacadeModel(t *testing.T) {
 			case 2:
 				if len(model) > 0 {
 					at := rng.IntN(len(model))
-					s.DeleteAt(at)
+					if _, err := s.DeleteAt(at); err != nil {
+						t.Fatal(err)
+					}
 					model = slices.Delete(model, at, at+1)
 					if at < schemaLen {
 						schemaLen--
@@ -124,13 +129,13 @@ func TestSiblingFacadeModel(t *testing.T) {
 				for i := range nodes {
 					nodes[i] = fresh(opaque)
 				}
-				s.Splice(a, b, nodes)
+				mustLink(t, s.Splice(a, b, nodes))
 				model = slices.Replace(model, a, b, nodes...)
 				if !opaque {
 					schemaLen += len(nodes) - (b - a)
 				}
 			case 4:
-				s.Build(slices.Clone(model[:schemaLen]), slices.Clone(model[schemaLen:]))
+				mustLink(t, s.Build(slices.Clone(model[:schemaLen]), slices.Clone(model[schemaLen:])))
 			}
 			if s.Len() != len(model) || s.SchemaLen() != schemaLen || s.OpaqueLen() != len(model)-schemaLen {
 				t.Fatalf("seed=%d step=%d lengths", seed, step)
@@ -176,30 +181,34 @@ func TestSiblingFacadeStorageRollback(t *testing.T) {
 		t.Run(mutation, func(t *testing.T) {
 			tr := newTree(nil)
 			a, b, c := &Node{schema: &schema.Node{}}, &Node{schema: &schema.Node{}}, &Node{}
-			tr.top.Build([]*Node{a, b}, []*Node{c})
+			mustLink(t, tr.top.Build([]*Node{a, b}, []*Node{c}))
 			tr.top.setWork(&tr.work)
 			destination := siblings{work: &tr.work}
 			before := tr.top.CollectRange(0, tr.top.Len())
 			j := beginHashTransaction(tr)
 			switch mutation {
 			case "insert":
-				tr.top.InsertAt(1, &Node{schema: &schema.Node{}})
+				if _, err := tr.top.InsertAt(1, &Node{schema: &schema.Node{}}); err != nil {
+					t.Fatal(err)
+				}
 			case "delete":
-				tr.top.DeleteAt(0)
+				if _, err := tr.top.DeleteAt(0); err != nil {
+					t.Fatal(err)
+				}
 			case "splice":
-				tr.top.Splice(0, 1, []*Node{{schema: &schema.Node{}}})
+				mustLink(t, tr.top.Splice(0, 1, []*Node{{schema: &schema.Node{}}}))
 			case "publish":
-				tr.top.replaceSchema(0, 2, spanOf([]*Node{b, a}))
+				mustLink(t, tr.top.replaceSchema(0, 2, spanOf([]*Node{b, a})))
 			case "replay":
-				tr.top.exposeSchema([]*Node{a})
+				mustLink(t, tr.top.exposeSchema([]*Node{a}))
 			case "build":
-				tr.top.Build(nil, []*Node{c})
+				mustLink(t, tr.top.Build(nil, []*Node{c}))
 			case "compact":
-				tr.top.deleteMatching(func(n *Node) bool { return n == a }, func(n *Node) bool { return n == c })
+				mustLink(t, tr.top.deleteMatching(func(n *Node) bool { return n == a }, func(n *Node) bool { return n == c }))
 			case "transfer":
-				destination.transferFrom(&tr.top)
+				mustLink(t, destination.transferFrom(&tr.top))
 			case "reset":
-				tr.top.reset()
+				mustLink(t, tr.top.reset())
 			}
 			if tr.work.hashUsed == 0 {
 				t.Fatal("mutation did not journal/charge storage")
@@ -212,7 +221,9 @@ func TestSiblingFacadeStorageRollback(t *testing.T) {
 			if tr.top.work != &tr.work {
 				t.Fatal("rollback lost work binding")
 			}
-			tr.top.InsertAt(1, &Node{schema: &schema.Node{}})
+			if _, err := tr.top.InsertAt(1, &Node{schema: &schema.Node{}}); err != nil {
+				t.Fatal(err)
+			}
 			if tr.top.Len() != 4 {
 				t.Fatal("insertion after rollback")
 			}
@@ -225,9 +236,9 @@ func TestSiblingFacadeSnapshotAndView(t *testing.T) {
 	owner := newTree(nil)
 	n.tree = owner
 	var view siblings
-	view.Build([]*Node{n}, nil)
+	mustLink(t, view.Build([]*Node{n}, nil))
 	snapshot := view.CollectRange(0, 1)
-	view.replaceSchema(0, 1, spanOf([]*Node{{schema: &schema.Node{}}}))
+	mustLink(t, view.replaceSchema(0, 1, spanOf([]*Node{{schema: &schema.Node{}}})))
 	if snapshot[0] != n || n.tree != owner || n.parent != nil {
 		t.Fatal("view changed ownership or snapshot")
 	}
@@ -336,13 +347,22 @@ func TestSiblingPublicationBorrowedLifetime(t *testing.T) {
 								})
 							}
 						}
-						if expr, ok := stmt.(*ast.ExprStmt); ok {
-							if call, ok := expr.X.(*ast.CallExpr); ok {
-								if sel, ok := call.Fun.(*ast.SelectorExpr); ok &&
-									(sel.Sel.Name == "replaceSchema" || sel.Sel.Name == "buildSchema" || sel.Sel.Name == "exposeSchema") {
-									for name := range borrowed {
-										stale[name] = true
-									}
+						// Publication may be a statement or a checked error call in an
+						// if initializer. Both invalidate all previously borrowed ranges.
+						var publication ast.Expr
+						switch stmt := stmt.(type) {
+						case *ast.ExprStmt:
+							publication = stmt.X
+						case *ast.IfStmt:
+							if init, ok := stmt.Init.(*ast.AssignStmt); ok && len(init.Rhs) == 1 {
+								publication = init.Rhs[0]
+							}
+						}
+						if call, ok := publication.(*ast.CallExpr); ok {
+							if sel, ok := call.Fun.(*ast.SelectorExpr); ok &&
+								(sel.Sel.Name == "replaceSchema" || sel.Sel.Name == "buildSchema" || sel.Sel.Name == "exposeSchema") {
+								for name := range borrowed {
+									stale[name] = true
 								}
 							}
 						}
@@ -359,6 +379,55 @@ func TestSiblingPublicationBorrowedLifetime(t *testing.T) {
 				return
 			}
 			t.Fatalf("missing publication function %s", tc.function)
+		})
+	}
+}
+
+// A failed capture must be returned before any physical write, including when
+// the destination of a transfer was captured but its source cannot be saved.
+func TestSiblingFacadeCaptureFailure(t *testing.T) {
+	for _, tc := range []struct {
+		name   string
+		mutate func(*siblings, *siblings) error
+	}{
+		{"insert-schema", func(s, _ *siblings) error { _, err := s.InsertAt(1, &Node{schema: &schema.Node{}}); return err }},
+		{"insert-opaque", func(s, _ *siblings) error { _, err := s.InsertAt(s.Len(), &Node{}); return err }},
+		{"delete-schema", func(s, _ *siblings) error { _, err := s.DeleteAt(0); return err }},
+		{"delete-opaque", func(s, _ *siblings) error { _, err := s.DeleteAt(s.SchemaLen()); return err }},
+		{"splice", func(s, _ *siblings) error { return s.Splice(0, s.Len(), nil) }},
+		{"publish", func(s, _ *siblings) error { return s.replaceSchema(0, 1, spanOf([]*Node{{schema: &schema.Node{}}})) }},
+		{"replay", func(s, _ *siblings) error { return s.exposeSchema(nil) }},
+		{"build", func(s, _ *siblings) error { return s.Build(nil, nil) }},
+		{"build-schema", func(s, _ *siblings) error { return s.buildSchema(nil) }},
+		{"append", func(s, _ *siblings) error { return s.appendNode(&Node{}) }},
+		{"compact", func(s, _ *siblings) error { return s.deleteMatching(func(*Node) bool { return true }, nil) }},
+		{"transfer-destination", func(s, src *siblings) error { return s.transferFrom(src) }},
+		{"transfer-source", func(s, src *siblings) error { return s.transferFrom(src) }},
+		{"reset", func(s, _ *siblings) error { return s.reset() }},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			tr := newTree(nil)
+			mustLink(t, tr.top.Build([]*Node{{schema: &schema.Node{}}}, []*Node{{}}))
+			tr.top.setWork(&tr.work)
+			var src siblings
+			mustLink(t, src.Build([]*Node{{schema: &schema.Node{}}}, nil))
+			src.setWork(&tr.work)
+			before, sourceBefore := tr.top.CollectRange(0, tr.top.Len()), src.CollectRange(0, src.Len())
+			j := beginHashTransaction(tr)
+			if tc.name == "transfer-source" {
+				mustLink(t, tr.top.touch())
+			}
+			tr.work.hashLimit = tr.work.hashUsed
+			err := tc.mutate(&tr.top, &src)
+			if !errors.Is(err, yang.ErrBudget) {
+				t.Fatalf("capture error = %v", err)
+			}
+			if !slices.Equal(tr.top.CollectRange(0, tr.top.Len()), before) ||
+				!slices.Equal(src.CollectRange(0, src.Len()), sourceBefore) ||
+				tr.top.work != &tr.work || src.work != &tr.work {
+				t.Fatal("failed capture changed storage before rollback")
+			}
+			j.end(&err)
 		})
 	}
 }

@@ -4,6 +4,7 @@ package data
 
 import (
 	"fmt"
+	"math/bits"
 	"reflect"
 	"testing"
 
@@ -356,9 +357,9 @@ func TestAutodelWork(t *testing.T) {
 	if err := vc.validateNew(top, nil, nil); err != nil {
 		t.Fatal(err)
 	}
-	// Include the charged preflight batch scan and fixed root bookkeeping, and the
-	// retained RB topology removal of each instance (rb_remove, #242).
-	if top.kids.len() != 1 || typ.len() != 0 || int(tr.work.Load()) > 6*n+16 {
+	// Native search and exact RB removal are O(log n) per distinct instance; the batch
+	// adds a linear publication. The old 6*n bound covered membership-only removal.
+	if top.kids.len() != 1 || typ.len() != 0 || int(tr.work.Load()) > (8+4*bits.Len(uint(n)))*n+16 {
 		t.Fatalf("%d left, %d queued, %d steps", top.kids.len(), typ.len(), int(tr.work.Load()))
 	}
 	charged := 0

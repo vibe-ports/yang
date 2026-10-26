@@ -326,7 +326,7 @@ func TestAnyXPathCastErrorsAndBudget(t *testing.T) {
 	p := root
 	for range maxPrintDepth {
 		child := newOpaque(opaque{Name: "r", Format: types.FormatXML, ModuleNS: "urn:anycore"})
-		p.kids.appendNode(child)
+		mustLink(t, p.kids.appendNode(child))
 		child.parent = p
 		p = child
 	}
@@ -910,7 +910,7 @@ func TestAnyPrintDepthLimitAndArguments(t *testing.T) {
 	p := root
 	for range maxPrintDepth {
 		child := newOpaque(opaque{Name: "r", Format: types.FormatJSON})
-		p.kids.appendNode(child)
+		mustLink(t, p.kids.appendNode(child))
 		child.parent = p
 		p = child
 	}

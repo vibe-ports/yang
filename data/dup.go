@@ -251,7 +251,9 @@ func (t *Tree) dupWork(n, parent *Node, top bool, order insertOrder, opts dupOpt
 						if err == nil && parsed.top.len() != 0 {
 							// lyd_any_copy_value adopts freshly parsed nodes; copying
 							// them again would change their flags to Default|New.
-							d.takeAnyChildren(f.tree, parsed.top.first())
+							if err := d.takeAnyChildren(f.tree, parsed.top.first()); err != nil {
+								return nil, err
+							}
 							children, d.any.text = nil, nil
 						}
 					}
@@ -381,6 +383,21 @@ func (t *Tree) dupSingle(n, parent *Node, sourceSet, dest *schema.Set, opts dupO
 		d.schema = sn
 	}
 	if opts&dupNoMeta == 0 && n.schema != nil {
+		// lyplg_type_dupl_lyds copies every metadata slot with a NULL root.
+		// It never copies the source's populated topology.
+		slots := len(n.carriedRB)
+		if s := n.siblingsOf(); s != nil && s.rbGroups[n] != nil {
+			slots += 1 + len(s.rbMore[n])
+		}
+		if n.detachedRB != nil {
+			slots++
+		}
+		if err := t.work.chargeHash(3 * uint64(slots)); err != nil {
+			return nil, err
+		}
+		for range slots {
+			d.carriedRB = append(d.carriedRB, rbCarry{&rbGroup{}, &dirtyOrder{}})
+		}
 		for _, m := range n.meta {
 			if dm := t.dupMeta(m, d, dest); dm != nil {
 				d.meta = append(d.meta, dm)
@@ -421,6 +438,7 @@ func (t *Tree) dupSingle(n, parent *Node, sourceSet, dest *schema.Set, opts dupO
 			d.kids.ht = map[idxKey]*recordChain{}
 		}
 	}
+	d.kids.work = &t.work // copied children are linked with this same counter
 	return d, nil
 }
 
@@ -527,7 +545,9 @@ func (t *Tree) dupNodes(n, parent *Node, opts dupOpts, siblings bool) (*Node, er
 		}
 		for _, d := range made {
 			if d.parent != nil || d.tree != nil {
-				unlink(d)
+				if uerr := unlink(d); uerr != nil {
+					return nil, uerr // the sticky budget/journal failure outranks err
+				}
 			}
 		}
 		return nil, err

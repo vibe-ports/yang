@@ -66,9 +66,9 @@ func snapshotHashBudgetTree(tr *Tree) hashBudgetSnapshot {
 					anyState += fmt.Sprintf(":%p/%p/%d", c, c.parent, c.hash)
 				}
 			}
-			s.index[n] = fmt.Sprintf("any=%s schema=%p parent=%p tree=%p value=%#v opaque=%#v meta=%v links=%#v flags=%d hash=%d hkey=%v hashed=%t order=%d more=%v history=%v key=%d/%d frozen=%v ok=%t prefix=%d dirty=%t slot=%d rb=%t group=%p",
+			s.index[n] = fmt.Sprintf("any=%s schema=%p parent=%p tree=%p value=%#v opaque=%#v meta=%v links=%#v flags=%d hash=%d hkey=%v hashed=%t order=%d more=%v history=%v key=%d/%d frozen=%v ok=%t prefix=%d dirty=%t slot=%d rb=%t group=%p detached=%p:%p carried=%v",
 				anyState, n.schema, n.parent, n.tree, n.value, n.opaq, metadata, links, n.flags, n.hash, n.hkey, n.hashed, order, more, history,
-				n.keyN, n.lkeyN, n.lkeyFrozen, n.lkeyOK, n.lkeyPrefix, n.lkeyDirty, n.keySlot, n.inRB, n.rbGroup)
+				n.keyN, n.lkeyN, n.lkeyFrozen, n.lkeyOK, n.lkeyPrefix, n.lkeyDirty, n.keySlot, n.inRB, n.rbGroup, n.detachedRB, n.detachedGroup, n.carriedRB)
 		}
 	}
 	return s
@@ -126,6 +126,9 @@ func snapshotHashBudgetSiblings(s *siblings) string {
 		}
 		sort.Strings(nodes)
 		pending = append(pending, fmt.Sprintf("%p=%p:%v:%v", sn, order.root, nodes, order.leaders))
+	}
+	for owner, groups := range s.rbMore {
+		rb = append(rb, fmt.Sprintf("more:%p=%v", owner, groups))
 	}
 	sort.Strings(first)
 	sort.Strings(rb)

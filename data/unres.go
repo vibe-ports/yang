@@ -277,7 +277,9 @@ func (p *whenPass) drop(i int) {
 // wait for the next pass.
 func (p *whenPass) whenFalse(n *Node, i int) (int, error) {
 	vc := p.vc
-	n.touch()
+	if err := n.touch(); err != nil {
+		return i, err
+	}
 	n.flags |= FlagWhenFalse
 	if err := vc.dropTypes(n, true); err != nil {
 		return i, err
@@ -322,7 +324,9 @@ func (p *whenPass) del(n *Node) {
 	if n.flags&flagDead != 0 {
 		return
 	}
-	n.touch()
+	if err := n.touch(); err != nil {
+		return
+	}
 	n.flags |= flagDead
 	p.dead = append(p.dead, n)
 }
@@ -381,7 +385,9 @@ func (vc *valCtx) unresWhen() (rc error) {
 			}
 			continue
 		case w == nil:
-			n.touch()
+			if err := n.touch(); err != nil {
+				return err
+			}
 			n.flags = n.flags&^FlagWhenFalse | FlagWhenTrue
 		case n.flags&FlagWhenTrue != 0:
 			p.del(n) // nested queued nodes cannot exist (libyang asserts it)
@@ -410,7 +416,9 @@ func (vc *valCtx) unresWhen() (rc error) {
 func (p *whenPass) finish() error {
 	if err := p.vc.t.preflightUnlinkAll(p.dead); err != nil {
 		for n, flags := range p.initialFlags {
-			n.touch()
+			if err := n.touch(); err != nil {
+				return err
+			}
 			n.flags = flags
 		}
 		p.vc.nodeWhen.items, p.vc.nodeWhen.pos = p.initialWhen, nil
@@ -420,7 +428,9 @@ func (p *whenPass) finish() error {
 		return err
 	}
 	for _, n := range p.dead {
-		n.touch()
+		if err := n.touch(); err != nil {
+			return err
+		}
 		n.flags &^= flagDead
 		if p.vc.diff != nil {
 			if err := p.vc.diff(n, diffDelete); err != nil {
@@ -443,7 +453,9 @@ func (p *whenPass) finish() error {
 	q.items, q.pos = live, nil
 	p.vc.posBuilds += p.builds
 	for _, n := range p.dead {
-		n.touch()
+		if err := n.touch(); err != nil {
+			return err
+		}
 		n.flags &^= flagDead
 	}
 	if err := p.vc.t.unlinkAll(p.dead); err != nil {
@@ -553,7 +565,9 @@ func (vc *valCtx) validateMetaIncomplete(n *Node, m *meta) error {
 	}
 	v, err := vc.incomplete(n, ant.Type, m.value)
 	if err == nil {
-		n.touch()
+		if err := n.touch(); err != nil {
+			return err
+		}
 		m.value = v
 	}
 	return err
@@ -594,10 +608,14 @@ func (vc *valCtx) validateIncomplete(n *Node) error {
 		// stored list hash, but invalidate its running prefix for the next native
 		// rehash (plugins_types/union.c:522-573; tree_data.c:836-842).
 		if n.isKey() && n.parent != nil && n.keySlot != 0 {
-			n.parent.touch()
+			if err := n.parent.touch(); err != nil {
+				return err
+			}
 			n.parent.lkeyDirty = true
 		}
-		n.touch()
+		if err := n.touch(); err != nil {
+			return err
+		}
 		if sib := n.siblingsOf(); sib != nil {
 			sib.refreshExact(n, func() { n.value = v })
 			sib.hashReindex(n)
@@ -606,7 +624,9 @@ func (vc *valCtx) validateIncomplete(n *Node) error {
 		}
 		reindexComparedParent(n)
 	} else {
-		n.touch()
+		if err := n.touch(); err != nil {
+			return err
+		}
 		n.value = v
 	}
 	return nil
@@ -990,7 +1010,7 @@ func (vc *valCtx) validateMust(n *Node) error {
 
 // dummyWhen is lyd_validate_dummy_when: the whens of an absent node sn under parent (nil: the top
 // level), evaluated on an opaque stand-in linked at its place; the first false one.
-func (vc *valCtx) dummyWhen(parent *Node, sn *schema.Node) (*schema.When, error) {
+func (vc *valCtx) dummyWhen(parent *Node, sn *schema.Node) (w *schema.When, err error) {
 	// lyd_validate_dummy_when evaluates without LYXP_IGNORE_WHEN, also in operation validation
 	iw := vc.ignoreWhen
 	vc.ignoreWhen = false
@@ -999,12 +1019,17 @@ func (vc *valCtx) dummyWhen(parent *Node, sn *schema.Node) (*schema.When, error)
 	if err := vc.t.insert(parent, dummy, insertDefault); err != nil {
 		return nil, err
 	}
-	defer unlink(dummy)
+	defer func() {
+		// a stand-in left linked would be validated as data
+		if uerr := unlink(dummy); uerr != nil && err == nil {
+			w, err = nil, uerr
+		}
+	}()
 	root := xpath.RootAll
 	if sn.Config && !inOperation(sn) {
 		root = xpath.RootConfig
 	}
-	w, err := vc.whenOf(dummy, sn, &root)
+	w, err = vc.whenOf(dummy, sn, &root)
 	if errors.Is(err, errIncomplete) {
 		if vc.opts.MultiError {
 			return nil, nil // cannot evaluate properly, ignored

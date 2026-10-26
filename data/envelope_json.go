@@ -102,7 +102,9 @@ func parseJSONRestconf(lc *lydCtx, in []byte) error {
 	if err := p.metadataFinish(lc.parent); err != nil {
 		// lyd_parse_op's cleanup frees the parsed eventTime from the envelope it moved into
 		if eventTime != nil {
-			unlink(eventTime)
+			if uerr := unlink(eventTime); uerr != nil {
+				return uerr
+			}
 		}
 		return err
 	}

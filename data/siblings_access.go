@@ -10,8 +10,9 @@ import (
 // The facade changes physical storage only. Callers retain native linking,
 // generations, secondary indexes, and their existing work reservation/charging.
 // Iteration is uncounted; siblings.all keeps the original visit hooks. Point
-// edits return the same shift counts; mutators touch before writing. Restore
-// uses previously reserved undo state and cannot fail.
+// edits return the same shift counts; mutators return capture errors before
+// writing. A previously checked touch makes capture idempotent without charging
+// again. Restore uses previously reserved undo state and cannot fail.
 //
 // Slices remain authoritative in this stage. Borrowed ranges are invalidated by
 // structural mutation; collect only when the caller needs a stable snapshot.
@@ -205,52 +206,76 @@ func (s *siblings) LowerBound(lo, hi int, pred func(*Node) bool) int {
 // Build publishes a borrowed set of physical nodes without linking them or
 // changing compatibility indexes. The caller owns the input arrays afterwards
 // and must maintain the schema/opaque partition and secondary index contract.
-func (s *siblings) Build(schema, opaque []*Node) {
-	s.touch()
+func (s *siblings) Build(schema, opaque []*Node) error {
+	if err := s.touch(); err != nil {
+		return err
+	}
 	s.list, s.base, s.opq = schema, nil, opaque
+	return nil
 }
-func (s *siblings) buildSchema(nodes []*Node) { s.touch(); s.list, s.base = nodes, nil }
+func (s *siblings) buildSchema(nodes []*Node) error {
+	if err := s.touch(); err != nil {
+		return err
+	}
+	s.list, s.base = nodes, nil
+	return nil
+}
 
 // exposeSchema temporarily publishes an attach-replay prefix while retaining
 // the existing deque backing allocation, exactly as the original publication.
-func (s *siblings) exposeSchema(nodes []*Node) { s.touch(); s.list = nodes }
-func (s *siblings) appendNode(n *Node) {
-	s.touch()
+func (s *siblings) exposeSchema(nodes []*Node) error {
+	if err := s.touch(); err != nil {
+		return err
+	}
+	s.list = nodes
+	return nil
+}
+func (s *siblings) appendNode(n *Node) error {
+	if err := s.touch(); err != nil {
+		return err
+	}
 	if n.schema == nil {
 		s.opq = append(s.opq, n)
 	} else {
 		s.list = append(s.list, n)
 	}
+	return nil
 }
-func (s *siblings) InsertAt(at int, n *Node) int {
-	s.touch()
+func (s *siblings) InsertAt(at int, n *Node) (int, error) {
+	if err := s.touch(); err != nil {
+		return 0, err
+	}
 	if n.schema != nil {
-		return s.insertAt(at, n)
+		return s.insertAt(at, n), nil
 	}
 	at -= len(s.list)
 	old := len(s.opq)
 	if at < 0 || at >= old {
 		s.opq = append(s.opq, n)
-		return 0
+		return 0, nil
 	}
 	s.opq = slices.Insert(s.opq, at, n)
-	return old - at
+	return old - at, nil
 }
-func (s *siblings) DeleteAt(at int) int {
-	s.touch()
+func (s *siblings) DeleteAt(at int) (int, error) {
+	if err := s.touch(); err != nil {
+		return 0, err
+	}
 	if at < len(s.list) {
-		return s.deleteAt(at)
+		return s.deleteAt(at), nil
 	}
 	d := nodeDeque{list: s.opq}
 	moves := d.deleteAt(at - len(s.list))
 	s.opq = d.list
-	return moves
+	return moves, nil
 }
 
 // Splice replaces physical slots; publication and compatibility replay stay with
 // the caller. It makes no ownership/index changes beyond the physical storage.
-func (s *siblings) Splice(lo, hi int, nodes []*Node) {
-	s.touch()
+func (s *siblings) Splice(lo, hi int, nodes []*Node) error {
+	if err := s.touch(); err != nil {
+		return err
+	}
 	boundary := len(s.list)
 	split := 0
 	for split < len(nodes) && nodes[split].schema != nil {
@@ -263,15 +288,19 @@ func (s *siblings) Splice(lo, hi int, nodes []*Node) {
 	if hi > boundary || split < len(nodes) {
 		s.opq = slices.Replace(s.opq, max(0, lo-boundary), max(0, hi-boundary), nodes[split:]...)
 	}
+	return nil
 }
-func (s *siblings) deleteMatching(schema, opaque func(*Node) bool) {
-	s.touch()
+func (s *siblings) deleteMatching(schema, opaque func(*Node) bool) error {
+	if err := s.touch(); err != nil {
+		return err
+	}
 	if schema != nil {
 		s.list = slices.DeleteFunc(s.list, schema)
 	}
 	if opaque != nil {
 		s.opq = slices.DeleteFunc(s.opq, opaque)
 	}
+	return nil
 }
 func (s *siblings) opaqueInsertCost() uint64 {
 	if len(s.opq) == cap(s.opq) {
@@ -286,8 +315,23 @@ func (s *siblings) cloneStorage(src *siblings) {
 
 // transferFrom moves the entire container, including native history and work
 // binding; no node is relinked. The caller rebinds its new owner afterwards.
-func (s *siblings) transferFrom(src *siblings) { s.touch(); src.touch(); *s, *src = *src, siblings{} }
-func (s *siblings) reset()                     { s.touch(); *s = siblings{} }
+func (s *siblings) transferFrom(src *siblings) error {
+	if err := s.touch(); err != nil {
+		return err
+	}
+	if err := src.touch(); err != nil {
+		return err
+	}
+	*s, *src = *src, siblings{}
+	return nil
+}
+func (s *siblings) reset() error {
+	if err := s.touch(); err != nil {
+		return err
+	}
+	*s = siblings{}
+	return nil
+}
 
 // cacheDeque is unrelated duplication-cache storage. Keeping it distinct makes
 // the storage-access lint independent of receiver names or type-checker imports.
@@ -310,9 +354,12 @@ func (r siblingSpan) AppendTo(dst []*Node) []*Node { return append(dst, r.nodes.
 
 // replaceSchema overwrites an equal-sized run while retaining deque headroom.
 // Publication invalidates borrowed ranges; callers must reacquire them.
-func (s *siblings) replaceSchema(lo, hi int, nodes siblingSpan) {
-	s.touch()
+func (s *siblings) replaceSchema(lo, hi int, nodes siblingSpan) error {
+	if err := s.touch(); err != nil {
+		return err
+	}
 	copy(s.list[lo:hi], nodes.nodes)
+	return nil
 }
 
 func (d *cacheDeque) schemaSpan() siblingSpan { return spanOf(d.nodes) }

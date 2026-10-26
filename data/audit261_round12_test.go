@@ -55,7 +55,7 @@ func TestInternalDupRetainsEachSourceRootContext(t *testing.T) {
 	mixed := round12Tree(t, a, `{"pv2-detached:l":[{"k":"keep"}]}`)
 	source := round12Tree(t, b, `{"pv2-detached:c":{"extra":"x"}}`)
 	foreign := source.top.first()
-	unlink(foreign)
+	_ = unlink(foreign)
 	if err := mixed.link(nil, &mixed.top, foreign, mixed.top.SchemaLen()); err != nil {
 		t.Fatal(err)
 	}
@@ -83,7 +83,7 @@ func TestMergeRetainsForeignChildContext(t *testing.T) {
 	source := round12Tree(t, a, `{"pv2-detached:l":[{"k":"a"}]}`)
 	foreignTree := round12Tree(t, b, `{"pv2-detached:c":{"extra":"x"}}`)
 	foreign := foreignTree.top.first()
-	unlink(foreign)
+	_ = unlink(foreign)
 	if err := source.link(nil, &source.top, foreign, source.top.len()); err != nil {
 		t.Fatal(err)
 	}
@@ -139,7 +139,7 @@ func TestEmptyAnchorChecksOnlySelectedInstance(t *testing.T) {
 	target := round12Tree(t, a, `{"pv2-detached:ll":["a"]}`)
 	other := round12Tree(t, b, `{"pv2-detached:ll":["b"]}`)
 	foreign := other.top.first()
-	unlink(foreign)
+	_ = unlink(foreign)
 	if err := target.link(nil, &target.top, foreign, target.top.SchemaLen()); err != nil {
 		t.Fatal(err)
 	}
@@ -158,7 +158,7 @@ func TestDuplicateInstanceCacheIncludesForeignEqualSibling(t *testing.T) {
 	target := round12Tree(t, a, `{"pv2-detached:sll":["x"]}`)
 	other := round12Tree(t, b, `{"pv2-detached:sll":["x"]}`)
 	foreign := other.top.first()
-	unlink(foreign)
+	_ = unlink(foreign)
 	if err := target.link(nil, &target.top, foreign, target.top.SchemaLen()); err != nil {
 		t.Fatal(err)
 	}
@@ -194,7 +194,7 @@ func TestDuplicateInstanceCacheIncludesForeignEqualSiblingWithTable(t *testing.T
 		t.Fatal("four schema children must have a hash table")
 	}
 	foreign := foreignTree.top.first().kids.At(0)
-	unlink(foreign)
+	_ = unlink(foreign)
 	if err := target.link(parent, &parent.kids, foreign, parent.kids.SchemaLen()-1); err != nil {
 		t.Fatal(err)
 	}
@@ -450,7 +450,7 @@ func TestMixedFirstChildDefersToChargedXPathScan(t *testing.T) {
 	foreignTree := round12Tree(t, b, `{"pv2-detached:c":{"base":"x"}}`)
 	parent := tr.top.first()
 	foreign := foreignTree.top.first().kids.first()
-	unlink(foreign)
+	_ = unlink(foreign)
 	if err := tr.link(parent, &parent.kids, foreign, parent.kids.len()); err != nil {
 		t.Fatal(err)
 	}
@@ -482,7 +482,7 @@ func TestMergeForeignLeafChange(t *testing.T) {
 		source := round12Tree(t, a, `{"pv2-detached:l":[{"k":"a"}]}`)
 		foreignTree := round12Tree(t, b, `{"pv2-detached:c":{"base":"`+tc.foreign+`"}}`)
 		foreign := foreignTree.top.first()
-		unlink(foreign)
+		_ = unlink(foreign)
 		if err := source.link(nil, &source.top, foreign, source.top.len()); err != nil {
 			t.Fatal(err)
 		}
@@ -522,7 +522,7 @@ func TestMergeForeignUnionLeafrefRefused(t *testing.T) {
 		was := local.Value()
 		source := round12Tree(t, a, `{"a:foo":1}`) // a first root of the target's context
 		foreign := round12Tree(t, b, tc.foreign).top.first()
-		unlink(foreign)
+		_ = unlink(foreign)
 		if err := source.link(nil, &source.top, foreign, source.top.len()); err != nil {
 			t.Fatal(err)
 		}
@@ -563,7 +563,7 @@ func TestMergeForeignTypeHandlerRefused(t *testing.T) {
 		local := target.top.first().kids.At(0)
 		source := round12Tree(t, a, `{"ty2:c":{"id":"ty2:der"}}`) // a first root of the target's context
 		foreign := round12Tree(t, b, `{"ty3:c":{"v4":"1.2.3.4"}}`).top.first()
-		unlink(foreign)
+		_ = unlink(foreign)
 		if err := source.link(nil, &source.top, foreign, source.top.len()); err != nil {
 			t.Fatal(err)
 		}
@@ -604,7 +604,7 @@ func TestMergeForeignZonedAddressTwice(t *testing.T) {
 		local.flags &^= FlagNew // validated
 		source := round12Tree(t, a, `{"ty2:c":{"id":"ty2:der"}}`)
 		foreign := round12Tree(t, b, `{"ty3:c":{"v4":"1.2.3.4%eth0"}}`).top.first()
-		unlink(foreign)
+		_ = unlink(foreign)
 		if err := source.link(nil, &source.top, foreign, source.top.len()); err != nil {
 			t.Fatal(err)
 		}
@@ -646,7 +646,7 @@ func TestMergeForeignUnionRoundTrip(t *testing.T) {
 		if c == nil {
 			c = round12Tree(t, srcSet, `{"rt:c":{"u":"x"}}`).top.first()
 		}
-		unlink(c)
+		_ = unlink(c)
 		if err := source.link(nil, &source.top, c, source.top.len()); err != nil {
 			t.Fatal(err)
 		}
@@ -668,7 +668,7 @@ func TestMergeForeignUnionRoundTrip(t *testing.T) {
 	}
 	// B -> A: the same member realtype, the bits compare equal
 	cB := treeB.top.first()
-	unlink(cB)
+	_ = unlink(cB)
 	leafA.flags &^= FlagNew
 	merge(treeA, a, b, cB)
 	if leafA.flags&FlagNew != 0 {
@@ -709,7 +709,7 @@ func TestMergeForeignSharedLeafrefGraph(t *testing.T) {
 		dst.work.hashLimit = limit
 		source := round12Tree(t, a, `{"sg0:r":"x"}`)
 		c := round12Tree(t, b, `{"sg:c":{"l0":"x"}}`).top.first()
-		unlink(c)
+		_ = unlink(c)
 		if err := source.link(nil, &source.top, c, source.top.len()); err != nil {
 			t.Fatal(err)
 		}
@@ -794,7 +794,7 @@ func TestMergeForeignFragmentedTypedefBudget(t *testing.T) {
 			dst.work.hashLimit = limit
 			source := round12Tree(t, a, `{"fr0:r":"x"}`)
 			c := round12Tree(t, b, doc.String()).top.first()
-			unlink(c)
+			_ = unlink(c)
 			if err := source.link(nil, &source.top, c, source.top.len()); err != nil {
 				t.Fatal(err)
 			}

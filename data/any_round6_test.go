@@ -469,7 +469,7 @@ func TestAnyWideComparisonWork(t *testing.T) {
 					c := b.term(sn, fmt.Sprint(j))
 					c.parent = n
 					c.payloadSet = tr.set
-					n.any.children.appendNode(c)
+					mustLink(t, n.any.children.appendNode(c))
 				}
 				n.any.children.work = &dst.work
 				return n
@@ -548,8 +548,8 @@ func TestAnyComparisonFirstMatch(t *testing.T) {
 				}
 				x.parent = left
 				y.parent = right
-				left.any.children.appendNode(x)
-				right.any.children.appendNode(y)
+				mustLink(t, left.any.children.appendNode(x))
+				mustLink(t, right.any.children.appendNode(y))
 			}
 			if !left.Equal(right, CompareOptions{}) {
 				t.Fatal("union/cross-context canonical match")
@@ -596,7 +596,7 @@ func TestCompareDateCanonicalCollision(t *testing.T) {
 		for _, value := range values {
 			leaf := b.term(dl, value)
 			leaf.parent = n
-			n.kids.appendNode(leaf)
+			mustLink(t, n.kids.appendNode(leaf))
 		}
 		return n
 	}
@@ -622,8 +622,8 @@ func TestCompareDateCanonicalCollision(t *testing.T) {
 			entry := &Node{schema: list, parent: n}
 			leaf := b.term(key, value)
 			leaf.parent = entry
-			entry.kids.buildSchema([]*Node{leaf})
-			n.kids.appendNode(entry)
+			mustLink(t, entry.kids.buildSchema([]*Node{leaf}))
+			mustLink(t, n.kids.appendNode(entry))
 		}
 		return n
 	}
@@ -647,7 +647,7 @@ func TestCompareDateCanonicalCollision(t *testing.T) {
 		for range per {
 			leaf := b.term(dl, value)
 			leaf.parent = payload
-			payload.any.children.appendNode(leaf)
+			mustLink(t, payload.any.children.appendNode(leaf))
 		}
 	}
 	if payload.any.children.ht != nil {

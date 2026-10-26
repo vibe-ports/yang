@@ -143,7 +143,9 @@ func (t *Tree) applyR(parent, dn *Node, cb func(diff, node *Node) error, cache *
 				return t.noInstErr(dn)
 			}
 			if match.isTerm() { // only the default flag changed
-				match.touch()
+				if err := match.touch(); err != nil {
+					return err
+				}
 				match.flags = match.flags&^FlagDefault | dn.flags&FlagDefault
 			}
 		case diffCreate:
@@ -190,7 +192,9 @@ func (t *Tree) applyR(parent, dn *Node, cb func(diff, node *Node) error, cache *
 			if rc := t.changeTerm(match, dn.value.Canonical()); rc != "" && rc != "LY_EEXIST" {
 				return &opError{"LY_EINVAL", fmt.Sprintf("Unexpected value of node \"%s\" in data.", lydPath(ctxOf(match), match, false))}
 			}
-			match.touch()
+			if err := match.touch(); err != nil {
+				return err
+			}
 			match.flags = dn.flags // with the flags
 		}
 	}
@@ -369,7 +373,9 @@ func (t *Tree) diffInsert(parent, n, source *Node, anchor string) error {
 			if err := arm(); err != nil {
 				return err
 			}
-			unlink(n)
+			if err := unlink(n); err != nil {
+				return err
+			}
 			err = t.insertBefore(first, n)
 			if err != nil {
 				restore()

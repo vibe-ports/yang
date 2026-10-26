@@ -345,7 +345,7 @@ func TestFindSibling(t *testing.T) {
 	if got := tr.findFirst(&c.kids, probe); got != l2 {
 		t.Fatalf("list b: %v", got)
 	}
-	unlink(l2)
+	_ = unlink(l2)
 	if tr.findFirst(&c.kids, probe) != nil {
 		t.Fatal("unlinked instance still indexed")
 	}
@@ -543,7 +543,7 @@ func TestKeyUnlinkReindex(t *testing.T) {
 	if tr.findFirst(&c.kids, probe) != l {
 		t.Fatal("list d not found")
 	}
-	unlink(l.kids.At(0))
+	_ = unlink(l.kids.At(0))
 	if tr.findFirst(&c.kids, probe) != nil {
 		t.Fatal("list found by a removed key")
 	}
@@ -725,7 +725,7 @@ func TestRBTreeBulkUnlinkMatchesSequential(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, n := range sequentialIndexed {
-		unlink(n)
+		_ = unlink(n)
 	}
 	if got, want := names(bulkParent.Children()), names(sequentialParent.Children()); !reflect.DeepEqual(got, want) || !reflect.DeepEqual(got, []string{"ll=9", "ll=1"}) {
 		t.Fatalf("after removal: bulk %v, sequential %v", got, want)

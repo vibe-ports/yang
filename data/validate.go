@@ -395,7 +395,9 @@ func (vc *valCtx) setContainerDefault(p *Node) error {
 				return nil
 			}
 		}
-		p.touch()
+		if err := p.touch(); err != nil {
+			return err
+		}
 		p.flags |= FlagDefault
 	}
 	return nil

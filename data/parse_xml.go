@@ -852,7 +852,9 @@ func (p *xmlParser) subtree(parent *Node) error {
 	switch {
 	case node == nil:
 	case sn != nil:
-		node.touch()
+		if err := node.touch(); err != nil {
+			return err
+		}
 		node.meta = append(node.meta, metas...) // lyd_insert_meta without clearing the default flags
 	default:
 		for _, a := range attrs {

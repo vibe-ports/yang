@@ -72,7 +72,9 @@ func (n *Node) refreshHash(work *workCounter) {
 	if n.schema == nil {
 		return
 	}
-	n.touch()
+	if err := n.touch(); err != nil {
+		return
+	}
 	h := schemaHashWork(n.schema, work)
 	if work != nil && work.hashErr != nil {
 		return
@@ -114,8 +116,12 @@ func (t *Tree) beforeKeyLink(list, child *Node, at int) {
 		return
 	}
 	t.work.Add(1)
-	list.touch()
-	child.touch()
+	if err := list.touch(); err != nil {
+		return
+	}
+	if err := child.touch(); err != nil {
+		return
+	}
 	if at < list.lkeyN && list.lkeyFrozen == nil {
 		t.work.Add(int64(list.lkeyN))
 		list.lkeyFrozen = snapshotKeys(list).Collect()
@@ -151,7 +157,9 @@ func (t *Tree) keyLinked(list, child *Node) {
 			return
 		}
 	}
-	list.touch()
+	if err := list.touch(); err != nil {
+		return
+	}
 	start := list.lkeyN
 	if !list.lkeyOK || list.lkeyFrozen != nil || list.lkeyDirty {
 		start = 0
@@ -160,7 +168,9 @@ func (t *Tree) keyLinked(list, child *Node) {
 	list.lkeyN, list.lkeyFrozen, list.lkeyOK, list.lkeyDirty = list.keyN, nil, true, false
 	for i, key := range snapshotKeys(list).Slice(start, snapshotKeys(list).Len()).All() {
 		t.work.Add(1)
-		key.touch()
+		if err := key.touch(); err != nil {
+			return
+		}
 		key.keySlot = start + i + 1
 		list.lkeyPrefix = hashValue(&t.work, list.lkeyPrefix, &key.value)
 	}
@@ -208,7 +218,9 @@ func resetListKey(work *workCounter, list *Node) {
 	if list == nil || list.schema == nil {
 		return
 	}
-	list.touch()
+	if err := list.touch(); err != nil {
+		return
+	}
 	list.keyN = 0
 	for _, key := range list.kids.SchemaAll() {
 		if work != nil {
@@ -218,7 +230,9 @@ func resetListKey(work *workCounter, list *Node) {
 			break
 		}
 		list.keyN++
-		key.touch()
+		if err := key.touch(); err != nil {
+			return
+		}
 		key.keySlot = list.keyN
 	}
 	list.lkeyN, list.lkeyFrozen, list.lkeyOK = list.keyN, nil, true
@@ -231,7 +245,9 @@ func beforeKeyUnlink(list *Node, at int, work *workCounter) {
 	if list == nil || list.schema == nil || list.schema.Kind != schema.List {
 		return
 	}
-	list.touch()
+	if err := list.touch(); err != nil {
+		return
+	}
 	if at < list.lkeyN && list.lkeyFrozen == nil {
 		if work != nil {
 			work.Add(int64(list.lkeyN))
@@ -247,7 +263,9 @@ func beforeKeyUnlink(list *Node, at int, work *workCounter) {
 // that preceded it. The last native hash input remains in lkeyN/lkeyFrozen until
 // a later native rehash event replaces it.
 func exposeListKeys(work *workCounter, list *Node) {
-	list.touch()
+	if err := list.touch(); err != nil {
+		return
+	}
 	for list.keyN < list.kids.SchemaLen() {
 		if work != nil {
 			work.Add(1)
@@ -257,7 +275,9 @@ func exposeListKeys(work *workCounter, list *Node) {
 			break
 		}
 		list.keyN++
-		key.touch()
+		if err := key.touch(); err != nil {
+			return
+		}
 		key.keySlot = list.keyN
 	}
 }

@@ -68,7 +68,9 @@ func annotation(mod *schema.Module, name string) *schema.ExtInstance {
 func (lc *lydCtx) createMeta(parent *Node, list *[]*meta, mod *schema.Module, name, lex string, f types.Format,
 	pc types.PrefixCtx, h types.Hints, ctxNode *schema.Node, lnode *Node) error {
 	if parent != nil {
-		parent.touch() // list is parent's metadata
+		if err := parent.touch(); err != nil { // list is parent's metadata
+			return err
+		}
 	}
 	lc.log.pushPath("/@" + mod.Name + ":" + name)
 	defer lc.log.popPath()
@@ -103,7 +105,9 @@ func (lc *lydCtx) createMeta(parent *Node, list *[]*meta, mod *schema.Module, na
 // in *metas turned into FlagDefault and removed. libyang queues the node again on every call (the
 // JSON parser calls it once more per metadata object), so this does too.
 func (lc *lydCtx) setDataFlags(n *Node, metas *[]*meta) {
-	n.touch()
+	if err := n.touch(); err != nil {
+		return
+	}
 	if lc.opts.noNew {
 		n.flags &^= FlagNew
 	}
@@ -128,7 +132,9 @@ func (lc *lydCtx) setDataFlags(n *Node, metas *[]*meta) {
 
 // createAttr is lyd_create_attr: a generic attribute appended to the opaque node n.
 func createAttr(n *Node, a attr) {
-	n.touch()
+	if err := n.touch(); err != nil {
+		return
+	}
 	n.opaq.Attrs = append(n.opaq.Attrs, a)
 }
 
@@ -194,7 +200,9 @@ func (l *logger) newMeta(parent *Node, mod *schema.Module, name, val string, cle
 		return nil, err
 	}
 	if parent != nil {
-		parent.touch()
+		if err := parent.touch(); err != nil {
+			return nil, err
+		}
 		parent.meta = append(parent.meta, m) // lyd_insert_meta
 		if clearDflt {
 			npContDfltDel(parent)
@@ -234,7 +242,9 @@ func (l *logger) changeMeta(parent *Node, m *meta, val string) (changed bool, er
 		return false, nil
 	}
 	if parent != nil {
-		parent.touch()
+		if err := parent.touch(); err != nil {
+			return false, err
+		}
 	}
 	m.value = m2.value
 	return true, nil

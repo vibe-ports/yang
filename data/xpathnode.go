@@ -517,7 +517,9 @@ func (x xs) PrepareInstance(vals []string, charge func(int64) error) (xpath.Inst
 		} else {
 			child := newTerm(key, v)
 			child.parent = p.node
-			p.node.kids.appendNode(child)
+			if err := p.node.kids.appendNode(child); err != nil {
+				return nil, err
+			}
 		}
 	}
 	if x.s.Kind == schema.List {

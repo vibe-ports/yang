@@ -545,7 +545,7 @@ func TestChangeTermOwnContext(t *testing.T) {
 	if err := b.log.done(b.changeTerm(ir, "/e:lk[k='2']", false)); err != nil || ir.value.Canonical() != "/e:lk[k='2']" {
 		t.Fatalf("%v %s", err, ir.value.Canonical())
 	}
-	unlink(ir) // detached, it keeps its context (schema.Module.Owner, LYD_CTX)
+	_ = unlink(ir) // detached, it keeps its context (schema.Module.Owner, LYD_CTX)
 	b = newBuilder{set: setB, log: &logger{set: setB}}
 	if err := b.log.done(b.changeTerm(ir, "/e:lk[k='3']", false)); err != nil || ir.value.Canonical() != "/e:lk[k='3']" {
 		t.Errorf("detached term: %v %s", err, ir.value.Canonical())

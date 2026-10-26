@@ -17,10 +17,15 @@ const defaultMaxHashWork uint64 = 1 << 26
 
 func (w *workCounter) beginHashWork() func() {
 	if w.hashDepth == 0 {
-		w.hashUsed, w.hashErr = 0, nil
+		w.hashUsed, w.hashErr, w.unlinkPlan = 0, nil, nil
 	}
 	w.hashDepth++
-	return func() { w.hashDepth-- }
+	return func() {
+		w.hashDepth--
+		if w.hashDepth == 0 {
+			w.unlinkPlan = nil
+		}
+	}
 }
 
 func (w *workCounter) checkHashWork(amount uint64) error {

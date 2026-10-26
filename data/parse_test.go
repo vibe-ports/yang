@@ -285,7 +285,7 @@ func TestOpaqError(t *testing.T) {
 		if err := l.opaqError(tc.n); err == nil || len(l.diags) != 1 || codes(l.diags)[0] != tc.want {
 			t.Errorf("%s: %v %v", tc.want, err, codes(l.diags))
 		}
-		unlink(tc.n)
+		_ = unlink(tc.n)
 	}
 	// an opaque list with an invalid opaque key value
 	l := op("l", "b", "", types.FormatJSON)

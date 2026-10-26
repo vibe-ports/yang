@@ -121,7 +121,11 @@ func (n *Node) Remove() error {
 	if n == nil {
 		return nil
 	}
-	defer n.beginHashWork()()
+	done, err := n.beginHashWork()
+	if err != nil {
+		return err
+	}
+	defer done()
 	return (&logger{}).done(freeTree(n))
 }
 
@@ -132,25 +136,44 @@ func (n *Node) Unlink() error {
 	if n == nil {
 		return nil
 	}
-	defer n.beginHashWork()()
-	if err := preflightUnlink(n); err != nil {
+	if n.siblingsOf() == nil {
+		return nil
+	}
+	done, err := n.beginHashWork()
+	if err != nil {
 		return err
+	}
+	defer done()
+	if err := preflightUnlink(n); err != nil {
+		return (&logger{}).done(err)
 	}
 	return (&logger{}).done(unlinkTree(n))
 }
 
 // beginHashWork starts the hash work of a mutation of n: in its tree or, detached, bound to a
 // fresh counter of its root's subtree. The returned func ends it.
-func (n *Node) beginHashWork() func() {
+func (n *Node) beginHashWork() (func(), error) {
 	if owner := n.treeOf(); owner != nil {
-		return owner.work.beginHashWork()
+		return owner.work.beginHashWork(), nil
 	}
 	root := n
 	for root.parent != nil {
 		root = root.parent
 	}
-	bindSubtreeWork(root, &workCounter{})
-	return func() {}
+	work := &workCounter{}
+	done := work.beginHashWork()
+	bound, err := bindSubtreeBound(root, work)
+	if err == nil {
+		err = work.checkHashWork(bound)
+	}
+	if err == nil {
+		err = bindSubtreeWork(root, work)
+	}
+	if err != nil {
+		done()
+		return nil, err
+	}
+	return done, nil
 }
 
 // Merge is lyd_merge_siblings without options: the top-level subtrees of src are merged into t.
@@ -583,13 +606,17 @@ func (t *Tree) newPath(lg *logger, path, value string, o NewPathOptions) (*Node,
 		}
 		if err != nil {
 			if created {
-				unlink(first)
+				if uerr := unlink(first); uerr != nil {
+					return nil, uerr // the sticky budget/journal failure outranks err
+				}
 			}
 			return nil, err
 		}
 		if err := t.insert(parent, node, insertDefault); err != nil {
 			if created {
-				unlink(first)
+				if uerr := unlink(first); uerr != nil {
+					return nil, uerr // the sticky budget/journal failure outranks err
+				}
 			}
 			return nil, err
 		}
@@ -798,17 +825,23 @@ func (t *Tree) changeTermValCompared(n *Node, v types.Value, dflt, equal bool) (
 		}
 		valChange = true
 		freeLinks(n) // the changed value drops its leafref links (LY_CTX_LEAFREF_LINKING)
-		n.touch()
+		if err := n.touch(); err != nil {
+			return false, false
+		}
 		n.flags |= FlagNew
 	}
 	switch {
 	case n.flags&FlagDefault != 0 && !dflt:
-		n.touch()
+		if err := n.touch(); err != nil {
+			return false, false
+		}
 		n.flags &^= FlagDefault
 		npContDfltDel(n.parent)
 		dfltChange = true
 	case n.flags&FlagDefault == 0 && dflt:
-		n.touch()
+		if err := n.touch(); err != nil {
+			return false, false
+		}
 		n.flags |= FlagDefault
 		npContDfltSet(n.parent)
 		dfltChange = true
@@ -825,14 +858,18 @@ func (t *Tree) changeNodeValue(n *Node, v types.Value, hashAmount uint64) {
 	case n.isKey():
 		target = n.parent
 	default:
-		n.touch()
+		if err := n.touch(); err != nil {
+			return
+		}
 		n.value = v
 		reindexComparedParent(n)
 		return
 	}
 	sib, parent := target.siblingsOf(), target.parent
 	if sib == nil {
-		n.touch()
+		if err := n.touch(); err != nil {
+			return
+		}
 		n.value = v
 		refreshInstanceHash(&t.work, target)
 		return
@@ -898,6 +935,14 @@ func (t *Tree) changeNodeValue(n *Node, v types.Value, hashAmount uint64) {
 			t.work.hashErr = err
 			return
 		}
+		if err := preflightUnlink(target); err != nil {
+			t.work.hashErr = err
+			return
+		}
+		if err := t.preflightChangedReinsert(n, target, v); err != nil {
+			t.work.hashErr = err
+			return
+		}
 		restore, arm, err := t.linkOrigin(target)
 		if err != nil {
 			return
@@ -909,8 +954,12 @@ func (t *Tree) changeNodeValue(n *Node, v types.Value, hashAmount uint64) {
 		if err := arm(); err != nil {
 			return
 		}
-		unlinkRetainingHistory(target)
-		n.touch()
+		if err := unlinkRetainingHistory(target); err != nil {
+			return
+		}
+		if err := n.touch(); err != nil {
+			return
+		}
 		n.value = v
 		refreshInstanceHash(&t.work, target)
 		linkErr := t.work.hashErr
@@ -923,7 +972,9 @@ func (t *Tree) changeNodeValue(n *Node, v types.Value, hashAmount uint64) {
 			target.lkeyFrozen, target.lkeyOK = oldFrozen, oldOK
 			target.lkeyPrefix, target.lkeyDirty = oldPrefix, oldDirty
 			for _, s := range slots {
-				s.key.touch()
+				if err := s.key.touch(); err != nil {
+					return
+				}
 				s.key.keySlot = s.old
 			}
 			restore()
@@ -953,7 +1004,9 @@ func (t *Tree) changeNodeValue(n *Node, v types.Value, hashAmount uint64) {
 		}
 	}
 	sib.hashRemove(target)
-	n.touch()
+	if err := n.touch(); err != nil {
+		return
+	}
 	sib.refreshExact(target, func() {
 		n.value = v
 		refreshInstanceHash(&t.work, target)
@@ -1781,7 +1834,9 @@ func (t *Tree) mergeMatch(match, src *Node, w *anyWork) error {
 		}
 		if !equal {
 			o := *src.opaq
-			match.touch()
+			if err := match.touch(); err != nil {
+				return err
+			}
 			match.opaq.Value, match.opaq.Hints = o.Value, o.Hints
 			match.opaq.Format, match.opaq.Prefixes = o.Format, dupPrefixes(o.Prefixes, t.mergeCtx(match))
 		}
@@ -1797,7 +1852,9 @@ func (t *Tree) mergeMatch(match, src *Node, w *anyWork) error {
 			if src.any != nil {
 				child, text, hints = src.any.children.first(), src.any.text, src.any.hints
 			}
-			match.touch()
+			if err := match.touch(); err != nil {
+				return err
+			}
 			if err := match.copyAnyValue(w, child, text, hints); err != nil {
 				return err
 			}

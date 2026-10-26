@@ -180,7 +180,7 @@ func TestApplyDiffCreatedDuplicateMixedTable(t *testing.T) {
 	a, b := round12Set(t, false, "pv2-dupcreate"), round12Set(t, false, "pv2-dupcreate")
 	tr := round12Tree(t, a, `{"pv2-dupcreate:c":{"a":"1","b":"2","d":"3","ll":["a","x"]}}`)
 	z := findNode(t, round12Tree(t, b, `{"pv2-dupcreate:c":{"ll":["z"]}}`), "/pv2-dupcreate:c/ll[.='z']")
-	unlink(z)
+	_ = unlink(z)
 	c := tr.top.first()
 	if err := tr.link(c, &c.kids, z, c.kids.len()); err != nil {
 		t.Fatal(err)

@@ -53,7 +53,8 @@
 
 package data
 
-// dirtyOrder is the parser's copy of a system-ordered run's RB tree (lyds): the same red-black
+// dirtyOrder is a system-ordered run's authoritative retained RB tree (lyds), shared by parser
+// publication and ordinary mutations: the same red-black
 // algorithm and comparison direction as rb_insert_node, rb_insert_color, and rb_remove
 // (tree_data_sorted.c:430-667,669-716), fed in the same order, so it has libyang's shape. The
 // shape matters once a repeated key has changed an instance after it was linked: libyang leaves
@@ -90,7 +91,7 @@ func (d *dirtyOrder) keep(x *dirtyOrderNode) {
 		return
 	}
 	u.saved[x] = *x
-	_ = u.work.chargeHash(1) // reserved by armRemovalUndo
+	u.work.Add(1) // the caller prepaid removalBound before arming this journal
 }
 
 type dirtyOrderNode struct {
@@ -236,13 +237,6 @@ func (d *dirtyOrder) insertColor(x *dirtyOrderNode) {
 		}
 	}
 	d.root.red = false
-}
-
-// insert is rb_insert_node for a parser instance; it reports rb_insert_node's max (n follows
-// every instance, so linking it last keeps the physical order) and records a leader change.
-func (d *dirtyOrder) insert(n *Node) bool {
-	isMax, _ := d.insertNode(n, false)
-	return isMax
 }
 
 func (d *dirtyOrder) insertNode(n *Node, right bool) (isMax, leftmost bool) {
@@ -503,7 +497,7 @@ func (d *dirtyOrder) removalBound() uint64 { return 8*rbHeight(len(d.nodes)) + 3
 // put back the exact topology. The caller has reserved removalBound; nothing is copied before
 // remove runs, and nothing but that removal is journaled: an insertion or another removal
 // first drops an arm a move left behind when it stopped before unlinking. It returns the
-// restore function.
+// restore function. The reservation is charged, not merely checked, before the arm allocates.
 func (d *dirtyOrder) armRemovalUndo(n *Node, work *workCounter) func() {
 	old := d.nodes[n]
 	if old == nil {

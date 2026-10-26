@@ -64,24 +64,27 @@ type Node struct {
 	any    *anyValue
 	// payloadSet preserves LYD_CTX at a payload boundary, even when the enclosing
 	// any node belongs to another snapshot. It also survives unlinking the root.
-	payloadSet *schema.Set
-	value      types.Value
-	opaq       *opaque
-	flags      Flags
-	meta       []*meta // metadata (lyd_meta), in order
-	hkey       idxKey  // bucket of the node in its parent's children index (lyd_node.hash)
-	hashed     bool
-	hash       uint32        // lyd_node.hash, independent of table membership and the current value
-	keyN       int           // current leading key run
-	lkeyN      int           // leading keys captured by the last native hash event
-	lkeyFrozen []*Node       // historical prefix displaced by an earlier repeated key
-	lkeyOK     bool          // false means no native hash event yet (stored hash zero)
-	lkeyPrefix uint32        // running hash before finalization, for amortized prefix extension
-	lkeyDirty  bool          // a captured value changed during validation, without a native rehash
-	keySlot    int           // 1-based position in the parent's captured prefix
-	inRB       bool          // in its run's RB tree (lyds) of a system-ordered list or leaf-list
-	rbGroup    *rbGroup      // identity of that tree; adjacent runs can have different trees
-	links      *leafrefLinks // leafref links record (LY_CTX_LEAFREF_LINKING), nil: none
+	payloadSet    *schema.Set
+	value         types.Value
+	opaq          *opaque
+	flags         Flags
+	meta          []*meta // metadata (lyd_meta), in order
+	hkey          idxKey  // bucket of the node in its parent's children index (lyd_node.hash)
+	hashed        bool
+	hash          uint32      // lyd_node.hash, independent of table membership and the current value
+	keyN          int         // current leading key run
+	lkeyN         int         // leading keys captured by the last native hash event
+	lkeyFrozen    []*Node     // historical prefix displaced by an earlier repeated key
+	lkeyOK        bool        // false means no native hash event yet (stored hash zero)
+	lkeyPrefix    uint32      // running hash before finalization, for amortized prefix extension
+	lkeyDirty     bool        // a captured value changed during validation, without a native rehash
+	keySlot       int         // 1-based position in the parent's captured prefix
+	inRB          bool        // in its run's RB tree (lyds) of a system-ordered list or leaf-list
+	carriedRB     []rbCarry   // additional metadata of an in-flight whole-forest move
+	detachedRB    *dirtyOrder // a singleton's lyds metadata survives native unlink until sorted reinsertion
+	detachedGroup *rbGroup
+	rbGroup       *rbGroup      // identity of that tree; adjacent runs can have different trees
+	links         *leafrefLinks // leafref links record (LY_CTX_LEAFREF_LINKING), nil: none
 }
 
 // Tree is a data tree: its top-level siblings and the schema snapshot it is built over.
@@ -135,6 +138,8 @@ type workCounter struct {
 	hashUsed    uint64                    // cumulative reserved hash transitions in the current mutation
 	hashLimit   uint64                    // zero takes the internal default; tests may lower it
 	hashErr     error                     // the first hash budget error, propagated at the operation boundary
+	unlinkPlan  *unlinkPlan               // one prepaid removal in the current mutation scope
+	forestMove  bool                      // whole-forest membership publication is finalized once
 	hashDepth   int                       // nested mutation helpers share their enclosing operation's quota
 	hashTrace   *[]uint64                 // optional charge/check thresholds for exhaustive budget tests
 	hashNames   map[*schema.Node]uint32   // immutable module/name prefix, once per schema node in this tree
@@ -174,6 +179,7 @@ func newTerm(s *schema.Node, v types.Value, counters ...*workCounter) *Node {
 		work = counters[0]
 	}
 	n.refreshHash(work)
+	n.kids.work = work // new storage has no descendants to rebind
 	return n
 }
 
@@ -187,6 +193,7 @@ func newInner(s *schema.Node, counters ...*workCounter) *Node {
 	if s.Kind != schema.List || s.Keyless() {
 		n.refreshHash(work)
 	}
+	n.kids.work = work // subsequent child links bind their own subtrees
 	return n
 }
 

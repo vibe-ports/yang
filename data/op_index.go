@@ -260,7 +260,9 @@ func (s *siblings) orderUnregister(n *Node) *opidx.Handle[*Node] {
 // derives or changes children_ht, ordinary hash records, schema-alias records,
 // or first-instance record order.
 func (s *siblings) orderBuild(t *Tree) {
-	s.touch()
+	if err := s.touch(); err != nil {
+		return
+	}
 	o := newChildOrder()
 	for _, n := range s.SchemaAll() {
 		t.work.Add(1)
@@ -614,7 +616,9 @@ func (s *siblings) refreshRB(n *Node) {
 	if s.order == nil || n == nil || n.schema == nil {
 		return
 	}
-	s.touch()
+	if err := s.touch(); err != nil {
+		return
+	}
 	h := s.order.byNode[n]
 	if h == nil {
 		return
@@ -643,7 +647,9 @@ func (s *siblings) refreshExact(n *Node, change func()) {
 		change()
 		return
 	}
-	s.touch()
+	if err := s.touch(); err != nil {
+		return
+	}
 	if _, ok := opExactValue(n); ok {
 		s.order.byExact.Remove(h)
 	}

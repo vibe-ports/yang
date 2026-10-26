@@ -733,9 +733,13 @@ func TestRemovalUndoRestoresExactTopology(t *testing.T) {
 			root := d.root
 			var work workCounter
 			bound := d.removalBound()
+			if err := work.chargeHash(bound); err != nil {
+				t.Fatal(err)
+			}
 			restore := d.armRemovalUndo(victim, &work)
 			d.remove(victim)
-			if work.hashUsed > bound {
+			if work.hashUsed != bound || uint64(work.Load()) > bound { //nolint:gosec // the counter only counts copied nodes
+
 				t.Fatalf("removal journaled %d nodes, bound %d", work.hashUsed, bound)
 			}
 			restore()

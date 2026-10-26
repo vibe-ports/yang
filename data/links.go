@@ -42,8 +42,12 @@ func linksOf(set *schema.Set, n *Node) (*leafrefLinks, error) {
 // linkLeafrefNode is lyd_link_leafref_node: lref points to target. Like libyang it stops early
 // when lref is already among target's leafref nodes.
 func linkLeafrefNode(target, lref *Node) {
-	target.touch()
-	lref.touch()
+	if err := target.touch(); err != nil {
+		return
+	}
+	if err := lref.touch(); err != nil {
+		return
+	}
 	if target.links == nil {
 		target.links = &leafrefLinks{}
 	}
@@ -94,7 +98,9 @@ func freeLinks(n *Node) {
 	if rec == nil {
 		return
 	}
-	n.touch()
+	if err := n.touch(); err != nil {
+		return
+	}
 	for i := 0; i < len(rec.leafrefs); i++ {
 		l := rec.leafrefs[i]
 		if r2 := l.links; r2 != nil {
@@ -308,7 +314,9 @@ func (c *bulkLinkCleaner) free(n *Node) {
 	if rec == nil {
 		return
 	}
-	n.touch()
+	if err := n.touch(); err != nil {
+		return
+	}
 	for i := 0; i < len(rec.leafrefs); i++ {
 		c.visit()
 		l := rec.leafrefs[i]

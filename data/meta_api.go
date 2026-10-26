@@ -43,7 +43,9 @@ func removeMeta(n *Node, m *meta) {
 		return
 	}
 	if i := slices.Index(n.meta, m); i >= 0 {
-		n.touch()
+		if err := n.touch(); err != nil {
+			return
+		}
 		n.meta = append(n.meta[:i:i], n.meta[i+1:]...)
 	}
 }

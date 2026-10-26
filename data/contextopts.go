@@ -43,18 +43,38 @@ func init() {
 		if t == nil {
 			return nil
 		}
-		roots := t.top.nodes()
-		// lyd_free_all releases every descendant's reciprocal leafref links. The
-		// sibling state can then be cleared once, without N individual unlinks.
-		cleaner := bulkLinkCleaner{work: &t.work}
-		for _, root := range roots {
-			for n := range root.All() {
-				cleaner.visit()
-				cleaner.free(n)
-			}
-			root.tree = nil
+		defer t.work.beginHashWork()()
+		if err := t.work.chargeHash(uint64(t.top.SchemaLen()) + uint64(t.top.OpaqueLen())); err != nil {
+			return err
 		}
-		t.top.reset()
+		roots := t.top.nodes()
+		nodes, err := ownedNodes(roots, &t.work)
+		if err != nil {
+			return err
+		}
+		if err := t.touch(&t.top); err != nil {
+			return err
+		}
+		if err := reserveFreeLinks(nodes, &t.work); err != nil {
+			return err
+		}
+		// Whole-forest destruction frees metadata through its plugin callback; there are no
+		// surviving members to rebalance. Payloads participate in reciprocal-link cleanup too.
+		cleaner := bulkLinkCleaner{work: &t.work}
+		for _, n := range nodes {
+			cleaner.visit()
+			cleaner.free(n)
+			releaseOwnedRB(n)
+		}
+		if t.work.hashErr != nil {
+			return t.work.hashErr
+		}
+		for _, root := range roots {
+			root.tree, root.inRB, root.rbGroup = nil, false, nil
+		}
+		if err := t.top.reset(); err != nil {
+			return err
+		}
 		return nil
 	}
 	contextopts.DrainDiffDiagnostics = func(v any) []contextopts.ContextDiagnostic {

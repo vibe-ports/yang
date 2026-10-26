@@ -177,7 +177,7 @@ func TestStoredHashChildrenTableHistory(t *testing.T) {
 		}
 	}
 	for _, name := range []string{"a", "b", "c"} {
-		unlink(findNode(t, tr, "/m:r/"+name))
+		_ = unlink(findNode(t, tr, "/m:r/"+name))
 	}
 	if r.kids.ht == nil {
 		t.Fatal("shrink discarded table")

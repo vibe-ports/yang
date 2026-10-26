@@ -46,8 +46,8 @@ func TestOpIndexKeylessDigestKeepsLookupEquivalentSubtrees(t *testing.T) {
 			if foreign {
 				foreignTree, foreignOp := parse(sets[1], srcInput)
 				outer := foreignOp.kids.At(0)
-				unlink(outer)
-				unlink(srcOp.kids.At(0))
+				_ = unlink(outer)
+				_ = unlink(srcOp.kids.At(0))
 				if err := src.link(srcOp, &srcOp.kids, outer, 0); err != nil {
 					t.Fatal(err)
 				}
@@ -149,11 +149,13 @@ func TestOpIndexKeylessDuplicateSetUsesRegistrationOrder(t *testing.T) {
 			if len(lists) != 4 || separator == nil || op.kids.ht == nil {
 				t.Fatal("fixture needs four keyless instances, a separator, and a children table")
 			}
-			op.kids.touch()
+			if err := op.kids.touch(); err != nil {
+				t.Fatal(err)
+			}
 			if split {
-				op.kids.buildSchema([]*Node{lists[0], lists[1], separator, lists[3], lists[2]})
+				mustLink(t, op.kids.buildSchema([]*Node{lists[0], lists[1], separator, lists[3], lists[2]}))
 			} else {
-				op.kids.buildSchema([]*Node{lists[0], lists[3], lists[1], lists[2], separator})
+				mustLink(t, op.kids.buildSchema([]*Node{lists[0], lists[3], lists[1], lists[2], separator}))
 			}
 			op.kids.orderBuild(tr)
 			cache := &dupCache{}

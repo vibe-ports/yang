@@ -303,7 +303,7 @@ func runPrefixSequence(t *testing.T, input []byte) {
 				m.displaced(at)
 				c := n.kids.At(at)
 				if c.isKey() {
-					unlink(c)
+					_ = unlink(c)
 				} else if err := c.Remove(); err != nil {
 					t.Fatalf("%s: %v", step, err)
 				}
@@ -523,7 +523,8 @@ func runSplitOrderModel(t *testing.T, input []byte) {
 		t.Helper()
 		// Split runs may scan their own slots to locate a physical boundary,
 		// but no edit may walk every earlier sibling without accounting for it.
-		bound := int64(64 * (copyRoot.kids.SchemaLen() + 1))
+		// The local record/metadata recovery ledger adds a fixed reserve before removal.
+		bound := int64(64*(copyRoot.kids.SchemaLen()+1) + 128)
 		if used := dst.work.Load() - before; used <= 0 || used > bound ||
 			dst.work.hashUsed > uint64(bound) { //nolint:gosec // bound is a positive constant times a nonnegative child count.
 			t.Fatalf("%s: split-run work=%d hash charge=%d, bound=%d",

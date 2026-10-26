@@ -3,10 +3,13 @@
 package data
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"math/rand/v2"
+	"reflect"
 	"slices"
+	"strings"
 	"testing"
 
 	"github.com/vibe-ports/yang"
@@ -166,8 +169,8 @@ func checkTreeRetainedRB(t *testing.T, tr *Tree) {
 	checkSiblings = func(sib *siblings) {
 		for group, order := range sib.rbOrders {
 			hasLeader := false
-			for leader := range sib.rbTree {
-				if sib.rbGroups[leader] == group {
+			for leader := range sib.rbGroups {
+				if sib.ownsGroup(leader, group) {
 					hasLeader = true
 					break
 				}
@@ -176,7 +179,7 @@ func checkTreeRetainedRB(t *testing.T, tr *Tree) {
 				t.Fatalf("retained RB group %p has no physical leader", group)
 			}
 			physical := make([]*Node, 0, len(order.nodes))
-			for _, n := range sib.SchemaAll() {
+			for _, n := range sib.logical().All() {
 				if n.inRB && n.rbGroup == group {
 					physical = append(physical, n)
 				}
@@ -297,7 +300,9 @@ func TestRetainedRBRandomMixedContextMutations(t *testing.T) {
 		steps = 1024 // fewer random mutations under the race detector
 	}
 	for step := range steps {
-		op := rng.IntN(8)
+		// Internal primitives below represent distinct public operations.
+		tr.work.hashErr, tr.work.hashUsed = nil, 0
+		op := rng.IntN(12)
 		switch op {
 		case 0, 1:
 			sn := schemaA
@@ -314,7 +319,7 @@ func TestRetainedRBRandomMixedContextMutations(t *testing.T) {
 			}
 		case 2:
 			if tr.top.SchemaLen() > 2 {
-				if err := tr.top.At(rng.IntN(tr.top.SchemaLen())).Remove(); err != nil {
+				if err := tr.top.At(rng.IntN(tr.top.SchemaLen())).Remove(); err != nil && !strings.Contains(err.Error(), "D-0121") {
 					t.Fatalf("step %d remove: %v", step, err)
 				}
 			}
@@ -322,6 +327,10 @@ func TestRetainedRBRandomMixedContextMutations(t *testing.T) {
 			if tr.top.SchemaLen() > 0 {
 				n := tr.top.At(rng.IntN(tr.top.SchemaLen()))
 				if err := n.Unlink(); err != nil {
+					if strings.Contains(err.Error(), "D-0121") {
+						checkTreeRetainedRB(t, tr)
+						continue
+					}
 					t.Fatalf("step %d unlink: %v", step, err)
 				}
 				if err := tr.Insert(nil, n); err != nil {
@@ -331,7 +340,7 @@ func TestRetainedRBRandomMixedContextMutations(t *testing.T) {
 		case 4:
 			if tr.top.SchemaLen() > 0 {
 				n := tr.top.At(rng.IntN(tr.top.SchemaLen()))
-				if _, err := n.SetValue(fmt.Sprint(rng.IntN(512))); err != nil {
+				if _, err := n.SetValue(fmt.Sprint(rng.IntN(512))); err != nil && !strings.Contains(err.Error(), "D-0121") {
 					t.Fatalf("step %d SetValue: %v", step, err)
 				}
 			}
@@ -365,10 +374,59 @@ func TestRetainedRBRandomMixedContextMutations(t *testing.T) {
 			if _, _, err := tr.DupSiblings(src.top.first(), nil, DupOptions{}); err != nil {
 				t.Fatalf("step %d dup siblings: %v", step, err)
 			}
+		case 8:
+			// Resume the same retained mixed-context forest through parser primitives.
+			sn := schemaA
+			if tr.context() == b {
+				sn = schemaB
+			}
+			lc := &lydCtx{tree: tr, ctx: context.Background()}
+			for _, v := range []int{6, 8, 4} {
+				if err := lc.nodeInsert(nil, nil, retainedRBTerm(t, sn, fmt.Sprint(v))); err != nil {
+					t.Fatal(err)
+				}
+				checkTreeRetainedRB(t, tr)
+			}
+			if err := lc.flushDirtyAll(); err != nil {
+				t.Fatal(err)
+			}
+		case 9:
+			if tr.top.SchemaLen() > 1 {
+				before := snapshotHashBudgetTree(tr)
+				j := beginHashTransaction(tr)
+				err := tr.unlinkAll([]*Node{tr.top.At(0)})
+				if err != nil && !strings.Contains(err.Error(), "D-0121") {
+					t.Fatal(err)
+				}
+				err = yang.ErrBudget
+				j.end(&err)
+				if !reflect.DeepEqual(before, snapshotHashBudgetTree(tr)) {
+					t.Fatalf("step %d rollback changed graph", step)
+				}
+			}
+		case 10:
+			payload := parseOnlyXML(t, a, retainedRBXML("top", rng.IntN(512), rng.IntN(512)))
+			dst, _, sn := anyFixture()
+			n := &Node{schema: sn, any: &anyValue{}}
+			mustLink(t, dst.insert(nil, n, insertDefault))
+			if err := n.takeAnyChildren(dst, payload.top.first()); err != nil {
+				t.Fatal(err)
+			}
+			checkTreeRetainedRB(t, dst)
+			if err := n.clearAny(); err != nil {
+				t.Fatal(err)
+			}
+			checkTreeRetainedRB(t, dst)
+		case 11:
+			src := parseOnlyXML(t, tr.context(), retainedRBXML("top", rng.IntN(512), rng.IntN(512), rng.IntN(512)))
+			if err := tr.Insert(nil, src.top.first()); err != nil && !strings.Contains(err.Error(), "D-0121") {
+				t.Fatal(err)
+			}
+			checkTreeRetainedRB(t, src)
 		case 7:
 			if tr.top.SchemaLen() > 128 {
-				remove := slices.Clone(tr.top.schemaSpan().Collect()[:tr.top.SchemaLen()/2])
-				if err := tr.unlinkAll(remove); err != nil {
+				remove := tr.top.schemaSpan().Slice(0, tr.top.SchemaLen()/2).Collect()
+				if err := tr.unlinkAll(remove); err != nil && !strings.Contains(err.Error(), "D-0121") {
 					t.Fatalf("step %d unlinkAll: %v", step, err)
 				}
 			}

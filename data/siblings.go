@@ -83,6 +83,7 @@ type siblings struct {
 	pending      map[*schema.Node]*dirtyOrder // the parser's dirty runs: the sibling order is their tree's
 	rbTree       map[*Node]bool               // libyang's lyds metadata lives on each run leader
 	rbGroups     map[*Node]*rbGroup           // tree identity follows metadata when its leader moves
+	rbMore       map[*Node][]*rbGroup         // ordered additional metadata; rbGroups selects the first
 	rbOrders     map[*rbGroup]*dirtyOrder     // retained native RB shape for asymmetric cross-context comparisons
 	order        *childOrder                  // ordered sequence and occurrence indexes; compatibility records stay above
 	gen          uint64                       // changes with every insertion and removal
@@ -287,7 +288,9 @@ func (s *siblings) addContext(n *Node) {
 	if n.schema == nil {
 		return
 	}
-	s.touch()
+	if err := s.touch(); err != nil {
+		return
+	}
 	s.visit()
 	if s.contexts == nil {
 		s.contexts = make(map[*schema.Set]int)
@@ -299,7 +302,9 @@ func (s *siblings) dropContext(n *Node) {
 	if n.schema == nil {
 		return
 	}
-	s.touch()
+	if err := s.touch(); err != nil {
+		return
+	}
 	s.visit()
 	set := ctxOf(n)
 	if s.contexts[set] == 1 {
@@ -362,45 +367,73 @@ func (s *siblings) runLeader(sn *schema.Node) *Node {
 func (s *siblings) hasRB(sn *schema.Node) bool       { return s.rbTree[s.runLeader(sn)] }
 func (s *siblings) hasUnsorted(sn *schema.Node) bool { return s.unsorted[s.runLeader(sn)] }
 
-func (s *siblings) transferRun(old, next *Node) {
-	s.touch()
-	if old == nil || next == nil || old == next {
+func (s *siblings) transferRun(old, next *Node) { s.transferRBGroup(old, next, s.rbGroups[old]) }
+
+func (s *siblings) transferRBGroup(old, next *Node, group *rbGroup) {
+	if err := s.touch(); err != nil {
 		return
 	}
-	if s.rbTree[old] {
-		// lyds_move_meta appends the old tree metadata. If next already leads a
-		// different tree, lyds_get_rb_tree continues to select next's first one.
-		if !s.rbTree[next] {
-			s.rbTree[next] = true
-			if s.rbGroups != nil {
-				s.rbGroups[next] = s.rbGroups[old]
-			}
-		} else if s.rbGroups[next] != s.rbGroups[old] {
-			markUnsorted(s, next)
-		}
-		delete(s.rbTree, old)
-		if s.rbGroups != nil {
-			delete(s.rbGroups, old)
-		}
+	if group == nil || old == nil || next == nil || old == next {
+		return
 	}
-	if s.unsorted[old] {
-		s.unsorted[next] = true
+	oldGroups := s.metaGroups(old)
+	if !slices.Contains(oldGroups, group) {
+		return
+	}
+	nextGroups := s.metaGroups(next)
+	wasUnsorted := s.unsorted[old]
+	oldGroups = slices.DeleteFunc(oldGroups, func(g *rbGroup) bool { return g == group })
+	s.setMetaGroups(old, oldGroups)
+	if !slices.Contains(nextGroups, group) {
+		nextGroups = append(nextGroups, group)
+	}
+	s.setMetaGroups(next, nextGroups)
+	if len(oldGroups) > 0 {
+		markUnsorted(s, old)
+	}
+	if len(nextGroups) > 1 || wasUnsorted {
+		markUnsorted(s, next)
+	}
+	if len(oldGroups) == 0 {
 		delete(s.unsorted, old)
 	}
 }
 
 // runGone forgets state carried by a removed run leader.
 func (s *siblings) runGone(n *Node) {
-	s.touch()
+	if err := s.touch(); err != nil {
+		return
+	}
+	if s.rbGroups[n] != nil {
+		p := s.work.unlinkPlan
+		if p == nil || p.node != n || p.sib != s || p.gen != s.gen {
+			if err := s.work.chargeHash(4 * (uint64(len(s.rbMore[n])) + 1)); err != nil {
+				return
+			}
+		}
+		if err := n.touch(); err != nil {
+			return
+		}
+		for _, g := range s.metaGroups(n) {
+			if d := s.rbOrders[g]; d != nil && d.root == nil {
+				n.carriedRB = append(n.carriedRB, rbCarry{g, d})
+				d.work = nil
+				delete(s.rbOrders, g)
+			}
+		}
+	}
 	delete(s.rbTree, n)
 	delete(s.rbGroups, n)
+	delete(s.rbMore, n)
 	delete(s.unsorted, n)
 }
 
 // rb_remove_node empties only the selected tree. Adjacent runs of the same
 // schema can have different trees after a separator is removed.
 func (s *siblings) clearEmptyRBGroup(group *rbGroup) bool {
-	s.touch()
+	if err := s.touch(); err != nil {
+		return false
+	}
 	if group == nil {
 		return false
 	}
@@ -410,59 +443,77 @@ func (s *siblings) clearEmptyRBGroup(group *rbGroup) bool {
 	if order := s.rbOrders[group]; order != nil && len(order.nodes) > s.rbDualCount[group] {
 		return false
 	}
-	delete(s.rbOrders, group)
+	// Empty graphs retained by an effective metadata selection slot are compacted by removal.
+	if d := s.rbOrders[group]; d != nil && d.root != nil {
+		return false
+	}
 	delete(s.rbDualCount, group)
 	return true
 }
 
-// clearEmptyLeaders drops the run-leader state that still selects an emptied tree: one pass over
-// the leaders for a whole bulk removal.
-func (s *siblings) clearEmptyLeaders(emptied map[*rbGroup]bool) {
-	if len(emptied) == 0 {
-		return
-	}
-	for leader, group := range s.rbGroups {
-		if s.work != nil {
-			s.work.Add(1)
-		}
-		if emptied[group] {
-			s.runGone(leader)
-		}
-	}
-}
-
 // removeRBNode is lyds_unlink's rb_remove_node. The sibling set is touched before the retained
 // topology changes so #257's transaction can restore both its group map and every RB node.
-func (s *siblings) removeRBNode(n *Node) {
-	s.touch()
-	if n == nil || !n.inRB || n.rbGroup == nil {
-		return
+func (s *siblings) removeRBNode(n, prev, next, tail *Node, around func(*Node) (*Node, *Node)) error {
+	var order *dirtyOrder
+	var leader *Node
+	if p := s.work.unlinkPlan; around == nil && p != nil && p.node == n && p.sib == s && p.gen == s.gen {
+		order, leader = p.order, p.leader
+	} else {
+		var err error
+		order, leader, err = s.removalOrder(n, prev, next, tail, around)
+		if err != nil {
+			return err
+		}
+		if order != nil && s.work != nil {
+			cost := s.transferCost(leader, next)
+			if order.nodes[n] != nil {
+				cost = addHashBound(cost, order.removalBound())
+			}
+			if err := s.work.chargeHash(cost); err != nil {
+				return err
+			}
+		}
 	}
-	if order := s.rbOrders[n.rbGroup]; order != nil {
-		order.work = s.work
-		order.remove(n)
+	if order == nil {
+		return nil
 	}
-	s.dropDual(n)
-}
+	if err := s.touch(); err != nil {
+		return err
+	}
+	before := prev
+	if before == nil {
+		before = tail
+	}
+	alone := before == n || (before == nil || before.schema != n.schema) && (next == nil || next.schema != n.schema)
+	if leader == n && alone && len(order.nodes) == 1 {
+		if err := n.touch(); err != nil {
+			return err
+		}
+		// lyds_unlink leaves an alone leader's metadata attached. Its next sorted insertion
+		// clears it (lyds_insert:1225-1232); a direct whole-run link transfers it intact.
+		n.detachedRB, n.detachedGroup = order, n.rbGroup
+		order.work = nil
+		delete(s.rbOrders, n.rbGroup)
+		s.runGone(n)
+		return nil
+	}
+	if leader == n && alone {
+		return nil
+	}
+	if leader == n && next != nil {
+		s.transferRun(n, next)
+	}
+	order.work = s.work
+	order.remove(n)
+	if len(order.nodes) == 0 {
+		owner := leader
+		if leader == n && next != nil {
+			owner = next
+		}
+		s.compactMeta(owner)
+	}
 
-// dropDual removes n from the earlier trees that still hold it (rbDual). libyang leaves those rb
-// nodes pointing at the unlinked node; the port drops them so no tree keeps a node that left
-// the siblings.
-func (s *siblings) dropDual(n *Node) {
-	if s.rbDual[n] == nil {
-		return
-	}
-	s.touch() // the journal restores the membership maps with the trees
-	for _, group := range s.rbDual[n] {
-		if order := s.rbOrders[group]; order != nil && order.nodes[n] != nil {
-			order.work = s.work
-			order.remove(n)
-		}
-		if s.rbDualCount[group]--; s.rbDualCount[group] <= 0 {
-			delete(s.rbDualCount, group)
-		}
-	}
-	delete(s.rbDual, n)
+	return nil
 }
 
 // len is the number of siblings, opaque ones included.
@@ -807,7 +858,9 @@ func indexNameDigest(sn *schema.Node, work *workCounter) [32]byte {
 // Fixtures ops/ht-* (create, none, shrink, grow after shrink, dup of a shrunk, of a small and
 // non-recursive copy, each followed by an output insertion) pin it.
 func (s *siblings) hashAdd(parent, n *Node) {
-	s.touch()
+	if err := s.touch(); err != nil {
+		return
+	}
 	if parent == nil || parent.schema == nil || isAny(parent.schema) || n.schema == nil {
 		return
 	}
@@ -868,7 +921,9 @@ func (s *siblings) logical() siblingSpan {
 // hashPut is the unchecked exact insertion in tree_data_hash.c:134. Repeated
 // key insertion must retain even registrations whose recorded hash is now stale.
 func (s *siblings) hashPut(n *Node) {
-	s.touch()
+	if err := s.touch(); err != nil {
+		return
+	}
 	k, ok := hashOfWork(n, s.work)
 	if !ok {
 		return
@@ -878,7 +933,9 @@ func (s *siblings) hashPut(n *Node) {
 
 // hashPutKey reuses a live discriminator across a registration-only reorder.
 func (s *siblings) hashPutKey(n *Node, k idxKey) {
-	s.touch()
+	if err := s.touch(); err != nil {
+		return
+	}
 	if s.work != nil {
 		s.work.Add(1)
 	}
@@ -905,7 +962,9 @@ func (s *siblings) hashPutKey(n *Node, k idxKey) {
 // identical registrations avoids revisiting an ever-growing history on each key
 // insertion while preserving the order revealed by successive native removals.
 func (s *siblings) activateRecord(n *Node, k idxKey, r *record) {
-	s.touch()
+	if err := s.touch(); err != nil {
+		return
+	}
 	if n.hashed && n.hkey == k && s.exactByNode[n] == r {
 		return
 	}
@@ -954,7 +1013,9 @@ func (s *siblings) activateRecord(n *Node, k idxKey, r *record) {
 // hashReindex changes only the live comparison discriminator, without adding or
 // deleting any native registration. Old recorded hashes remain in history.
 func (s *siblings) hashReindex(n *Node) {
-	s.touch()
+	if err := s.touch(); err != nil {
+		return
+	}
 	if s.ht == nil || s.history[n] == nil {
 		return
 	}
@@ -974,7 +1035,9 @@ func (s *siblings) hashReindex(n *Node) {
 
 // unindexRecord removes a secondary-index entry, preserving native history.
 func (s *siblings) unindexRecord(n *Node) {
-	s.touch()
+	if err := s.touch(); err != nil {
+		return
+	}
 	if !n.hashed || s.ht == nil {
 		return
 	}
@@ -998,7 +1061,9 @@ func (s *siblings) unindexRecord(n *Node) {
 // hashRemove is lyd_unlink_hash: remove ONE registration at the node's current
 // stored hash (tree_data_hash.c:219), never a registration under an earlier hash.
 func (s *siblings) hashRemove(n *Node) {
-	s.touch()
+	if err := s.touch(); err != nil {
+		return
+	}
 	byHash := s.history[n]
 	r := byHash[n.hash]
 	if r == nil {
@@ -1020,7 +1085,9 @@ func (s *siblings) hashRemove(n *Node) {
 // hashForget drops references when a node leaves this sibling set. As with
 // first-instance records (D-0117), dangling native records are not retained.
 func (s *siblings) hashForget(n *Node) {
-	s.touch()
+	if err := s.touch(); err != nil {
+		return
+	}
 	s.unindexRecord(n)
 	delete(s.history, n)
 }
@@ -1063,7 +1130,9 @@ func (s *siblings) firstRecordSchema(sn *schema.Node) bool {
 // starts. Operation children already have records, which need not follow document order
 // (D-0117); they are kept.
 func (s *siblings) leaderMaterialize(order siblingSpan) {
-	s.touch()
+	if err := s.touch(); err != nil {
+		return
+	}
 	seen := map[*schema.Node]bool{}
 	var prev *schema.Node
 	for _, n := range order.All() {
@@ -1084,7 +1153,9 @@ func (s *siblings) leaderMaterialize(order siblingSpan) {
 // leaderBuild is lyd_insert_hash_add's empty_ht branch: every run start is registered in sibling
 // order. It runs when the table is created or ordinary siblings first leave schema order.
 func (s *siblings) leaderBuild(order siblingSpan) {
-	s.touch()
+	if err := s.touch(); err != nil {
+		return
+	}
 	s.leaders = map[*schema.Node]*recordChain{}
 	s.leaderByNode = map[*Node]*record{}
 	seen := map[*schema.Node]bool{}
@@ -1113,7 +1184,9 @@ func (s *siblings) leaderHas(sn *schema.Node, n *Node) bool {
 }
 
 func (s *siblings) leaderAppend(sn *schema.Node, n *Node) bool {
-	s.touch()
+	if err := s.touch(); err != nil {
+		return false
+	}
 	if s.work != nil {
 		s.work.Add(1)
 	}
@@ -1158,7 +1231,9 @@ func (s *siblings) leaderFirstMixed(sn *schema.Node) *Node {
 }
 
 func (s *siblings) leaderDrop(sn *schema.Node, n *Node) bool {
-	s.touch()
+	if err := s.touch(); err != nil {
+		return false
+	}
 	if s.work != nil {
 		s.work.Add(1)
 	}
@@ -1345,7 +1420,9 @@ func (s *siblings) checkRecords() error {
 
 // leaderInsert applies lyd_insert_hash_add to n already at position at.
 func (s *siblings) leaderInsert(n *Node, at int) {
-	s.touch()
+	if err := s.touch(); err != nil {
+		return
+	}
 	if s.ht == nil || !s.firstRecordSchema(n.schema) || at < 0 || at >= s.SchemaLen() ||
 		at > 0 && s.At(at-1).schema == n.schema {
 		return
@@ -1361,7 +1438,9 @@ func (s *siblings) leaderInsert(n *Node, at int) {
 
 // leaderInsertBetween is leaderInsert with already-known neighbours.
 func (s *siblings) leaderInsertBetween(n, prev, next *Node) {
-	s.touch()
+	if err := s.touch(); err != nil {
+		return
+	}
 	if s.ht == nil || !s.firstRecordSchema(n.schema) || prev != nil && prev.schema == n.schema {
 		return
 	}
@@ -1402,11 +1481,12 @@ func (s *siblings) opRehashNeighbours(n *Node) (prev, next *Node, ok bool) {
 // node becomes the run start. A missing old record leaves the new record uninserted; libyang also
 // logs an internal error, which the port deliberately does not surface as a data verdict (D-0118).
 func (s *siblings) leaderReplace(sn *schema.Node, old, n *Node) bool {
-	s.touch()
+	if err := s.touch(); err != nil {
+		return false
+	}
 	if !s.leaderDrop(sn, old) {
 		return false
 	}
-	s.transferRun(old, n)
 	return s.leaderAppend(sn, n)
 }
 
@@ -1414,7 +1494,9 @@ func (s *siblings) leaderReplace(sn *schema.Node, old, n *Node) bool {
 // unlink (the node leaves its siblings); a value rehash (lyd_change_node_value: lyd_unlink_hash
 // then lyd_insert_hash on the same linked node, tree_data_new.c:1177-1194) passes false.
 func (s *siblings) leaderUnlink(n *Node, at int, removing bool) {
-	s.touch()
+	if err := s.touch(); err != nil {
+		return
+	}
 	if s.ht == nil || !s.firstRecordSchema(n.schema) || at < 0 || at >= s.SchemaLen() {
 		return
 	}
@@ -1433,7 +1515,9 @@ func (s *siblings) leaderUnlink(n *Node, at int, removing bool) {
 // after it stopped starting a run keeps it through a rehash, as libyang does; when the node is
 // removed the port drops that record, which libyang leaves dangling (D-0117).
 func (s *siblings) leaderUnlinkBetween(n, prev, next *Node, removing bool) {
-	s.touch()
+	if err := s.touch(); err != nil {
+		return
+	}
 	if s.ht == nil || !s.firstRecordSchema(n.schema) {
 		return
 	}
@@ -1448,9 +1532,6 @@ func (s *siblings) leaderUnlinkBetween(n, prev, next *Node, removing bool) {
 	}
 	if next == nil || next.schema != n.schema {
 		return
-	}
-	if removing {
-		s.transferRun(n, next)
 	}
 	if s.leaderHas(n.schema, next) {
 		return

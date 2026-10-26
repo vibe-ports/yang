@@ -352,7 +352,7 @@ func TestLookupChild(t *testing.T) {
 		}
 		nodes["t=2"].flags |= flagDead
 		opq := newOpaque(opaque{Name: "e"})
-		c.kids.appendNode(opq)
+		mustLink(t, c.kids.appendNode(opq))
 		opq.parent = c
 		table := c.kids.ht != nil
 		check := func(sn xpath.SchemaNode, vals []string) {

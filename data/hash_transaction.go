@@ -20,10 +20,13 @@ import (
 // old sibling sets are restored; no failed operation returns a reference to them.
 type hashTransaction struct {
 	tree *Tree
-	err  error  // a journal charge failed: the operation fails with it and rolls back
-	done func() // ends the hash-work scope opened by beginHashTransaction
-	rank map[*schema.Node]int
-	set  *schema.Set // the tree's snapshot: a diff create may retain another context's root
+	err  error // a journal charge failed: the operation fails with it and rolls back
+	// rollback makes any failure restore, not only a budget one: an operation that could not
+	// undo its own temporary change (validateOpNode's refused cleanup) sets it
+	rollback bool
+	done     func() // ends the hash-work scope opened by beginHashTransaction
+	rank     map[*schema.Node]int
+	set      *schema.Set // the tree's snapshot: a diff create may retain another context's root
 	// orders are an operation's input or output children (opOrder), schema-sized
 	orders   map[orderKey][]*schema.Node
 	nodes    map[*Node]Node
@@ -55,27 +58,36 @@ func beginHashTransaction(t *Tree) *hashTransaction {
 	if t.work.journal != nil {
 		return nil
 	}
-	j := &hashTransaction{tree: t, done: t.work.beginHashWork(), rank: maps.Clone(t.rank), set: t.set,
+	j := &hashTransaction{tree: t, done: t.work.beginHashWork(), rank: t.rank, orders: t.orders, set: t.set,
 		nodes: map[*Node]Node{}, siblings: map[*siblings]siblings{}, chains: map[*recordChain]recordChain{},
 		records: map[*record]record{},
 		pending: map[*dirtyOrder]dirtyOrder{}, dirty: map[*dirtyOrderNode]dirtyOrderNode{},
 		links: map[*leafrefLinks]leafrefLinks{}, owners: map[*Node]*leafrefLinks{},
 		metas: map[*meta]meta{}, opaq: map[*opaque]opaque{}, works: map[*siblings]*workCounter{}}
+	t.work.journal = j
 	objects := uint64(len(t.rank)) + 1
+	if j.charge(uint64(len(t.orders))) != nil {
+		return j
+	}
+	for _, value := range t.orders {
+		objects = addHashBound(objects, uint64(len(value))+1)
+	}
+	if j.charge(objects) != nil {
+		return j
+	}
+	j.rank = maps.Clone(t.rank)
 	if t.orders != nil {
 		j.orders = make(map[orderKey][]*schema.Node, len(t.orders))
 		for key, value := range t.orders {
 			j.orders[key] = slices.Clone(value)
-			objects += uint64(len(value)) + 1
 		}
 	}
-	t.work.journal = j
-	j.charge(objects)
 	return j
 }
 
 // end detaches the transaction from its tree. A failed journal charge becomes the operation's
-// result, and a budget failure restores the tree. A nil result keeps the changes.
+// result, and a budget failure (any failure with rollback set) restores the tree. A nil result
+// keeps the changes.
 func (j *hashTransaction) end(result *error) {
 	if j == nil {
 		return
@@ -88,7 +100,7 @@ func (j *hashTransaction) end(result *error) {
 	}
 	if result != nil {
 		j.fail(result)
-		if errors.Is(*result, yang.ErrBudget) {
+		if errors.Is(*result, yang.ErrBudget) || j.rollback && *result != nil {
 			j.restore()
 		}
 	}
@@ -97,18 +109,27 @@ func (j *hashTransaction) end(result *error) {
 
 // fail makes a failed journal charge the operation's result.
 func (j *hashTransaction) fail(result *error) {
-	if j != nil && *result == nil && j.err != nil {
+	if j == nil {
+		return
+	}
+	if errors.Is(j.tree.work.hashErr, yang.ErrBudget) {
+		*result = j.tree.work.hashErr
+	} else if j.err != nil && (*result == nil || errors.Is(j.err, yang.ErrBudget)) {
 		*result = j.err
 	}
 }
 
 // charge charges journaled objects to the tree's hash-work budget: the copy is work proportional
-// to them, like the hashing it protects. The copy is already complete when the charge fails, so
-// the operation can still be rolled back exactly.
-func (j *hashTransaction) charge(objects uint64) {
-	if err := j.tree.work.chargeHash(objects); err != nil && j.err == nil {
-		j.err = err
+// to them, like the hashing it protects. Reserve before copying; touch refuses the mutation
+// when reservation fails. Earlier completed captures remain available for rollback.
+func (j *hashTransaction) charge(objects uint64) error {
+	if err := j.tree.work.chargeHash(objects); err != nil {
+		if j.err == nil {
+			j.err = err
+		}
+		return err
 	}
+	return nil
 }
 
 // journal returns the transaction of the tree s belongs to, if one is running.
@@ -120,22 +141,24 @@ func (s *siblings) journal() *hashTransaction {
 }
 
 // touch journals s before it changes: its indexes and the structs of the nodes in it.
-func (s *siblings) touch() {
+func (s *siblings) touch() error {
 	if j := s.journal(); j != nil {
-		j.captureSiblings(s)
+		return j.captureSiblings(s)
 	}
+	return nil
 }
 
 // touch journals s, a sibling set of t, before it changes (also before its first link binds it
 // to t).
-func (t *Tree) touch(s *siblings) {
+func (t *Tree) touch(s *siblings) error {
 	if j := t.work.journal; j != nil {
-		j.captureSiblings(s)
+		return j.captureSiblings(s)
 	}
+	return nil
 }
 
 // touch journals n before its own fields (value, flags, metadata, links, stored hash) change.
-func (n *Node) touch() {
+func (n *Node) touch() error {
 	j := n.kids.journal()
 	if j == nil {
 		if t := n.treeOf(); t != nil {
@@ -143,13 +166,47 @@ func (n *Node) touch() {
 		}
 	}
 	if j == nil {
-		return
+		return nil
 	}
-	if _, exists := j.nodes[n]; !exists {
-		var objects uint64
-		j.captureNode(n, &objects)
-		j.charge(objects)
+	return j.captureNode(n)
+}
+
+// joinLinkJournal associates both sides before either a linked or detached source changes.
+// A detached subtree can still belong to an outer transaction through its work binding.
+func joinLinkJournal(t *Tree, n *Node) error {
+	from := n.kids.journal()
+	if n.any != nil {
+		from = n.any.children.journal()
 	}
+	source := n.treeOf()
+	if from == nil && source != nil {
+		from = source.work.journal
+	}
+	lend := func(j *hashTransaction, w *workCounter) error {
+		if w.journal != nil {
+			return nil
+		}
+		if err := j.charge(1); err != nil {
+			return err
+		}
+		w.journal = j
+		j.lent = append(j.lent, w)
+		return nil
+	}
+	if t.work.journal == nil && from != nil {
+		if err := lend(from, &t.work); err != nil {
+			return err
+		}
+	}
+	if j := t.work.journal; j != nil {
+		if source != nil {
+			if err := lend(j, &source.work); err != nil {
+				return err
+			}
+		}
+		return j.captureNode(n)
+	}
+	return nil
 }
 
 // setWork binds s and its retained RB topologies to work: a topology must not keep the tree it
@@ -165,11 +222,14 @@ func (s *siblings) setWork(work *workCounter) {
 }
 
 // rebind records the work counter of s before bindSubtreeWork moves it to another tree.
-func (s *siblings) rebind(work *workCounter) {
+func (s *siblings) rebind(work *workCounter) error {
 	if s.work == work {
-		return
+		return nil
 	}
 	if from := s.journal(); from != nil && work.journal == nil {
+		if err := from.charge(1); err != nil {
+			return err
+		}
 		work.journal = from
 		from.lent = append(from.lent, work)
 	}
@@ -181,66 +241,92 @@ func (s *siblings) rebind(work *workCounter) {
 			continue
 		}
 		if _, exists := j.works[s]; !exists {
+			if err := j.charge(1); err != nil {
+				return err
+			}
 			j.works[s] = s.work
-			j.charge(1)
 		}
 	}
+	return nil
 }
 
 // captureNode journals n itself, not its children: its sibling set is journaled on its own.
-func (j *hashTransaction) captureNode(n *Node, objects *uint64) {
+func (j *hashTransaction) captureNode(n *Node) error {
 	if _, exists := j.nodes[n]; exists {
-		return
+		return j.err
+	}
+	objects := 1 + uint64(2*len(n.meta)+len(n.lkeyFrozen)+len(n.carriedRB))
+	if n.opaq != nil {
+		objects += 1 + uint64(len(n.opaq.Attrs))
+	}
+	if err := j.charge(objects); err != nil {
+		return err
 	}
 	saved := *n
 	saved.meta = slices.Clone(n.meta)
 	saved.lkeyFrozen = slices.Clone(n.lkeyFrozen)
+	saved.carriedRB = slices.Clone(n.carriedRB)
 	j.nodes[n] = saved
-	*objects += 1 + uint64(len(n.meta))
 	for _, m := range n.meta {
 		j.metas[m] = *m
-	}
-	if n.links != nil {
-		j.captureLinks(n.links, objects)
-		for _, c := range n.links.leafrefs {
-			j.captureOwner(c, objects)
-		}
-		for _, c := range n.links.targets {
-			j.captureOwner(c, objects)
-		}
 	}
 	if n.opaq != nil {
 		op := *n.opaq
 		op.Attrs = slices.Clone(op.Attrs)
 		j.opaq[n.opaq] = op
 	}
+	for _, c := range n.carriedRB {
+		if err := j.captureOrder(c.order); err != nil {
+			return err
+		}
+	}
+	if n.links != nil {
+		if err := j.captureLinks(n.links); err != nil {
+			return err
+		}
+		for _, c := range n.links.leafrefs {
+			if err := j.captureOwner(c); err != nil {
+				return err
+			}
+		}
+		for _, c := range n.links.targets {
+			if err := j.captureOwner(c); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
 }
 
-func (j *hashTransaction) captureLinks(l *leafrefLinks, objects *uint64) {
+func (j *hashTransaction) captureLinks(l *leafrefLinks) error {
 	if _, exists := j.links[l]; exists {
-		return
+		return nil
+	}
+	if err := j.charge(1 + uint64(len(l.leafrefs)+len(l.targets))); err != nil {
+		return err
 	}
 	j.links[l] = leafrefLinks{leafrefs: slices.Clone(l.leafrefs), targets: slices.Clone(l.targets)}
-	*objects += 1 + uint64(len(l.leafrefs)+len(l.targets))
+	return nil
 }
 
-// captureOwner journals a link counterpart's record pointer and record, wherever it is linked:
-// unlinking a journaled node removes it from its counterparts' records.
-func (j *hashTransaction) captureOwner(c *Node, objects *uint64) {
+// captureOwner includes counterparts in another tree: freeLinks can empty their record.
+func (j *hashTransaction) captureOwner(c *Node) error {
 	if _, exists := j.owners[c]; exists {
-		return
+		return nil
+	}
+	if err := j.charge(1); err != nil {
+		return err
 	}
 	j.owners[c] = c.links
-	*objects++
 	if c.links != nil {
-		j.captureLinks(c.links, objects)
+		return j.captureLinks(c.links)
 	}
+	return nil
 }
 
-// captureRecords journals the records reachable from r: its hash chain (prev/next) and its
-// ordered index (left/right). A chain can be as long as the sibling set (duplicate values of a
-// state leaf-list), so the walk keeps an explicit stack instead of recursing.
-func (j *hashTransaction) captureRecords(r *record, objects *uint64) {
+// captureRecords walks each record once. Reserve each record and its outgoing stack slots
+// before allocating; a duplicate-heavy chain cannot allocate beyond the remaining quota.
+func (j *hashTransaction) captureRecords(r *record) error {
 	stack := []*record{r}
 	for len(stack) != 0 {
 		r := stack[len(stack)-1]
@@ -251,53 +337,83 @@ func (j *hashTransaction) captureRecords(r *record, objects *uint64) {
 		if _, exists := j.records[r]; exists {
 			continue
 		}
+		if err := j.charge(5 + uint64(len(r.more))); err != nil {
+			return err
+		}
 		saved := *r
 		saved.more = slices.Clone(r.more)
 		j.records[r] = saved
-		*objects++
 		stack = append(stack, r.prev, r.next, r.left, r.right)
 	}
+	return nil
 }
 
-func (j *hashTransaction) captureChain(c *recordChain, objects *uint64) {
+func (j *hashTransaction) captureChain(c *recordChain) error {
 	if c == nil {
-		return
+		return nil
 	}
 	if _, exists := j.chains[c]; exists {
-		return
+		return nil
+	}
+	if err := j.charge(1); err != nil {
+		return err
 	}
 	j.chains[c] = *c
-	*objects++
-	j.captureRecords(c.first, objects)
-	j.captureRecords(c.root, objects)
+	if err := j.captureRecords(c.first); err != nil {
+		return err
+	}
+	return j.captureRecords(c.root)
 }
 
-// captureDirty journals the nodes of a parser's dirty-run tree reachable from n, with an
-// explicit stack like captureRecords.
-func (j *hashTransaction) captureDirty(n *dirtyOrderNode, objects *uint64) {
-	stack := []*dirtyOrderNode{n}
-	for len(stack) != 0 {
-		n := stack[len(stack)-1]
-		stack = stack[:len(stack)-1]
-		if n == nil {
-			continue
-		}
-		if _, exists := j.dirty[n]; exists {
-			continue
-		}
-		j.dirty[n] = *n
-		*objects++
-		stack = append(stack, n.left, n.right, n.parent)
+// captureOrder saves the authoritative graph in place. Both parser pending references and
+// retained metadata keep their identity across rollback; there is no independently cloned tree.
+func (j *hashTransaction) captureOrder(d *dirtyOrder) error {
+	if _, exists := j.pending[d]; exists {
+		return nil
 	}
+	if err := j.charge(1 + 2*uint64(len(d.nodes)) + uint64(len(d.leaders))); err != nil {
+		return err
+	}
+	saved := *d
+	saved.undo = nil // an armed move undo belongs to this operation, never the retained graph
+	saved.nodes = maps.Clone(d.nodes)
+	saved.leaders = slices.Clone(d.leaders)
+	j.pending[d] = saved
+	for _, n := range d.nodes {
+		j.dirty[n] = *n
+	}
+	return nil
 }
 
 // captureSiblings journals s with its index records and the structs of the nodes in it (index
 // changes update their positions, hashes and RB-tree state), not their children.
 // ponytail: a sibling set is copied whole, O(its size) on the first change; a per-record journal
 // would make a change in a huge sibling set O(1) if that ever matters.
-func (j *hashTransaction) captureSiblings(s *siblings) {
+func (j *hashTransaction) captureSiblings(s *siblings) error {
 	if _, exists := j.siblings[s]; exists {
-		return
+		return j.err
+	}
+	// Counting nested map/slice sizes is itself work; reserve that scan before it starts.
+	if err := j.charge(uint64(len(s.history) + len(s.rbDual) + len(s.rbMore))); err != nil {
+		return err
+	}
+	objects := 1 + uint64(s.SchemaLen()+s.OpaqueLen()+len(s.ht)+len(s.leaders)+len(s.firstRun)+
+		len(s.exactByNode)+len(s.history)+len(s.leaderByNode)+len(s.unsorted)+len(s.rbTree)+len(s.rbGroups)+
+		len(s.rbOrders)+len(s.pending)+len(s.contexts)+len(s.rbDual)+len(s.rbDualCount)+len(s.rbMore))
+	for _, byHash := range s.history {
+		objects = addHashBound(objects, uint64(len(byHash)))
+	}
+	for _, groups := range s.rbMore {
+		objects = addHashBound(objects, uint64(len(groups)))
+	}
+	for _, groups := range s.rbDual {
+		objects = addHashBound(objects, uint64(len(groups)))
+	}
+	if s.order != nil {
+		objects = addHashBound(objects, 6+6*uint64(len(s.order.byNode))+2*uint64(len(s.order.entries)))
+	}
+	if err := j.charge(objects); err != nil {
+		return err
 	}
 	saved := s.snapshotStorage()
 	saved.ht = maps.Clone(s.ht)
@@ -324,61 +440,58 @@ func (j *hashTransaction) captureSiblings(s *siblings) {
 			saved.rbDual[n] = slices.Clone(groups)
 		}
 	}
-	if s.rbOrders != nil {
-		saved.rbOrders = make(map[*rbGroup]*dirtyOrder, len(s.rbOrders))
-		for group, order := range s.rbOrders {
-			saved.rbOrders[group] = cloneDirtyOrder(order)
+	if s.rbMore != nil {
+		saved.rbMore = make(map[*Node][]*rbGroup, len(s.rbMore))
+		for n, groups := range s.rbMore {
+			saved.rbMore[n] = slices.Clone(groups)
 		}
 	}
-	saved.contexts = maps.Clone(s.contexts) // a handful of contexts: not charged
+	saved.rbOrders = maps.Clone(s.rbOrders)
+	saved.contexts = maps.Clone(s.contexts)
 	j.siblings[s] = saved
-	//nolint:gosec // all terms are existing nonnegative collection sizes, as before the facade.
-	objects := 1 + uint64(s.SchemaLen()+s.OpaqueLen()+len(s.ht)+len(s.leaders)+len(s.firstRun)+
-		len(s.exactByNode)+len(s.history)+len(s.leaderByNode)+len(s.unsorted)+len(s.rbTree)+len(s.rbGroups)+
-		len(s.rbOrders)+len(s.pending))
-	if s.order != nil {
-		// Sequence handles, occurrence nodes/maps, entry metadata, and sparse
-		// rank nodes are all private rollback copies.
-		objects += 6 + 6*uint64(len(s.order.byNode)) + 2*uint64(len(s.order.entries))
-	}
 	for _, order := range s.rbOrders {
-		objects += uint64(len(order.nodes))
+		if err := j.captureOrder(order); err != nil {
+			return err
+		}
+	}
+	for _, order := range s.pending {
+		if err := j.captureOrder(order); err != nil {
+			return err
+		}
 	}
 	for _, c := range s.ht {
-		j.captureChain(c, &objects)
+		if err := j.captureChain(c); err != nil {
+			return err
+		}
 	}
 	for _, c := range s.leaders {
-		j.captureChain(c, &objects)
+		if err := j.captureChain(c); err != nil {
+			return err
+		}
 	}
 	for _, r := range s.exactByNode {
-		j.captureRecords(r, &objects)
+		if err := j.captureRecords(r); err != nil {
+			return err
+		}
 	}
 	for _, r := range s.leaderByNode {
-		j.captureRecords(r, &objects)
+		if err := j.captureRecords(r); err != nil {
+			return err
+		}
 	}
 	for _, byHash := range s.history {
 		for _, r := range byHash {
-			j.captureRecords(r, &objects)
+			if err := j.captureRecords(r); err != nil {
+				return err
+			}
 		}
 	}
-	for _, p := range s.pending {
-		saved := *p
-		saved.nodes = maps.Clone(p.nodes)
-		saved.leaders = slices.Clone(p.leaders)
-		j.pending[p] = saved
-		objects += uint64(len(p.nodes) + len(p.leaders))
-		j.captureDirty(p.root, &objects)
-		for _, n := range p.nodes {
-			j.captureDirty(n, &objects)
+	for _, n := range s.All() {
+		if err := j.captureNode(n); err != nil {
+			return err
 		}
 	}
-	for _, n := range s.SchemaAll() {
-		j.captureNode(n, &objects)
-	}
-	for _, n := range s.opaqueAll() {
-		j.captureNode(n, &objects)
-	}
-	j.charge(objects)
+	return nil
 }
 
 func (j *hashTransaction) restore() {
@@ -396,13 +509,6 @@ func (j *hashTransaction) restore() {
 	for s, saved := range j.siblings {
 		s.restoreStorage(saved)
 	}
-	// after the sibling sets: a set rebound before its capture was captured with the new counter
-	for s, work := range j.works {
-		s.setWork(work)
-	}
-	for s := range j.siblings {
-		s.setOrderHooks()
-	}
 	for c, saved := range j.chains {
 		*c = saved
 	}
@@ -414,6 +520,13 @@ func (j *hashTransaction) restore() {
 	}
 	for n, saved := range j.dirty {
 		*n = saved
+	}
+	// After graph fields too: a topology captured after rebinding saved the temporary counter.
+	for s, work := range j.works {
+		s.setWork(work)
+	}
+	for s := range j.siblings {
+		s.setOrderHooks()
 	}
 	for l, saved := range j.links {
 		*l = saved

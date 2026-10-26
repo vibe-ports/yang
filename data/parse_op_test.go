@@ -229,7 +229,7 @@ func TestParseOpGoldens(t *testing.T) {
 				}
 				if !f.keepInput {
 					for _, c := range slices.Collect(op.kids.all()) { // lyd_free_siblings(lyd_child(op))
-						unlink(c)
+						_ = unlink(c)
 					}
 				}
 				parent := op
@@ -551,7 +551,7 @@ func TestDiffDetachedOperationChild(t *testing.T) {
 		return op.kids.At(0)
 	}
 	attached, detached := parse(), parse()
-	unlink(detached)
+	_ = unlink(detached)
 	diff, err := DiffTree(attached, detached, DiffOptions{})
 	if err != nil {
 		t.Fatal(err)
@@ -574,7 +574,7 @@ func splitRunReply(t *testing.T, set *schema.Set, keepInput bool, values string)
 	}
 	if !keepInput {
 		for _, c := range slices.Collect(op.kids.all()) {
-			unlink(c)
+			_ = unlink(c)
 		}
 	}
 	data := `{"rbs:before":"b","rbs:v":[` + values + `]}`
@@ -913,7 +913,7 @@ func TestSplitRunDiffLinear(t *testing.T) {
 			t.Fatal(err, diags)
 		}
 		for _, c := range slices.Collect(op.kids.all()) {
-			unlink(c)
+			_ = unlink(c)
 		}
 		data := `{"m:before":"b","m:v":[` + vals + `]}`
 		if _, _, diags, err = parseOp(context.Background(), strings.NewReader(data), set,
@@ -1086,7 +1086,7 @@ func TestParseOpDetachedParent(t *testing.T) {
 	}{{FormatJSON, `{"a:al":25}`}, {FormatXML, `<al xmlns="urn:tests:a">25</al>`}} {
 		_, op := opParent(t, set)
 		for _, c := range slices.Collect(op.kids.all()) {
-			unlink(c)
+			_ = unlink(c)
 		}
 		top := op.parent
 		if err := top.Remove(); err != nil {
@@ -1102,7 +1102,7 @@ func TestParseOpDetachedParent(t *testing.T) {
 
 		_, publicOp := opParent(t, set)
 		for _, c := range slices.Collect(publicOp.kids.all()) {
-			unlink(c)
+			_ = unlink(c)
 		}
 		if err := publicOp.parent.Remove(); err != nil {
 			t.Fatal(err)

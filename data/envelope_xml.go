@@ -261,6 +261,8 @@ func (lc *lydCtx) envEventTime() (moved *Node, err error) {
 	if last == nil || last.schema != nil {
 		return nil, lc.log.val(nil, "", ly.Data, "Missing notification \"eventTime\" node.")
 	}
-	unlink(last)
+	if err := unlink(last); err != nil {
+		return nil, err
+	}
 	return last, lc.env.insert(lc.env.top.first(), last, insertDefault) // lyd_insert_child
 }

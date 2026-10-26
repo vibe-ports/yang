@@ -291,7 +291,9 @@ func (w *anyWork) createAny(t *Tree, sn *schema.Node, child *Node, value *string
 	}
 	if useValue {
 		if child != nil {
-			n.takeAnyChildren(t, child)
+			if err := n.takeAnyChildren(t, child); err != nil {
+				return nil, diags, err
+			}
 		} else if value != nil {
 			s := *value
 			n.any.text = &s
@@ -327,58 +329,129 @@ func anyCreateError(err error) error {
 }
 
 // anyFollowing snapshots the forest beginning at child (not preceding siblings).
-func anyFollowing(child *Node) []*Node {
+func anyFollowing(child *Node, work *workCounter) ([]*Node, error) {
 	if child == nil {
-		return nil
+		return nil, nil
 	}
 	if sib := child.siblingsOf(); sib != nil {
+		if err := work.chargeHash(2*(uint64(sib.SchemaLen())+uint64(sib.OpaqueLen())) + 1); err != nil {
+			return nil, err
+		}
 		nodes := sib.nodes()
-		return nodes[slices.Index(nodes, child):]
+		return nodes[slices.Index(nodes, child):], nil
 	}
-	return []*Node{child}
+	return []*Node{child}, nil
 }
 
-func (n *Node) takeAnyChildren(t *Tree, child *Node) {
-	nodes, set := anyFollowing(child), ctxOf(child)
+func (n *Node) takeAnyChildren(t *Tree, child *Node) error {
+	if err := n.touch(); err != nil {
+		return err
+	}
+	if err := t.touch(&n.any.children); err != nil {
+		return err
+	}
+	nodes, err := anyFollowing(child, &t.work)
+	if err != nil {
+		return err
+	}
+	set := ctxOf(child)
 	if sib := child.siblingsOf(); child.parent == nil && sib != nil && sib.first() == child {
-		// The usual case is a complete owned forest. Move its sibling storage and
-		// sorting state in one operation, leaving no storage shared with its tree.
-		n.any.children.transferFrom(sib)
+		if err := t.touch(sib); err != nil {
+			return err
+		}
+		if err := sib.touch(); err != nil {
+			return err
+		}
+		// A whole forest transfers exact topology and all its indexes, with no mutable sharing.
+		if err := n.any.children.transferFrom(sib); err != nil {
+			return err
+		}
 	} else {
-		// Remove a suffix from the end so wide input does not repeatedly shift
-		// its remaining siblings. Preserve their original order in the payload.
+		// Only internal freshly parsed forests reach the native use_value branch. A partial
+		// forest supplied internally must use independent removals, never schema-mount's split.
 		for i := len(nodes) - 1; i >= 0; i-- {
-			unlink(nodes[i])
+			if err := preflightUnlink(nodes[i]); err != nil {
+				return err
+			}
+			if err := unlink(nodes[i]); err != nil {
+				return err
+			}
 		}
 		for _, c := range nodes {
-			n.any.children.appendNode(c)
+			if err := n.any.children.appendNode(c); err != nil {
+				return err
+			}
 		}
 	}
-	bindSubtreeWork(n, &t.work)
+	if err := bindSubtreeWork(n, &t.work); err != nil {
+		return err
+	}
 	for _, c := range nodes {
+		if err := c.touch(); err != nil {
+			return err
+		}
 		if c.payloadSet == nil {
 			c.payloadSet = set
 		}
 		c.parent, c.tree = n, nil
 	}
+	return nil
 }
 
 // clearAny journals n and the old payload roots first (Node.touch) and replaces,
 // never edits, the old value: a rolled-back operation restores the journaled pointer.
-func (n *Node) clearAny() {
-	n.touch()
+func (n *Node) clearAny() error {
+	if err := n.touch(); err != nil {
+		return err
+	}
 	if n.any == nil {
 		n.any = &anyValue{}
-		return
+		return nil
 	}
-	for c := range n.any.children.all() {
-		for d := range c.allAny() {
-			freeLinks(d)
+	old := &n.any.children
+	if err := old.touch(); err != nil {
+		return err
+	}
+	if old.work != nil {
+		if err := old.work.chargeHash(uint64(old.SchemaLen()) + uint64(old.OpaqueLen()) + 1); err != nil {
+			return err
 		}
-		c.touch()
-		c.parent, c.tree = nil, nil
+	}
+	work := old.work
+	if work == nil {
+		work = &workCounter{}
+	}
+	if err := work.chargeHash(uint64(old.SchemaLen()) + uint64(old.OpaqueLen())); err != nil {
+		return err
+	}
+	nodes, err := ownedNodes(old.nodes(), work)
+	if err != nil {
+		return err
+	}
+	if err := reserveFreeLinks(nodes, work); err != nil {
+		return err
+	}
+	cleaner := bulkLinkCleaner{work: work}
+	for _, c := range nodes {
+		cleaner.free(c)
+		releaseOwnedRB(c)
+	}
+	if work.hashErr != nil {
+		return work.hashErr
+	}
+	for c := range old.all() {
+		if err := c.touch(); err != nil {
+			return err
+		}
+		c.parent, c.tree, c.inRB, c.rbGroup = nil, nil, false, nil
+	}
+	// lyd_free_siblings releases the lyds_tree metadata via its plugin callback: no survivor
+	// needs rotations. Drop the entire owner, including pending parser references.
+	if err := old.reset(); err != nil {
+		return err
 	}
 	n.any = &anyValue{hints: n.any.hints}
+	return nil
 }
 
 // copyAnyValue is lyd_any_copy_value, including the empty-input early return
@@ -392,13 +465,25 @@ func (n *Node) copyAnyValue(w *anyWork, child *Node, value *string, hints types.
 		return err
 	}
 	set := ctxOf(n)
-	n.clearAny()
+	if err := n.clearAny(); err != nil {
+		return err
+	}
 	if child == nil && value == nil {
 		return nil
 	}
 	src := &Node{schema: n.schema, any: &anyValue{text: value, hints: hints}, payloadSet: set}
-	for _, c := range anyFollowing(child) {
-		src.any.children.appendNode(c)
+	work := &workCounter{}
+	if owner := treeOf(n); owner != nil {
+		work = &owner.work
+	}
+	children, err := anyFollowing(child, work)
+	if err != nil {
+		return err
+	}
+	for _, c := range children {
+		if err := src.any.children.appendNode(c); err != nil {
+			return err
+		}
 	}
 	d, err := newTree(set).dupWork(src, nil, false, insertDefault, 0, set, w)
 	if err != nil {
@@ -409,7 +494,9 @@ func (n *Node) copyAnyValue(w *anyWork, child *Node, value *string, hints types.
 		c.parent = n
 	}
 	if t := treeOf(n); t != nil {
-		bindSubtreeWork(n, &t.work) // the copy was made in a temporary tree
+		if err := bindSubtreeWork(n, &t.work); err != nil { // the copy was made in a temporary tree
+			return err
+		}
 	}
 	return nil
 }

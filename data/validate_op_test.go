@@ -137,7 +137,7 @@ func TestValidateOpGoldens(t *testing.T) {
 						if f.keepInput {
 							break
 						}
-						unlink(c)
+						_ = unlink(c)
 					}
 					_, _, diags, err = parseOp(ctx, strings.NewReader(f.data), set, format, typ, op, f.unknown)
 					all = append(all, diags...)
@@ -205,7 +205,7 @@ func TestValidateOpSiblings(t *testing.T) {
 		if err != nil {
 			t.Fatal(err, diags)
 		}
-		unlink(op)
+		_ = unlink(op)
 		mustLink(t, tr.insert(nil, op, insertDefault))
 		return tr, op
 	}
@@ -243,7 +243,7 @@ func TestValidateOpDetached(t *testing.T) {
 		t.Fatal(err, diags)
 	}
 	for _, c := range slices.Collect(op.kids.all()) {
-		unlink(c)
+		_ = unlink(c)
 	}
 	if err := op.Remove(); err != nil { // the rpc is its tree's top node: now detached
 		t.Fatal(err)

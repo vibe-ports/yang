@@ -58,7 +58,7 @@ func TestForeignSchemaIndexKeepsOwnContextIdentity(t *testing.T) {
 		t.Fatal("rpc input/output x not compiled")
 	}
 	s := &siblings{}
-	s.buildSchema([]*Node{retainedRBTerm(t, out, "o"), retainedRBTerm(t, in, "i"), retainedRBTerm(t, z, "z")})
+	mustLink(t, s.buildSchema([]*Node{retainedRBTerm(t, out, "o"), retainedRBTerm(t, in, "i"), retainedRBTerm(t, z, "z")}))
 	d := newTree(setA)
 	end := d.work.beginLookupWork()
 	defer end()
@@ -94,7 +94,7 @@ func TestForeignSchemaIndexAllocationBudget(t *testing.T) {
 	sn := retainedRBTopNamed(t, set, "v")
 	s := &siblings{}
 	for range 1 << 17 {
-		s.appendNode(retainedRBTerm(t, sn, "x"))
+		mustLink(t, s.appendNode(retainedRBTerm(t, sn, "x")))
 	}
 	d := newTree(set)
 	d.work.lookupLimit = 1
@@ -245,9 +245,9 @@ func TestDiffUserOrderedConfigToStateSchema(t *testing.T) {
 }
 
 // TestBatchMergeHashCharge: a batch charges each comparison's own cost and its rebalancing as it
-// runs, so its quota use accumulates across batches yet stays linear: a 4096-value Merge consumed
-// 241,411 units when measured (main, which charges no comparisons, 65,196; one charge per
-// comparison bound, before that, 1,061,035).
+// runs. Stage 3 additionally reserves publication slots and topology/journal visits that the
+// former 65,196-unit main did not charge. Keep the comparison bound and a separate linear
+// allowance for those visits, rather than hiding them in an unenforced counter.
 func TestBatchMergeHashCharge(t *testing.T) {
 	set := reviewDiffSet(t, `module rb-batch { yang-version 1.1; namespace "urn:rb-batch"; prefix r; leaf-list v { type uint32; } }`)
 	var b strings.Builder
@@ -259,8 +259,9 @@ func TestBatchMergeHashCharge(t *testing.T) {
 	if err := dst.Merge(src); err != nil {
 		t.Fatal(err)
 	}
-	if used := dst.work.hashUsed; used > 4*65196 {
-		t.Fatalf("4096-value Merge consumed %d hash units, want within 4x main's 65,196", used)
+	const bound = 4*65196 + 14*4096 + 64 // comparison bound plus newly charged publication/metadata work
+	if used := dst.work.hashUsed; used > bound {
+		t.Fatalf("4096-value Merge consumed %d hash units, bound %d", used, bound)
 	}
 	t.Logf("4096-value Merge consumed %d hash units (main 65,196)", dst.work.hashUsed)
 }
@@ -381,12 +382,10 @@ func TestDiffCrossContextLeafListLinear(t *testing.T) {
 	}
 }
 
-// TestRelocationRollbackRestoresDualTrees: a node held by an earlier tree besides its own (rbDual)
-// leaves both when lyd_change_node_value relocates it (unlink, then reinsertion). Every budget
-// refusal of the relocation leaves the retained trees unchanged, and a reinsertion that fails
-// after the unlink (linkOrigin's restore) puts back every topology and the dual membership, not
-// only the node's own tree.
-func TestRelocationRollbackRestoresDualTrees(t *testing.T) {
+// TestRelocationRefusesDualTrees: native unlink would retain a detached reference in an
+// earlier tree. D-0121 refuses before mutation; both that refusal and every earlier budget
+// failure preserve all topology and membership histories.
+func TestRelocationRefusesDualTrees(t *testing.T) {
 	const module = `module rb-lead { yang-version 1.1; namespace "urn:rb-lead"; prefix r;
   container c { leaf-list v { type string; } } }`
 	setA, setB := reviewDiffSet(t, module), reviewDiffSet(t, module)
@@ -422,7 +421,7 @@ func TestRelocationRollbackRestoresDualTrees(t *testing.T) {
 		_, trees, _ := strings.Cut(full, " rb=")
 		return trees + fmt.Sprint(dual)
 	}
-	// the reinsertion fails after the unlink
+	// Native would retain a dangling reference: refuse before unlink.
 	tr, n := build()
 	sib := n.siblingsOf()
 	before := state(sib)
@@ -430,11 +429,10 @@ func TestRelocationRollbackRestoresDualTrees(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := arm(); err != nil {
-		t.Fatal(err)
+	if err := arm(); err == nil || !strings.Contains(err.Error(), "D-0121") {
+		t.Fatalf("dual-member unlink preflight: %v, want D-0121", err)
 	}
-	unlinkRetainingHistory(n)
-	restore()
+	restore() // no unlink occurred; recovery must leave the original history alone
 	if after := state(sib); after != before {
 		t.Fatalf("restored relocation changed the retained trees:\n%s\n%s", before, after)
 	}
@@ -452,15 +450,16 @@ func TestRelocationRollbackRestoresDualTrees(t *testing.T) {
 		tr.changeNodeValue(n, v, 0)
 		err := tr.work.hashErr
 		tr.work.hashLimit, tr.work.hashErr = 0, nil
-		if err == nil {
-			break
-		}
-		if !errors.Is(err, yang.ErrBudget) {
-			t.Fatalf("limit %d: relocation = %v, want ErrBudget", limit, err)
+		refused := err != nil && strings.Contains(err.Error(), "D-0121")
+		if !errors.Is(err, yang.ErrBudget) && !refused {
+			t.Fatalf("limit %d: relocation = %v, want ErrBudget or D-0121", limit, err)
 		}
 		if after := state(sib); after != before {
 			t.Fatalf("limit %d: refused relocation changed the retained trees:\n%s\n%s", limit, before, after)
 		}
 		checkTreeRetainedRB(t, tr)
+		if refused {
+			break
+		}
 	}
 }

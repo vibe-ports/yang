@@ -179,7 +179,9 @@ func (t *Tree) yangMeta(n *Node, name, val string) error {
 	if d != nil {
 		return &opError{"LY_EVALID", d.Msg}
 	}
-	n.touch()
+	if err := n.touch(); err != nil {
+		return err
+	}
 	n.meta = append(n.meta, &meta{mod: mod, name: name, value: v})
 	return nil
 }
@@ -665,7 +667,7 @@ func (t *Tree) diffMergeR(src, parent *Node, cache *dupCache, o mergeOpts) error
 		return err
 	}
 	if redundant {
-		unlink(parent)
+		return unlink(parent)
 	}
 	return nil
 }
@@ -713,7 +715,9 @@ func (t *Tree) diffMergeCreate(dm *Node, cur diffOp, src *Node, defaults bool) (
 				return nil, err
 			}
 			anchor := *src.meta[mi] // lyd_dup_meta_single
-			dm.touch()
+			if err := dm.touch(); err != nil {
+				return nil, err
+			}
 			dm.meta = append(dm.meta, &anchor)
 			// the anchors of later creates count it: moved after the instances (lyd_insert_after)
 			if last := lastInst(dm); last != dm {
@@ -763,7 +767,9 @@ func (t *Tree) diffMergeCreate(dm *Node, cur diffOp, src *Node, defaults bool) (
 		if err := t.yangMeta(dm, "orig-default", strconv.FormatBool(trgFlags&FlagDefault != 0)); err != nil {
 			return nil, err
 		}
-		dm.touch()
+		if err := dm.touch(); err != nil {
+			return nil, err
+		}
 		dm.flags = dm.flags&^FlagDefault | src.flags&FlagDefault
 	}
 	for _, c := range dm.kids.nodes() { // the children stay deleted
@@ -841,7 +847,9 @@ func (t *Tree) diffMergeDelete(dm *Node, cur diffOp, src *Node) error {
 			if di < 0 {
 				return t.metaErr("yang:orig-default", dm)
 			}
-			dm.touch()
+			if err := dm.touch(); err != nil {
+				return err
+			}
 			dm.flags &^= FlagDefault
 			if dm.meta[di].value.Bool() {
 				dm.flags |= FlagDefault
@@ -893,7 +901,9 @@ func (t *Tree) diffMergeNone(dm *Node, cur diffOp, src *Node) error {
 		return t.diffMergeOpErr(dm, diffNone, cur)
 	}
 	if src.isTerm() {
-		dm.touch()
+		if err := dm.touch(); err != nil {
+			return err
+		}
 		dm.flags = dm.flags&^FlagDefault | src.flags&FlagDefault
 	}
 	return nil

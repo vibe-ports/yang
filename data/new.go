@@ -457,15 +457,29 @@ func (b newBuilder) changeTerm(n *Node, value string, canon bool) error {
 		return b.log.storeErr(n, n.schema, d)
 	}
 	tr := treeOf(n)
+	var done func()
 	if tr == nil {
 		tr = newTree(set)
+		done = tr.work.beginHashWork()
+		defer done()
 		root := n
 		for root.parent != nil {
 			root = root.parent
 		}
-		bindSubtreeWork(root, &tr.work)
+		bound, err := bindSubtreeBound(root, &tr.work)
+		if err != nil {
+			return err
+		}
+		if err := tr.work.checkHashWork(bound); err != nil {
+			return err
+		}
+		if err := bindSubtreeWork(root, &tr.work); err != nil {
+			return err
+		}
+	} else {
+		done = tr.work.beginHashWork()
+		defer done()
 	}
-	defer tr.work.beginHashWork()()
 	valChange, dfltChange := tr.changeTermVal(n, v, false)
 	if tr.work.hashErr != nil {
 		return tr.work.hashErr
