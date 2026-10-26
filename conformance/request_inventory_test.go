@@ -135,7 +135,7 @@ var requestInventory = []inventoryRow{
 	{"compare:insert_opaq", "value", "3357,3367,3370", "string", "", "Optional opaque value."},
 	{"compare:insert_opaq", "prefix", "3358,3367,3370", "string", "", "Optional opaque prefix."},
 	{"compare:insert_opaq", "xml", "3359", "bool", "", "Absent false selects lyd_new_opaq; true selects lyd_new_opaq2."},
-	{"step:diff", "target", "2011,2040,2801", "object", "", "Presence requires context object, datastore type, data input. Build target during execution."},
+	{"step:diff", "target", "2011,2040,2801", "object", "", "Presence requires context object and data input (any data type). Build target during execution."},
 	{"step:diff", "keep_input", "2012,2022", "truth", "", "Presence (even null/false) requires rpc; true keeps request children."},
 	{"step:diff", "options", "2026,2805", "flags", "defaults meta", "Diff flags."},
 	{"step:diff", "merge_options", "2027,2846", "flags", "defaults", "Syntax always checked; used only with merge true."},

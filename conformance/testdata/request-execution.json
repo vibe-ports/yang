@@ -729,8 +729,50 @@
     {
       "id": "[diff/rpc target empty-object false]",
       "outcome": {
-        "request_error_class": "diff target with operation data",
-        "verdict": "request-error"
+        "context_diagnostics": [],
+        "failed_step": 0,
+        "modules": [
+          {
+            "accepted": true,
+            "diagnostics": [],
+            "name": "pv2"
+          }
+        ],
+        "rc": {
+          "err": 7,
+          "name": "LY_EVALID"
+        },
+        "steps": [
+          {
+            "diagnostics": [
+              {
+                "apptag": null,
+                "code": {
+                  "err": 7,
+                  "name": "LY_EVALID"
+                },
+                "data_path": null,
+                "level": "error",
+                "line": 1,
+                "msg": "No module named \"pv2\" in the context.",
+                "phase": "parse",
+                "schema_path": null,
+                "vecode": 4,
+                "vecode_name": "LYVE_REFERENCE"
+              }
+            ],
+            "do": "diff",
+            "rc": {
+              "err": 7,
+              "name": "LY_EVALID"
+            }
+          },
+          {
+            "do": "dump",
+            "skipped": true
+          }
+        ],
+        "verdict": "invalid"
       },
       "request": {
         "base_dir": ".",

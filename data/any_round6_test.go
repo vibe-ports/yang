@@ -635,10 +635,16 @@ func TestCompareDateCanonicalCollision(t *testing.T) {
 	// Equal has only a boolean result, so its read-only comparison cannot turn a
 	// private work-budget failure into inequality. Each value in the second half
 	// scans past all the canonically equal but stored-distinct values in the first.
+	// Under the race detector the quadratic scan uses a tenth of the values and a
+	// lowered private budget, so the budget failure stays reachable.
 	anySchema := b.add(m, nil, schema.AnyData, "payload", nil)
 	payload := &Node{schema: anySchema, any: &anyValue{}}
+	per := uint64(6000)
+	if raceEnabled {
+		per = 600
+	}
 	for _, value := range []string{"2024-01-01+01:00", "2023-12-31+00:00"} {
-		for range 6000 {
+		for range per {
 			leaf := b.term(dl, value)
 			leaf.parent = payload
 			payload.any.children.list = append(payload.any.children.list, leaf)
@@ -650,7 +656,14 @@ func TestCompareDateCanonicalCollision(t *testing.T) {
 	if !payload.Equal(payload, CompareOptions{}) {
 		t.Fatal("repeated canonical-collision payload compares unequal to itself")
 	}
-	if equal, err := compareSingleErr(&Tree{}, payload, payload, false); equal || !errors.Is(err, yang.ErrBudget) {
+	compare := compareSingleErr
+	if raceEnabled {
+		compare = func(t *Tree, a, b *Node, full bool) (bool, error) {
+			work := workCounter{hashLimit: per * per / 2}
+			return compareSingleWork(t, &work, a, b, full)
+		}
+	}
+	if equal, err := compare(&Tree{}, payload, payload, false); equal || !errors.Is(err, yang.ErrBudget) {
 		t.Fatalf("charged repeated comparison = (%t, %v), want false and ErrBudget", equal, err)
 	}
 }

@@ -2031,9 +2031,9 @@ check_step(const struct ly_ctx *ctx, const cJSON *step)
                 if (!cJSON_IsObject(target)) {
                     die("diff target must be a context object%s", NULL);
                 }
-                if (p.optype != LYD_TYPE_DATA_YANG) {
-                    die("diff target with operation data%s", NULL);
-                }
+                /* any data type: lyd_diff() has no operation data rule, and step_diff parses
+                 * operation data in the target context as without a target (a reply into its
+                 * "rpc" request), so cross-context operation diffs stay testable */
                 if (!input_of(step, "data")) {
                     die("diff target needs data%s", NULL);
                 }

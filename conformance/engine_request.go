@@ -615,9 +615,6 @@ func requestTarget(c *requestCheck) error {
 	if !ok {
 		return requestError("diff target must be a context object")
 	}
-	if requestOperation(c) {
-		return requestError("diff target with operation data")
-	}
 	if err := requestRead("data", false)(c); err != nil {
 		return err
 	}

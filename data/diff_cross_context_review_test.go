@@ -438,7 +438,7 @@ func TestDiffCrossContextDeepLineageMemory(t *testing.T) {
 		t.Fatalf("Diff allocated %d bytes for shared lineage, want linear storage below 64 MiB", allocated)
 	}
 
-	diff, err = diffNodesLookupLimit(topOf(first), topOf(second), DiffOptions{}, false, first, second, uint64(depth/2), 0) //nolint:gosec // a small positive depth
+	diff, err = diffNodesLookupLimit(topOf(first), topOf(second), DiffOptions{}, false, first, second, uint64(depth/2), 0)
 	if diff != nil || !errors.Is(err, yang.ErrBudget) {
 		t.Fatalf("lineage lookup limit: Diff = (%v, %v), want nil, ErrBudget", diff, err)
 	}
