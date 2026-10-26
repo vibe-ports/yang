@@ -1707,11 +1707,11 @@ func (t *Tree) foreignInstances(s *siblings, target *Node) (iter.Seq[*Node], err
 func (t *Tree) foreignTableSchema(s *siblings, sn *schema.Node, work *workCounter) (*schema.Node, error) {
 	if t.work.lookupDepth != 0 && t.foreignSchemaInput[s] {
 		if i := t.foreignSchemaIndex(s, sn, true); i >= 0 {
-			return s.list[i].schema, nil
+			return s.At(i).schema, nil
 		}
 		return nil, t.work.lookupErr
 	}
-	for _, n := range s.list {
+	for _, n := range s.SchemaAll() {
 		s.visit()
 		if err := chargeComparison(work); err != nil {
 			return nil, err
