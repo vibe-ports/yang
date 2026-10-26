@@ -196,7 +196,7 @@ func TestXPathRetainedNodesAfterForeignRootCreate(t *testing.T) {
 			if err := target.ApplyDiff(diff, ApplyDiffOptions{}); err != nil {
 				t.Fatal(err)
 			}
-			if !target.top.mixedContexts() || ctxOf(target.top.list[0]) != b {
+			if !target.top.mixedContexts() || ctxOf(target.top.At(0)) != b {
 				t.Fatal("foreign root was not first in a mixed-context tree")
 			}
 			r, diags, err := target.EvalXPath(tc.expr, XPathOptions{})

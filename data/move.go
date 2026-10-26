@@ -51,11 +51,11 @@ func isInner(s *schema.Node) bool {
 
 // first is the first sibling, opaque nodes last.
 func (s *siblings) first() *Node {
-	if len(s.list) > 0 {
-		return s.list[0]
+	if s.SchemaLen() > 0 {
+		return s.At(0)
 	}
-	if len(s.opq) > 0 {
-		return s.opq[0]
+	if s.OpaqueLen() > 0 {
+		return s.opaqueAt(0)
 	}
 	return nil
 }
@@ -310,9 +310,9 @@ func (t *Tree) insertAfter(sibling, n *Node) error {
 	case n.schema != nil && sibling.schema == nil:
 		at = dt.insertPos(sib, n, insertLastBySchema)
 	case n.schema != nil:
-		at = slices.Index(sib.list, sibling) + 1
+		at = sib.schemaSpan().Index(sibling) + 1
 	case sibling.schema == nil:
-		at = slices.Index(sib.opq, sibling) + 1
+		at = sib.opaqueSpan().Index(sibling) + 1
 	}
 	err = dt.link(sibling.parent, sib, n, at)
 	if err != nil {
@@ -339,7 +339,7 @@ func (t *Tree) linkOrigin(n *Node) (restore func(), arm func() error, err error)
 	var leader *Node
 	if n.schema != nil {
 		var err error
-		at, err = t.originIndex(sib, sib.list, n)
+		at, err = t.originIndex(sib, sib.schemaSpan(), n)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -347,11 +347,11 @@ func (t *Tree) linkOrigin(n *Node) (restore func(), arm func() error, err error)
 			// Ordinary schema runs are contiguous and monotone. Their first slot
 			// is a binary lookup even when n is the last of many instances.
 			before := t.work.Load()
-			first := t.upper(sib.list, 0, func(a *Node) bool { return t.sameOrAfter(a, n) })
+			first := t.upper(sib.schemaSpan(), 0, func(a *Node) bool { return t.sameOrAfter(a, n) })
 			if err := t.work.chargeHash(uint64(t.work.Load() - before)); err != nil { //nolint:gosec // lookup only increments the counter
 				return nil, nil, err
 			}
-			leader = sib.list[first]
+			leader = sib.At(first)
 		} else {
 			// A copied or operation sibling set may have split runs. Limit
 			// this walk to the physical run and charge each inspected slot.
@@ -361,15 +361,15 @@ func (t *Tree) linkOrigin(n *Node) (restore func(), arm func() error, err error)
 					return nil, nil, err
 				}
 				sib.work.Add(1)
-				if sib.list[i].schema != n.schema {
+				if sib.At(i).schema != n.schema {
 					break
 				}
-				leader = sib.list[i]
+				leader = sib.At(i)
 			}
 		}
 	} else {
 		var err error
-		at, err = t.originIndex(sib, sib.opq, n)
+		at, err = t.originIndex(sib, sib.opaqueSpan(), n)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -466,16 +466,16 @@ func (t *Tree) linkOrigin(n *Node) (restore func(), arm func() error, err error)
 
 // originIndex locates a linked node from both ends. Each step is charged before
 // touching the sibling slots, so a middle-position lookup stops at the quota.
-func (t *Tree) originIndex(sib *siblings, nodes []*Node, n *Node) (int, error) {
-	for i, j := 0, len(nodes)-1; i <= j; i, j = i+1, j-1 {
+func (t *Tree) originIndex(sib *siblings, nodes siblingSpan, n *Node) (int, error) {
+	for i, j := 0, nodes.Len()-1; i <= j; i, j = i+1, j-1 {
 		if err := t.work.chargeHash(1); err != nil {
 			return -1, err
 		}
 		sib.work.Add(1)
-		if nodes[j] == n {
+		if nodes.At(j) == n {
 			return j, nil
 		}
-		if nodes[i] == n {
+		if nodes.At(i) == n {
 			return i, nil
 		}
 	}
@@ -503,8 +503,8 @@ func runs(nodes []*Node) [][]*Node {
 func runSlots(dst *siblings, run []*Node, at int) uint64 {
 	size, m := uint64(dst.len()), uint64(len(run)) //nolint:gosec // lengths are nonnegative
 	shift := uint64(0)
-	if at >= 0 && at < len(dst.list) {
-		shift = uint64(min(at+len(run), len(dst.list)-at)) //nolint:gosec // positions are nonnegative
+	if at >= 0 && at < dst.SchemaLen() {
+		shift = uint64(min(at+len(run), dst.SchemaLen()-at)) //nolint:gosec // positions are nonnegative
 	}
 	// a front insertion without headroom copies into 3*len+1 slots (nodeDeque.insertAt); the
 	// headroom it leaves makes later reallocations geometric, so all copies stay within 6*(len+m)
@@ -593,7 +593,7 @@ func give(dst *siblings, leader *Node, rb, uns bool, order *dirtyOrder) {
 // the run-leader metadata, every tree's exact topology and each node's membership.
 type rbSnapshot struct {
 	sib      *siblings
-	list     []*Node
+	nodes    []*Node
 	firstRun map[*schema.Node]*Node
 	tree     map[*Node]bool
 	groups   map[*Node]*rbGroup
@@ -607,16 +607,16 @@ type rbSnapshot struct {
 
 // snapshotRB copies sib's retained RB state, its cost charged before the copy.
 func (t *Tree) snapshotRB(sib *siblings) (*rbSnapshot, error) {
-	cost := uint64(len(sib.list)) + 1
+	cost := uint64(sib.SchemaLen()) + 1 //nolint:gosec // a sibling count is nonnegative.
 	for _, d := range sib.rbOrders {
 		cost += uint64(len(d.nodes)) + 1
 	}
 	if err := t.work.chargeHash(cost); err != nil {
 		return nil, err
 	}
-	s := &rbSnapshot{sib: sib, list: slices.Clone(sib.list), firstRun: maps.Clone(sib.firstRun),
+	s := &rbSnapshot{sib: sib, nodes: sib.schemaSpan().Collect(), firstRun: maps.Clone(sib.firstRun),
 		tree: maps.Clone(sib.rbTree), groups: maps.Clone(sib.rbGroups), unsorted: maps.Clone(sib.unsorted),
-		inRB: make([]bool, len(sib.list)), group: make([]*rbGroup, len(sib.list)), dualN: maps.Clone(sib.rbDualCount)}
+		inRB: make([]bool, sib.SchemaLen()), group: make([]*rbGroup, sib.SchemaLen()), dualN: maps.Clone(sib.rbDualCount)}
 	if sib.rbDual != nil {
 		s.dual = make(map[*Node][]*rbGroup, len(sib.rbDual))
 		for n, groups := range sib.rbDual {
@@ -629,7 +629,7 @@ func (t *Tree) snapshotRB(sib *siblings) (*rbSnapshot, error) {
 			s.orders[g] = cloneDirtyOrder(d)
 		}
 	}
-	for i, n := range sib.list {
+	for i, n := range sib.SchemaAll() {
 		s.inRB[i], s.group[i] = n.inRB, n.rbGroup
 	}
 	return s, nil
@@ -640,8 +640,8 @@ func (t *Tree) snapshotRB(sib *siblings) (*rbSnapshot, error) {
 func (s *rbSnapshot) restore(t *Tree) {
 	sib := s.sib
 	sib.touch()
-	if len(sib.list) == len(s.list) {
-		sib.list, sib.base = slices.Clone(s.list), nil
+	if sib.SchemaLen() == len(s.nodes) {
+		sib.buildSchema(slices.Clone(s.nodes))
 	}
 	sib.firstRun, sib.rbTree, sib.rbGroups, sib.unsorted = s.firstRun, s.tree, s.groups, s.unsorted
 	sib.rbOrders = s.orders
@@ -649,7 +649,7 @@ func (s *rbSnapshot) restore(t *Tree) {
 	for _, d := range sib.rbOrders {
 		d.work = sib.work
 	}
-	for i, n := range s.list {
+	for i, n := range s.nodes {
 		n.touch()
 		n.inRB, n.rbGroup = s.inRB[i], s.group[i]
 	}
@@ -714,7 +714,7 @@ func (t *Tree) moveNodes(parent *Node, src *Tree) error {
 			n.rbGroup = groups[i]
 			at := -1
 			if n.schema != nil {
-				at = len(src.top.list)
+				at = src.top.SchemaLen()
 			}
 			src.restoreLink(nil, n, at)
 		}
@@ -767,7 +767,7 @@ func (t *Tree) moveNodes(parent *Node, src *Tree) error {
 			for _, n := range run {
 				at := -1
 				if n.schema != nil {
-					at = len(dst.list)
+					at = dst.SchemaLen()
 				}
 				if err := t.link(parent, dst, n, at); err != nil {
 					return err
@@ -867,7 +867,7 @@ func (t *Tree) merge(parent *Node, dst *siblings, run []*Node, state movedRunSta
 		t.work.hashErr = &opError{"LY_EINT", "Missing destination run of a merged system-ordered run."}
 		return t.work.hashErr
 	}
-	leader := dst.list[lo]
+	leader := dst.At(lo)
 	switch {
 	case srcRB && !dst.rbTree[leader]:
 		// lyds_merge_nodes2: the destination run joins the source tree in data order
@@ -875,7 +875,7 @@ func (t *Tree) merge(parent *Node, dst *siblings, run []*Node, state movedRunSta
 			group = &rbGroup{}
 		}
 		hi := t.retainedRunEnd(dst, lo)
-		dstRun := slices.Clone(dst.list[lo:hi])
+		dstRun := dst.schemaSpan().Slice(lo, hi).Collect()
 		if err := t.rbReplay(srcOrder, dstRun); err != nil {
 			return err
 		}
@@ -903,7 +903,7 @@ func (t *Tree) merge(parent *Node, dst *siblings, run []*Node, state movedRunSta
 		if err := t.rbPublish(parent, dst, lo, hi, group, srcOrder, attach); err != nil {
 			return err
 		}
-		markRB(dst, dst.list[lo])
+		markRB(dst, dst.At(lo))
 		members = nil
 	case srcRB && !dst.unsorted[leader]:
 		// lyds_merge_nodes3 into a run without LAST instances: replay on a copy, publish once

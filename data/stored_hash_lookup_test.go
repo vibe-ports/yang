@@ -50,7 +50,7 @@ func TestStoredHashXPathLookup(t *testing.T) {
 					if err != nil {
 						t.Fatal(err)
 					}
-					if nested && (tr.top.list[0].kids.ht != nil) != table {
+					if nested && (tr.top.At(0).kids.ht != nil) != table {
 						t.Fatal("unexpected children-table state")
 					}
 					query := path + "[k='a']"
@@ -60,7 +60,7 @@ func TestStoredHashXPathLookup(t *testing.T) {
 							got, err := findXPath(tr, &logger{set: set}, nil, query, nil)
 							if err != nil || len(got) != boolInt(valid) {
 								t.Errorf("query = %v, %v", got, err)
-							} else if valid && got[0].kids.list[1].Value() != "first" {
+							} else if valid && got[0].kids.At(1).Value() != "first" {
 								t.Error("scan matched the repeated-key instance")
 							}
 						})
@@ -107,7 +107,7 @@ func TestStoredHashXPathOpaqueFallback(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		root := tr.top.list[0]
+		root := tr.top.At(0)
 		opq := newOpaque(opaque{Name: "l"})
 		mustLink(t, tr.insert(root, opq, insertDefault))
 		got, err := findXPath(tr, &logger{set: set}, nil, "/m:r/l[k='a']", nil)

@@ -18,39 +18,33 @@ var trimStepBudget = int64(xpath.DefaultMaxSteps)
 // looking at its children. The stack is bounded by tree depth: wide sibling lists are read one
 // element at a time instead of being copied into Node.All's stack before the next charge.
 func appendTrimSubtree(dst *[]*Node, root *Node, charge func(int64) bool) bool {
-	type frame struct {
-		n    *Node
-		next int
+	type frame struct{ cursor siblingCursor }
+	frameFor := func(n *Node) frame {
+		sib := &n.kids
+		if n.any != nil {
+			sib = &n.any.children
+		}
+		return frame{cursor: sib.cursor()}
 	}
+
 	if !charge(1) {
 		return false
 	}
 	*dst = append(*dst, root)
-	stack := []frame{{n: root}}
+	stack := []frame{frameFor(root)}
 	for len(stack) > 0 {
 		f := &stack[len(stack)-1]
-		sib := &f.n.kids
-		if f.n.any != nil {
-			sib = &f.n.any.children // freeing an any owns its payload, unlike XPath selection
-		}
-		if f.next == sib.len() {
+		if f.cursor.done() {
 			stack = stack[:len(stack)-1]
 			continue
 		}
 		if !charge(1) {
 			return false
 		}
-		i := f.next
-		f.next++
-		var child *Node
-		if i < len(sib.list) {
-			child = sib.list[i]
-		} else {
-			child = sib.opq[i-len(sib.list)]
-		}
-		sib.visit()
+		child := f.cursor.take()
+		f.cursor.visit()
 		*dst = append(*dst, child)
-		stack = append(stack, frame{n: child})
+		stack = append(stack, frameFor(child))
 	}
 	return true
 }
@@ -184,7 +178,7 @@ func (t *Tree) TrimXPath(expr string, o XPathOptions) ([]yang.Diagnostic, error)
 	// grouping, each set's position table, and its own removal walk before any mutation.
 	groups := map[*siblings]int{}
 	for _, n := range free {
-		if sib := n.siblingsOf(); sib != nil && sib.ht != nil && len(sib.list) != 0 && (sib.schemaUnordered || opChild(sib.list[0].schema)) {
+		if sib := n.siblingsOf(); sib != nil && sib.ht != nil && sib.SchemaLen() != 0 && (sib.schemaUnordered || opChild(sib.At(0).schema)) {
 			if !charge(1) { // group lookup/append
 				return budgetErr()
 			}
@@ -195,7 +189,7 @@ func (t *Tree) TrimXPath(expr string, o XPathOptions) ([]yang.Diagnostic, error)
 		// Each removal may also remove a first-instance record, test its successor, and append
 		// that successor. Reserve all three constant-time record operations as well as the
 		// set-local removal walk.
-		if !charge(int64(len(sib.list) + 4*count)) { // position table, removal walk, record updates
+		if !charge(int64(sib.SchemaLen() + 4*count)) { // position table, removal walk, record updates
 			return budgetErr()
 		}
 	}

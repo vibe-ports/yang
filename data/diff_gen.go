@@ -189,12 +189,12 @@ func splitOpRun(first *Node, withSiblings bool) (split, op *Node) {
 			}
 			return nil
 		}
-		for _, c := range n.kids.list {
+		for _, c := range n.kids.SchemaAll() {
 			if found := visit(c); found != nil {
 				return found
 			}
 		}
-		for _, c := range n.kids.opq {
+		for _, c := range n.kids.opaqueAll() {
 			if found := visit(c); found != nil {
 				return found
 			}
@@ -244,7 +244,7 @@ func fromNode(n *Node) []*Node {
 	if sib == nil {
 		return []*Node{n}
 	}
-	all := slices.Concat(sib.list, sib.opq)
+	all := sib.CollectRange(0, sib.Len())
 	return all[slices.Index(all, n):]
 }
 
@@ -258,9 +258,9 @@ func sibsOf(n *Node) *siblings {
 	}
 	s := &siblings{}
 	if n.schema == nil {
-		s.opq = []*Node{n}
+		s.Build(nil, []*Node{n})
 	} else {
-		s.list = []*Node{n}
+		s.Build([]*Node{n}, nil)
 	}
 	s.addContext(n)
 	return s
@@ -298,8 +298,8 @@ func (t *Tree) findMatch(sib *siblings, target *Node, defaults bool, cache *dupC
 		// A diff-time index uses the same equality as native lookup, so its miss is final. An
 		// ownerless schema can instead take schemaLookup's ordinary pointer path; retain its full
 		// lineage fallback, but charge every candidate to the same bounded lookup quota.
-		if m == nil && !indexed && len(sib.contexts) == 1 && ctxOf(sib.list[0]) != ctxOf(target) {
-			for _, candidate := range sib.list {
+		if m == nil && !indexed && len(sib.contexts) == 1 && ctxOf(sib.At(0)) != ctxOf(target) {
+			for _, candidate := range sib.SchemaAll() {
 				if err := t.work.chargeLookup(1); err != nil {
 					return nil, err
 				}
@@ -598,11 +598,11 @@ func (t *Tree) metaDiffers(first, second *Node) bool {
 		return true
 	}
 	if first.schema.Kind == schema.List {
-		for i, k := range first.kids.list {
+		for i, k := range first.kids.SchemaAll() {
 			if !k.isKey() {
 				break
 			}
-			if t.metaDiffers(k, second.kids.list[i]) {
+			if t.metaDiffers(k, second.kids.At(i)) {
 				return true
 			}
 		}

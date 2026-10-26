@@ -97,7 +97,7 @@ func TestOpIndexParseSortsRunWithoutRBTree(t *testing.T) {
 		t.Fatal(err, diags)
 	}
 	var got []string
-	for _, n := range op.kids.list {
+	for _, n := range op.kids.SchemaAll() {
 		got = append(got, n.value.Canonical())
 	}
 	if want := []string{"1", "3", "4"}; !slices.Equal(got, want) {

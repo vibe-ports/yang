@@ -65,10 +65,10 @@ func TestHashReindexTwoBatchWork(t *testing.T) {
 					}
 				}
 				work := tr.work.Load()
-				if len(root.kids.list) != 2*n || root.kids.ht == nil {
-					t.Fatalf("second batch has %d nodes, hash table %t", len(root.kids.list), root.kids.ht != nil)
+				if root.kids.SchemaLen() != 2*n || root.kids.ht == nil {
+					t.Fatalf("second batch has %d nodes, hash table %t", root.kids.SchemaLen(), root.kids.ht != nil)
 				}
-				for i, node := range root.kids.list {
+				for i, node := range root.kids.SchemaAll() {
 					if want := fmt.Sprintf("0%d", indices[i%n]); node.value.Canonical() != want {
 						t.Fatalf("instance %d: canonical %q, want %q", i, node.value.Canonical(), want)
 					}
@@ -116,7 +116,7 @@ func TestHashReindexBudgetCleanup(t *testing.T) {
 			if !errors.Is(err, yang.ErrBudget) || len(diags) != 0 {
 				t.Fatalf("budget error = %v, diagnostics %v", err, diags)
 			}
-			if !slices.Equal(root.kids.list, nodes) {
+			if !slices.Equal(root.kids.schemaSpan().Collect(), nodes) {
 				t.Fatal("budget failure changed sibling membership or order")
 			}
 			moved := 0

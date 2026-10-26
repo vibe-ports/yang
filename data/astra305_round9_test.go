@@ -44,9 +44,9 @@ func TestMergeKeylessReplySplitRunDoesNotCacheHiddenInsertion(t *testing.T) {
 		t.Fatal(err)
 	}
 	var values []string
-	for _, child := range op.kids.list {
+	for _, child := range op.kids.SchemaAll() {
 		if child.Name() == "l" {
-			values = append(values, child.kids.list[0].value.Canonical())
+			values = append(values, child.kids.At(0).value.Canonical())
 		}
 	}
 	if want := []string{"a", "b", "c", "c", "c"}; !reflect.DeepEqual(values, want) {
@@ -55,11 +55,11 @@ func TestMergeKeylessReplySplitRunDoesNotCacheHiddenInsertion(t *testing.T) {
 }
 
 func round9ChildShape(op *Node) []string {
-	shape := make([]string, 0, len(op.kids.list))
-	for _, child := range op.kids.list {
+	shape := make([]string, 0, op.kids.SchemaLen())
+	for _, child := range op.kids.SchemaAll() {
 		label := child.Name()
-		if label == "l" && len(child.kids.list) != 0 {
-			label += ":" + child.kids.list[0].value.Canonical()
+		if label == "l" && child.kids.SchemaLen() != 0 {
+			label += ":" + child.kids.At(0).value.Canonical()
 		}
 		shape = append(shape, label)
 	}

@@ -681,11 +681,11 @@ func (t *Tree) applyMetadata(n, dn *Node, op diffOp) error {
 		}
 	}
 	if dn.schema.Kind == schema.List {
-		for i, k := range dn.kids.list {
+		for i, k := range dn.kids.SchemaAll() {
 			if !k.isKey() {
 				break
 			}
-			if err := t.applyMetadata(n.kids.list[i], k, op); err != nil {
+			if err := t.applyMetadata(n.kids.At(i), k, op); err != nil {
 				return err
 			}
 		}

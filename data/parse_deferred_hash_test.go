@@ -41,7 +41,7 @@ func TestParseDeferredRunHashThreshold(t *testing.T) {
 				t.Fatal(err)
 			}
 			parent, err := tr.Find("/pj:c")
-			if err != nil || parent == nil || parent.kids.ht == nil || len(parent.kids.list) != 4 {
+			if err != nil || parent == nil || parent.kids.ht == nil || parent.kids.SchemaLen() != 4 {
 				t.Fatalf("parent %v, error %v", parent, err)
 			}
 			for _, path := range tc.paths {
@@ -71,7 +71,7 @@ func TestPendingOrderIncludesOtherLinks(t *testing.T) {
 				mustLink(t, tr.insert(parent, f.term(t, f.ll, value), insertLast))
 			}
 			sib := &parent.kids
-			ord, _ := newDirtyOrder(&tr.work, sib.list, tr.compareSorted, true)
+			ord, _ := newDirtyOrder(&tr.work, sib.schemaSpan(), tr.compareSorted, true)
 			sib.pending = map[*schema.Node]*dirtyOrder{f.ll: ord}
 			n := f.term(t, f.ll, "1")
 			if splice {
@@ -95,7 +95,7 @@ func TestPendingOrderIncludesOtherLinks(t *testing.T) {
 			lc := &lydCtx{tree: tr, dirtyOrd: map[dirtyRun]*dirtyOrder{k: ord}}
 			lc.flushDirtyRun(k, 0)
 			seen := map[*Node]bool{}
-			for _, child := range sib.list {
+			for _, child := range sib.SchemaAll() {
 				if seen[child] {
 					t.Fatal("publishing the deferred run duplicated a child")
 				}
@@ -121,7 +121,7 @@ func TestAppendSortedBudgetPreflightKeepsRun(t *testing.T) {
 	if inserted || !errors.Is(err, yang.ErrBudget) {
 		t.Fatalf("inserted %t, error %v", inserted, err)
 	}
-	if len(parent.kids.list) != 1 || n.parent != nil || n.inRB || parent.kids.hasRB(f.ll) ||
+	if parent.kids.SchemaLen() != 1 || n.parent != nil || n.inRB || parent.kids.hasRB(f.ll) ||
 		len(parent.kids.pending) != 0 || len(lc.runOrd) != 0 {
 		t.Fatal("failed preflight changed the sibling run")
 	}

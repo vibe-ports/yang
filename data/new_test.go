@@ -187,8 +187,8 @@ func TestNewNodes(t *testing.T) {
 		t.Errorf("NP container with a child: %s, flags %#x", got, nc.flags)
 	}
 	k, _ := run(func() (*Node, error) { return b.newList2(nil, a, "l11", "[a='01']", no) })
-	if k.kids.list[0].value.Canonical() != "1" || k.flags&FlagNew == 0 {
-		t.Errorf("list2 key: %s", k.kids.list[0].value.Canonical())
+	if k.kids.At(0).value.Canonical() != "1" || k.flags&FlagNew == 0 {
+		t.Errorf("list2 key: %s", k.kids.At(0).value.Canonical())
 	}
 	root, _ := run(func() (*Node, error) { return b.newOpaq(nil, "node1", "", nil, "my-module", false) })
 	n2, _ := run(func() (*Node, error) { return b.newOpaq(root, "node2", "value", nil, "my-module2", false) })

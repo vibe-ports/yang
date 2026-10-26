@@ -176,7 +176,7 @@ func (lc *lydCtx) position(sib *siblings, n *Node) int {
 	if at, ok := lc.pos.at[n]; ok {
 		return at
 	}
-	at := indexFromEnd(&lc.tree.work, sib.list, n)
+	at := sib.schemaSpan().indexFromEnd(&lc.tree.work, n)
 	if lc.pos.at == nil {
 		lc.pos.at = map[*Node]int{}
 	}
@@ -716,7 +716,7 @@ func nodetypeStr(k schema.Kind) string {
 func (lc *lydCtx) checkKeys(list *Node) error {
 	for i, k := range list.schema.Keys {
 		lc.tree.work.Add(1)
-		if i >= len(list.kids.list) || list.kids.list[i].schema != k {
+		if i >= list.kids.SchemaLen() || list.kids.At(i).schema != k {
 			return lc.log.val(list, "", ly.Data, "List instance is missing its key \"%s\".", k.Name)
 		}
 	}
@@ -770,7 +770,7 @@ func (lc *lydCtx) nodeInsert(parent, anchor, n *Node) error {
 		// lyd_insert_after of the XML parser's anchor (lydxml_get_hints_opaq): an opaque node
 		// right after the last opaque sibling with the same name, among the opaque nodes
 		sib := anchor.siblingsOf()
-		return lc.tree.link(anchor.parent, sib, n, sib.indexOf(sib.opq, anchor)+1)
+		return lc.tree.link(anchor.parent, sib, n, sib.indexOf(sib.opaqueSpan(), anchor)+1)
 	}
 	if anchor != nil {
 		// libyang's only insert anchor is the opaque one above
@@ -796,7 +796,7 @@ func (lc *lydCtx) appendSorted(parent, n *Node) (bool, error) {
 	}
 	sib := lc.tree.childrenOf(parent)
 	lc.tree.touch(sib)
-	var run []*Node
+	var run siblingSpan
 	var at, runLen int
 	var first *Node
 	if opChild(n.schema) && sib.order != nil && sib.order.entries[n.schema] != nil && sib.order.entries[n.schema].gaps == 0 {
@@ -809,24 +809,24 @@ func (lc *lydCtx) appendSorted(parent, n *Node) (bool, error) {
 		runLen = d.count
 		at = sib.orderPosition(last.Value) + 1
 		lo := at - runLen
-		if lo < 0 || at > len(sib.list) || sib.list[lo] != first {
+		if lo < 0 || at > sib.SchemaLen() || sib.At(lo) != first {
 			// The gap-free operation invariant normally gives the physical slice
 			// directly. Keep malformed/stale index state on a counted error path
 			// instead of allowing parser input to cause a slice-bounds panic.
-			lo = indexFromEnd(sib.work, sib.list, first)
+			lo = sib.schemaSpan().indexFromEnd(sib.work, first)
 			at = lo + runLen
-			if lo < 0 || at > len(sib.list) {
+			if lo < 0 || at > sib.SchemaLen() {
 				return false, &opError{"LY_EINT", "Invalid ordered sibling index."}
 			}
 		}
-		run = sib.list[lo:at]
+		run = sib.schemaSpan().Slice(lo, at)
 	} else {
 		lo, hi := lc.tree.runBounds(sib, n)
 		if lo == hi {
 			return false, nil
 		}
-		run, at = sib.list[lo:hi], hi
-		runLen, first = len(run), run[0]
+		run, at = sib.schemaSpan().Slice(lo, hi), hi
+		runLen, first = run.Len(), run.At(0)
 	}
 	k := dirtyRun{sib, n.schema}
 	ord := lc.runOrd[k]
@@ -861,9 +861,9 @@ func (lc *lydCtx) appendSorted(parent, n *Node) (bool, error) {
 		// a run without an RB tree gets one (lyds_additionally_create_rb_tree), sorting it.
 		create := !sib.rbTree[leader]
 		if create {
-			insertionOrder := slices.Clone(run)
+			insertionOrder := run.Collect()
 			lc.tree.applyRunReorderHash(sib, run, reorderExact)
-			for _, old := range run {
+			for _, old := range run.All() {
 				lc.tree.work.Add(1)
 				old.touch()
 				old.inRB = true
@@ -987,7 +987,7 @@ func (lc *lydCtx) publishDirty(sib *siblings) {
 	}
 	// Many small dirty runs are located by one sibling pass, not one endpoint scan per run.
 	starts := make(map[*schema.Node]int, len(keys))
-	for i, n := range sib.list {
+	for i, n := range sib.SchemaAll() {
 		lc.tree.work.Add(1)
 		if _, ok := starts[n.schema]; !ok {
 			starts[n.schema] = i
@@ -1068,28 +1068,29 @@ func (lc *lydCtx) flushDirtyRun(k dirtyRun, lo int) {
 	if lo < 0 || count < 2 {
 		return
 	}
-	ordered := lc.dirtyOrd[k].ordered()
-	run := k.sib.list[lo : lo+count]
-	if len(ordered) != len(run) {
+	ordered := spanOf(lc.dirtyOrd[k].ordered())
+	run := k.sib.schemaSpan().Slice(lo, lo+count)
+	if ordered.Len() != run.Len() {
 		// Another insertion path linked a node beside this deferred run without
 		// joining its RB tree. Keep that node in its physical slot, as logical()
 		// does for hash-table construction, when publishing the run too.
-		ordered = k.sib.logical()[lo : lo+count]
+		ordered = k.sib.logical().Slice(lo, lo+count)
 	}
 	if checkPublish {
 		checkPublishedRun(k.sn, run, ordered)
 	}
-	oldLeader := run[0]
+	oldLeader := run.At(0)
 	// Publish as one mutation: cancellation must not leave duplicated/missing pointers in
 	// a partially copied run, particularly when parsing into an existing operation.
-	copy(run, ordered)
-	if oldLeader != run[0] {
-		k.sib.transferRun(oldLeader, run[0])
+	k.sib.replaceSchema(lo, lo+count, ordered)
+	run = k.sib.schemaSpan().Slice(lo, lo+count)
+	if oldLeader != run.At(0) {
+		k.sib.transferRun(oldLeader, run.At(0))
 		if k.sib.firstRun[k.sn] == oldLeader {
-			k.sib.firstRun[k.sn] = run[0]
+			k.sib.firstRun[k.sn] = run.At(0)
 		}
 	}
-	lc.tree.work.Add(int64(len(run)))
+	lc.tree.work.Add(int64(run.Len()))
 	if k.sib.order != nil {
 		if d := k.sib.order.entries[k.sn]; d != nil {
 			k.sib.opRebuild(run)
@@ -1102,18 +1103,18 @@ func (lc *lydCtx) flushDirtyRun(k dirtyRun, lo int) {
 // they must hold exactly the run's instances, none of another schema node, none missing.
 var checkPublish bool
 
-func checkPublishedRun(sn *schema.Node, run, ordered []*Node) {
-	if len(run) != len(ordered) {
-		panic(fmt.Sprintf("data: publishing %d instances of %s into %d slots", len(ordered), sn.Name, len(run)))
+func checkPublishedRun(sn *schema.Node, run, ordered siblingSpan) {
+	if run.Len() != ordered.Len() {
+		panic(fmt.Sprintf("data: publishing %d instances of %s into %d slots", ordered.Len(), sn.Name, run.Len()))
 	}
-	in := make(map[*Node]bool, len(run))
-	for _, n := range run {
+	in := make(map[*Node]bool, run.Len())
+	for _, n := range run.All() {
 		if n.schema != sn {
 			panic(fmt.Sprintf("data: a %s node inside the deferred %s run", n.Name(), sn.Name))
 		}
 		in[n] = true
 	}
-	for _, n := range ordered {
+	for _, n := range ordered.All() {
 		if !in[n] {
 			panic(fmt.Sprintf("data: deferred %s instance outside its run's slots", sn.Name))
 		}

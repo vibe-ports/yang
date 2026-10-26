@@ -225,7 +225,7 @@ func TestFindPathRelative(t *testing.T) {
 	mustLink(t, tr.insert(nil, c, insertDefault))
 	z := f.term(t, f.z, "value")
 	mustLink(t, tr.insert(c, z, insertDefault))
-	f.list(t, tr, c, "a", "")
+	f.makeList(t, tr, c, "a", "")
 
 	if got, err := tr.Find("z"); err != nil || got != z {
 		t.Fatalf("Find(relative) = %v, %v; want z", got, err)
@@ -359,8 +359,8 @@ func TestMergeRepeatedKey(t *testing.T) {
 	if err := tr.Merge(src); err != nil {
 		t.Fatal(err)
 	}
-	c := tr.top.list[0]
-	if got := len(c.kids.list); got != 4 {
+	c := tr.top.At(0)
+	if got := c.kids.SchemaLen(); got != 4 {
 		t.Fatalf("%d list instances after merge, want 4", got)
 	}
 	want := []string{
@@ -432,7 +432,7 @@ func TestMergeRepeatedKeyMultikey(t *testing.T) {
 			if err := dst.Merge(src); err != nil {
 				t.Fatal(err)
 			}
-			if got := len(dst.top.list[0].kids.list); got != 2 {
+			if got := dst.top.At(0).kids.SchemaLen(); got != 2 {
 				t.Fatalf("%d list instances after merge, want 2", got)
 			}
 		})
@@ -515,7 +515,7 @@ func TestNewPathParent(t *testing.T) {
 	tr := newTree(f.set)
 	c := newInner(f.c)
 	mustLink(t, tr.insert(nil, c, insertDefault))
-	list := f.list(t, tr, c, "a'\"b", "")
+	list := f.makeList(t, tr, c, "a'\"b", "")
 	if n, err := tr.NewPath("v", "one", NewPathOptions{Parent: list}); err != nil || n == nil || n.Parent() != list {
 		t.Fatalf("relative path from quoted list: %v, %v", n, err)
 	}
@@ -671,7 +671,7 @@ func TestInsertScaling(t *testing.T) {
 		if err != nil {
 			t.Fatal(err, diags)
 		}
-		if got := len(tr.top.list[0].kids.list); got != len(order) {
+		if got := tr.top.At(0).kids.SchemaLen(); got != len(order) {
 			t.Fatalf("%d parsed instances, want %d", got, len(order))
 		}
 		return lc.tree.work.Load()
@@ -711,10 +711,10 @@ func TestInsertScaling(t *testing.T) {
 			if err := tr.Merge(build(n, func(i int) int { return 2*i + 1 })); err != nil {
 				t.Fatal(err)
 			}
-			if got := len(tr.top.list[0].kids.list); got != 2*n {
+			if got := tr.top.At(0).kids.SchemaLen(); got != 2*n {
 				t.Fatalf("%d instances after the merge, want %d", got, 2*n)
 			}
-			if !slices.IsSortedFunc(tr.top.list[0].kids.list, compareSorted) {
+			if !slices.IsSortedFunc(tr.top.At(0).kids.schemaSpan().Collect(), compareSorted) {
 				t.Fatal("merged run not sorted")
 			}
 			return tr.work.Load()
@@ -737,7 +737,7 @@ func TestInsertScaling(t *testing.T) {
 			if err := tr.Merge(src); err != nil {
 				t.Fatal(err)
 			}
-			if l := tr.top.list[0].kids.list; len(l) != 2*n || !slices.IsSortedFunc(l, compareSorted) {
+			if l := tr.top.At(0).kids.schemaSpan().Collect(); len(l) != 2*n || !slices.IsSortedFunc(l, compareSorted) {
 				t.Fatalf("%d instances after the merge, want %d, sorted", len(l), 2*n)
 			}
 			return tr.work.Load()
@@ -769,7 +769,7 @@ func TestMergeSpliceHash(t *testing.T) {
 	if err := tr.Merge(tree("c", "d")); err != nil {
 		t.Fatal(err)
 	}
-	c := tr.top.list[0]
+	c := tr.top.At(0)
 	if c.kids.ht == nil {
 		t.Fatal("no children table")
 	}
@@ -778,7 +778,7 @@ func TestMergeSpliceHash(t *testing.T) {
 			t.Errorf("bucket %v holds %d nodes", k, b.count)
 		}
 	}
-	if hit, ok := (xn{c, tr.set}).LookupChild(wrapSchema(tr.set, c.kids.list[0].schema), []string{"d"}); !ok || len(hit) != 1 {
+	if hit, ok := (xn{c, tr.set}).LookupChild(wrapSchema(tr.set, c.kids.At(0).schema), []string{"d"}); !ok || len(hit) != 1 {
 		t.Errorf("indexed lookup: %v %v", hit, ok)
 	}
 	if ns, _, err := tr.FindXPath("/pv2-edit:c/l[k='d']", XPathOptions{}); err != nil || len(ns) != 1 {

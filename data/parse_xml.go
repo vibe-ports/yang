@@ -626,21 +626,21 @@ func (t *Tree) nextAnchor(n *Node) *Node {
 		} else {
 			at = t.unorderedAnchor(sib, n)
 		}
-		if at < len(sib.list) {
-			return sib.list[at]
+		if at < sib.SchemaLen() {
+			return sib.At(at)
 		}
-		if len(sib.opq) > 0 {
-			return sib.opq[0]
+		if sib.OpaqueLen() > 0 {
+			return sib.opaqueAt(0)
 		}
 		return nil
 	}
-	for i := sib.indexOf(sib.list, n) + 1; i < len(sib.list); i++ {
-		if sib.list[i].schema != n.schema {
-			return sib.list[i]
+	for i := sib.indexOf(sib.schemaSpan(), n) + 1; i < sib.SchemaLen(); i++ {
+		if sib.At(i).schema != n.schema {
+			return sib.At(i)
 		}
 	}
-	if len(sib.opq) > 0 {
-		return sib.opq[0]
+	if sib.OpaqueLen() > 0 {
+		return sib.opaqueAt(0)
 	}
 	return nil
 }

@@ -187,10 +187,6 @@ func (s *siblings) rebind(work *workCounter) {
 	}
 }
 
-func cloneDeque(d nodeDeque) nodeDeque {
-	return nodeDeque{list: slices.Clone(d.list)}
-}
-
 // captureNode journals n itself, not its children: its sibling set is journaled on its own.
 func (j *hashTransaction) captureNode(n *Node, objects *uint64) {
 	if _, exists := j.nodes[n]; exists {
@@ -303,9 +299,7 @@ func (j *hashTransaction) captureSiblings(s *siblings) {
 	if _, exists := j.siblings[s]; exists {
 		return
 	}
-	saved := *s
-	saved.nodeDeque = cloneDeque(s.nodeDeque)
-	saved.opq = slices.Clone(s.opq)
+	saved := s.snapshotStorage()
 	saved.ht = maps.Clone(s.ht)
 	saved.exactByNode = maps.Clone(s.exactByNode)
 	saved.history = nil
@@ -338,7 +332,8 @@ func (j *hashTransaction) captureSiblings(s *siblings) {
 	}
 	saved.contexts = maps.Clone(s.contexts) // a handful of contexts: not charged
 	j.siblings[s] = saved
-	objects := 1 + uint64(len(s.list)+len(s.opq)+len(s.ht)+len(s.leaders)+len(s.firstRun)+
+	//nolint:gosec // all terms are existing nonnegative collection sizes, as before the facade.
+	objects := 1 + uint64(s.SchemaLen()+s.OpaqueLen()+len(s.ht)+len(s.leaders)+len(s.firstRun)+
 		len(s.exactByNode)+len(s.history)+len(s.leaderByNode)+len(s.unsorted)+len(s.rbTree)+len(s.rbGroups)+
 		len(s.rbOrders)+len(s.pending))
 	if s.order != nil {
@@ -377,10 +372,10 @@ func (j *hashTransaction) captureSiblings(s *siblings) {
 			j.captureDirty(n, &objects)
 		}
 	}
-	for _, n := range s.list {
+	for _, n := range s.SchemaAll() {
 		j.captureNode(n, &objects)
 	}
-	for _, n := range s.opq {
+	for _, n := range s.opaqueAll() {
 		j.captureNode(n, &objects)
 	}
 	j.charge(objects)
@@ -390,9 +385,7 @@ func (j *hashTransaction) restore() {
 	for n, saved := range j.nodes {
 		// a journaled sibling set is restored below; the others are as they were (the operation
 		// did not change them)
-		kids := n.kids
-		*n = saved
-		n.kids = kids
+		n.restoreFields(saved)
 	}
 	for c, l := range j.owners {
 		c.links = l
@@ -401,7 +394,7 @@ func (j *hashTransaction) restore() {
 		*m = saved
 	}
 	for s, saved := range j.siblings {
-		*s = saved
+		s.restoreStorage(saved)
 	}
 	// after the sibling sets: a set rebound before its capture was captured with the new counter
 	for s, work := range j.works {

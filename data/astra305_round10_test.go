@@ -54,15 +54,15 @@ func TestMergeKeylessUnderOpaqueChecksFirstSchemaParent(t *testing.T) {
 
 	dst, src := makeOpaque(true), makeOpaque(false)
 	parent := dst.top.first()
-	if parent.schema != nil || parent.kids.ht != nil || len(parent.kids.list) != 2 ||
-		parent.kids.list[0].schema.DataParent() != a || parent.kids.list[1].schema.DataParent() != bParent {
+	if parent.schema != nil || parent.kids.ht != nil || parent.kids.SchemaLen() != 2 ||
+		parent.kids.At(0).schema.DataParent() != a || parent.kids.At(1).schema.DataParent() != bParent {
 		t.Fatal("fixture does not contain the required mixed-parent no-table children")
 	}
 	if err := dst.Merge(src); err != nil {
 		t.Fatal(err)
 	}
 	var lists int
-	for _, child := range parent.kids.list {
+	for _, child := range parent.kids.SchemaAll() {
 		if child.schema == l {
 			lists++
 		}

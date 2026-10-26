@@ -164,7 +164,7 @@ func TestLeafrefLinks(t *testing.T) {
 	// lyd_unlink_tree removes only the unlinked node's own record. Descendant records remain
 	// queryable through their retained LYD_CTX.
 	detached := find(t, tr, "/lk:c/l[k='a']")
-	key := detached.kids.list[0]
+	key := detached.kids.At(0)
 	if err := detached.Unlink(); err != nil {
 		t.Fatal(err)
 	}

@@ -226,8 +226,8 @@ func TestParseXMLFlags(t *testing.T) {
 	if err != nil {
 		t.Fatalf("%v %v", err, diags)
 	}
-	cn := tr.top.list[0]
-	sn := cn.kids.list[0]
+	cn := tr.top.At(0)
+	sn := cn.kids.At(0)
 	if !reflect.DeepEqual(lc.nodeWhen.items, []*Node{sn, cn}) || sn.flags&FlagDefault == 0 || len(sn.meta) != 1 ||
 		sn.meta[0].name != "ann" {
 		t.Fatalf("when queue %d, flags %x, meta %v", lc.nodeWhen.len(), sn.flags, sn.meta)

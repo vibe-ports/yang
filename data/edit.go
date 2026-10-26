@@ -357,7 +357,7 @@ func (t *Tree) instances(s *siblings, sn *schema.Node) func(func(*Node) bool) {
 // lys_getnext_data accept a foreign first match while LYD_LIST_FOR_INST rejects it.
 func (t *Tree) instanceRun(s *siblings, sn *schema.Node) iter.Seq2[int, *Node] {
 	return func(yield func(int, *Node) bool) {
-		var run []*Node
+		var run siblingSpan
 		// With siblings of several contexts lyd_find_sibling_schema also matches a node of
 		// another context (by name and schema parents), so the walk can start, and stop, at a
 		// foreign instance the schema-pointer records do not see: the first registered record
@@ -366,13 +366,13 @@ func (t *Tree) instanceRun(s *siblings, sn *schema.Node) iter.Seq2[int, *Node] {
 		switch {
 		case mixed && s.ht != nil && s.firstRecordSchema(sn):
 			if leader := s.leaderFirstMixed(sn); leader != nil {
-				run = s.list[t.indexFromEnd(s.list, leader):]
+				run = s.schemaSpan().Slice(s.schemaSpan().indexFromEnd(&t.work, leader), s.schemaSpan().Len())
 			}
 		case mixed:
 			// A single instance (leaf, container, ...) has no first-instance record: the
 			// schema lookup that matches other contexts by name finds it.
 			if n := t.schemaLookup(s, sn); n != nil {
-				run = s.list[t.indexFromEnd(s.list, n):]
+				run = s.schemaSpan().Slice(s.schemaSpan().indexFromEnd(&t.work, n), s.schemaSpan().Len())
 			}
 		case opChild(sn) || s.schemaUnordered:
 			// Keep the ordered run lazy even when a caller needs only its first node.
@@ -386,10 +386,10 @@ func (t *Tree) instanceRun(s *siblings, sn *schema.Node) iter.Seq2[int, *Node] {
 			return
 		default:
 			if i := t.schemaIndex(s, sn); i >= 0 {
-				run = s.list[i:]
+				run = s.schemaSpan().Slice(i, s.schemaSpan().Len())
 			}
 		}
-		for i, n := range run {
+		for i, n := range run.All() {
 			if !yield(i, n) {
 				return
 			}
@@ -461,8 +461,8 @@ func (t *Tree) newPath(lg *logger, path, value string, o NewPathOptions) (*Node,
 		return nil, argErr("(path[0] == '/') || parent", "lyd_new_path")
 	}
 	ctxNode := nodeSchema(t.context(), o.Parent)
-	if o.Parent == nil && len(t.top.list) > 0 {
-		ctxNode = t.top.list[0].schema
+	if o.Parent == nil && t.top.SchemaLen() > 0 {
+		ctxNode = t.top.At(0).schema
 	}
 	p, msg, at := types.CompilePath(t.context(), ctxNode, path, false, true)
 	if msg != "" {
@@ -609,10 +609,10 @@ func (t *Tree) preflightNewPathHash(segments types.Path, parent *Node, value str
 		return nil
 	}
 	indexed := parent != nil && parent.schema != nil &&
-		(parent.kids.ht != nil || len(parent.kids.list)+1 >= htMinItems)
+		(parent.kids.ht != nil || parent.kids.SchemaLen()+1 >= htMinItems)
 	amount := position
 	if indexed && parent.kids.ht == nil {
-		for _, old := range parent.kids.list {
+		for _, old := range parent.kids.SchemaAll() {
 			amount = addHashBound(amount, indexWorkBound(old, nil, nil, &t.work))
 		}
 	}
@@ -848,15 +848,15 @@ func (t *Tree) changeNodeValue(n *Node, v types.Value, hashAmount uint64) {
 			entry = sib.order.entries[target.schema]
 		}
 		if entry == nil || entry.count != 1 || sib.documentFirst(target.schema) != target {
-			at, err := t.originIndex(sib, sib.list, target)
+			at, err := t.originIndex(sib, sib.schemaSpan(), target)
 			if err != nil {
 				t.work.hashErr = err
 				return
 			}
 			left, right := sib.opNeighbours(at)
 			// In libyang the first sibling's prev points to the last sibling.
-			if at == 0 && len(sib.opq) == 0 && len(sib.list) > 1 {
-				left = sib.list[len(sib.list)-1].schema
+			if at == 0 && sib.OpaqueLen() == 0 && sib.SchemaLen() > 1 {
+				left = sib.At(sib.SchemaLen() - 1).schema
 			}
 			relocate = left == target.schema || right == target.schema
 		}
@@ -874,7 +874,7 @@ func (t *Tree) changeNodeValue(n *Node, v types.Value, hashAmount uint64) {
 		}
 		var slots []slot
 		if n.isKey() {
-			for _, key := range target.kids.list {
+			for _, key := range target.kids.SchemaAll() {
 				t.work.Add(1)
 				if err := t.work.chargeHash(1); err != nil {
 					return
@@ -948,7 +948,7 @@ func (t *Tree) changeNodeValue(n *Node, v types.Value, hashAmount uint64) {
 			sib.leaderUnlinkBetween(target, prev, next, false)
 		} else {
 			// Split runs need the physical neighbours.
-			at = t.indexFromEnd(sib.list, target)
+			at = sib.schemaSpan().indexFromEnd(&t.work, target)
 			sib.leaderUnlink(target, at, false)
 		}
 	}
@@ -986,7 +986,7 @@ type dupInst struct {
 type keylessFirstIndex struct {
 	first   *record
 	gen     uint64
-	buckets map[string]*nodeDeque
+	buckets map[string]*cacheDeque
 	members map[*Node]struct{}
 }
 
@@ -998,7 +998,7 @@ type keylessFirstIndex struct {
 // indexed candidates that have since left the sibling level.
 type dupCache struct {
 	inst         map[*Node]*dupInst
-	runs         map[*schema.Node]map[idxKey]*nodeDeque // sibling order; a deque, creates prepend
+	runs         map[*schema.Node]map[idxKey]*cacheDeque // sibling order; a deque, creates prepend
 	tableRuns    map[*siblings]map[string][]*Node
 	keylessFirst map[*siblings]map[*schema.Node]*keylessFirstIndex
 	keylessDup   map[*siblings]map[*schema.Node]*keylessDupIndex
@@ -1009,7 +1009,7 @@ type dupCache struct {
 // so a no-table bucket cannot simply append that transition's inserted node.
 type keylessDupIndex struct {
 	table   bool
-	buckets map[string]*nodeDeque
+	buckets map[string]*cacheDeque
 }
 
 func selectedFirstRecord(sib *siblings, sn *schema.Node) *record {
@@ -1076,7 +1076,7 @@ func (t *Tree) keylessFirstRun(c *dupCache, sib *siblings, sn *schema.Node, targ
 	first := selectedFirstRecord(sib, sn)
 	entry := bySchema[sn]
 	if entry == nil || entry.first != first || entry.gen != sib.gen {
-		entry = &keylessFirstIndex{first: first, gen: sib.gen, buckets: map[string]*nodeDeque{}, members: map[*Node]struct{}{}}
+		entry = &keylessFirstIndex{first: first, gen: sib.gen, buckets: map[string]*cacheDeque{}, members: map[*Node]struct{}{}}
 		// With a children table, lyd_find_sibling_first starts at the native
 		// first-instance record and walks only that contiguous physical run.
 		// Without one it walks every sibling, so split operation runs must all be
@@ -1105,7 +1105,7 @@ func (t *Tree) keylessFirstRun(c *dupCache, sib *siblings, sn *schema.Node, targ
 		return nil, workError(&t.work)
 	}
 	if bucket := entry.buckets[key]; bucket != nil {
-		return bucket.list, nil
+		return bucket.nodes, nil
 	}
 	return nil, nil
 }
@@ -1116,13 +1116,13 @@ func (t *Tree) keylessFirst(c *dupCache, sib *siblings, target *Node) (*Node, er
 	}
 	// lyd_find_sibling_first rejects a schema-parent mismatch before finding the
 	// first sibling, resolving a foreign schema, or touching the children table.
-	if len(sib.list) > 0 && sib.list[0].schema != nil && target.schema != nil &&
-		!compareSchemaEqual(sib.list[0].schema.DataParent(), target.schema.DataParent(), true) {
+	if sib.SchemaLen() > 0 && sib.At(0).schema != nil && target.schema != nil &&
+		!compareSchemaEqual(sib.At(0).schema.DataParent(), target.schema.DataParent(), true) {
 		return nil, nil
 	}
 	sn := target.schema
-	if len(sib.list) != 0 {
-		first := sib.list[0]
+	if sib.SchemaLen() != 0 {
+		first := sib.At(0)
 		if !sameSet(ctxOf(first), ctxOf(target)) {
 			// lyd_find_sibling_first maps no schema in its linear branch. In
 			// particular, lyd_find_schema_ctx always walks operation input, so it
@@ -1193,7 +1193,7 @@ func (t *Tree) keylessDupRun(c *dupCache, sib *siblings, target *Node, k idxKey)
 	}
 	entry := bySchema[target.schema]
 	if entry == nil || entry.table != (sib.ht != nil) {
-		entry = &keylessDupIndex{table: sib.ht != nil, buckets: map[string]*nodeDeque{}}
+		entry = &keylessDupIndex{table: sib.ht != nil, buckets: map[string]*cacheDeque{}}
 		var all iter.Seq[*Node]
 		switch {
 		case sib.ht != nil:
@@ -1220,7 +1220,7 @@ func (t *Tree) keylessDupRun(c *dupCache, sib *siblings, target *Node, k idxKey)
 		return nil, workError(&t.work)
 	}
 	if bucket := entry.buckets[key]; bucket != nil {
-		return bucket.list, nil
+		return bucket.nodes, nil
 	}
 	return nil, nil
 }
@@ -1233,17 +1233,18 @@ func dupNativeKey(n *Node) string {
 // run returns the instances of the siblings of inst that hash like it (opaque nodes: the opaque
 // siblings). A key-less list hashes by schema node only, so its run is all its instances,
 // compared whole (libyang parity).
-func (t *Tree) run(c *dupCache, inst *Node) ([]*Node, error) {
+func (t *Tree) run(c *dupCache, inst *Node) (siblingSpan, error) {
 	sib := sibsOf(inst) // a detached node: its singleton sibling set
 	if inst.schema == nil {
-		return sib.opq, nil
+		return sib.opaqueSpan(), nil
 	}
 	k, ok := indexedKey(inst, &t.work)
 	if !ok {
-		return nil, workError(&t.work)
+		return siblingSpan{}, workError(&t.work)
 	}
 	if inst.schema.Kind == schema.List && inst.schema.Keyless() && !sib.mixedContexts() {
-		return t.keylessDupRun(c, sib, inst, k)
+		nodes, err := t.keylessDupRun(c, sib, inst, k)
+		return spanOf(nodes), err
 	}
 	if sib.ht != nil && !sib.mixedContexts() {
 		// lyd_find_sibling_dup_inst_set reads the live hash bucket on each first lookup.
@@ -1251,7 +1252,7 @@ func (t *Tree) run(c *dupCache, inst *Node) ([]*Node, error) {
 		for n := range sib.bucketNodes(k) {
 			out = append(out, n)
 		}
-		return out, nil
+		return spanOf(out), nil
 	}
 	if sib.ht != nil {
 		// Instances compiled in another context hash alike in libyang (names, not schema
@@ -1281,19 +1282,19 @@ func (t *Tree) run(c *dupCache, inst *Node) ([]*Node, error) {
 			}
 			c.tableRuns[sib] = idx
 		}
-		return idx[dupNativeKey(inst)], nil
+		return spanOf(idx[dupNativeKey(inst)]), nil
 	}
 	if sib.mixedContexts() {
 		// lyd_find_sibling_dup_inst_set's no-table branch compares each
 		// sibling, including instances compiled in another context.
-		return sib.list, nil
+		return sib.schemaSpan(), nil
 	}
 	if c.runs == nil {
-		c.runs = map[*schema.Node]map[idxKey]*nodeDeque{}
+		c.runs = map[*schema.Node]map[idxKey]*cacheDeque{}
 	}
 	idx := c.runs[inst.schema]
 	if idx == nil {
-		idx = map[idxKey]*nodeDeque{}
+		idx = map[idxKey]*cacheDeque{}
 		all := t.instances(sib, inst.schema)
 		if opChild(inst.schema) || sib.schemaUnordered {
 			// Merge must find every instance, including runs split by an anchor in an
@@ -1304,31 +1305,31 @@ func (t *Tree) run(c *dupCache, inst *Node) ([]*Node, error) {
 			t.work.Add(1)
 			if nk, ok := indexedKey(n, &t.work); ok {
 				if idx[nk] == nil {
-					idx[nk] = &nodeDeque{}
+					idx[nk] = &cacheDeque{}
 				}
-				idx[nk].list = append(idx[nk].list, n)
+				idx[nk].nodes = append(idx[nk].nodes, n)
 			}
 		}
 		c.runs[inst.schema] = idx
 	}
 	if d := idx[k]; d != nil {
-		return d.list, nil
+		return spanOf(d.nodes), nil
 	}
-	return nil, nil
+	return siblingSpan{}, nil
 }
 
 // appendKeylessBucket builds a digest bucket in its caller's native iteration order.
-func appendKeylessBucket(index map[string]*nodeDeque, key string, n *Node) {
+func appendKeylessBucket(index map[string]*cacheDeque, key string, n *Node) {
 	if index[key] == nil {
-		index[key] = &nodeDeque{}
+		index[key] = &cacheDeque{}
 	}
-	index[key].list = append(index[key].list, n)
+	index[key].nodes = append(index[key].nodes, n)
 }
 
 // insertKeylessBucket extends a physical-order bucket. An operation's schema
 // anchor can insert before an older equal instance, even during Merge. Deque
 // headroom keeps repeated prepends amortized constant; middle moves are charged.
-func insertKeylessBucket(index map[string]*nodeDeque, key string, n *Node, sib *siblings, work *workCounter) {
+func insertKeylessBucket(index map[string]*cacheDeque, key string, n *Node, sib *siblings, work *workCounter) {
 	bucket := index[key]
 	if bucket == nil {
 		appendKeylessBucket(index, key, n)
@@ -1336,7 +1337,7 @@ func insertKeylessBucket(index map[string]*nodeDeque, key string, n *Node, sib *
 	}
 	var at int
 	if sib.order != nil {
-		at, _ = slices.BinarySearchFunc(bucket.list, n, func(a, b *Node) int {
+		at, _ = slices.BinarySearchFunc(bucket.nodes, n, func(a, b *Node) int {
 			work.Add(1)
 			if err := work.chargeHash(1); err != nil {
 				return 0
@@ -1347,13 +1348,13 @@ func insertKeylessBucket(index map[string]*nodeDeque, key string, n *Node, sib *
 	} else {
 		// Without the operation sequence, Merge inserts at the end of the
 		// schema run. Ordinary siblings are contiguous and append here.
-		at = len(bucket.list)
+		at = len(bucket.nodes)
 	}
 	if work.hashErr != nil {
 		return
 	}
 	// Charge shifts and backing-storage copies before changing this local cache.
-	l := bucket.list
+	l := bucket.nodes
 	copies := 0
 	if at >= len(l)/2 || len(l) == 0 {
 		if len(l) == cap(l) {
@@ -1427,9 +1428,9 @@ func (c *dupCache) added(n *Node, work *workCounter) {
 	if idx := c.runs[n.schema]; idx != nil {
 		if k, ok := indexedKey(n, work); ok {
 			if idx[k] == nil {
-				idx[k] = &nodeDeque{}
+				idx[k] = &cacheDeque{}
 			}
-			idx[k].list = append(idx[k].list, n)
+			idx[k].nodes = append(idx[k].nodes, n)
 		}
 	}
 }
@@ -1457,9 +1458,9 @@ func keylessRunAdjacent(sib *siblings, index *keylessFirstIndex, n *Node) bool {
 		}
 		return false
 	}
-	at := indexFromEnd(sib.work, sib.list, n)
-	return at > 0 && hasNode(index.members, sib.list[at-1]) ||
-		at >= 0 && at+1 < len(sib.list) && hasNode(index.members, sib.list[at+1])
+	at := sib.schemaSpan().indexFromEnd(sib.work, n)
+	return at > 0 && hasNode(index.members, sib.At(at-1)) ||
+		at >= 0 && at+1 < sib.SchemaLen() && hasNode(index.members, sib.At(at+1))
 }
 
 func hasNode(set map[*Node]struct{}, n *Node) bool {
@@ -1514,12 +1515,12 @@ func (t *Tree) created(c *dupCache, n *Node) {
 	}
 	run := idx[k]
 	if run == nil {
-		run = &nodeDeque{}
+		run = &cacheDeque{}
 		idx[k] = run
 	}
 	// the deque moves the shorter side: prepends and appends are amortized O(1), a middle slot
 	// is charged per moved entry
-	t.work.Add(int64(run.insertAt(t.runSlot(sib.list, run.list, n, k), n)))
+	t.work.Add(int64(run.insertAt(t.runSlot(sib.schemaSpan(), run.nodes, n, k), n)))
 }
 
 // moved re-records n, just moved within the level of c by an ApplyDiff replace: lyd_diff_insert
@@ -1554,7 +1555,7 @@ func (t *Tree) moved(c *dupCache, n *Node) {
 	}
 	if idx := c.runs[n.schema]; idx != nil {
 		if k, ok := indexedKey(n, &t.work); ok && idx[k] != nil {
-			if i := t.indexFromEnd(idx[k].list, n); i >= 0 {
+			if i := t.indexFromEnd(idx[k].nodes, n); i >= 0 {
 				t.work.Add(int64(idx[k].deleteAt(i)))
 			}
 		}
@@ -1565,8 +1566,8 @@ func (t *Tree) moved(c *dupCache, n *Node) {
 // runSlot is where n goes in run, its equal instances in sibling order: before the nearest run
 // member after n, after the nearest one before it. It walks out from n both ways at once, so the
 // cost is at most the distance to the nearer end of l, which the insertion of n shifted anyway.
-func (t *Tree) runSlot(l, run []*Node, n *Node, k idxKey) int {
-	at := t.indexFromEnd(l, n)
+func (t *Tree) runSlot(l siblingSpan, run []*Node, n *Node, k idxKey) int {
+	at := l.indexFromEnd(&t.work, n)
 	member := func(c *Node) int {
 		if c.schema != n.schema {
 			return -1
@@ -1578,16 +1579,16 @@ func (t *Tree) runSlot(l, run []*Node, n *Node, k idxKey) int {
 	}
 	for f, b := at+1, at-1; ; f, b = f+1, b-1 {
 		t.work.Add(1)
-		if f >= len(l) {
+		if f >= l.Len() {
 			return len(run) // no equal live instance after n
 		}
 		if b < 0 {
 			return 0 // none before n
 		}
-		if i := member(l[f]); i >= 0 {
+		if i := member(l.At(f)); i >= 0 {
 			return i
 		}
-		if i := member(l[b]); i >= 0 {
+		if i := member(l.At(b)); i >= 0 {
 			return i + 1
 		}
 	}
@@ -1610,7 +1611,7 @@ func (t *Tree) dupInstNext(inst *Node, c *dupCache) (*Node, error) {
 		if err != nil {
 			return nil, err
 		}
-		for _, n := range run {
+		for _, n := range run.All() {
 			t.work.Add(1)
 			// The level indexes outlive removals (ApplyDiff delete, merge); only the live
 			// siblings are candidates, as libyang looks them up anew.
@@ -1896,7 +1897,7 @@ func (t *Tree) flushMerge(lv *mergeLevel) error {
 		return &opError{"LY_EINT", "Missing retained red-black topology for a system-ordered run."}
 	}
 	hi := t.retainedRunEnd(sib, lo)
-	group := sib.rbGroups[sib.list[lo]]
+	group := sib.rbGroups[sib.At(lo)]
 	current := sib.rbOrders[group]
 	if current == nil {
 		return &opError{"LY_EINT", "Missing retained red-black topology for a system-ordered run."}

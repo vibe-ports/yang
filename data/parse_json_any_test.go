@@ -30,18 +30,18 @@ func TestParseJSONAnyObjectKeepsMixedPayloadAndMetadata(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	ad := tr.top.list[1]
+	ad := tr.top.At(1)
 	if ad.schema.Name != "ad" || ad.anyType() != anyValueDataTree || ad.any.children.len() != 2 {
 		t.Fatalf("any payload: %#v", ad.any)
 	}
-	known := ad.any.children.list[0]
+	known := ad.any.children.At(0)
 	if known.schema == nil || known.schema.Name != "top" || len(known.meta) != 1 || known.meta[0].name != "ann" || known.meta[0].value.Canonical() != "note" {
 		t.Fatalf("known child and metadata: %#v", known)
 	}
-	if ad.any.children.opq[0].opaq.Name != "other" || ad.any.children.opq[0].kids.opq[0].opaq.Name != "x" {
+	if ad.any.children.opaqueAt(0).opaq.Name != "other" || ad.any.children.opaqueAt(0).kids.opaqueAt(0).opaq.Name != "x" {
 		t.Fatal("unknown descendant was not retained as an opaque subtree")
 	}
-	if len(ad.kids.list) != 0 || len(ad.kids.opq) != 0 || tr.top.list[0].value.Canonical() != "after" {
+	if ad.kids.SchemaLen() != 0 || ad.kids.OpaqueLen() != 0 || tr.top.At(0).value.Canonical() != "after" {
 		t.Fatal("payload escaped ordinary traversal or parser state was not restored")
 	}
 }
@@ -144,7 +144,7 @@ func TestParseJSONAnyStrictKeepsOpaque(t *testing.T) {
 			t.Fatalf("%s: %v", in, err)
 		}
 		c := tr.top.first().any.children.first()
-		if c.schema == nil || c.schema.Name != "c" || len(c.kids.list) != 0 || len(c.kids.opq) != 1 {
+		if c.schema == nil || c.schema.Name != "c" || c.kids.SchemaLen() != 0 || c.kids.OpaqueLen() != 1 {
 			t.Fatalf("%s: payload child was not kept opaque: %#v", in, c)
 		}
 		if _, err := parseAnyJSONTest(t, set, in, ParseOptions{AnyDataStrict: true, Unknown: Reject, ParseOnly: true}); err == nil {

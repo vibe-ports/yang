@@ -33,7 +33,7 @@ func (vc *valCtx) validateNew(parent *Node, sparent *schema.Node, mod *schema.Mo
 			return rc
 		}
 	}
-	nodes := slices.Clone(sib.list) // autodelete only removes; removed nodes are skipped below
+	nodes := sib.schemaSpan().Collect() // autodelete only removes; removed nodes are skipped below
 	if mod != nil {
 		// lyd_owner_module: an augment's node in mod's top-level choice is mod's data
 		kept := nodes[:0]
@@ -114,7 +114,7 @@ func (vc *valCtx) validateChoices(sib *siblings, sparent *schema.Node, mod *sche
 		if err := vc.checkContext(); err != nil {
 			return err
 		}
-		if len(sib.list) == 0 {
+		if sib.SchemaLen() == 0 {
 			break
 		}
 		if err := vc.validateCases(sib, ch); err != nil {
@@ -401,7 +401,7 @@ func (d *dupIndex) bucket(k idxKey, work *workCounter, check func() error) (iter
 	}
 	if d.tmp == nil {
 		d.tmp = map[idxKey][]*Node{}
-		for _, n := range d.sib.list {
+		for _, n := range d.sib.SchemaAll() {
 			if err := check(); err != nil {
 				return nil, err
 			}

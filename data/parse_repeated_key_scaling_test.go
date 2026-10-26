@@ -168,23 +168,23 @@ func TestParseLongFirstKeyRepeatedLastKeyWork(t *testing.T) {
 		t.Fatal(err)
 	}
 	container := tr.top.first()
-	list := container.kids.list[3]
-	if container.kids.ht == nil || len(list.kids.list) != 2 {
+	list := container.kids.At(3)
+	if container.kids.ht == nil || list.kids.SchemaLen() != 2 {
 		t.Fatal("linked list did not build the children table")
 	}
 	oldHash, oldKey := list.hash, list.hkey
 	tr.work.hashLimit = 32 // the native key hash fits, the secondary discriminator does not
-	if changed, err := list.kids.list[1].SetValue("r"); changed || !errors.Is(err, yang.ErrBudget) {
+	if changed, err := list.kids.At(1).SetValue("r"); changed || !errors.Is(err, yang.ErrBudget) {
 		t.Fatalf("last key change=%t error=%v; want ErrBudget", changed, err)
 	}
-	if list.kids.list[1].Value() != "q" || list.hash != oldHash || list.hkey != oldKey {
+	if list.kids.At(1).Value() != "q" || list.hash != oldHash || list.hkey != oldKey {
 		t.Fatal("failed last key change published a value or changed the list index")
 	}
 	tr.work.hashLimit = 1
 	if added, err := tr.NewTerm(list, "b", "q", NewOptions{}); added != nil || !errors.Is(err, yang.ErrBudget) {
 		t.Fatalf("repeated key node=%v error=%v; want ErrBudget", added, err)
 	}
-	if len(list.kids.list) != 2 || list.hash != oldHash || list.hkey != oldKey {
+	if list.kids.SchemaLen() != 2 || list.hash != oldHash || list.hkey != oldKey {
 		t.Fatal("failed repeated key insertion published a key or changed the list index")
 	}
 }

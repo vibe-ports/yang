@@ -93,7 +93,7 @@ func TestOpIndexMetaDocumentFirst(t *testing.T) {
 		// lydjson_parse_attribute walks from the first sibling to the first matching schema
 		// (parser_json.c:1166-1170); lydjson_meta_attr then counts leaf-list metadata instances
 		// by advancing node->next (parser_json.c:828-834). The new v4 does not become instance 1.
-		values := opidxSchemaNodes(op, op.kids.list[2].schema)
+		values := opidxSchemaNodes(op, op.kids.At(2).schema)
 		if got, want := opidxValues(op), []string{"a", "a2", "v:2", "o", "v:3", "v:4"}; !slices.Equal(got, want) {
 			t.Fatalf("children = %v, want %v", got, want)
 		}

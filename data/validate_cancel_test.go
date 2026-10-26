@@ -82,14 +82,14 @@ func TestValidationCancelScans(t *testing.T) {
 			ctx := &cancelAtContext{Context: context.Background(), at: 32}
 			vc := &valCtx{t: tr, log: &logger{set: set}, opts: ValidateOptions{Present: true, MultiError: true},
 				budget: xpathBudget{ctx: ctx}}
-			sn := tr.top.list[0].schema
+			sn := tr.top.At(0).schema
 			var err error
 			switch name {
 			case "final", "final-descent":
 				if name == "final-descent" {
-					ctx.at += len(tr.top.list) // finish the first sibling pass
+					ctx.at += tr.top.SchemaLen() // finish the first sibling pass
 				}
-				err = vc.finalR(nil, tr.top.list, nil, set.Implemented("m"))
+				err = vc.finalR(nil, tr.top.schemaSpan(), nil, set.Implemented("m"))
 			case "minmax":
 				err = vc.minmax(nil, &tr.top, sn)
 			case "unique-gather":
@@ -99,31 +99,31 @@ func TestValidationCancelScans(t *testing.T) {
 			case "implicit-recursion":
 				err = vc.newImplicitR(nil, nil, set.Implemented("m"), 0)
 			case "module-scan":
-				_, err = vc.firstModuleSibling(tr.top.list, len(tr.top.list)-1, set.Implemented("m"))
+				_, err = vc.firstModuleSibling(tr.top.schemaSpan(), tr.top.SchemaLen()-1, set.Implemented("m"))
 			case "module-start":
-				vc.modFirst = tr.top.list[len(tr.top.list)-1]
+				vc.modFirst = tr.top.At(tr.top.SchemaLen() - 1)
 				_, err = vc.modStart()
 			case "module-insert":
-				vc.modFirst = tr.top.list[len(tr.top.list)-1]
-				err = vc.modInsert(newTerm(sn, tr.top.list[0].value, &tr.work))
+				vc.modFirst = tr.top.At(tr.top.SchemaLen() - 1)
+				err = vc.modInsert(newTerm(sn, tr.top.At(0).value, &tr.work))
 			case "present-modules":
 				_, err = vc.modules()
 			case "default-flags":
 				tr = cancelValidationTree(t, set, 512, true)
 				vc.t = tr
-				for _, n := range tr.top.list[0].kids.list {
+				for _, n := range tr.top.At(0).kids.SchemaAll() {
 					n.flags |= FlagDefault
 				}
-				err = vc.setContainerDefault(tr.top.list[0])
+				err = vc.setContainerDefault(tr.top.At(0))
 			case "default-instances":
 				_, err = vc.instances(&tr.top, sn)
 			case "default-filter":
-				_, err = vc.autodelDefaults(tr.top.list, tr.top.list[0])
+				_, err = vc.autodelDefaults(tr.top.schemaSpan().Collect(), tr.top.At(0))
 			case "explicit-scan":
-				for _, n := range tr.top.list {
+				for _, n := range tr.top.SchemaAll() {
 					n.flags |= FlagDefault
 				}
-				_, err = vc.hasExplicit(tr.top.list)
+				_, err = vc.hasExplicit(tr.top.schemaSpan().Collect())
 			case "case-data":
 				err = vc.getnextData(&tr.top, &schema.Node{Kind: schema.Case, Children: []*schema.Node{sn}}, func(*Node) bool { return true })
 			case "duplicate-index":
@@ -136,16 +136,16 @@ func TestValidationCancelScans(t *testing.T) {
 			case "autodel-diff":
 				ctx.at = 2 // cancellation after emission must wait for the unlink
 				vc.diff = func(*Node, diffOp) error { return nil }
-				err = vc.autodel(slices.Clone(tr.top.list), false)
-				if len(tr.top.list) != 0 {
+				err = vc.autodel(slices.Clone(tr.top.schemaSpan().Collect()), false)
+				if tr.top.SchemaLen() != 0 {
 					t.Fatal("cancellation left emitted removals unapplied")
 				}
 			case "drop-types":
 				tr = cancelValidationTree(t, set, 512, true)
 				vc.t = tr
 				vc.nodeTypes = &nodeSet{}
-				vc.nodeTypes.add(tr.top.list[0].kids.list[0])
-				err = vc.dropTypes(tr.top.list[0], true)
+				vc.nodeTypes.add(tr.top.At(0).kids.At(0))
+				err = vc.dropTypes(tr.top.At(0), true)
 			}
 			if !errors.Is(err, context.Canceled) || ctx.calls != ctx.at {
 				t.Fatalf("scan: polls=%d, error=%v", ctx.calls, err)
@@ -169,7 +169,7 @@ func TestValidationCancelAutodelDiffConsistency(t *testing.T) {
 		return nil
 	}
 	journal := beginHashTransaction(tr)
-	err := vc.autodel(slices.Clone(tr.top.list), false)
+	err := vc.autodel(slices.Clone(tr.top.schemaSpan().Collect()), false)
 	journal.end(nil)
 	if !errors.Is(err, context.Canceled) || emitted != 512 || tr.top.len() != 0 {
 		t.Fatalf("canceled removal: diff entries=%d retained=%d error=%v", emitted, tr.top.len(), err)
@@ -204,7 +204,7 @@ func TestValidationCancelSchemaScans(t *testing.T) {
 					t.Fatal("canceled build cached partial schema children")
 				}
 			case "schema-final":
-				err = vc.siblingsSchema(nil, nil, parent, nil)
+				err = vc.siblingsSchema(nil, siblingSpan{}, parent, nil)
 			case "schema-implicit":
 				err = vc.newImplicit(nil, parent, nil, 0)
 			case "choices":
@@ -256,7 +256,7 @@ func TestValidationCancelUniqueComparison(t *testing.T) {
 	}
 	ctx := &cancelAtContext{Context: context.Background(), at: 32}
 	vc := &valCtx{t: tr, log: &logger{set: set}, budget: xpathBudget{ctx: ctx}}
-	if err := vc.unique(&tr.top, tr.top.list[0].schema); !errors.Is(err, context.Canceled) || len(vc.log.diags) != 0 {
+	if err := vc.unique(&tr.top, tr.top.At(0).schema); !errors.Is(err, context.Canceled) || len(vc.log.diags) != 0 {
 		t.Fatalf("two-instance unique comparison: %v %v", vc.log.diags, err)
 	}
 }

@@ -74,15 +74,15 @@ func TestInsertChild(t *testing.T) {
 	}{
 		{nil, c, "Invalid argument parent (lyd_insert_child())."},
 		{c, nil, "Invalid argument node (lyd_insert_child())."},
-		{c.kids.list[0], c, "Invalid argument !parent->schema || (parent->schema->nodetype & LYD_NODE_INNER) (lyd_insert_child())."},
+		{c.kids.At(0), c, "Invalid argument !parent->schema || (parent->schema->nodetype & LYD_NODE_INNER) (lyd_insert_child())."},
 		{c, f.term(t, f.top, "t"), "Cannot insert, parent of \"top\" is not \"c\"."},
 	} {
 		if err := tr.insertChild(tc.parent, tc.n); err == nil || err.Error() != tc.err {
 			t.Errorf("%s: %v", tc.err, err)
 		}
 	}
-	l := f.list(t, tr, c, "eth0", "")
-	if err := tr.insertChild(l, l.kids.list[0]); err == nil || err.Error() != "Cannot unlink a list key \"k\", unlink the list instance instead." {
+	l := f.makeList(t, tr, c, "eth0", "")
+	if err := tr.insertChild(l, l.kids.At(0)); err == nil || err.Error() != "Cannot unlink a list key \"k\", unlink the list instance instead." {
 		t.Errorf("key: %v", err)
 	}
 
@@ -190,7 +190,7 @@ func TestMergeSorted(t *testing.T) {
 	if got := names(c.Children()); !reflect.DeepEqual(got, []string{"ll=1", "ll=2", "ll=4", "ll=4", "ll=6", "z=z"}) {
 		t.Fatalf("no trees: %v", got)
 	}
-	if c.kids.list[2] != dst[0] || !c.kids.hasRB(f.ll) {
+	if c.kids.At(2) != dst[0] || !c.kids.hasRB(f.ll) {
 		t.Fatal("no trees: the source 4 must follow the destination 4")
 	}
 
@@ -202,7 +202,7 @@ func TestMergeSorted(t *testing.T) {
 	if got := names(c.Children()); !reflect.DeepEqual(got, []string{"ll=3", "ll=4", "ll=4", "ll=5", "z=z"}) {
 		t.Fatalf("source tree: %v", got)
 	}
-	if c.kids.list[1] != sn[1] || c.kids.list[2] != dst[0] || !c.kids.hasRB(f.ll) {
+	if c.kids.At(1) != sn[1] || c.kids.At(2) != dst[0] || !c.kids.hasRB(f.ll) {
 		t.Fatal("source tree: the source 4 must come first")
 	}
 
@@ -212,7 +212,7 @@ func TestMergeSorted(t *testing.T) {
 	if got := names(c.Children()); !reflect.DeepEqual(got, []string{"ll=1", "ll=2", "ll=4", "ll=4", "ll=6", "z=z"}) {
 		t.Fatalf("both trees: %v", got)
 	}
-	if c.kids.list[2] != dst[0] || c.kids.list[3] != sn[1] {
+	if c.kids.At(2) != dst[0] || c.kids.At(3) != sn[1] {
 		t.Fatal("both trees: the destination 4 must come first")
 	}
 
@@ -276,7 +276,7 @@ func TestInsertSibling(t *testing.T) {
 		t.Fatalf("top: %v", got)
 	}
 	z := f.term(t, f.z, "z")
-	if err := tr.insertSibling(nil, z); err != nil || !slices.Contains(tr.top.list, z) {
+	if err := tr.insertSibling(nil, z); err != nil || !slices.Contains(tr.top.schemaSpan().Collect(), z) {
 		t.Fatalf("nil sibling: %v", err) // libyang checks nothing without a sibling
 	}
 	for _, tc := range []struct {
@@ -316,16 +316,16 @@ func TestInsertAfter(t *testing.T) {
 	n4 := f.term(t, f.ul, "4")
 	// after an opaque sibling: after the last instance of its run, schema order kept
 	mustLink(t, tr.insert(c, f.term(t, f.z, "z"), insertDefault))
-	if err := tr.insertAfter(op, n4); err != nil || c.kids.list[3] != n4 {
+	if err := tr.insertAfter(op, n4); err != nil || c.kids.At(3) != n4 {
 		t.Fatalf("after opaque: %v %v", err, names(c.Children()))
 	}
 	n5 := f.term(t, f.ul, "5")
 	mustLink(t, tr.insert(c, n5, insertDefault))
-	if c.kids.list[4] != n5 {
+	if c.kids.At(4) != n5 {
 		t.Fatalf("schema order broken: %v", names(c.Children()))
 	}
 	op2 := newOpaque(opaque{Name: "op2"})
-	if err := tr.insertAfter(ul[0], op2); err != nil || c.kids.opq[0] != op2 {
+	if err := tr.insertAfter(ul[0], op2); err != nil || c.kids.opaqueAt(0) != op2 {
 		t.Fatalf("opaque after schema: %v", err)
 	}
 	ll := f.term(t, f.ll, "1")

@@ -43,24 +43,23 @@ func ownerModule(set *schema.Set, n *Node) *schema.Module {
 }
 
 // topList is the top level as libyang's sibling list: the schema nodes, then the opaque nodes.
-func (vc *valCtx) topList() []*Node {
+func (vc *valCtx) topList() siblingSpan {
 	t := &vc.t.top
-	if len(t.opq) == 0 {
-		return t.list
+	if t.OpaqueLen() == 0 {
+		return t.schemaSpan()
 	}
-	out := make([]*Node, 0, t.len())
-	return append(append(out, t.list...), t.opq...)
+	return spanOf(t.CollectRange(0, t.Len()))
 }
 
 // firstModuleSibling is lyd_first_module_sibling: the index of the first top-level node of mod,
 // or start unchanged when the module has no data.
-func (vc *valCtx) firstModuleSibling(top []*Node, start int, mod *schema.Module) (int, error) {
-	if start >= len(top) {
+func (vc *valCtx) firstModuleSibling(top siblingSpan, start int, mod *schema.Module) (int, error) {
+	if start >= top.Len() {
 		return start, nil
 	}
 	first := start
 	cmp := 1
-	if own := ownerModule(vc.t.context(), top[first]); own != nil {
+	if own := ownerModule(vc.t.context(), top.At(first)); own != nil {
 		cmp = strings.Compare(own.Name, mod.Name)
 	}
 	if cmp > 0 { // there may be some preceding data
@@ -69,14 +68,14 @@ func (vc *valCtx) firstModuleSibling(top []*Node, start int, mod *schema.Module)
 				return 0, err
 			}
 			first--
-			if ownerModule(vc.t.context(), top[first]) == mod {
+			if ownerModule(vc.t.context(), top.At(first)) == mod {
 				cmp = 0
 				break
 			}
 		}
 	}
 	if cmp == 0 { // there may be some preceding data of this module
-		for first > 0 && ownerModule(vc.t.context(), top[first-1]) == mod {
+		for first > 0 && ownerModule(vc.t.context(), top.At(first-1)) == mod {
 			if err := vc.checkContext(); err != nil {
 				return 0, err
 			}
@@ -85,11 +84,11 @@ func (vc *valCtx) firstModuleSibling(top []*Node, start int, mod *schema.Module)
 		return first, nil
 	}
 	if cmp < 0 { // there may be some following data
-		for i := first; i < len(top); i++ {
+		for i := first; i < top.Len(); i++ {
 			if err := vc.checkContext(); err != nil {
 				return 0, err
 			}
-			if ownerModule(vc.t.context(), top[i]) == mod {
+			if ownerModule(vc.t.context(), top.At(i)) == mod {
 				return i, nil
 			}
 		}
@@ -118,13 +117,13 @@ func (vc *valCtx) modules() ([]*schema.Module, error) {
 		return out, nil
 	}
 	top := vc.topList()
-	for i := 0; i < len(top); {
-		mod := ownerModule(vc.t.context(), top[i])
+	for i := 0; i < top.Len(); {
+		mod := ownerModule(vc.t.context(), top.At(i))
 		if mod == nil {
 			break
 		}
 		out = append(out, mod)
-		for i < len(top) && ownerModule(vc.t.context(), top[i]) == mod {
+		for i < top.Len() && ownerModule(vc.t.context(), top.At(i)) == mod {
 			if err := vc.checkContext(); err != nil {
 				return nil, err
 			}
@@ -180,13 +179,13 @@ func (vc *valCtx) validate(validateSubtree bool) error {
 				return rc
 			}
 		}
-		if top := vc.topList(); len(top) > 0 {
+		if top := vc.topList(); top.Len() > 0 {
 			i, err := vc.firstModuleSibling(top, 0, mod)
 			if err != nil {
 				return err
 			}
-			if i > 0 && i < len(top) && ownerModule(vc.t.context(), top[i]) == mod {
-				vc.modFirst = top[i]
+			if i > 0 && i < top.Len() && ownerModule(vc.t.context(), top.At(i)) == mod {
+				vc.modFirst = top.At(i)
 			}
 		}
 		var err error
@@ -220,11 +219,11 @@ func (vc *valCtx) validate(validateSubtree bool) error {
 					return err
 				}
 			}
-			for i := start; i < len(top) && ownerModule(vc.t.context(), top[i]) == mod; i++ {
+			for i := start; i < top.Len() && ownerModule(vc.t.context(), top.At(i)) == mod; i++ {
 				if err := vc.checkContext(); err != nil {
 					return err
 				}
-				if err := vc.validateTree(top[i]); err != nil {
+				if err := vc.validateTree(top.At(i)); err != nil {
 					if rc = err; vc.stop(err) {
 						return rc
 					}
@@ -251,7 +250,7 @@ func (vc *valCtx) validate(validateSubtree bool) error {
 		if err != nil {
 			return err
 		}
-		if err := vc.finalR(nil, top[first:], nil, mod); err != nil {
+		if err := vc.finalR(nil, top.Slice(first, top.Len()), nil, mod); err != nil {
 			if rc = err; vc.stop(err) {
 				return rc
 			}
@@ -326,9 +325,9 @@ func (vc *valCtx) validateTree(root *Node) error {
 // opaque nodes and unexpected nodes are errors, the others get the obsolete warning and their
 // musts (not when-false ones); then the schema-based checks of the sibling set; then each child
 // set, depth first, and the NP-container default flag.
-func (vc *valCtx) finalR(parent *Node, sibs []*Node, sparent *schema.Node, mod *schema.Module) error {
+func (vc *valCtx) finalR(parent *Node, sibs siblingSpan, sparent *schema.Node, mod *schema.Module) error {
 	var rc error
-	for _, n := range sibs {
+	for _, n := range sibs.All() {
 		if err := vc.checkContext(); err != nil {
 			return err
 		}
@@ -359,7 +358,7 @@ func (vc *valCtx) finalR(parent *Node, sibs []*Node, sparent *schema.Node, mod *
 			return rc
 		}
 	}
-	for _, n := range sibs {
+	for _, n := range sibs.All() {
 		if err := vc.checkContext(); err != nil {
 			return err
 		}
@@ -403,11 +402,11 @@ func (vc *valCtx) setContainerDefault(p *Node) error {
 }
 
 // slicesOf is the sibling list of s as libyang links it: schema nodes, then opaque nodes.
-func slicesOf(s *siblings) []*Node {
-	if len(s.opq) == 0 {
-		return s.list
+func slicesOf(s *siblings) siblingSpan {
+	if s.OpaqueLen() == 0 {
+		return s.schemaSpan()
 	}
-	return append(append(make([]*Node, 0, s.len()), s.list...), s.opq...)
+	return spanOf(s.CollectRange(0, s.Len()))
 }
 
 // unexpected is the "no state/input/output/op data" check of lyd_validate_final_r: the kind of
@@ -459,7 +458,7 @@ func (vc *valCtx) obsolete(n *Node) {
 // siblingsSchema is lyd_validate_siblings_schema_r: mandatory choices (and the existing case,
 // recursively), then per schema child: list min/max and unique, leaf-list min/max, mandatory
 // leaves, containers and any nodes.
-func (vc *valCtx) siblingsSchema(parent *Node, sibs []*Node, sparent *schema.Node, mod *schema.Module) error {
+func (vc *valCtx) siblingsSchema(parent *Node, sibs siblingSpan, sparent *schema.Node, mod *schema.Module) error {
 	var rc error
 	keep := func(err error) bool {
 		if err != nil {
@@ -765,7 +764,7 @@ func (vc *valCtx) unique(sib *siblings, sn *schema.Node) error {
 	}
 	clear(vc.uniqDefs)
 	var inst []*Node
-	for _, n := range slicesOf(sib) {
+	for _, n := range slicesOf(sib).All() {
 		if err := vc.checkContext(); err != nil {
 			return err
 		}
@@ -907,7 +906,7 @@ func (t *Tree) validateModuleFinal(ctx context.Context, mod *schema.Module, o Va
 	// only mod's schema-level checks run) when mod has no data
 	top := vc.topList()
 	first := -1
-	for i, n := range top {
+	for i, n := range top.All() {
 		if err := vc.checkContext(); err != nil {
 			return nil, err
 		}
@@ -921,10 +920,10 @@ func (t *Tree) validateModuleFinal(ctx context.Context, mod *schema.Module, o Va
 		// min-elements nodes are evaluated over their temporary node alone, without the other
 		// modules' data
 		vc.t = newTree(t.context())
-		top, first = nil, 0
+		top, first = siblingSpan{}, 0
 	}
 	journal := beginHashTransaction(t)
-	err := vc.finalR(nil, top[first:], nil, mod)
+	err := vc.finalR(nil, top.Slice(first, top.Len()), nil, mod)
 	if t.work.hashErr != nil {
 		err = t.work.hashErr
 		journal.end(&err)

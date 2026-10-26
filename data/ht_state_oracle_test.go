@@ -115,7 +115,7 @@ func TestHashTableStateOracle(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			got := make([]string, 0, len(op.kids.list))
+			got := make([]string, 0, op.kids.SchemaLen())
 			for n := range op.kids.all() {
 				got = append(got, n.Path())
 			}

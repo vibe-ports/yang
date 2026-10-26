@@ -61,12 +61,12 @@ func TestApplyDiffKeylessDescendantDigest(t *testing.T) {
 	if reached != 3 {
 		t.Fatalf("reached %d outer entries, want 3", reached)
 	}
-	if len(op.kids.list) != 2 {
-		t.Fatalf("outer count = %d", len(op.kids.list))
+	if op.kids.SchemaLen() != 2 {
+		t.Fatalf("outer count = %d", op.kids.SchemaLen())
 	}
-	for _, outer := range op.kids.list {
-		if len(outer.kids.list) != 2 {
-			t.Fatalf("inner count = %d", len(outer.kids.list))
+	for _, outer := range op.kids.SchemaAll() {
+		if outer.kids.SchemaLen() != 2 {
+			t.Fatalf("inner count = %d", outer.kids.SchemaLen())
 		}
 	}
 }
@@ -78,15 +78,15 @@ func TestMergeKeylessBeforeOutputWithoutTable(t *testing.T) {
 		set, FormatJSON, opReply, op, Reject); err != nil {
 		t.Fatal(err, ds)
 	}
-	if op.kids.ht != nil || len(op.kids.list) != 2 || op.kids.list[0].Name() != "out" {
-		t.Fatalf("want output then input without children table: %v", op.kids.list)
+	if op.kids.ht != nil || op.kids.SchemaLen() != 2 || op.kids.At(0).Name() != "out" {
+		t.Fatalf("want output then input without children table: %v", op.kids.schemaSpan().Collect())
 	}
 	src, _ := round13RPC(t, set, round13MergeSource)
 	if err := dst.Merge(src); err != nil {
 		t.Fatal(err)
 	}
 	var count int
-	for _, child := range op.kids.list {
+	for _, child := range op.kids.SchemaAll() {
 		if child.Name() == "l" {
 			count++
 		}
@@ -106,7 +106,7 @@ func TestKeylessCachesAcrossPublicMutations(t *testing.T) {
 		mutate              func(*Tree, *Node) error
 	}{
 		{"set-value", `[{"b":"a"},{"b":"b"}]`, `[{"b":"b"},{"b":"b"}]`, func(_ *Tree, first *Node) error {
-			_, err := first.kids.list[0].SetValue("b")
+			_, err := first.kids.At(0).SetValue("b")
 			return err
 		}},
 		{"new-path-update", `[{"b":"a"},{"b":"b"}]`, `[{"b":"b"},{"b":"b"}]`, func(tr *Tree, _ *Node) error {
@@ -118,14 +118,14 @@ func TestKeylessCachesAcrossPublicMutations(t *testing.T) {
 			if err != nil {
 				t.Fatal(err, ds)
 			}
-			n := src.top.first().kids.list[0].kids.list[0]
+			n := src.top.first().kids.At(0).kids.At(0)
 			if err := n.Unlink(); err != nil {
 				return err
 			}
 			return tr.Insert(first, n)
 		}},
 		{"remove", `[{"b":"b","extra":"x"},{"b":"b"}]`, `[{"b":"b"},{"b":"b"}]`, func(_ *Tree, first *Node) error {
-			return first.kids.list[1].Remove()
+			return first.kids.At(1).Remove()
 		}},
 		{"validation-defaults", `[{"b":"defaults"},{"b":"defaults","d":"z"}]`, `[{"b":"defaults","d":"z"},{"b":"defaults","d":"z"}]`, func(tr *Tree, _ *Node) error {
 			_, err := tr.Validate(context.Background(), ValidateOptions{})
@@ -149,7 +149,7 @@ func TestKeylessCachesAcrossPublicMutations(t *testing.T) {
 			if err := dst.Merge(warm); err != nil {
 				t.Fatal(err)
 			}
-			first := dst.top.first().kids.list[0]
+			first := dst.top.first().kids.At(0)
 			if err := tc.mutate(dst, first); err != nil {
 				t.Fatal(err)
 			}
@@ -160,7 +160,7 @@ func TestKeylessCachesAcrossPublicMutations(t *testing.T) {
 			if err != nil || state == nil {
 				t.Fatal("state missing", err)
 			}
-			if got := len(state.kids.list); got != 2 {
+			if got := state.kids.SchemaLen(); got != 2 {
 				t.Fatalf("instances after edit and merge = %d, want 2", got)
 			}
 		})
@@ -180,7 +180,7 @@ func round13SplitCopy(t *testing.T, set *schema.Set, count int) (*Tree, *Node) {
 		t.Fatal(err)
 	}
 	_, source := round13RPC(t, set, `{"v":[1]}`)
-	tail := source.kids.list[0]
+	tail := source.kids.At(0)
 	if err := tail.Unlink(); err != nil {
 		t.Fatal(err)
 	}

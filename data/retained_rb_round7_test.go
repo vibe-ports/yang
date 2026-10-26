@@ -58,7 +58,7 @@ func TestForeignSchemaIndexKeepsOwnContextIdentity(t *testing.T) {
 		t.Fatal("rpc input/output x not compiled")
 	}
 	s := &siblings{}
-	s.list = []*Node{retainedRBTerm(t, out, "o"), retainedRBTerm(t, in, "i"), retainedRBTerm(t, z, "z")}
+	s.buildSchema([]*Node{retainedRBTerm(t, out, "o"), retainedRBTerm(t, in, "i"), retainedRBTerm(t, z, "z")})
 	d := newTree(setA)
 	end := d.work.beginLookupWork()
 	defer end()
@@ -94,7 +94,7 @@ func TestForeignSchemaIndexAllocationBudget(t *testing.T) {
 	sn := retainedRBTopNamed(t, set, "v")
 	s := &siblings{}
 	for range 1 << 17 {
-		s.list = append(s.list, retainedRBTerm(t, sn, "x"))
+		s.appendNode(retainedRBTerm(t, sn, "x"))
 	}
 	d := newTree(set)
 	d.work.lookupLimit = 1
@@ -149,7 +149,7 @@ func mixedLeaderTree(t *testing.T, foreignType string) (*Tree, *Node) {
 		t.Fatal(err)
 	}
 	tr = dest
-	for _, n := range tr.top.list {
+	for _, n := range tr.top.SchemaAll() {
 		if n.schema.Name == "c" {
 			return tr, n
 		}
@@ -160,7 +160,7 @@ func mixedLeaderTree(t *testing.T, foreignType string) (*Tree, *Node) {
 
 func childValues(c *Node) string {
 	var got []string
-	for _, n := range c.kids.list {
+	for _, n := range c.kids.SchemaAll() {
 		got = append(got, n.Value())
 	}
 	return strings.Join(got, " ")
@@ -400,7 +400,7 @@ func TestRelocationRollbackRestoresDualTrees(t *testing.T) {
 			t.Fatal(err)
 		}
 		c := topOf(diff)
-		for _, n := range c.kids.list {
+		for _, n := range c.kids.SchemaAll() {
 			if len(c.kids.rbDual[n]) != 0 {
 				return diff, n
 			}

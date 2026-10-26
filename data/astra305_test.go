@@ -38,7 +38,7 @@ func TestValidateOpRefreshesExactLeafListIndex(t *testing.T) {
 	}
 	dst, op := parse()
 	_, srcOp := parse()
-	value := op.kids.list[3]
+	value := op.kids.At(3)
 	if got := value.value.Canonical(); got != "01" {
 		t.Fatalf("validated value = %q, want 01", got)
 	}
@@ -82,7 +82,7 @@ func TestValidateOpExactIndexBudgetRollback(t *testing.T) {
 		t.Helper()
 		opidxAssertTreeInvariant(t, trees[0])
 		op := trees[0].top.first()
-		value := op.kids.list[3]
+		value := op.kids.At(3)
 		if value.value.Canonical() != "01" || op.kids.exactFirst(value.schema, value) != value {
 			t.Fatal("successful validation left the exact-value index stale")
 		}
@@ -109,11 +109,11 @@ func TestMergeForeignKeylessListMatchesMappedKeyedList(t *testing.T) {
 	src, srcOp := opIndexParseRPC(t, keyed, `{"m:r":{"a":"a","b":"b","c":"c"}}`)
 	_, foreignOp := opIndexParseRPC(t, keyless,
 		`{"m:r":{"a":"a","b":"b","c":"c","l":[{"id":""}]}}`)
-	foreign := foreignOp.kids.list[3]
+	foreign := foreignOp.kids.At(3)
 	if err := foreign.Unlink(); err != nil {
 		t.Fatal(err)
 	}
-	if err := src.link(srcOp, &srcOp.kids, foreign, len(srcOp.kids.list)); err != nil {
+	if err := src.link(srcOp, &srcOp.kids, foreign, srcOp.kids.SchemaLen()); err != nil {
 		t.Fatal(err)
 	}
 	if op.kids.ht == nil {
@@ -189,7 +189,7 @@ func TestApplyForeignOutputLeafListDeleteWithoutTable(t *testing.T) {
 		t.Fatalf("ApplyDiff foreign output delete: %v", err)
 	}
 	root := target.top.first()
-	if root == nil || len(root.kids.list) != 0 {
+	if root == nil || root.kids.SchemaLen() != 0 {
 		t.Fatalf("output children after delete = %v", root)
 	}
 }
@@ -211,7 +211,7 @@ func TestMergeForeignKeyDeclarationDigestIsConservative(t *testing.T) {
 	src, srcOp := opIndexParseRPC(t, keyless, `{"m:r":{"a":"a","b":"b","c":"c"}}`)
 	_, foreignOp := opIndexParseRPC(t, keyed,
 		`{"m:r":{"outer":[{"inner":[{"id":""}]}]}}`)
-	foreignOuter := foreignOp.kids.list[0]
+	foreignOuter := foreignOp.kids.At(0)
 	if err := foreignOuter.Unlink(); err != nil {
 		t.Fatal(err)
 	}
@@ -269,7 +269,7 @@ func TestInsertDetachedChildIntoCopiedEmptyOperation(t *testing.T) {
 	if op.kids.ht == nil || op.kids.order == nil {
 		t.Fatal("four operation children must create both indexes")
 	}
-	for _, child := range slices.Clone(op.kids.list) {
+	for _, child := range slices.Clone(op.kids.schemaSpan().Collect()) {
 		if err := child.Remove(); err != nil {
 			t.Fatal(err)
 		}
@@ -278,21 +278,21 @@ func TestInsertDetachedChildIntoCopiedEmptyOperation(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if dup.kids.ht == nil || dup.kids.order != nil || len(dup.kids.list) != 0 {
+	if dup.kids.ht == nil || dup.kids.order != nil || dup.kids.SchemaLen() != 0 {
 		t.Fatalf("copied children: table=%v order=%v count=%d", dup.kids.ht != nil,
-			dup.kids.order != nil, len(dup.kids.list))
+			dup.kids.order != nil, dup.kids.SchemaLen())
 	}
 
 	_, source := opIndexParseRPC(t, set, `{"m:r":{"a":"detached"}}`)
-	child := source.kids.list[0]
+	child := source.kids.At(0)
 	if err := child.Unlink(); err != nil {
 		t.Fatal(err)
 	}
 	if err := treeOf(dup).Insert(dup, child); err != nil {
 		t.Fatal(err)
 	}
-	if len(dup.kids.list) != 1 || dup.kids.list[0] != child {
-		t.Fatalf("copied operation children = %v, want inserted child", dup.kids.list)
+	if dup.kids.SchemaLen() != 1 || dup.kids.At(0) != child {
+		t.Fatalf("copied operation children = %v, want inserted child", dup.kids.schemaSpan().Collect())
 	}
 }
 
@@ -305,7 +305,7 @@ func TestMergeKeylessSplitOperationRootsWithoutTable(t *testing.T) {
 	_, op := opIndexParseRPC(t, set, `{"m:r":{"l":[{"v":"a"},{"v":"b"}],"split":"x"}}`)
 	var lists []*Node
 	var split *Node
-	for _, child := range op.kids.list {
+	for _, child := range op.kids.SchemaAll() {
 		if child.Name() == "l" {
 			lists = append(lists, child)
 		} else if child.Name() == "split" {
@@ -333,9 +333,9 @@ func TestMergeKeylessSplitOperationRootsWithoutTable(t *testing.T) {
 	appendCopy(lists[0])
 	appendCopy(split)
 	appendCopy(lists[1])
-	if dst.top.ht != nil || len(dst.top.list) != 3 || dst.top.list[0].schema != lists[0].schema ||
-		dst.top.list[1].schema != split.schema || dst.top.list[2].schema != lists[0].schema {
-		t.Fatalf("destination is not the no-table split run: %v", dst.top.list)
+	if dst.top.ht != nil || dst.top.SchemaLen() != 3 || dst.top.At(0).schema != lists[0].schema ||
+		dst.top.At(1).schema != split.schema || dst.top.At(2).schema != lists[0].schema {
+		t.Fatalf("destination is not the no-table split run: %v", dst.top.schemaSpan().Collect())
 	}
 
 	mergeRoot, err := dupTo(lists[1], set, nil, dupRecursive, false)
@@ -346,9 +346,9 @@ func TestMergeKeylessSplitOperationRootsWithoutTable(t *testing.T) {
 		t.Fatal(err)
 	}
 	var got []string
-	for _, n := range dst.top.list {
+	for _, n := range dst.top.SchemaAll() {
 		if n.schema == lists[0].schema {
-			got = append(got, n.kids.list[0].value.Canonical())
+			got = append(got, n.kids.At(0).value.Canonical())
 		}
 	}
 	if want := []string{"a", "b"}; !slices.Equal(got, want) {

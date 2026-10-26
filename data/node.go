@@ -251,11 +251,8 @@ func (n *Node) All() iter.Seq[*Node] {
 			if !yield(c) {
 				return
 			}
-			for i := len(c.kids.opq) - 1; i >= 0; i-- {
-				stack = append(stack, c.kids.opq[i])
-			}
-			for i := len(c.kids.list) - 1; i >= 0; i-- {
-				stack = append(stack, c.kids.list[i])
+			for _, child := range c.kids.reverseAll() {
+				stack = append(stack, child)
 			}
 		}
 	}

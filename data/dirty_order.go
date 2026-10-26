@@ -104,10 +104,10 @@ type dirtyOrderNode struct {
 // lyds_additionally_create_rb_tree does (the first is the leader); otherwise the run already
 // had a tree before this parse, whose shape is not kept, and the nodes go in in their order.
 // It reports whether the given order was not sorted.
-func newDirtyOrder(work *workCounter, nodes []*Node, compare func(*Node, *Node) int, create bool) (*dirtyOrder, bool) {
-	d := &dirtyOrder{nodes: make(map[*Node]*dirtyOrderNode, len(nodes)), work: work, compare: compare}
+func newDirtyOrder(work *workCounter, nodes siblingSpan, compare func(*Node, *Node) int, create bool) (*dirtyOrder, bool) {
+	d := &dirtyOrder{nodes: make(map[*Node]*dirtyOrderNode, nodes.Len()), work: work, compare: compare}
 	moved := false
-	for _, n := range nodes {
+	for _, n := range nodes.All() {
 		if isMax, _ := d.insertNode(n, !create); !isMax {
 			moved = true
 		}

@@ -108,7 +108,7 @@ func isUserOrdered(s *schema.Node) bool {
 // listPredicate is lyd_path_list_predicate: the key predicates of the list instance n.
 func listPredicate(n *Node) string {
 	var b strings.Builder
-	for _, k := range n.kids.list {
+	for _, k := range n.kids.SchemaAll() {
 		if k.schema == nil || !k.schema.IsKey() {
 			break
 		}
@@ -123,9 +123,9 @@ func prevInst(n *Node) *Node {
 	if sib == nil {
 		return nil
 	}
-	for i := len(sib.list) - 1; i > 0; i-- {
-		if sib.list[i] == n {
-			if p := sib.list[i-1]; p.schema == n.schema {
+	for i := sib.SchemaLen() - 1; i > 0; i-- {
+		if sib.At(i) == n {
+			if p := sib.At(i - 1); p.schema == n.schema {
 				return p
 			}
 			return nil
@@ -789,8 +789,8 @@ func lastInst(n *Node) *Node {
 	if sib == nil {
 		return last
 	}
-	for i := sib.indexOf(sib.list, n) + 1; i < len(sib.list) && sib.list[i].schema == n.schema; i++ {
-		last = sib.list[i]
+	for i := sib.indexOf(sib.schemaSpan(), n) + 1; i < sib.SchemaLen() && sib.At(i).schema == n.schema; i++ {
+		last = sib.At(i)
 	}
 	return last
 }
@@ -925,7 +925,7 @@ func (t *Tree) diffIsRedundant(n *Node) (bool, error) {
 				return false, nil
 			}
 		}
-		for _, k := range n.kids.list { // … and on its keys
+		for _, k := range n.kids.SchemaAll() { // … and on its keys
 			if !k.isKey() {
 				break
 			}

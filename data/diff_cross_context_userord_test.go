@@ -15,7 +15,7 @@ import (
 
 type crossContextUserOrderedCase struct {
 	name, module, element, namespace string
-	list                             bool
+	isList                           bool
 }
 
 var crossContextUserOrderedCases = []crossContextUserOrderedCase{
@@ -29,7 +29,7 @@ var crossContextUserOrderedCases = []crossContextUserOrderedCase{
 }`,
 	},
 	{
-		name: "list", element: "l", list: true, namespace: "urn:vibe-ports:yang:diff-cross-context-userord-list",
+		name: "list", element: "l", isList: true, namespace: "urn:vibe-ports:yang:diff-cross-context-userord-list",
 		module: `module diff-cross-context-userord-list {
   yang-version 1.1;
   namespace "urn:vibe-ports:yang:diff-cross-context-userord-list";
@@ -122,11 +122,11 @@ func (tc crossContextUserOrderedCase) xml(values []string) string {
 	var b strings.Builder
 	for _, value := range values {
 		b.WriteString("<" + tc.element + ` xmlns="` + tc.namespace + `">`)
-		if tc.list {
+		if tc.isList {
 			b.WriteString("<k>")
 		}
 		b.WriteString(value)
-		if tc.list {
+		if tc.isList {
 			b.WriteString("</k>")
 		}
 		b.WriteString("</" + tc.element + ">")

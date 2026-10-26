@@ -312,10 +312,10 @@ func (s *siblings) dropContext(n *Node) {
 // indexOf is the position of n in l, one of s's lists, -1 if absent. It scans from the end: the
 // XML parser's opaque anchor is the last opaque sibling of its name, usually the last one.
 // ponytail: O(distance from the end); a node→index map if anchors far from the end matter.
-func (s *siblings) indexOf(l []*Node, n *Node) int {
-	for i := len(l) - 1; i >= 0; i-- {
+func (s *siblings) indexOf(l siblingSpan, n *Node) int {
+	for i := l.Len() - 1; i >= 0; i-- {
 		s.visit()
-		if l[i] == n {
+		if l.At(i) == n {
 			return i
 		}
 	}
@@ -330,12 +330,12 @@ func (s *siblings) position(n *Node) int {
 	}
 	// No cache here: lookups run on read-only paths that concurrent readers share (doc.go), so
 	// they must not write sibling state. The parser keeps its own cache (lydCtx.position).
-	return indexFromEnd(s.work, s.list, n)
+	return s.schemaSpan().indexFromEnd(s.work, n)
 }
 
 // has reports whether an instance of s is in the list.
 func (s *siblings) has(sn *schema.Node) bool {
-	for _, n := range s.list {
+	for _, n := range s.SchemaAll() {
 		s.visit()
 		if n.schema == sn {
 			return true
@@ -466,7 +466,7 @@ func (s *siblings) dropDual(n *Node) {
 }
 
 // len is the number of siblings, opaque ones included.
-func (s *siblings) len() int { return len(s.list) + len(s.opq) }
+func (s *siblings) len() int { return s.Len() }
 
 // idxKey is a secondary index by schema and a digest of delimited canonical values. Native
 // equality also checks Node.hash. Keeping this discriminator avoids unbounded work
@@ -479,13 +479,13 @@ type idxKey struct {
 
 func (s *siblings) all() iter.Seq[*Node] {
 	return func(yield func(*Node) bool) {
-		for _, n := range s.list {
+		for _, n := range s.SchemaAll() {
 			s.visit()
 			if !yield(n) {
 				return
 			}
 		}
-		for _, n := range s.opq {
+		for _, n := range s.opaqueAll() {
 			s.visit()
 			if !yield(n) {
 				return
@@ -630,10 +630,10 @@ func indexAnyOrderBound(list, inserted *Node, work *workCounter) uint64 {
 		return amount
 	}
 	all := []uint64{contribution(inserted)}
-	for _, c := range list.kids.list {
+	for _, c := range list.kids.SchemaAll() {
 		all = append(all, contribution(c))
 	}
-	for _, c := range list.kids.opq {
+	for _, c := range list.kids.opaqueAll() {
 		all = append(all, contribution(c))
 	}
 	slices.SortFunc(all, func(a, b uint64) int { return cmp.Compare(b, a) })
@@ -709,12 +709,12 @@ func indexAfterRemovedBound(list *Node, removed map[*Node]bool, work *workCounte
 // positionalChild follows lyd_child/next, including an opaque child exposed by
 // internal key removal. Both the discriminator and comparison must see it.
 func positionalChild(n *Node, i int) *Node {
-	if i < len(n.kids.list) {
-		return n.kids.list[i]
+	if i < n.kids.SchemaLen() {
+		return n.kids.At(i)
 	}
-	i -= len(n.kids.list)
-	if i < len(n.kids.opq) {
-		return n.kids.opq[i]
+	i -= n.kids.SchemaLen()
+	if i < n.kids.OpaqueLen() {
+		return n.kids.opaqueAt(i)
 	}
 	return nil
 }
@@ -817,7 +817,7 @@ func (s *siblings) hashAdd(parent, n *Node) {
 		}
 		return
 	}
-	if len(s.list) < htMinItems {
+	if s.SchemaLen() < htMinItems {
 		return
 	}
 	s.ht = map[idxKey]*recordChain{}
@@ -826,7 +826,7 @@ func (s *siblings) hashAdd(parent, n *Node) {
 	// 181-197), which for a run the parser still defers is its tree order: libyang has linked
 	// each instance at its sorted place.
 	order := s.logical()
-	for _, c := range order {
+	for _, c := range order.All() {
 		s.hashPut(c)
 	}
 	s.leaderBuild(order)
@@ -835,17 +835,17 @@ func (s *siblings) hashAdd(parent, n *Node) {
 // logical is the sibling order libyang has: each member of a dirty run occupies a physical
 // slot in its tree order. A node linked by another insertion path while the parser defers that
 // run is not in its RB tree; keep it in its physical slot so table construction sees it too.
-func (s *siblings) logical() []*Node {
+func (s *siblings) logical() siblingSpan {
 	if len(s.pending) == 0 {
-		return s.list
+		return s.schemaSpan()
 	}
-	out := make([]*Node, 0, len(s.list))
+	out := make([]*Node, 0, s.SchemaLen())
 	type run struct {
 		ordered []*Node
 		next    int
 	}
 	runs := map[*schema.Node]*run{}
-	for _, n := range s.list {
+	for _, n := range s.SchemaAll() {
 		if s.work != nil {
 			s.work.Add(1)
 		}
@@ -862,7 +862,7 @@ func (s *siblings) logical() []*Node {
 		out = append(out, r.ordered[r.next])
 		r.next++
 	}
-	return out
+	return spanOf(out)
 }
 
 // hashPut is the unchecked exact insertion in tree_data_hash.c:134. Repeated
@@ -1062,11 +1062,11 @@ func (s *siblings) firstRecordSchema(sn *schema.Node) bool {
 // leave schema order: until then their runs were contiguous, so libyang's records are the run
 // starts. Operation children already have records, which need not follow document order
 // (D-0117); they are kept.
-func (s *siblings) leaderMaterialize(order []*Node) {
+func (s *siblings) leaderMaterialize(order siblingSpan) {
 	s.touch()
 	seen := map[*schema.Node]bool{}
 	var prev *schema.Node
-	for _, n := range order {
+	for _, n := range order.All() {
 		if s.work != nil {
 			s.work.Add(1)
 		}
@@ -1083,13 +1083,13 @@ func (s *siblings) leaderMaterialize(order []*Node) {
 
 // leaderBuild is lyd_insert_hash_add's empty_ht branch: every run start is registered in sibling
 // order. It runs when the table is created or ordinary siblings first leave schema order.
-func (s *siblings) leaderBuild(order []*Node) {
+func (s *siblings) leaderBuild(order siblingSpan) {
 	s.touch()
 	s.leaders = map[*schema.Node]*recordChain{}
 	s.leaderByNode = map[*Node]*record{}
 	seen := map[*schema.Node]bool{}
 	var prev *schema.Node
-	for _, n := range order {
+	for _, n := range order.All() {
 		if s.work != nil {
 			s.work.Add(1)
 		}
@@ -1200,8 +1200,8 @@ func (s *siblings) records(sn *schema.Node) []*Node {
 // invariants. It is for package tests only; production paths maintain the invariants without
 // walking all siblings.
 func (s *siblings) checkRecords() error {
-	linked := make(map[*Node]bool, len(s.list))
-	for _, n := range s.list {
+	linked := make(map[*Node]bool, s.SchemaLen())
+	for _, n := range s.SchemaAll() {
 		linked[n] = true
 	}
 
@@ -1334,7 +1334,7 @@ func (s *siblings) checkRecords() error {
 			return fmt.Errorf("exact node index contains detached node %p", n)
 		}
 	}
-	for _, n := range s.list {
+	for _, n := range s.SchemaAll() {
 		_, hashable := hashOf(n)
 		if n.hashed != exactNodes[n] || s.ht != nil && hashable != n.hashed {
 			return fmt.Errorf("linked node %p hashable=%v hashed=%v exact-record=%v", n, hashable, n.hashed, exactNodes[n])
@@ -1346,12 +1346,12 @@ func (s *siblings) checkRecords() error {
 // leaderInsert applies lyd_insert_hash_add to n already at position at.
 func (s *siblings) leaderInsert(n *Node, at int) {
 	s.touch()
-	if s.ht == nil || !s.firstRecordSchema(n.schema) || at < 0 || at >= len(s.list) ||
-		at > 0 && s.list[at-1].schema == n.schema {
+	if s.ht == nil || !s.firstRecordSchema(n.schema) || at < 0 || at >= s.SchemaLen() ||
+		at > 0 && s.At(at-1).schema == n.schema {
 		return
 	}
-	if at+1 < len(s.list) && s.list[at+1].schema == n.schema {
-		if !s.leaderReplace(n.schema, s.list[at+1], n) {
+	if at+1 < s.SchemaLen() && s.At(at+1).schema == n.schema {
+		if !s.leaderReplace(n.schema, s.At(at+1), n) {
 			return
 		}
 		return
@@ -1415,15 +1415,15 @@ func (s *siblings) leaderReplace(sn *schema.Node, old, n *Node) bool {
 // then lyd_insert_hash on the same linked node, tree_data_new.c:1177-1194) passes false.
 func (s *siblings) leaderUnlink(n *Node, at int, removing bool) {
 	s.touch()
-	if s.ht == nil || !s.firstRecordSchema(n.schema) || at < 0 || at >= len(s.list) {
+	if s.ht == nil || !s.firstRecordSchema(n.schema) || at < 0 || at >= s.SchemaLen() {
 		return
 	}
 	var prev, next *Node
 	if at > 0 {
-		prev = s.list[at-1]
+		prev = s.At(at - 1)
 	}
-	if at+1 < len(s.list) {
-		next = s.list[at+1]
+	if at+1 < s.SchemaLen() {
+		next = s.At(at + 1)
 	}
 	s.leaderUnlinkBetween(n, prev, next, removing)
 }
@@ -1522,11 +1522,11 @@ func (s *siblings) leaderUnlinkBetween(n, prev, next *Node, removing bool) {
 func (t *Tree) schemaLookup(s *siblings, sn *schema.Node) *Node {
 	mixed := s.mixedContexts()
 	if (opChild(sn) || s.schemaUnordered) && !mixed &&
-		(len(s.list) == 0 || sn.Module.Owner == nil || ctxOf(s.list[0]) == sn.Module.Owner) {
+		(s.SchemaLen() == 0 || sn.Module.Owner == nil || ctxOf(s.At(0)) == sn.Module.Owner) {
 		return t.schemaLookupOperation(s, sn)
 	}
 	if i := t.schemaIndex(s, sn); i >= 0 {
-		return s.list[i]
+		return s.At(i)
 	}
 	return nil
 }
@@ -1546,7 +1546,7 @@ func (t *Tree) documentFirst(s *siblings, sn *schema.Node) *Node {
 		return s.documentFirst(sn)
 	}
 	if i := t.schemaIndex(s, sn); i >= 0 {
-		return s.list[i]
+		return s.At(i)
 	}
 	return nil
 }
@@ -1556,7 +1556,7 @@ func (t *Tree) documentFirst(s *siblings, sn *schema.Node) *Node {
 // and run-only lookups use schemaLookup and opRun without a position scan. Unordered copies
 // likewise use their first-instance records when the children table exists.
 func (t *Tree) schemaIndex(s *siblings, sn *schema.Node) int {
-	if len(s.list) == 0 {
+	if s.SchemaLen() == 0 {
 		return -1
 	}
 	// The linear branch of lyd_find_sibling_schema compares only module and
@@ -1565,7 +1565,7 @@ func (t *Tree) schemaIndex(s *siblings, sn *schema.Node) int {
 		if t.work.lookupDepth != 0 && t.foreignSchemaInput[s] {
 			return t.foreignSchemaIndex(s, sn, s.ht != nil)
 		}
-		for i, n := range s.list {
+		for i, n := range s.SchemaAll() {
 			s.visit()
 			if schemaLookupMatch(n.schema, sn, s.ht != nil) {
 				return i
@@ -1579,14 +1579,9 @@ func (t *Tree) schemaIndex(s *siblings, sn *schema.Node) int {
 		}
 		return -1
 	}
-	probe := &Node{schema: sn, parent: s.list[0].parent} // top level or not decides the module order
-	i, _ := slices.BinarySearchFunc(s.list, probe, func(a, n *Node) int {
-		if t.sameOrAfter(a, n) {
-			return 1
-		}
-		return -1
-	})
-	if i < len(s.list) && s.list[i].schema == sn {
+	probe := &Node{schema: sn, parent: s.At(0).parent} // top level or not decides the module order
+	i := s.LowerBound(0, s.SchemaLen(), func(a *Node) bool { return t.sameOrAfter(a, probe) })
+	if i < s.SchemaLen() && s.At(i).schema == sn {
 		return i
 	}
 	return -1
@@ -1625,7 +1620,7 @@ func (t *Tree) foreignSchemaIndex(s *siblings, sn *schema.Node, table bool) int 
 	if index == nil {
 		// no capacity hint: the index grows only after each sibling's charge succeeded
 		index = make(map[foreignSchemaIndexKey][]int)
-		for i, n := range s.list {
+		for i, n := range s.SchemaAll() {
 			s.visit()
 			if err := t.work.chargeLookup(1); err != nil {
 				return -1
@@ -1651,7 +1646,7 @@ func (t *Tree) foreignSchemaIndex(s *siblings, sn *schema.Node, table bool) int 
 		if err := t.work.chargeLookup(1); err != nil {
 			return -1
 		}
-		if schemaLookupMatch(s.list[i].schema, sn, table) {
+		if schemaLookupMatch(s.At(i).schema, sn, table) {
 			return i
 		}
 	}
@@ -1681,7 +1676,7 @@ func (t *Tree) foreignInstances(s *siblings, target *Node) (iter.Seq[*Node], err
 	if index == nil {
 		// no capacity hint: the index grows only after each sibling's charge succeeded
 		index = make(map[foreignInstanceKey][]*Node)
-		for _, n := range s.list {
+		for _, n := range s.SchemaAll() {
 			s.visit()
 			if err := t.work.chargeLookup(1); err != nil {
 				return nil, err
@@ -1789,8 +1784,8 @@ func (t *Tree) foreignSchemaKey(sn *schema.Node, table bool) (foreignSchemaIndex
 // foreignFor reports whether a lookup of sn in s compares schema names, as
 // lyd_find_sibling_schema does for siblings of another context than sn.
 func (s *siblings) foreignFor(sn *schema.Node) bool {
-	return len(s.list) > 0 && (s.mixedContexts() ||
-		sn.Module.Owner != nil && ctxOf(s.list[0]) != nil && ctxOf(s.list[0]) != sn.Module.Owner)
+	return s.SchemaLen() > 0 && (s.mixedContexts() ||
+		sn.Module.Owner != nil && ctxOf(s.At(0)) != nil && ctxOf(s.At(0)) != sn.Module.Owner)
 }
 
 func schemaLookupMatch(got, want *schema.Node, table bool) bool {
@@ -1837,8 +1832,8 @@ func (t *Tree) findFirstWork(s *siblings, target *Node, work *workCounter) (*Nod
 	if s.len() == 0 {
 		return nil, nil
 	}
-	if len(s.list) > 0 && s.list[0].schema != nil && target.schema != nil &&
-		!compareSchemaEqual(s.list[0].schema.DataParent(), target.schema.DataParent(), true) {
+	if s.SchemaLen() > 0 && s.At(0).schema != nil && target.schema != nil &&
+		!compareSchemaEqual(s.At(0).schema.DataParent(), target.schema.DataParent(), true) {
 		return nil, nil // schema mismatch
 	}
 	dup := isDupInstList(target.schema)
@@ -1860,8 +1855,8 @@ func (t *Tree) findFirstWork(s *siblings, target *Node, work *workCounter) (*Nod
 		return nil, t.foreignInstancesErr()
 	}
 	sn := target.schema
-	if sn != nil && len(s.list) != 0 {
-		if first := s.list[0]; !sameSet(ctxOf(first), ctxOf(target)) {
+	if sn != nil && s.SchemaLen() != 0 {
+		if first := s.At(0); !sameSet(ctxOf(first), ctxOf(target)) {
 			// The no-table branch of lyd_find_sibling_first compares the live
 			// siblings directly. Mapping first would lose operation output nodes
 			// because lyd_find_schema_ctx walks lys_getnext with input options.
@@ -1887,7 +1882,7 @@ func (t *Tree) findFirstWork(s *siblings, target *Node, work *workCounter) (*Nod
 		}
 	}
 	if target.schema != nil && s.ht != nil {
-		if len(s.list) == 0 {
+		if s.SchemaLen() == 0 {
 			// a table kept after its schema children left (lyd_unlink_hash never frees it) or
 			// copied by a recursive dup: lyht_find misses, opaque nodes are not in it
 			// (tree_data.c:3210-3237)
@@ -2069,7 +2064,7 @@ func compareInstanceKey(n *Node, typed, members bool) string {
 	if n.schema.Kind == schema.LeafList {
 		value(n.value)
 	} else {
-		for _, k := range n.kids.list {
+		for _, k := range n.kids.SchemaAll() {
 			if !k.isKey() {
 				break
 			}

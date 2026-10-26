@@ -20,8 +20,8 @@ func TestParseOpRollbackKeyDiagnostic(t *testing.T) {
 		if err != nil {
 			t.Fatal(err, diags)
 		}
-		parent := tr.top.list[0]
-		before := len(parent.kids.list)
+		parent := tr.top.At(0)
+		before := parent.kids.SchemaLen()
 		_, _, diags, err = parseOp(context.Background(), strings.NewReader(input), set, FormatJSON, opRPC, parent, Reject)
 		var ve *ValidationError
 		if !errors.As(err, &ve) || ve.RC() != "LY_EVALID" {
@@ -35,8 +35,8 @@ func TestParseOpRollbackKeyDiagnostic(t *testing.T) {
 		if !reflect.DeepEqual(diags, want) || !reflect.DeepEqual(ve.Diags, want) {
 			t.Fatalf("diagnostics: %+v; error diagnostics: %+v; want %+v", diags, ve.Diags, want)
 		}
-		if len(parent.kids.list) != before+len(want)-1 {
-			t.Fatalf("parsed keys removed: %d children", len(parent.kids.list))
+		if parent.kids.SchemaLen() != before+len(want)-1 {
+			t.Fatalf("parsed keys removed: %d children", parent.kids.SchemaLen())
 		}
 	}
 }

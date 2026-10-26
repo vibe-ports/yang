@@ -36,7 +36,7 @@ func prefixModelCopy(t *testing.T) (*Tree, *Node) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	list, _, err := dst.Dup(src.top.first().kids.list[0], root, DupOptions{Recursive: true})
+	list, _, err := dst.Dup(src.top.first().kids.At(0), root, DupOptions{Recursive: true})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -45,7 +45,7 @@ func prefixModelCopy(t *testing.T) (*Tree, *Node) {
 
 func prefixNames(n *Node) string {
 	var b strings.Builder
-	for _, c := range n.kids.list {
+	for _, c := range n.kids.SchemaAll() {
 		b.WriteString(c.Name())
 	}
 	return b.String()
@@ -95,7 +95,7 @@ func TestStoredHashNonkeyDisplacementBudget(t *testing.T) {
 func referenceLeadingHash(n *Node) uint32 {
 	h := types.HashMulti32(0, []byte(n.schema.Module.Name))
 	h = types.HashMulti32(h, []byte(n.schema.Name))
-	for _, c := range n.kids.list {
+	for _, c := range n.kids.SchemaAll() {
 		if !c.isKey() {
 			break
 		}
@@ -121,7 +121,7 @@ type prefixReference struct {
 func (m *prefixReference) rehash(n *Node) {
 	m.captured = nil
 	m.running = types.HashMulti32(types.HashMulti32(0, []byte(n.schema.Module.Name)), []byte(n.schema.Name))
-	for _, c := range n.kids.list {
+	for _, c := range n.kids.SchemaAll() {
 		if !c.isKey() {
 			break
 		}
@@ -140,7 +140,7 @@ func (m *prefixReference) displaced(at int) {
 
 func completePositionalKeys(n *Node) bool {
 	for i, sn := range n.schema.Keys {
-		if i >= len(n.kids.list) || n.kids.list[i].schema != sn {
+		if i >= n.kids.SchemaLen() || n.kids.At(i).schema != sn {
 			return false
 		}
 	}
@@ -150,7 +150,7 @@ func completePositionalKeys(n *Node) bool {
 func (m *prefixReference) check(t *testing.T, n *Node, step string) {
 	t.Helper()
 	keyN := 0
-	for _, c := range n.kids.list {
+	for _, c := range n.kids.SchemaAll() {
 		if !c.isKey() {
 			break
 		}
@@ -176,7 +176,7 @@ func (m *prefixReference) check(t *testing.T, n *Node, step string) {
 		}
 	} else {
 		for i, old := range m.captured {
-			if n.kids.list[i] != old.node {
+			if n.kids.At(i) != old.node {
 				t.Fatalf("%s: live key %d changed", step, i)
 			}
 		}
@@ -187,11 +187,11 @@ func checkPrefixFind(t *testing.T, tr *Tree, states map[*Node]*prefixReference, 
 	t.Helper()
 	root := tr.top.first()
 	queries := [][2]string{{"A", "B"}, {"A2", "B"}, {"B", "A"}, {"other", "other"}}
-	for _, n := range root.kids.list {
+	for _, n := range root.kids.SchemaAll() {
 		if n.schema.Kind != schema.List || !completePositionalKeys(n) {
 			continue
 		}
-		queries = append(queries, [2]string{n.kids.list[0].Value(), n.kids.list[1].Value()})
+		queries = append(queries, [2]string{n.kids.At(0).Value(), n.kids.At(1).Value()})
 	}
 	for _, vals := range queries {
 		h := types.HashMulti32(types.HashMulti32(0, []byte("m")), []byte("l"))
@@ -200,12 +200,12 @@ func checkPrefixFind(t *testing.T, tr *Tree, states map[*Node]*prefixReference, 
 		}
 		queryHash := types.FinishHash32(h)
 		var expected *Node
-		for _, n := range root.kids.list {
-			if n.schema.Kind != schema.List || states[n].stored != queryHash || len(n.kids.list) < 2 {
+		for _, n := range root.kids.SchemaAll() {
+			if n.schema.Kind != schema.List || states[n].stored != queryHash || n.kids.SchemaLen() < 2 {
 				continue
 			}
-			if n.kids.list[0].schema == n.schema.Keys[0] && n.kids.list[0].Value() == vals[0] &&
-				n.kids.list[1].schema == n.schema.Keys[1] && n.kids.list[1].Value() == vals[1] {
+			if n.kids.At(0).schema == n.schema.Keys[0] && n.kids.At(0).Value() == vals[0] &&
+				n.kids.At(1).schema == n.schema.Keys[1] && n.kids.At(1).Value() == vals[1] {
 				expected = n
 				break
 			}
@@ -232,7 +232,7 @@ func modelTree(t *testing.T, srcOrder, dstOrder string) (*Tree, *Node) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	list, _, err := dst.Dup(src.top.first().kids.list[0], root, DupOptions{Recursive: true})
+	list, _, err := dst.Dup(src.top.first().kids.At(0), root, DupOptions{Recursive: true})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -285,23 +285,23 @@ func runPrefixSequence(t *testing.T, input []byte) {
 			if err != nil {
 				t.Fatalf("%s: %v", step, err)
 			}
-			m.displaced(slices.Index(n.kids.list, c))
+			m.displaced(slices.Index(n.kids.schemaSpan().Collect(), c))
 			if c.isKey() && completePositionalKeys(n) {
 				m.rehash(n)
 			}
 		case 3, 4: // Direct child insertion before or after an arbitrary position.
 			name := []string{"x", "a", "b"}[int(b/10)%3]
-			at := int(b/30) % (len(n.kids.list) + 1)
+			at := int(b/30) % (n.kids.SchemaLen() + 1)
 			m.displaced(at)
 			c := modelNewTerm(t, tr, n, name, "A2", at)
 			if c.isKey() && completePositionalKeys(n) {
 				m.rehash(n)
 			}
 		case 5: // Remove a non-key, or internally unlink a key.
-			if len(n.kids.list) > 0 {
-				at := int(b/10) % len(n.kids.list)
+			if n.kids.SchemaLen() > 0 {
+				at := int(b/10) % n.kids.SchemaLen()
 				m.displaced(at)
-				c := n.kids.list[at]
+				c := n.kids.At(at)
 				if c.isKey() {
 					unlink(c)
 				} else if err := c.Remove(); err != nil {
@@ -310,7 +310,7 @@ func runPrefixSequence(t *testing.T, input []byte) {
 			}
 		case 6: // Key value replacement is an unconditional native rehash.
 			var keys []*Node
-			for _, c := range n.kids.list {
+			for _, c := range n.kids.SchemaAll() {
 				if c.isKey() {
 					keys = append(keys, c)
 				}
@@ -352,14 +352,14 @@ func runPrefixSequence(t *testing.T, input []byte) {
 			}
 		case 10, 11: // Explicit before/after insertion among user-ordered non-keys.
 			var xs []*Node
-			for _, c := range n.kids.list {
+			for _, c := range n.kids.SchemaAll() {
 				if c.Name() == "x" {
 					xs = append(xs, c)
 				}
 			}
 			if len(xs) > 0 {
 				anchor := xs[int(b/12)%len(xs)]
-				at := slices.Index(n.kids.list, anchor)
+				at := slices.Index(n.kids.schemaSpan().Collect(), anchor)
 				fresh := modelFreshTerm(t, n, "x", "X")
 				var err error
 				if b%12 == 10 {
@@ -374,7 +374,7 @@ func runPrefixSequence(t *testing.T, input []byte) {
 				m.displaced(at)
 			}
 		}
-		for _, list := range tr.top.first().kids.list {
+		for _, list := range tr.top.first().kids.SchemaAll() {
 			if list.schema.Kind != schema.List {
 				continue
 			}
@@ -504,12 +504,12 @@ func runSplitOrderModel(t *testing.T, input []byte) {
 	for j, v := range values {
 		if j == 2 {
 			sep := modelFreshTerm(t, root, "sep", "x")
-			if err := src.link(root, &root.kids, sep, len(root.kids.list)); err != nil {
+			if err := src.link(root, &root.kids, sep, root.kids.SchemaLen()); err != nil {
 				t.Fatal(err)
 			}
 		}
 		u := modelFreshTerm(t, root, "u", fmt.Sprint(v))
-		if err := src.link(root, &root.kids, u, len(root.kids.list)); err != nil {
+		if err := src.link(root, &root.kids, u, root.kids.SchemaLen()); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -523,9 +523,9 @@ func runSplitOrderModel(t *testing.T, input []byte) {
 		t.Helper()
 		// Split runs may scan their own slots to locate a physical boundary,
 		// but no edit may walk every earlier sibling without accounting for it.
-		bound := int64(64 * (len(copyRoot.kids.list) + 1))
+		bound := int64(64 * (copyRoot.kids.SchemaLen() + 1))
 		if used := dst.work.Load() - before; used <= 0 || used > bound ||
-			dst.work.hashUsed > uint64(bound) {
+			dst.work.hashUsed > uint64(bound) { //nolint:gosec // bound is a positive constant times a nonnegative child count.
 			t.Fatalf("%s: split-run work=%d hash charge=%d, bound=%d",
 				step, used, dst.work.hashUsed, bound)
 		}
@@ -533,7 +533,7 @@ func runSplitOrderModel(t *testing.T, input []byte) {
 	check := func(step string) {
 		t.Helper()
 		var got []string
-		for _, n := range copyRoot.kids.list {
+		for _, n := range copyRoot.kids.SchemaAll() {
 			got = append(got, n.Name()+"="+n.Value())
 		}
 		want := ref.order()
@@ -556,7 +556,7 @@ func runSplitOrderModel(t *testing.T, input []byte) {
 		before := dst.work.Load()
 		value := ref.removeSelectedLeader()
 		var node *Node
-		for _, n := range copyRoot.kids.list {
+		for _, n := range copyRoot.kids.SchemaAll() {
 			if n.Name() == "u" && n.Value() == fmt.Sprint(value) {
 				node = n
 				break
@@ -577,7 +577,7 @@ func runSplitOrderModel(t *testing.T, input []byte) {
 	// second run of the same schema remains after sep. Its run-leader walk is
 	// part of the counted and charged work model too.
 	before := dst.work.Load()
-	firstMax := copyRoot.kids.list[2]
+	firstMax := copyRoot.kids.At(2)
 	if changed, err := firstMax.SetValue(fmt.Sprint(base + 7)); err != nil || !changed {
 		t.Fatalf("split-run SetValue: changed=%t error=%v", changed, err)
 	}
@@ -630,7 +630,7 @@ func runSingletonSplitOrderModel(t *testing.T, base int) {
 		{"u", fmt.Sprint(base + 1)}, {"sep", "x"}, {"u", fmt.Sprint(base + 2)},
 		{"tail", "y"}, {"u", fmt.Sprint(base + 3)},
 	} {
-		if err := src.link(root, &root.kids, modelFreshTerm(t, root, item.name, item.value), len(root.kids.list)); err != nil {
+		if err := src.link(root, &root.kids, modelFreshTerm(t, root, item.name, item.value), root.kids.SchemaLen()); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -644,7 +644,7 @@ func runSingletonSplitOrderModel(t *testing.T, base int) {
 	check := func(step string) {
 		t.Helper()
 		var got []string
-		for _, n := range copyRoot.kids.list {
+		for _, n := range copyRoot.kids.SchemaAll() {
 			got = append(got, n.Name()+"="+n.Value())
 		}
 		if !slices.Equal(got, want) {
@@ -652,13 +652,13 @@ func runSingletonSplitOrderModel(t *testing.T, base int) {
 		}
 	}
 	check("copy")
-	middle := copyRoot.kids.list[2]
+	middle := copyRoot.kids.At(2)
 	if changed, err := middle.SetValue(fmt.Sprint(base + 4)); err != nil || !changed {
 		t.Fatalf("middle singleton SetValue: changed=%t error=%v", changed, err)
 	}
 	want[2] = fmt.Sprintf("u=%d", base+4)
 	check("middle singleton SetValue")
-	if copyRoot.kids.list[2] != middle {
+	if copyRoot.kids.At(2) != middle {
 		t.Fatal("middle singleton moved from reference position 2")
 	}
 }
@@ -686,12 +686,12 @@ func runJoinedSplitOrderModel(t *testing.T, input []byte) {
 	for j, v := range values {
 		if j == 2 {
 			sep := modelFreshTerm(t, root, "sep", "x")
-			if err := src.link(root, &root.kids, sep, len(root.kids.list)); err != nil {
+			if err := src.link(root, &root.kids, sep, root.kids.SchemaLen()); err != nil {
 				t.Fatal(err)
 			}
 		}
 		u := modelFreshTerm(t, root, "u", fmt.Sprint(v))
-		if err := src.link(root, &root.kids, u, len(root.kids.list)); err != nil {
+		if err := src.link(root, &root.kids, u, root.kids.SchemaLen()); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -703,7 +703,7 @@ func runJoinedSplitOrderModel(t *testing.T, input []byte) {
 	check := func(step string) {
 		t.Helper()
 		var got []string
-		for _, n := range copyRoot.kids.list {
+		for _, n := range copyRoot.kids.SchemaAll() {
 			got = append(got, n.Name()+"="+n.Value())
 		}
 		if want := ref.order(); !slices.Equal(got, want) {
@@ -731,7 +731,7 @@ func runJoinedSplitOrderModel(t *testing.T, input []byte) {
 		insert(base+1, "select unindexed second run")
 	}
 	var sep *Node
-	for _, n := range copyRoot.kids.list {
+	for _, n := range copyRoot.kids.SchemaAll() {
 		if n.Name() == "sep" {
 			sep = n
 			break
@@ -759,7 +759,7 @@ func runJoinedSplitOrderModel(t *testing.T, input []byte) {
 	if mode == 3 {
 		value := ref.removeSelectedLeader()
 		var leader *Node
-		for _, n := range copyRoot.kids.list {
+		for _, n := range copyRoot.kids.SchemaAll() {
 			if n.Name() == "u" && n.Value() == fmt.Sprint(value) {
 				leader = n
 				break
@@ -813,7 +813,7 @@ func TestStoredHashSplitRunFirstSiblingWrap(t *testing.T) {
 	for _, item := range []struct{ name, value string }{
 		{"u", "1"}, {"sep", "x"}, {"u", "3"},
 	} {
-		if err := src.link(root, &root.kids, modelFreshTerm(t, root, item.name, item.value), len(root.kids.list)); err != nil {
+		if err := src.link(root, &root.kids, modelFreshTerm(t, root, item.name, item.value), root.kids.SchemaLen()); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -822,15 +822,15 @@ func TestStoredHashSplitRunFirstSiblingWrap(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	first := copyRoot.kids.list[0]
+	first := copyRoot.kids.At(0)
 	if changed, err := first.SetValue("4"); err != nil || !changed {
 		t.Fatalf("wrapped first SetValue: changed=%t error=%v", changed, err)
 	}
 	var got []string
-	for _, n := range copyRoot.kids.list {
+	for _, n := range copyRoot.kids.SchemaAll() {
 		got = append(got, n.Name()+"="+n.Value())
 	}
-	if want := []string{"sep=x", "u=3", "u=4"}; !slices.Equal(got, want) || copyRoot.kids.list[2] != first {
+	if want := []string{"sep=x", "u=3", "u=4"}; !slices.Equal(got, want) || copyRoot.kids.At(2) != first {
 		t.Fatalf("wrapped first position %v, reference %v", got, want)
 	}
 }
@@ -887,8 +887,8 @@ func runParseInsertModel(t *testing.T, input []byte) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !src.top.rbTree[src.top.list[0]] ||
-		src.top.firstRun[src.top.list[0].schema] != src.top.list[0] || dst.top.rbTree[dst.top.list[0]] {
+	if !src.top.rbTree[src.top.At(0)] ||
+		src.top.firstRun[src.top.At(0).schema] != src.top.At(0) || dst.top.rbTree[dst.top.At(0)] {
 		t.Fatalf("parse did not attach RB state and firstRun to the source leader (input=%v)", input)
 	}
 	if err := dst.Insert(nil, src.top.first()); err != nil {
@@ -899,23 +899,23 @@ func runParseInsertModel(t *testing.T, input []byte) {
 	slices.SortStableFunc(reference, func(a, b parseInsertItem) int { return int(a.Key) - int(b.Key) })
 	check := func(step string) {
 		t.Helper()
-		if !dst.top.rbTree[dst.top.list[0]] || dst.top.firstRun[dst.top.list[0].schema] != dst.top.list[0] {
+		if !dst.top.rbTree[dst.top.At(0)] || dst.top.firstRun[dst.top.At(0).schema] != dst.top.At(0) {
 			t.Fatalf("%s input=%v: RB state or firstRun left the physical leader", step, input)
 		}
 		want := make([]string, 0, len(reference))
 		for _, item := range reference {
 			want = append(want, fmt.Sprintf("%d:%s", item.Key, item.Tag))
 		}
-		got := make([]string, 0, len(dst.top.list))
-		for _, n := range dst.top.list {
-			got = append(got, n.kids.list[0].Value()+":"+n.kids.list[1].Value())
+		got := make([]string, 0, dst.top.SchemaLen())
+		for _, n := range dst.top.SchemaAll() {
+			got = append(got, n.kids.At(0).Value()+":"+n.kids.At(1).Value())
 		}
 		if !slices.Equal(got, want) {
 			t.Fatalf("%s input=%v: order %v, from-scratch lyds reference %v", step, input, got, want)
 		}
 	}
 	check("merge")
-	if err := dst.top.list[0].Remove(); err != nil {
+	if err := dst.top.At(0).Remove(); err != nil {
 		t.Fatal(err)
 	}
 	reference = reference[1:]
@@ -951,12 +951,12 @@ func TestStoredHashParserLeaderWithoutTable(t *testing.T) {
 	if op.kids.ht != nil {
 		t.Fatal("small run unexpectedly has a children table")
 	}
-	leader := op.kids.list[0]
+	leader := op.kids.At(0)
 	group := op.kids.rbGroups[leader]
 	if leader.Value() != "10" || group == nil || !op.kids.rbTree[leader] {
 		t.Fatalf("leader=%s group=%p", leader.Value(), group)
 	}
-	for _, n := range op.kids.list {
+	for _, n := range op.kids.SchemaAll() {
 		if n.rbGroup != group {
 			t.Fatalf("%s belongs to group %p, want %p", n.Value(), n.rbGroup, group)
 		}
@@ -964,8 +964,8 @@ func TestStoredHashParserLeaderWithoutTable(t *testing.T) {
 	if _, err := tr.NewTerm(op, "v", "15", NewOptions{}); err != nil {
 		t.Fatal(err)
 	}
-	if got := []string{op.kids.list[0].Value(), op.kids.list[1].Value(),
-		op.kids.list[2].Value(), op.kids.list[3].Value()}; !slices.Equal(got, []string{"10", "15", "20", "40"}) {
+	if got := []string{op.kids.At(0).Value(), op.kids.At(1).Value(),
+		op.kids.At(2).Value(), op.kids.At(3).Value()}; !slices.Equal(got, []string{"10", "15", "20", "40"}) {
 		t.Fatalf("values %v", got)
 	}
 }
@@ -995,12 +995,12 @@ func runRPCLeaderChangesModel(t *testing.T, input []byte) {
 	if err != nil {
 		t.Fatal(err, diags)
 	}
-	leader := op.kids.runLeader(op.kids.list[3].schema)
+	leader := op.kids.runLeader(op.kids.At(3).schema)
 	group := op.kids.rbGroups[leader]
 	if leader == nil || leader.Value() != fmt.Sprint(base+10) || group == nil {
 		t.Fatalf("logical leader=%v group=%p", leader, group)
 	}
-	for _, n := range op.kids.list[3:] {
+	for _, n := range op.kids.schemaSpan().Collect()[3:] {
 		if !n.inRB || n.rbGroup != group {
 			t.Fatalf("initial value %s has group %p, leader group %p", n.Value(), n.rbGroup, group)
 		}
@@ -1010,14 +1010,14 @@ func runRPCLeaderChangesModel(t *testing.T, input []byte) {
 	if err != nil {
 		t.Fatal(err, diags)
 	}
-	if _, _, err := tr.DupSiblings(source.kids.list[3], op, DupOptions{}); err != nil {
+	if _, _, err := tr.DupSiblings(source.kids.At(3), op, DupOptions{}); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := tr.NewTerm(op, "v", fmt.Sprint(base+15), NewOptions{}); err != nil {
 		t.Fatal(err)
 	}
 	var got []int
-	for _, n := range op.kids.list {
+	for _, n := range op.kids.SchemaAll() {
 		if n.schema.Kind == schema.LeafList {
 			var v int
 			if _, err := fmt.Sscan(n.Value(), &v); err != nil {
@@ -1062,7 +1062,7 @@ func runMergeAndMiddleRemovalModel(t *testing.T, input []byte) {
 	check := func(tr *Tree, want []int, step string) {
 		t.Helper()
 		var got []string
-		for _, n := range tr.top.list {
+		for _, n := range tr.top.SchemaAll() {
 			got = append(got, n.Value())
 		}
 		var expected []string
@@ -1072,9 +1072,9 @@ func runMergeAndMiddleRemovalModel(t *testing.T, input []byte) {
 		if !slices.Equal(got, expected) {
 			t.Fatalf("%s input=%v: values %v, reference %v", step, input, got, expected)
 		}
-		if leader := tr.top.list[0]; tr.top.rbTree[leader] {
+		if leader := tr.top.At(0); tr.top.rbTree[leader] {
 			group := tr.top.rbGroups[leader]
-			for _, n := range tr.top.list {
+			for _, n := range tr.top.SchemaAll() {
 				if n.inRB && n.rbGroup != group {
 					t.Fatalf("%s input=%v: %s retained a stale RB group", step, input, n.Value())
 				}
@@ -1100,7 +1100,7 @@ func runMergeAndMiddleRemovalModel(t *testing.T, input []byte) {
 			t.Fatal(err)
 		}
 	}
-	if err := middle.top.list[2].Remove(); err != nil {
+	if err := middle.top.At(2).Remove(); err != nil {
 		t.Fatal(err)
 	}
 	check(middle, []int{10, 20, 40, 50}, "remove middle")
@@ -1142,23 +1142,23 @@ func TestStoredHashUnsortedLeaderTransfer(t *testing.T) {
 	}
 	check := func(step string, old *Node) {
 		t.Helper()
-		leader := parent.kids.list[0]
+		leader := parent.kids.At(0)
 		if !parent.kids.rbTree[leader] || !parent.kids.unsorted[leader] ||
 			parent.kids.firstRun[f.ll] != leader || parent.kids.rbTree[old] || parent.kids.unsorted[old] {
 			t.Fatalf("%s: RB/unsorted state or firstRun did not follow the leader", step)
 		}
 	}
-	old := parent.kids.list[0]
+	old := parent.kids.At(0)
 	if err := tr.insert(parent, f.term(t, f.ll, "1"), insertDefault); err != nil {
 		t.Fatal(err)
 	}
 	check("front insert", old)
-	old = parent.kids.list[0]
+	old = parent.kids.At(0)
 	if err := old.Remove(); err != nil {
 		t.Fatal(err)
 	}
 	check("leader removal", old)
-	old = parent.kids.list[0]
+	old = parent.kids.At(0)
 	if err := tr.unlinkAll([]*Node{old}); err != nil {
 		t.Fatal(err)
 	}

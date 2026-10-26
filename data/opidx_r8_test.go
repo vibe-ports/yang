@@ -126,7 +126,7 @@ func TestOpIndexParseLeaderTransitions(t *testing.T) {
 
 	pre := opidxR8AddTerm(t, set2, mod2, op, "pre", "x", false)
 	preAt, oneAt := -1, -1
-	for i, child := range op.kids.list {
+	for i, child := range op.kids.SchemaAll() {
 		if child == pre {
 			preAt = i
 		}

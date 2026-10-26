@@ -108,8 +108,8 @@ func TestStoredHashSparseEmptyParseWork(t *testing.T) {
 			t.Fatal(err)
 		}
 		work := types.SparseHashBytes() - before
-		if len(tr.top.list) != count || work != int64(count)*65536 {
-			t.Fatalf("%d values: nodes=%d transitions=%d, want exactly 65536 per value", count, len(tr.top.list), work)
+		if tr.top.SchemaLen() != count || work != int64(count)*65536 {
+			t.Fatalf("%d values: nodes=%d transitions=%d, want exactly 65536 per value", count, tr.top.SchemaLen(), work)
 		}
 		return work
 	}
@@ -137,8 +137,8 @@ func TestStoredHashLongNameRepeatedValuesBudget(t *testing.T) {
 			lc.tree.work.hashLimit = limit
 			parsed = lc.tree
 		})
-	if err != nil || len(diags) != 0 || got == nil || len(got.top.list) != 64 {
-		t.Fatalf("nodes=%d diagnostics=%v error=%v", len(parsed.top.list), diags, err)
+	if err != nil || len(diags) != 0 || got == nil || got.top.SchemaLen() != 64 {
+		t.Fatalf("nodes=%d diagnostics=%v error=%v", parsed.top.SchemaLen(), diags, err)
 	}
 	if used := parsed.work.hashUsed; used < uint64(len("m")+len(name)+64) || used > limit {
 		t.Fatalf("reserved hash work = %d, want one schema prefix plus 64 values", used)
@@ -149,8 +149,8 @@ func TestStoredHashLongNameRepeatedValuesBudget(t *testing.T) {
 			lc.tree.work.hashLimit = 64 + 8
 			repeated = lc.tree
 		})
-	if err != nil || len(diags) != 0 || got == nil || len(got.top.list) != 64 || repeated.work.hashUsed != 64 {
-		t.Fatalf("cached prefix: nodes=%d work=%d diagnostics=%v error=%v", len(repeated.top.list),
+	if err != nil || len(diags) != 0 || got == nil || got.top.SchemaLen() != 64 || repeated.work.hashUsed != 64 {
+		t.Fatalf("cached prefix: nodes=%d work=%d diagnostics=%v error=%v", repeated.top.SchemaLen(),
 			repeated.work.hashUsed, diags, err)
 	}
 }
@@ -167,7 +167,7 @@ func TestStoredHashLongLexicalUnionKeyDupBudget(t *testing.T) {
 		t.Fatal(err)
 	}
 	root := src.top.first()
-	key := root.kids.list[0].kids.list[0]
+	key := root.kids.At(0).kids.At(0)
 	if bound := types.HashLYBWorkBound(key.value); bound > 64 {
 		t.Fatalf("cached union hash bound = %d, want selected payload only", bound)
 	}
@@ -181,7 +181,7 @@ func TestStoredHashLongLexicalUnionKeyDupBudget(t *testing.T) {
 		if used := dst.work.hashUsed; used > 128 {
 			t.Fatalf("dup %d charged %d hash units", i, used)
 		}
-		if copyRoot.kids.list[0].kids.list[0].hash != key.hash {
+		if copyRoot.kids.At(0).kids.At(0).hash != key.hash {
 			t.Fatalf("dup %d changed the key's stored hash", i)
 		}
 	}
@@ -203,7 +203,7 @@ func TestStoredHashCopiedIncompletePrefixBudget(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !list.lkeyOK || list.lkeyN != 1 || len(list.kids.list) != 1 || list.kids.list[0].schema.Name != "b" {
+	if !list.lkeyOK || list.lkeyN != 1 || list.kids.SchemaLen() != 1 || list.kids.At(0).schema.Name != "b" {
 		t.Fatal("copy did not retain the incomplete b prefix")
 	}
 	aType := list.schema.Keys[0].Type
@@ -212,7 +212,7 @@ func TestStoredHashCopiedIncompletePrefixBudget(t *testing.T) {
 		t.Fatal(diag.Msg)
 	}
 	aWork := types.HashLYBWorkBound(aValue)
-	bWork := types.HashLYBWorkBound(list.kids.list[0].value)
+	bWork := types.HashLYBWorkBound(list.kids.At(0).value)
 	// The positional-prefix and hash-input scans each visit both keys;
 	// displacing the captured prefix copies its one existing key.
 	dst.work.hashLimit = 2*aWork + bWork + 5 - 1
@@ -220,7 +220,7 @@ func TestStoredHashCopiedIncompletePrefixBudget(t *testing.T) {
 	if added, err := dst.NewTerm(list, "a", "a", NewOptions{}); added != nil || !errors.Is(err, yang.ErrBudget) {
 		t.Fatalf("NewTerm node=%v err=%v; want ErrBudget", added, err)
 	}
-	if len(list.kids.list) != 1 || list.hash != beforeHash || list.lkeyPrefix != beforePrefix ||
+	if list.kids.SchemaLen() != 1 || list.hash != beforeHash || list.lkeyPrefix != beforePrefix ||
 		list.lkeyFrozen != nil || list.keyN != 1 || list.lkeyN != 1 {
 		t.Fatal("failed insertion published a key or changed its parent's captured hash")
 	}
@@ -236,7 +236,7 @@ func TestStoredHashSparseMutationBudget(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	n := tr.top.list[0]
+	n := tr.top.At(0)
 	beforeHash := n.hash
 	tr.work.hashLimit = 1
 	before := types.SparseHashBytes()
@@ -249,13 +249,13 @@ func TestStoredHashSparseMutationBudget(t *testing.T) {
 	if added, err := tr.NewTerm(nil, "m:s", "", NewOptions{}); added != nil || !errors.Is(err, yang.ErrBudget) {
 		t.Fatalf("NewTerm node=%v err=%v; want ErrBudget", added, err)
 	}
-	if len(tr.top.list) != 1 || types.SparseHashBytes() != before {
+	if tr.top.SchemaLen() != 1 || types.SparseHashBytes() != before {
 		t.Fatal("failed NewTerm performed hashing or published a node")
 	}
 	if added, err := tr.NewPath("/m:s[2]", "", NewPathOptions{}); added != nil || !errors.Is(err, yang.ErrBudget) {
 		t.Fatalf("NewPath node=%v err=%v; want ErrBudget", added, err)
 	}
-	if len(tr.top.list) != 1 || types.SparseHashBytes() != before {
+	if tr.top.SchemaLen() != 1 || types.SparseHashBytes() != before {
 		t.Fatal("failed NewPath performed hashing or published a node")
 	}
 }
@@ -283,7 +283,7 @@ func TestStoredHashReplyBudgetThenValidateRequest(t *testing.T) {
 	if _, err := validateOp(context.Background(), set, op, nil, opRPC, Budget{}); err != nil {
 		t.Fatalf("request validation after failed reply: %v", err)
 	}
-	if tr.top.first() != op || op.treeOf() != tr || len(op.kids.list) != 1 || op.kids.list[0].Name() != "in" {
+	if tr.top.first() != op || op.treeOf() != tr || op.kids.SchemaLen() != 1 || op.kids.At(0).Name() != "in" {
 		t.Fatal("validation detached the retained request")
 	}
 }
@@ -350,7 +350,7 @@ func TestStoredHashFailedRelinkRestoresOrigin(t *testing.T) {
 	if err := dst.insertChild(dstParent, leaf); !errors.Is(err, yang.ErrBudget) {
 		t.Fatalf("failed insert: %v", err)
 	}
-	if leaf.parent != srcParent || len(srcParent.kids.list) != 1 || len(dstParent.kids.list) != 0 {
+	if leaf.parent != srcParent || srcParent.kids.SchemaLen() != 1 || dstParent.kids.SchemaLen() != 0 {
 		t.Fatal("failed relink detached the source leaf")
 	}
 	src.work.hashErr = yang.ErrBudget
@@ -388,8 +388,8 @@ func TestStoredHashValueRelinkBudgetKeepsOldValue(t *testing.T) {
 	if op.kids.ht == nil {
 		t.Fatal("operation children did not build a hash table")
 	}
-	x := op.kids.list[0]
-	for _, child := range op.kids.list {
+	x := op.kids.At(0)
+	for _, child := range op.kids.SchemaAll() {
 		if child.Name() == "y" {
 			delete(tr.work.hashNames, child.schema) // make the next anchor lookup cold
 		}
@@ -403,21 +403,21 @@ func TestStoredHashValueRelinkBudgetKeepsOldValue(t *testing.T) {
 	if changed, err := x.SetValue("b"); changed || !errors.Is(err, yang.ErrBudget) {
 		t.Fatalf("changed=%t error=%v; want atomic budget failure", changed, err)
 	}
-	if x.Value() != "a" || x.hash != oldHash || x.parent != op || op.kids.list[0] != x {
+	if x.Value() != "a" || x.hash != oldHash || x.parent != op || op.kids.At(0) != x {
 		t.Fatal("failed value change left the old instance detached or rehashed")
 	}
 	tr.work.hashLimit = 128 // removal updates the ordered operation index and charges its RB work
-	if err := op.kids.list[1].Remove(); err != nil {
+	if err := op.kids.At(1).Remove(); err != nil {
 		t.Fatal(err)
 	}
 	if changed, err := x.SetValue("b"); err != nil || !changed {
 		t.Fatalf("alone value change: changed=%t error=%v; want indexed hash update", changed, err)
 	}
-	if x.parent != op || op.kids.list[0] != x {
+	if x.parent != op || op.kids.At(0) != x {
 		t.Fatal("alone value change moved the instance")
 	}
 	tr.work.hashLimit = 1
-	for _, child := range op.kids.list {
+	for _, child := range op.kids.SchemaAll() {
 		if child.Name() == "y" {
 			delete(tr.work.hashNames, child.schema)
 		}
@@ -425,7 +425,7 @@ func TestStoredHashValueRelinkBudgetKeepsOldValue(t *testing.T) {
 	if err := tr.Insert(op, x); !errors.Is(err, yang.ErrBudget) {
 		t.Fatalf("move with cold anchor error=%v; want ErrBudget", err)
 	}
-	if x.parent != op || op.kids.list[0] != x {
+	if x.parent != op || op.kids.At(0) != x {
 		t.Fatal("failed move detached or reordered its source")
 	}
 }
@@ -446,7 +446,7 @@ func TestStoredHashImplicitDefaultAnchorBudget(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if root.kids.ht == nil || !root.kids.schemaUnordered || len(root.kids.list) != 4 {
+	if root.kids.ht == nil || !root.kids.schemaUnordered || root.kids.SchemaLen() != 4 {
 		t.Fatal("copy lacks the reordered indexed children")
 	}
 	var diffs int
@@ -458,15 +458,15 @@ func TestStoredHashImplicitDefaultAnchorBudget(t *testing.T) {
 	if err := vc.newImplicit(root, nil, nil, 0); !errors.Is(err, yang.ErrBudget) {
 		t.Fatalf("implicit insertion error=%v; want ErrBudget", err)
 	}
-	if dst.work.hashUsed != used || len(root.kids.list) != 4 ||
+	if dst.work.hashUsed != used || root.kids.SchemaLen() != 4 ||
 		vc.nodeWhen.len() != 0 || vc.nodeTypes.len() != 0 || diffs != 0 {
 		t.Fatalf("failed anchor published a default or diff: used=%d children=%d queues=%d/%d diffs=%d",
-			dst.work.hashUsed, len(root.kids.list), vc.nodeWhen.len(), vc.nodeTypes.len(), diffs)
+			dst.work.hashUsed, root.kids.SchemaLen(), vc.nodeWhen.len(), vc.nodeTypes.len(), diffs)
 	}
 	if _, err := dst.Validate(context.Background(), ValidateOptions{}); !errors.Is(err, yang.ErrBudget) {
 		t.Fatalf("Validate error=%v; want ErrBudget", err)
 	}
-	if len(root.kids.list) != 4 {
+	if root.kids.SchemaLen() != 4 {
 		t.Fatal("Validate published a default after anchor failure")
 	}
 }
@@ -486,17 +486,17 @@ func TestStoredHashFailedKeyChangeKeepsDuplicateLookupOrder(t *testing.T) {
 	if c.kids.ht == nil {
 		t.Fatal("children table was not built")
 	}
-	first := c.kids.list[0]
+	first := c.kids.At(0)
 	before, err := tr.Find("/m:c/l[k='a'][j='q']")
 	if err != nil || before != first {
 		t.Fatalf("initial lookup=%p error=%v; want %p", before, err, first)
 	}
 	tr.work.hashLimit = 5 // both key scans fit; their combined rehash exceeds the remainder
-	if changed, err := first.kids.list[0].SetValue("b"); changed || !errors.Is(err, yang.ErrBudget) {
+	if changed, err := first.kids.At(0).SetValue("b"); changed || !errors.Is(err, yang.ErrBudget) {
 		t.Fatalf("SetValue changed=%t error=%v; want ErrBudget", changed, err)
 	}
 	after, err := tr.Find("/m:c/l[k='a'][j='q']")
-	if err != nil || after != first || first.kids.list[0].Value() != "a" || first.parent != c {
+	if err != nil || after != first || first.kids.At(0).Value() != "a" || first.parent != c {
 		t.Fatalf("failed edit changed lookup order or detached the first list: got=%p error=%v", after, err)
 	}
 }
@@ -512,8 +512,8 @@ func TestStoredHashSparseKeyBudget(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	list := tr.top.list[0]
-	a, b := list.kids.list[0], list.kids.list[1]
+	list := tr.top.At(0)
+	a, b := list.kids.At(0), list.kids.At(1)
 	empty, diag := types.Store(a.schema.Type, "", types.FormatJSON, types.HintData, nil, a.schema)
 	if diag != nil {
 		t.Fatal(diag.Msg)
@@ -530,13 +530,13 @@ func TestStoredHashSparseKeyBudget(t *testing.T) {
 	if added, err := tr.NewList(nil, "m:l", []string{"", ""}, NewOptions{}); added != nil || !errors.Is(err, yang.ErrBudget) {
 		t.Fatalf("NewList node=%v error=%v; want ErrBudget", added, err)
 	}
-	if len(tr.top.list) != 1 || types.SparseHashBytes() != before {
+	if tr.top.SchemaLen() != 1 || types.SparseHashBytes() != before {
 		t.Fatal("failed list creation published a node or performed hashing")
 	}
 	if copied, _, err := tr.Dup(list, nil, DupOptions{Recursive: true}); copied != nil || !errors.Is(err, yang.ErrBudget) {
 		t.Fatalf("Dup node=%v error=%v; want ErrBudget", copied, err)
 	}
-	if len(tr.top.list) != 1 || types.SparseHashBytes() != before {
+	if tr.top.SchemaLen() != 1 || types.SparseHashBytes() != before {
 		t.Fatal("failed duplication published a node or performed hashing")
 	}
 }
@@ -553,7 +553,7 @@ func TestMergeDiffHashWorkScope(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	key := src.top.first().kids.list[0]
+	key := src.top.first().kids.At(0)
 	// dupR hashes the key when it is linked and again at the list's unconditional
 	// final rehash (tree_data.c:2317).
 	// This hand-built test set has no schema owner. The destination tree computes

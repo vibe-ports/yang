@@ -8,7 +8,6 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
-	"slices"
 	"strconv"
 	"strings"
 	"testing"
@@ -239,7 +238,7 @@ func TestOpIndexPrependUserOrdered(t *testing.T) {
 			FormatJSON, opReply, op, Reject); err != nil {
 			t.Fatal(err, diags)
 		}
-		first := op.kids.list[0]
+		first := op.kids.At(0)
 		sn := first.schema
 		tree.work.Store(0)
 		tree.work.shifts = true
@@ -273,7 +272,7 @@ func TestOpIndexUnlinkClearsRetainedPointers(t *testing.T) {
 			if err != nil {
 				t.Fatal(err, diags)
 			}
-			removed := op.kids.list[tc.at]
+			removed := op.kids.At(tc.at)
 			if err := unlinkTree(removed); err != nil {
 				t.Fatal(err)
 			}
@@ -288,10 +287,10 @@ func TestOpIndexUnlinkClearsRetainedPointers(t *testing.T) {
 
 func assertDequeDoesNotRetain(t *testing.T, name string, d *nodeDeque, removed *Node) {
 	t.Helper()
-	if slices.Contains(d.base[:cap(d.base)], removed) {
+	if d.retainsBase(removed) {
 		t.Errorf("%s base retains removed node", name)
 	}
-	if slices.Contains(d.list[:cap(d.list)], removed) {
+	if d.retainsList(removed) {
 		t.Errorf("%s list backing array retains removed node", name)
 	}
 }

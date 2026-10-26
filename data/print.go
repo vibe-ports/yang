@@ -111,9 +111,9 @@ func (o PrintOptions) isDefault(n *Node) bool {
 					// view is read-only: printing must not link leafrefs (D-0128).
 					t = newTree(ctxOf(root))
 					if root.schema == nil {
-						t.top.opq = []*Node{root}
+						t.top.Build(nil, []*Node{root})
 					} else {
-						t.top.list = []*Node{root}
+						t.top.Build([]*Node{root}, nil)
 						t.top.contexts = map[*schema.Set]int{ctxOf(root): 1}
 					}
 					dc.views[root] = t

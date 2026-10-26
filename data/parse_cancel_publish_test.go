@@ -126,7 +126,7 @@ func TestParseReplyCancelRequest(t *testing.T) {
 				_, _, _, err = parseOp(ctx, strings.NewReader(tc.reply), set, tc.f, opReply, op, Reject)
 				run := func() []string {
 					var vals []string
-					for _, n := range op.kids.list {
+					for _, n := range op.kids.SchemaAll() {
 						if n.schema == v {
 							vals = append(vals, n.value.Canonical())
 						}

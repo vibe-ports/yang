@@ -398,7 +398,7 @@ func TestParseOpSplitRun(t *testing.T) {
 	if ns, _, err := tree.FindXPath("/rb:r/v", XPathOptions{}); len(ns) != 3 || err != nil {
 		t.Errorf("FindXPath(/rb:r/v): %d nodes, %v", len(ns), err)
 	}
-	if n := tree.schemaLookup(&op.kids, op.kids.list[0].schema); n == nil || n.schema.Name != "before" {
+	if n := tree.schemaLookup(&op.kids, op.kids.At(0).schema); n == nil || n.schema.Name != "before" {
 		t.Errorf("schemaLookup(before): %v", n)
 	}
 }
@@ -548,7 +548,7 @@ func TestDiffDetachedOperationChild(t *testing.T) {
 		if err != nil {
 			t.Fatal(err, diags)
 		}
-		return op.kids.list[0]
+		return op.kids.At(0)
 	}
 	attached, detached := parse(), parse()
 	unlink(detached)
@@ -556,7 +556,7 @@ func TestDiffDetachedOperationChild(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if diff != nil && len(diff.top.list)+len(diff.top.opq) > 0 {
+	if diff != nil && diff.top.SchemaLen()+diff.top.OpaqueLen() > 0 {
 		var b strings.Builder
 		_ = diff.PrintJSON(&b, PrintOptions{})
 		t.Errorf("diff of equal leaves: %s", b.String())
@@ -643,7 +643,7 @@ func TestSplitRunDiffRefused(t *testing.T) {
 	_, otherSplitOp := splitRunReply(t, set, true, "1,2,3")
 	value := func(op *Node, want string) *Node {
 		t.Helper()
-		for _, n := range op.kids.list {
+		for _, n := range op.kids.SchemaAll() {
 			if n.Name() == "v" && n.value.Canonical() == want {
 				return n
 			}
@@ -663,7 +663,7 @@ func TestSplitRunDiffRefused(t *testing.T) {
 		{"unsplit-to-split", func() (*Tree, error) { return DiffTree(unsplitOp, splitOp, DiffOptions{}) }},
 		{"split-to-split", func() (*Tree, error) { return DiffTree(splitOp, splitOp, DiffOptions{}) }},
 		{"siblings", func() (*Tree, error) { return DiffSiblings(nil, splitOp, DiffOptions{}) }},
-		{"operation-children", func() (*Tree, error) { return DiffSiblings(splitOp.kids.list[0], nil, DiffOptions{}) }},
+		{"operation-children", func() (*Tree, error) { return DiffSiblings(splitOp.kids.At(0), nil, DiffOptions{}) }},
 		{"tree-child-to-nil", func() (*Tree, error) { return DiffTree(v3, nil, DiffOptions{}) }},
 		{"tree-nil-to-child", func() (*Tree, error) { return DiffTree(nil, v3, DiffOptions{}) }},
 		{"tree-child-to-other-tree", func() (*Tree, error) { return DiffTree(v3, otherV3, DiffOptions{}) }},
@@ -921,7 +921,7 @@ func TestSplitRunDiffLinear(t *testing.T) {
 			t.Fatal(err, diags)
 		}
 		tree.work.Store(0)
-		return tree, op.kids.list[len(op.kids.list)-1]
+		return tree, op.kids.At(op.kids.SchemaLen() - 1)
 	}
 	for _, api := range []string{"siblings", "tree-child"} {
 		for _, order := range []string{"sorted", "reverse", "shuffled", "duplicate-heavy"} {
@@ -991,7 +991,7 @@ func TestParseOpManyParameters(t *testing.T) {
 			if err != nil {
 				t.Fatal(err, diags)
 			}
-			if l := op.kids.list; len(l) != n || l[0].schema.Name != "p00000" || l[n-1].schema.Name != fmt.Sprintf("p%05d", n-1) {
+			if l := op.kids.schemaSpan().Collect(); len(l) != n || l[0].schema.Name != "p00000" || l[n-1].schema.Name != fmt.Sprintf("p%05d", n-1) {
 				t.Fatalf("%d children, not in schema order", len(l))
 			}
 			return tree.work.Load()
@@ -1026,7 +1026,7 @@ func TestParseOpConcurrentFind(t *testing.T) {
 		wg.Wait()
 	}
 	find("/rb:r/in", true)
-	if err := tree.schemaLookup(&op.kids, op.kids.list[1].schema).Remove(); err != nil {
+	if err := tree.schemaLookup(&op.kids, op.kids.At(1).schema).Remove(); err != nil {
 		t.Fatal(err)
 	}
 	find("/rb:r/in", true)

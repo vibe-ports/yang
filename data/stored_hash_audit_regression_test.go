@@ -22,10 +22,10 @@ func TestMergeDistinctSourceRBGroups(t *testing.T) {
 		}
 		byValue[value] = n
 	}
-	src.top.list = []*Node{byValue["20"], byValue["40"], byValue["5"], byValue["10"]}
-	src.top.firstRun[src.top.list[0].schema] = src.top.list[0]
+	src.top.buildSchema([]*Node{byValue["20"], byValue["40"], byValue["5"], byValue["10"]})
+	src.top.firstRun[src.top.At(0).schema] = src.top.At(0)
 	groupA, groupB := &rbGroup{}, &rbGroup{}
-	for i, n := range src.top.list {
+	for i, n := range src.top.SchemaAll() {
 		n.inRB = true
 		if i < 2 {
 			n.rbGroup = groupA
@@ -33,11 +33,11 @@ func TestMergeDistinctSourceRBGroups(t *testing.T) {
 			n.rbGroup = groupB
 		}
 	}
-	src.top.rbTree = map[*Node]bool{src.top.list[0]: true}
-	src.top.rbGroups = map[*Node]*rbGroup{src.top.list[0]: groupA}
+	src.top.rbTree = map[*Node]bool{src.top.At(0): true}
+	src.top.rbGroups = map[*Node]*rbGroup{src.top.At(0): groupA}
 	// the selected tree's retained topology, built in its native insertion order
 	selected := &dirtyOrder{work: &src.work}
-	for _, n := range src.top.list[:2] {
+	for _, n := range src.top.schemaSpan().Collect()[:2] {
 		_, _ = selected.insertCompatible(n, func(a, b *Node) (int, bool) { return compareSorted(a, b), true })
 	}
 	src.top.rbOrders = map[*rbGroup]*dirtyOrder{groupA: selected}
@@ -50,7 +50,7 @@ func TestMergeDistinctSourceRBGroups(t *testing.T) {
 		t.Fatal(err)
 	}
 	var got []string
-	for _, n := range dst.top.list {
+	for _, n := range dst.top.SchemaAll() {
 		got = append(got, n.Value())
 	}
 	if want := []string{"5", "10", "15", "20", "30", "40"}; !slices.Equal(got, want) {
@@ -75,7 +75,7 @@ func TestBatchRemovalComparedPrefixLinear(t *testing.T) {
 	}
 	var list *Node
 	for range 4 {
-		list, _, err = tr.Dup(src.top.first().kids.list[0], root, DupOptions{Recursive: true})
+		list, _, err = tr.Dup(src.top.first().kids.At(0), root, DupOptions{Recursive: true})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -102,7 +102,7 @@ func TestBatchRemovalComparedPrefixLinear(t *testing.T) {
 	if got := tr.work.Load(); got > 2_000_000 {
 		t.Fatalf("batch removal inspected %d positions for %d children", got, count)
 	}
-	if len(list.kids.list) != 2 || list.kids.list[1].Name() != "c" {
+	if list.kids.SchemaLen() != 2 || list.kids.At(1).Name() != "c" {
 		t.Fatal("batch removal did not expose retained child")
 	}
 	if want, ok := hashOf(list); !ok || list.hkey != want {
@@ -125,7 +125,7 @@ func TestRemoveLastMemberClearsOnlyItsRBGroup(t *testing.T) {
 		{"a", "a"}, {"b", "b"}, {"c", "c"},
 	} {
 		n := modelFreshTerm(t, root, item.name, item.value)
-		if err := tr.link(root, &root.kids, n, len(root.kids.list)); err != nil {
+		if err := tr.link(root, &root.kids, n, root.kids.SchemaLen()); err != nil {
 			t.Fatal(err)
 		}
 		if item.name == "s" {

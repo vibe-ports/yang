@@ -51,17 +51,17 @@ func TestDupCrossSchemaInsert(t *testing.T) {
 				t.Fatal(err)
 			}
 			var got []string
-			for _, n := range root.kids.list {
+			for _, n := range root.kids.SchemaAll() {
 				v := n.value.Canonical()
 				if n.Name() == "l" {
-					v = n.kids.list[0].value.Canonical()
+					v = n.kids.At(0).value.Canonical()
 				}
 				got = append(got, n.Name()+"="+v)
 			}
 			if !slices.Equal(got, tc.want) {
 				t.Fatalf("children = %v, want %v", got, tc.want)
 			}
-			for _, n := range root.kids.list {
+			for _, n := range root.kids.SchemaAll() {
 				if got, err := dst.Find(n.Path()); err != nil || got != n {
 					t.Errorf("Find(%s) = %v, %v", n.Path(), got, err)
 				}
@@ -96,8 +96,8 @@ func TestDupCrossSchemaInsertWork(t *testing.T) {
 				t.Fatal(err)
 			}
 		}
-		if len(root.kids.list) != count+2 || root.kids.list[count].value.Canonical() != strconv.Itoa(count) ||
-			root.kids.list[count+1].Name() != "y" {
+		if root.kids.SchemaLen() != count+2 || root.kids.At(count).value.Canonical() != strconv.Itoa(count) ||
+			root.kids.At(count+1).Name() != "y" {
 			t.Fatal("insertion split the copied run")
 		}
 		return tr.work.Load()
@@ -119,7 +119,7 @@ func checkDupSplitLeaders(t *testing.T, tr *Tree, root *Node) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if at := slices.Index(root.kids.list, n); at+1 >= len(root.kids.list) || root.kids.list[at+1] != want {
+		if at := slices.Index(root.kids.schemaSpan().Collect(), n); at+1 >= root.kids.SchemaLen() || root.kids.At(at+1) != want {
 			t.Fatalf("new list did not use first-instance anchor %v", want)
 		}
 		if err := n.Remove(); err != nil {

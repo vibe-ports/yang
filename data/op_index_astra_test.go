@@ -45,16 +45,16 @@ func TestOpIndexKeylessDigestKeepsLookupEquivalentSubtrees(t *testing.T) {
 			src, srcOp := parse(sets[0], srcInput)
 			if foreign {
 				foreignTree, foreignOp := parse(sets[1], srcInput)
-				outer := foreignOp.kids.list[0]
+				outer := foreignOp.kids.At(0)
 				unlink(outer)
-				unlink(srcOp.kids.list[0])
+				unlink(srcOp.kids.At(0))
 				if err := src.link(srcOp, &srcOp.kids, outer, 0); err != nil {
 					t.Fatal(err)
 				}
 				_ = foreignTree
 			}
 			cache := &dupCache{}
-			if candidate, err := dst.keylessFirst(cache, &op.kids, srcOp.kids.list[0]); err != nil || candidate == nil {
+			if candidate, err := dst.keylessFirst(cache, &op.kids, srcOp.kids.At(0)); err != nil || candidate == nil {
 				t.Fatal("foreign keyless first-match candidate not found", err)
 			}
 			if err := opidxCheckKeylessCache(dst, cache); err != nil {
@@ -139,7 +139,7 @@ func TestOpIndexKeylessDuplicateSetUsesRegistrationOrder(t *testing.T) {
 				`{"m:r":{"l":[{"v":"x"},{"v":"x"},{"v":"x"},{"v":"x"}],"split":"s"}}`)
 			var lists []*Node
 			var separator *Node
-			for _, n := range op.kids.list {
+			for _, n := range op.kids.SchemaAll() {
 				if n.Name() == "l" {
 					lists = append(lists, n)
 				} else {
@@ -151,9 +151,9 @@ func TestOpIndexKeylessDuplicateSetUsesRegistrationOrder(t *testing.T) {
 			}
 			op.kids.touch()
 			if split {
-				op.kids.list = []*Node{lists[0], lists[1], separator, lists[3], lists[2]}
+				op.kids.buildSchema([]*Node{lists[0], lists[1], separator, lists[3], lists[2]})
 			} else {
-				op.kids.list = []*Node{lists[0], lists[3], lists[1], lists[2], separator}
+				op.kids.buildSchema([]*Node{lists[0], lists[3], lists[1], lists[2], separator})
 			}
 			op.kids.orderBuild(tr)
 			cache := &dupCache{}
@@ -177,14 +177,14 @@ func TestOpIndexParsedRBMembersDriveLaterInsertion(t *testing.T) {
  rpc r { input { leaf-list v { type uint32; } } } }`)
 	dst, op := opIndexParseRPC(t, set, `{"m:r":{"v":[1,3]}}`)
 	_, source := opIndexParseRPC(t, set, `{"m:r":{"v":[5,7]}}`)
-	if _, _, err := dst.DupSiblings(source.kids.list[0], op, DupOptions{}); err != nil {
+	if _, _, err := dst.DupSiblings(source.kids.At(0), op, DupOptions{}); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := dst.NewTerm(op, "v", "2", NewOptions{}); err != nil {
 		t.Fatal(err)
 	}
 	var got []string
-	for _, n := range op.kids.list {
+	for _, n := range op.kids.SchemaAll() {
 		got = append(got, n.Value())
 	}
 	if want := []string{"1", "2", "3", "5", "7"}; !slices.Equal(got, want) {

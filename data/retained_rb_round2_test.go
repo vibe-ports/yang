@@ -70,7 +70,7 @@ func TestMovedSubtreeReleasesSourceTree(t *testing.T) {
 	var moved *Node
 	ref := func() weak.Pointer[Tree] {
 		src := parseOnlyXML(t, set, `<a xmlns="urn:rb-release">x</a><c xmlns="urn:rb-release"><v>3</v><v>1</v><v>2</v></c>`)
-		moved = src.top.list[1]
+		moved = src.top.At(1)
 		if moved.schema.Name != "c" || len(moved.kids.rbOrders) == 0 {
 			t.Fatal("the source container has no retained RB tree")
 		}
@@ -154,7 +154,7 @@ func TestSetValueForeignReinsertionRefusalReported(t *testing.T) {
 	foreign := retainedRBTerm(t, retainedRBTopNamed(t, enumSet, "v"), "b")
 	mustLink(t, tr.insert(nil, foreign, insertDefault))
 	var c *Node
-	for _, n := range tr.top.list {
+	for _, n := range tr.top.SchemaAll() {
 		if n.Value() == "c" {
 			c = n
 		}
@@ -186,8 +186,8 @@ func TestDiffKeylessStateToKeyedConfigOrder(t *testing.T) {
 		t.Fatal(err)
 	}
 	var got []string
-	for _, l := range topOf(diff).kids.list {
-		got = append(got, l.kids.list[0].Value())
+	for _, l := range topOf(diff).kids.SchemaAll() {
+		got = append(got, l.kids.At(0).Value())
 	}
 	if !slices.Equal(got, []string{"1", "2", "3"}) {
 		t.Fatalf("diff list order = %v, want [1 2 3]", got)
@@ -233,7 +233,7 @@ func TestRBCompareListsShapes(t *testing.T) {
 	}
 	instance := func(s *schema.Set, xml string, opaqueChild bool) *Node {
 		tr := parseOnlyXML(t, s, `<c xmlns="urn:rb-shapes">`+xml+`</c>`)
-		l := topOf(tr).kids.list[0]
+		l := topOf(tr).kids.At(0)
 		if opaqueChild {
 			mustLink(t, tr.insert(l, newOpaque(opaque{Name: "extra", Value: "x", Format: types.FormatJSON}), insertDefault))
 		}
@@ -298,8 +298,8 @@ func TestForeignAnchorAfterLookupExhaustion(t *testing.T) {
 	tr := parseOnlyXML(t, setA, `<c xmlns="urn:rb-anchor"><p>1</p><q>2</q><s>4</s></c>`)
 	c := topOf(tr)
 	// mixed contexts with a local first child: the cross-context anchor probe runs
-	mustLink(t, tr.link(c, &c.kids, retainedRBLeaf(t, setB, "z", "9"), len(c.kids.list)))
-	if c.kids.ht == nil || ctxOf(c.kids.list[0]) != setA || len(c.kids.contexts) < 2 {
+	mustLink(t, tr.link(c, &c.kids, retainedRBLeaf(t, setB, "z", "9"), c.kids.SchemaLen()))
+	if c.kids.ht == nil || ctxOf(c.kids.At(0)) != setA || len(c.kids.contexts) < 2 {
 		t.Fatal("setup does not reach the cross-context anchor probe")
 	}
 	tr.work.lookupUsed, tr.work.lookupErr = ^uint64(0), yang.ErrBudget // a spent diff quota
@@ -310,7 +310,7 @@ func TestForeignAnchorAfterLookupExhaustion(t *testing.T) {
 		t.Fatal(err)
 	}
 	var got []string
-	for _, n := range c.kids.list {
+	for _, n := range c.kids.SchemaAll() {
 		got = append(got, n.schema.Name)
 	}
 	if ir, is := slices.Index(got, "r"), slices.Index(got, "s"); ir < 0 || ir > is {

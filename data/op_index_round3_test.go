@@ -26,14 +26,14 @@ func TestOpIndexMergeKeylessIntoOpaqueOnlyOperation(t *testing.T) {
 	dst, op := opIndexParse(t, set, `{"m:r":{"unknown":"opaque"}}`, opRPC, Opaque)
 	src, _ := opIndexParse(t, set, `{"m:r":{"l":[{"v":"x"}]}}`, opRPC, Opaque)
 
-	if len(op.kids.list) != 0 || len(op.kids.opq) != 1 {
-		t.Fatalf("destination children = %d schema, %d opaque; want 0, 1", len(op.kids.list), len(op.kids.opq))
+	if op.kids.SchemaLen() != 0 || op.kids.OpaqueLen() != 1 {
+		t.Fatalf("destination children = %d schema, %d opaque; want 0, 1", op.kids.SchemaLen(), op.kids.OpaqueLen())
 	}
 	if err := dst.Merge(src); err != nil {
 		t.Fatal(err)
 	}
-	if len(op.kids.list) != 1 || op.kids.list[0].Name() != "l" || len(op.kids.opq) != 1 {
-		t.Fatalf("merged children = %d schema, %d opaque", len(op.kids.list), len(op.kids.opq))
+	if op.kids.SchemaLen() != 1 || op.kids.At(0).Name() != "l" || op.kids.OpaqueLen() != 1 {
+		t.Fatalf("merged children = %d schema, %d opaque", op.kids.SchemaLen(), op.kids.OpaqueLen())
 	}
 }
 
@@ -89,7 +89,7 @@ func TestOpIndexNotificationOpaqueOrderDoesNotSelectOperationLookup(t *testing.T
 		t.Fatal(err)
 	}
 	var values int
-	for _, n := range notif.kids.list {
+	for _, n := range notif.kids.SchemaAll() {
 		if n.Name() == "v" {
 			values++
 		}
@@ -115,7 +115,7 @@ func TestOpIndexKeylessDigestIgnoresForeignOrderingFlags(t *testing.T) {
 	dst, dstOp := opIndexParse(t, dstSet, `{"m:r":{"outer":[{"inner":[{"id":1}]}]}}`, opRPC, Reject)
 	src, srcOp := opIndexParse(t, dstSet, `{"m:r":{}}`, opRPC, Reject)
 	_, foreignOp := opIndexParse(t, foreignSet, `{"m:r":{"outer":[{"inner":[{"id":1}]}]}}`, opRPC, Reject)
-	outer := foreignOp.kids.list[0]
+	outer := foreignOp.kids.At(0)
 	if err := outer.Unlink(); err != nil {
 		t.Fatal(err)
 	}
@@ -127,7 +127,7 @@ func TestOpIndexKeylessDigestIgnoresForeignOrderingFlags(t *testing.T) {
 		t.Fatal(err)
 	}
 	var outers int
-	for _, n := range dstOp.kids.list {
+	for _, n := range dstOp.kids.SchemaAll() {
 		if n.Name() == "outer" {
 			outers++
 		}

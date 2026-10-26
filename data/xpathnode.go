@@ -113,7 +113,7 @@ func (x xn) LookupPrepared(prepared xpath.InstanceProbe) ([]xpath.Node, bool, er
 		if err != nil || mapped == nil || !compareSchemaEqual(mapped, p.node.schema, true) {
 			// LY_ENOTFOUND, then lyd_find_sibling_opaq_next. Not a decline: the
 			// evaluator's scan would match the unequal node by module and name.
-			for _, c := range sib.opq {
+			for _, c := range sib.opaqueAll() {
 				if err := p.work(1); err != nil {
 					return nil, false, err
 				}
@@ -147,7 +147,7 @@ func (x xn) LookupPrepared(prepared xpath.InstanceProbe) ([]xpath.Node, bool, er
 			return []xpath.Node{wrap(x.set, n)}, true, nil
 		}
 	}
-	return nil, len(sib.opq) == 0, nil
+	return nil, sib.OpaqueLen() == 0, nil
 }
 
 // HashKeyValuesEqual applies lyd_hash's LYB value gate when XPath's keyed-list
@@ -158,14 +158,14 @@ func (x xn) HashKeyValuesEqual(sn xpath.SchemaNode, vals []string) bool {
 	}
 	s, ok := sn.(xs)
 	if !ok || x.n.schema == nil || x.n.schema.Kind != schema.List ||
-		len(s.s.Keys) < len(vals) || len(x.n.kids.list) < len(vals) {
+		len(s.s.Keys) < len(vals) || x.n.kids.SchemaLen() < len(vals) {
 		return false
 	}
 	for i, text := range vals {
 		key := s.s.Keys[i]
 		value, diag := types.StoreOnly(key.Type, text, types.FormatCanon, types.HintData,
 			types.ModuleNames{Set: s.set}, key)
-		if diag != nil || !hashValueEqual(x.n.kids.list[i].value, value) {
+		if diag != nil || !hashValueEqual(x.n.kids.At(i).value, value) {
 			return false
 		}
 	}
@@ -517,7 +517,7 @@ func (x xs) PrepareInstance(vals []string, charge func(int64) error) (xpath.Inst
 		} else {
 			child := newTerm(key, v)
 			child.parent = p.node
-			p.node.kids.list = append(p.node.kids.list, child)
+			p.node.kids.appendNode(child)
 		}
 	}
 	if x.s.Kind == schema.List {

@@ -201,7 +201,7 @@ func TestMixedParentOpaqueParentRootWalk(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	a := c.kids.list[0]
+	a := c.kids.At(0)
 	if _, err := tr.NewPath("/a:foo", "42", NewPathOptions{Parent: a, Update: true}); err != nil {
 		t.Fatal(err)
 	}
@@ -268,7 +268,7 @@ func TestNewPathParentPositions(t *testing.T) {
 	set := mixedParentSet(t)
 	tr := parseMixedParent(t, set, `{"a:any":{"a:foo":1,"a:ll2":["one"]}}`, 0)
 	anyNode := findNode(t, tr, "/a:any")
-	one := anyNode.any.children.list[1]
+	one := anyNode.any.children.At(1)
 	n, err := tr.NewPath("/a:ll2[2]", "two", NewPathOptions{Parent: one})
 	if err != nil || n == nil || n.Parent() != anyNode || n.Value() != "two" {
 		t.Fatalf("payload position 2: %v, %v", n, err)

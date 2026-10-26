@@ -158,7 +158,7 @@ func TestOpIndexLeaderOracle(t *testing.T) {
 	if got, want := opidxValues(op), []string{"a", "a2", "v:1", "v:2", "o", "v:3"}; !slices.Equal(got, want) {
 		t.Fatalf("children %v, want %v", got, want)
 	}
-	v := opidxSchemaNodes(op, op.kids.list[2].schema)
+	v := opidxSchemaNodes(op, op.kids.At(2).schema)
 	vschema := v[0].schema
 	if err := freeTree(v[0]); err != nil {
 		t.Fatal(err)
@@ -229,7 +229,7 @@ func TestOpIndexDupSetOracle(t *testing.T) {
 		return tr, op
 	}
 	tr, op := parse(rpc)
-	u := opidxSchemaNodes(op, op.kids.list[0].schema)
+	u := opidxSchemaNodes(op, op.kids.At(0).schema)
 	if len(u) != 4 {
 		t.Fatalf("u instances %d", len(u))
 	}
@@ -256,7 +256,7 @@ func TestOpIndexDupSetOracle(t *testing.T) {
 		t.Fatal(err)
 	}
 	mustLink(t, dst.insert(nil, op, insertDefault))
-	if got, want := opidxDupSetIDs(t, dst, op, op.kids.list[0]), []string{"a", "b", "c", "d"}; !slices.Equal(got, want) {
+	if got, want := opidxDupSetIDs(t, dst, op, op.kids.At(0)), []string{"a", "b", "c", "d"}; !slices.Equal(got, want) {
 		t.Errorf("copied duplicate set %v, want %v", got, want)
 	}
 	diff2, err := DiffTree(op, sop, DiffOptions{Meta: true})

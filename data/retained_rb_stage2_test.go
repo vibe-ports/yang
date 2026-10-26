@@ -319,7 +319,7 @@ func TestRetainedRBShapeFollowsInsertionHistory(t *testing.T) {
 			}
 			// lyd_merge_sibling_r duplicates each source instance in source order and inserts it
 			var added []*Node
-			for _, n := range tr.top.list {
+			for _, n := range tr.top.SchemaAll() {
 				if !slices.ContainsFunc(model.pending, func(p *Node) bool { return p == n }) &&
 					(model.ref.root == nil || !refContains(&model.ref, n)) {
 					added = append(added, n)
@@ -339,15 +339,15 @@ func TestRetainedRBShapeFollowsInsertionHistory(t *testing.T) {
 			if err := tr.ApplyDiff(diff, ApplyDiffOptions{}); err != nil {
 				t.Fatalf("step %d foreign apply: %v", step, err)
 			}
-			for _, n := range tr.top.list {
+			for _, n := range tr.top.SchemaAll() {
 				if n.Value() == fmt.Sprint(v) {
 					model.insert(n)
 				}
 			}
 		}
 		checkTreeRetainedRB(t, tr)
-		if len(tr.top.list) > 0 {
-			checkRBShape(t, &tr.top, tr.top.list[0], &model.ref)
+		if tr.top.SchemaLen() > 0 {
+			checkRBShape(t, &tr.top, tr.top.At(0), &model.ref)
 		}
 	}
 }
@@ -401,7 +401,7 @@ func TestMergeNodes3RBIterOrder(t *testing.T) {
 			if err := tr.insertChild(c, src.top.first()); err != nil {
 				t.Fatal(err)
 			}
-			got := c.kids.list[1 : 1+tc.count]
+			got := c.kids.schemaSpan().Collect()[1 : 1+tc.count]
 			for i, want := range tc.want {
 				if got[i] != sn[want] {
 					idx := make([]int, len(got))
@@ -411,7 +411,7 @@ func TestMergeNodes3RBIterOrder(t *testing.T) {
 					t.Fatalf("equal source values in %v, want %v", idx, tc.want)
 				}
 			}
-			checkRBShape(t, &c.kids, c.kids.list[0], dst)
+			checkRBShape(t, &c.kids, c.kids.At(0), dst)
 			checkTreeRetainedRB(t, tr)
 		})
 	}
@@ -436,7 +436,7 @@ func TestMergeNodes2HashOrder(t *testing.T) {
 		t.Fatal(err)
 	}
 	want := []*Node{sn[0], sn[1], sn[2], sn[3], two, sn[4]}
-	if !slices.Equal(c.kids.list, want) {
+	if !slices.Equal(c.kids.schemaSpan().Collect(), want) {
 		t.Fatalf("nodes2 order = %v", names(c.Children()))
 	}
 	chain := c.kids.ht[sn[0].hkey]
@@ -450,7 +450,7 @@ func TestMergeNodes2HashOrder(t *testing.T) {
 	if wantHash := []*Node{sn[1], sn[2], sn[3], sn[0]}; !slices.Equal(got, wantHash) {
 		t.Fatalf("equal-value registrations = %v, want b c d a", got)
 	}
-	checkRBShape(t, &c.kids, c.kids.list[0], ref)
+	checkRBShape(t, &c.kids, c.kids.At(0), ref)
 	checkTreeRetainedRB(t, tr)
 }
 
@@ -476,7 +476,7 @@ func TestWholeRunTransferThenForeignInsert(t *testing.T) {
 					mustLink(t, src.insert(nil, n, insertDefault))
 					srcModel.insert(n)
 				}
-				srcPhysical := slices.Clone(src.top.list)
+				srcPhysical := slices.Clone(src.top.schemaSpan().Collect())
 				if err := dst.insertSibling(dst.top.first(), src.top.first()); err != nil {
 					t.Fatal(err)
 				}
@@ -507,7 +507,7 @@ func TestWholeRunTransferThenForeignInsert(t *testing.T) {
 					}
 				}
 				checkTreeRetainedRB(t, dst)
-				checkRBShape(t, &dst.top, dst.top.list[0], &result.ref)
+				checkRBShape(t, &dst.top, dst.top.At(0), &result.ref)
 				if len(src.top.rbOrders) != 0 || len(src.top.rbTree) != 0 {
 					t.Fatal("the source keeps retained RB state after the move")
 				}
@@ -515,7 +515,7 @@ func TestWholeRunTransferThenForeignInsert(t *testing.T) {
 				mustLink(t, dst.insert(nil, foreign, insertDefault))
 				result.insert(foreign)
 				checkTreeRetainedRB(t, dst)
-				checkRBShape(t, &dst.top, dst.top.list[0], &result.ref)
+				checkRBShape(t, &dst.top, dst.top.At(0), &result.ref)
 			})
 		}
 	}
@@ -535,7 +535,7 @@ func TestLastBySchemaTailOutsideTree(t *testing.T) {
 	}
 	tail := f.term(t, f.ll, "1")
 	mustLink(t, tr.insert(c, tail, insertLastBySchema))
-	d := c.kids.rbOrders[c.kids.rbGroups[c.kids.list[0]]]
+	d := c.kids.rbOrders[c.kids.rbGroups[c.kids.At(0)]]
 	if tail.inRB || d.nodes[tail] != nil || !c.kids.hasUnsorted(f.ll) {
 		t.Fatal("LAST_BY_SCHEMA instance recorded in the RB tree")
 	}
@@ -545,7 +545,7 @@ func TestLastBySchemaTailOutsideTree(t *testing.T) {
 	if got := names(c.Children()); !slices.Equal(got, []string{"ll=3", "ll=4", "ll=5", "ll=1"}) {
 		t.Fatalf("after the tail: %v", got)
 	}
-	checkRBShape(t, &c.kids, c.kids.list[0], ref)
+	checkRBShape(t, &c.kids, c.kids.At(0), ref)
 	checkTreeRetainedRB(t, tr)
 }
 
@@ -588,7 +588,7 @@ func TestFailedForeignMoveRestoresRBTopology(t *testing.T) {
 		t.Fatal("the refused node left its origin")
 	}
 	checkTreeRetainedRB(t, src)
-	checkRBShape(t, &src.top, src.top.list[0], &ref.ref)
+	checkRBShape(t, &src.top, src.top.At(0), &ref.ref)
 	four := retainedRBTerm(t, schemaC, "4")
 	mustLink(t, src.insert(nil, four, insertDefault))
 	ref.insert(four)
@@ -596,7 +596,7 @@ func TestFailedForeignMoveRestoresRBTopology(t *testing.T) {
 		t.Fatalf("after the refused move: %v", got)
 	}
 	checkTreeRetainedRB(t, src)
-	checkRBShape(t, &src.top, src.top.list[0], &ref.ref)
+	checkRBShape(t, &src.top, src.top.At(0), &ref.ref)
 }
 
 // TestForeignLeaderNotCompared: rb_insert_node compares only the nodes on its descent. A foreign
@@ -610,7 +610,7 @@ func TestForeignLeaderNotCompared(t *testing.T) {
 		mustLink(t, tr.insert(nil, retainedRBTerm(t, schemaA, v), insertDefault))
 	}
 	mustLink(t, tr.insert(nil, retainedRBTerm(t, schemaB, ""), insertDefault))
-	if tr.top.list[0].schema != schemaB {
+	if tr.top.At(0).schema != schemaB {
 		t.Fatalf("foreign empty value is not the leader: %v", retainedRBValues(&tr.top))
 	}
 	if err := tr.insert(nil, retainedRBTerm(t, schemaA, "c"), insertDefault); err != nil {
@@ -655,7 +655,7 @@ func TestMoveMixedContextSourceTree(t *testing.T) {
 		t.Fatalf("source keeps %d nodes", src.top.len())
 	}
 	checkTreeRetainedRB(t, dst)
-	checkRBShape(t, &dst.top, dst.top.list[0], &dstRef.ref)
+	checkRBShape(t, &dst.top, dst.top.At(0), &dstRef.ref)
 }
 
 // TestMergeSelectsMatchedLeaderTree: after a foreign new minimum leads the destination run, the
@@ -688,7 +688,7 @@ func TestMergeSelectsMatchedLeaderTree(t *testing.T) {
 		t.Fatalf("merged = %v", got)
 	}
 	checkTreeRetainedRB(t, dst)
-	checkRBShape(t, &dst.top, dst.top.list[0], &dstRef.ref)
+	checkRBShape(t, &dst.top, dst.top.At(0), &dstRef.ref)
 }
 
 // TestRemovalUndoRestoresExactTopology: a failed move puts back the exact tree rb_remove changed,

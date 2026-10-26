@@ -56,7 +56,7 @@ func TestStoredHashDeclarationWidthDup(t *testing.T) {
 				t.Fatal("cross-context comparison ignored the declaration-dependent width")
 			}
 			dst := newTree(dstSet)
-			if _, _, err := dst.Dup(src.top.list[0], nil, DupOptions{Recursive: true}); err != nil {
+			if _, _, err := dst.Dup(src.top.At(0), nil, DupOptions{Recursive: true}); err != nil {
 				t.Fatal(err)
 			}
 			leaf := findNode(t, dst, "/m:r/s[1]")

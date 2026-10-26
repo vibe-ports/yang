@@ -388,7 +388,7 @@ func TestAnyExactNodeBudget(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	children := d.any.children.list
+	children := d.any.children.schemaSpan().Collect()
 	if len(children) != 2 || children[0].anyType() != anyValueDataTree || children[1].any.text == nil || *children[1].any.text != "{}" {
 		t.Fatal("node then empty representation")
 	}
@@ -469,7 +469,7 @@ func TestAnyWideComparisonWork(t *testing.T) {
 					c := b.term(sn, fmt.Sprint(j))
 					c.parent = n
 					c.payloadSet = tr.set
-					n.any.children.list = append(n.any.children.list, c)
+					n.any.children.appendNode(c)
 				}
 				n.any.children.work = &dst.work
 				return n
@@ -548,15 +548,15 @@ func TestAnyComparisonFirstMatch(t *testing.T) {
 				}
 				x.parent = left
 				y.parent = right
-				left.any.children.list = append(left.any.children.list, x)
-				right.any.children.list = append(right.any.children.list, y)
+				left.any.children.appendNode(x)
+				right.any.children.appendNode(y)
 			}
 			if !left.Equal(right, CompareOptions{}) {
 				t.Fatal("union/cross-context canonical match")
 			}
 			// The second duplicate is default; first-match lookup must keep choosing
 			// the first nondefault instance, so comparing defaults rejects equality.
-			left.any.children.list[2].flags = FlagDefault
+			left.any.children.At(2).flags = FlagDefault
 			if left.Equal(right, CompareOptions{Defaults: true}) {
 				t.Fatal("duplicate lookup consumed the first match")
 			}
@@ -596,14 +596,14 @@ func TestCompareDateCanonicalCollision(t *testing.T) {
 		for _, value := range values {
 			leaf := b.term(dl, value)
 			leaf.parent = n
-			n.kids.list = append(n.kids.list, leaf)
+			n.kids.appendNode(leaf)
 		}
 		return n
 	}
 	a := makeContainer("2024-01-01+01:00", "2023-12-31+00:00")
 	both := makeContainer("2023-12-31+00:00", "2024-01-01+01:00")
-	if a.kids.list[0].value.Canonical() != a.kids.list[1].value.Canonical() ||
-		types.Equal(a.kids.list[0].value, a.kids.list[1].value) {
+	if a.kids.At(0).value.Canonical() != a.kids.At(1).value.Canonical() ||
+		types.Equal(a.kids.At(0).value, a.kids.At(1).value) {
 		t.Fatal("fixture must have equal canonical text and distinct stored values")
 	}
 	if !a.Equal(both, CompareOptions{FullRecursion: true}) {
@@ -622,8 +622,8 @@ func TestCompareDateCanonicalCollision(t *testing.T) {
 			entry := &Node{schema: list, parent: n}
 			leaf := b.term(key, value)
 			leaf.parent = entry
-			entry.kids.list = []*Node{leaf}
-			n.kids.list = append(n.kids.list, entry)
+			entry.kids.buildSchema([]*Node{leaf})
+			n.kids.appendNode(entry)
 		}
 		return n
 	}
@@ -647,7 +647,7 @@ func TestCompareDateCanonicalCollision(t *testing.T) {
 		for range per {
 			leaf := b.term(dl, value)
 			leaf.parent = payload
-			payload.any.children.list = append(payload.any.children.list, leaf)
+			payload.any.children.appendNode(leaf)
 		}
 	}
 	if payload.any.children.ht != nil {

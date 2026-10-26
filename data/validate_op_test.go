@@ -55,7 +55,7 @@ func TestValidateOpDependencyEffectiveContext(t *testing.T) {
 	if err := oper.ApplyDiff(diff, ApplyDiffOptions{}); err != nil {
 		t.Fatal(err)
 	}
-	if oper.set != a || oper.context() != b || ctxOf(oper.top.list[1]) != a {
+	if oper.set != a || oper.context() != b || ctxOf(oper.top.At(1)) != a {
 		t.Fatal("dependency did not retain A root after new B first root")
 	}
 	op, _, _, err := parseOp(context.Background(), strings.NewReader(`{"opv:alarm":{"level":1}}`), b, FormatJSON, opNotif, nil, Reject)
@@ -149,7 +149,7 @@ func TestValidateOpGoldens(t *testing.T) {
 			}
 			if err == nil {
 				var diags []yang.Diagnostic
-				diags, err = validateOp(ctx, set, tree.top.list[0], oper, typ, Budget{})
+				diags, err = validateOp(ctx, set, tree.top.At(0), oper, typ, Budget{})
 				all = append(all, diags...)
 			}
 			if (err == nil) != (want.Verdict == "valid") {

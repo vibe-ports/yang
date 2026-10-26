@@ -89,9 +89,9 @@ func TestParseRepeatedKeyRunScaling(t *testing.T) {
 		}
 		runtime.ReadMemStats(&after)
 		m := measurement{work: tree.work.Load(), bytes: after.TotalAlloc - before.TotalAlloc}
-		for _, l := range parent.kids.list {
+		for _, l := range parent.kids.SchemaAll() {
 			var keys []string
-			for _, k := range l.kids.list {
+			for _, k := range l.kids.SchemaAll() {
 				keys = append(keys, k.value.Canonical())
 			}
 			m.order = append(m.order, strings.Join(keys, ","))

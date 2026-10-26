@@ -32,11 +32,11 @@ leaf-list s { config false; type enumeration {`)
 		if err != nil {
 			t.Fatal(err)
 		}
-		if len(tr.top.list) != instances {
-			t.Fatalf("got %d instances, want %d", len(tr.top.list), instances)
+		if tr.top.SchemaLen() != instances {
+			t.Fatalf("got %d instances, want %d", tr.top.SchemaLen(), instances)
 		}
 		work := int64(declarations) // one immutable declaration-width pass
-		for _, node := range tr.top.list {
+		for _, node := range tr.top.SchemaAll() {
 			_, _, ok, walked := types.HashLYBWork(schemaHash(sn), node.value)
 			if !ok || walked > 4 {
 				t.Fatalf("compiled enum hash did %d work; want at most four bytes", walked)

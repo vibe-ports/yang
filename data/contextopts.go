@@ -54,7 +54,7 @@ func init() {
 			}
 			root.tree = nil
 		}
-		t.top = siblings{}
+		t.top.reset()
 		return nil
 	}
 	contextopts.DrainDiffDiagnostics = func(v any) []contextopts.ContextDiagnostic {

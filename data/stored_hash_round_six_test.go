@@ -25,7 +25,7 @@ func TestStoredHashKeyInsertionHistory(t *testing.T) {
 				t.Fatal(err)
 			}
 			root := tr.top.first()
-			a := root.kids.list[3]
+			a := root.kids.At(3)
 			if a.hash != 0x9741a396 {
 				t.Fatalf("initial hash %#x", a.hash)
 			}
@@ -56,7 +56,7 @@ func TestStoredHashKeyInsertionHistory(t *testing.T) {
 			if _, err := tr.NewPath(path, "updated", NewPathOptions{Update: true}); err != nil {
 				t.Fatal(err)
 			}
-			if a.kids.list[len(a.kids.list)-1].Value() != "updated" || root.kids.list[4].kids.list[1].Value() != "B" {
+			if a.kids.At(a.kids.SchemaLen()-1).Value() != "updated" || root.kids.At(4).kids.At(1).Value() != "B" {
 				t.Fatal("NewPath updated the wrong registration")
 			}
 			checkRecordOrder(t, &root.kids)
@@ -93,8 +93,8 @@ func exposedCopy(t *testing.T, kind string) (*Tree, *Node, *Node) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	list := root.kids.list[3]
-	return dst, root, list.kids.list[1]
+	list := root.kids.At(3)
+	return dst, root, list.kids.At(1)
 }
 
 func TestStoredHashExposedMutations(t *testing.T) {
@@ -109,7 +109,7 @@ func TestStoredHashExposedMutations(t *testing.T) {
 					t.Fatal(err)
 				}
 			case "list":
-				if _, err := exposed.kids.list[0].SetValue("new"); err != nil {
+				if _, err := exposed.kids.At(0).SetValue("new"); err != nil {
 					t.Fatal(err)
 				}
 			case "union":
@@ -142,7 +142,7 @@ func TestStoredHashExposedMutations(t *testing.T) {
 				t.Fatal(err)
 			}
 			count := 0
-			for _, n := range root.kids.list {
+			for _, n := range root.kids.SchemaAll() {
 				if n.schema.Kind == schema.List {
 					count++
 				}
@@ -164,8 +164,8 @@ func TestStoredHashNonkeyEditWork(t *testing.T) {
 			t.Fatal(err)
 		}
 		root := tr.top.first()
-		list := root.kids.list[3]
-		x := list.kids.list[1]
+		list := root.kids.At(3)
+		x := list.kids.At(1)
 		tr.work.Store(0)
 		tr.work.visits = true
 		tr.work.shifts = true
@@ -231,7 +231,7 @@ func TestStoredHashRegistrationHistoryWork(t *testing.T) {
 			t.Fatal(err)
 		}
 		root := tr.top.first()
-		a := root.kids.list[3]
+		a := root.kids.At(3)
 		tr.work.Store(0)
 		tr.work.visits = true
 		tr.work.shifts = true
@@ -249,7 +249,7 @@ func TestStoredHashRegistrationHistoryWork(t *testing.T) {
 		}
 		// Native removes one old registration on each value replacement. The next
 		// remaining A registration was inserted after B, so B wins when A returns.
-		key := a.kids.list[n]
+		key := a.kids.At(n)
 		if _, err := key.SetValue(""); err != nil {
 			t.Fatal(err)
 		}

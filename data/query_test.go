@@ -69,7 +69,7 @@ func TestFindXPath(t *testing.T) {
 		{true, xpath.Boolean, xpath.Result{Type: xpath.Boolean, Bool: true}},
 		{true, xpath.String, xpath.Result{Type: xpath.String, Str: "2"}},
 		{true, xpath.Number, xpath.Result{Type: xpath.Number, Num: 2}},
-		{false, xpath.NodeSet, xpath.Result{Type: xpath.NodeSet, Nodes: []xpath.Node{xn{c.kids.list[0], f.set}}}},
+		{false, xpath.NodeSet, xpath.Result{Type: xpath.NodeSet, Nodes: []xpath.Node{xn{c.kids.At(0), f.set}}}},
 	} {
 		src := "/b:c/ll"
 		r, err := tr.evalXPath4(&logger{set: f.set}, nil, src, jsonNS{set: f.set}, nil, tc.single, tc.to)

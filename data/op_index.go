@@ -126,11 +126,10 @@ func subtreeEquivalenceKey(n *Node, work *workCounter) (string, bool) {
 		if current.shallow || c.schema != nil && isAny(c.schema) {
 			continue
 		}
-		for i := len(c.kids.opq) - 1; i >= 0; i-- {
-			stack = append(stack, item{n: c.kids.opq[i]})
+		for _, child := range c.kids.opaqueSpan().Reverse() {
+			stack = append(stack, item{n: child})
 		}
-		for i := len(c.kids.list) - 1; i >= 0; i-- {
-			child := c.kids.list[i]
+		for _, child := range c.kids.schemaSpan().Reverse() {
 			// The digest is built independently for the two operands, whose
 			// equivalent schema nodes may have different ordering/config flags.
 			// Any list or leaf-list can be looked up on one side even when the
@@ -213,11 +212,11 @@ func cloneChildOrder(s *siblings) *childOrder {
 		return nil
 	}
 	o := newChildOrder()
-	for _, n := range s.list {
+	for _, n := range s.SchemaAll() {
 		h := o.seq.InsertBefore(nil, n)
 		o.register(n, h)
 	}
-	for _, n := range s.opq {
+	for _, n := range s.opaqueAll() {
 		h := o.seq.InsertBefore(nil, n)
 		o.register(n, h)
 	}
@@ -263,7 +262,7 @@ func (s *siblings) orderUnregister(n *Node) *opidx.Handle[*Node] {
 func (s *siblings) orderBuild(t *Tree) {
 	s.touch()
 	o := newChildOrder()
-	for _, n := range s.list {
+	for _, n := range s.SchemaAll() {
 		t.work.Add(1)
 		h := o.seq.InsertBefore(nil, n)
 		s.order = o
@@ -280,7 +279,7 @@ func (s *siblings) orderBuild(t *Tree) {
 			d.rb++
 		}
 	}
-	for _, n := range s.opq {
+	for _, n := range s.opaqueAll() {
 		t.work.Add(1)
 		h := o.seq.InsertBefore(nil, n)
 		s.order = o
@@ -339,7 +338,7 @@ func (s *siblings) orderAddOpaque(t *Tree, parent, n *Node, at int) {
 		s.orderBuild(t)
 		return
 	}
-	h := s.order.seq.InsertBefore(s.order.seq.Select(len(s.list)+at), n)
+	h := s.order.seq.InsertBefore(s.order.seq.Select(s.SchemaLen()+at), n)
 	s.orderRegister(n, h)
 }
 
@@ -350,22 +349,22 @@ func schemaOf(n *Node) *schema.Node {
 	return n.schema
 }
 
-func (s *siblings) orderReorder(run []*Node) {
-	if s.order == nil || len(run) < 2 {
+func (s *siblings) orderReorder(run siblingSpan) {
+	if s.order == nil || run.Len() < 2 {
 		return
 	}
 	start := s.order.seq.Len()
-	for _, n := range run {
+	for _, n := range run.All() {
 		if rank, ok := s.order.seq.Rank(s.order.byNode[n]); ok {
 			start = min(start, rank)
 		}
 	}
-	anchor := s.order.seq.Select(start + len(run))
+	anchor := s.order.seq.Select(start + run.Len())
 	// Establish the desired suffix backwards. Moving one handle at a time avoids
 	// allocating a run-sized side table and leaves every other occurrence tree
 	// valid because their relative order never changes.
-	for i := len(run) - 1; i >= 0; i-- {
-		n := run[i]
+	for i := run.Len() - 1; i >= 0; i-- {
+		n := run.At(i)
 		h := s.orderUnregister(n)
 		if h == nil || !s.order.seq.MoveBefore(h, anchor) {
 			continue
@@ -416,11 +415,11 @@ func (s *siblings) orderRemoveOpaque(n *Node) {
 
 func (s *siblings) orderPosition(n *Node) int {
 	if s.order == nil {
-		if at := indexFromEnd(s.work, s.list, n); at >= 0 {
+		if at := s.schemaSpan().indexFromEnd(s.work, n); at >= 0 {
 			return at
 		}
-		if at := indexFromEnd(s.work, s.opq, n); at >= 0 {
-			return len(s.list) + at
+		if at := s.opaqueSpan().indexFromEnd(s.work, n); at >= 0 {
+			return s.SchemaLen() + at
 		}
 		return -1
 	}
@@ -437,10 +436,10 @@ func (s *siblings) documentFirst(sn *schema.Node) *Node {
 		// lyd_first_sibling/LYD_LIST_FOR_INST still sees that instance, so keep
 		// this bounded fallback without walking ordinary unindexed sibling sets
 		// for an absent schema.
-		if s.len() <= 1 && len(s.list) == 1 {
+		if s.len() <= 1 && s.SchemaLen() == 1 {
 			s.visit()
-			if s.list[0].schema == sn {
-				return s.list[0]
+			if s.At(0).schema == sn {
+				return s.At(0)
 			}
 		}
 		// Only operation children and explicitly unordered copies need this
@@ -458,7 +457,7 @@ func (s *siblings) documentFirst(sn *schema.Node) *Node {
 func (s *siblings) allInstances(sn *schema.Node) iter.Seq[*Node] {
 	return func(yield func(*Node) bool) {
 		if s.order == nil {
-			for _, n := range s.list {
+			for _, n := range s.SchemaAll() {
 				if s.work != nil {
 					s.work.Add(1)
 				}
@@ -483,21 +482,21 @@ func (s *siblings) walkFrom(n *Node) []*Node {
 	if s.order == nil {
 		if s.len() <= 1 {
 			s.visit()
-			if len(s.list) == 1 && s.list[0] == n {
-				return s.list
+			if s.SchemaLen() == 1 && s.At(0) == n {
+				return s.schemaSpan().Collect()
 			}
 			return nil
 		}
-		at := indexFromEnd(s.work, s.list, n)
+		at := s.schemaSpan().indexFromEnd(s.work, n)
 		if at < 0 {
 			return nil
 		}
 		var out []*Node
-		for ; at < len(s.list) && s.list[at].schema == n.schema; at++ {
+		for ; at < s.SchemaLen() && s.At(at).schema == n.schema; at++ {
 			if s.work != nil {
 				s.work.Add(1)
 			}
-			out = append(out, s.list[at])
+			out = append(out, s.At(at))
 		}
 		return out
 	}
@@ -544,8 +543,8 @@ func (s *siblings) contiguousBounds(n *Node) (lo, hi int, ok bool) {
 
 func (s *siblings) opaqueLast(name, namespace string) *Node {
 	if s.order == nil {
-		for i := len(s.opq) - 1; i >= 0; i-- {
-			n := s.opq[i]
+		for i := s.OpaqueLen() - 1; i >= 0; i-- {
+			n := s.opaqueAt(i)
 			if n.opaq.Name == name && n.opaq.ModuleNS == namespace {
 				return n
 			}
@@ -561,7 +560,7 @@ func (s *siblings) opaqueLast(name, namespace string) *Node {
 
 func (s *siblings) opaqueFirst(name string) *Node {
 	if s.order == nil {
-		for _, n := range s.opq {
+		for _, n := range s.opaqueAll() {
 			if n.opaq.Name == name {
 				return n
 			}

@@ -53,11 +53,11 @@ func TestParseDriver(t *testing.T) {
 	if err != nil || len(diags) != 0 || validated != 1 {
 		t.Fatalf("%v %v validated %d", err, diags, validated)
 	}
-	c := tr.top.list[0]
+	c := tr.top.At(0)
 	// an explicit child clears the NP container's default; c's close validated its children
 	// (lyd_validate_new clears their FlagNew), the top level is left to the (replaced) validation
-	if c.flags != FlagNew || c.kids.list[0].flags != 0 {
-		t.Fatalf("flags %x %x", c.flags, c.kids.list[0].flags)
+	if c.flags != FlagNew || c.kids.At(0).flags != 0 {
+		t.Fatalf("flags %x %x", c.flags, c.kids.At(0).flags)
 	}
 	_, _, _ = parseWith(context.Background(), strings.NewReader(""), f.set, parseOpts{ParseOptions: ParseOptions{ParseOnly: true}}, ok, setup)
 	if validated != 1 {
@@ -237,7 +237,7 @@ func TestParserHelpers(t *testing.T) {
 		t.Fatalf("opaque: %v", err)
 	}
 	mustLink(t, lc.nodeInsert(c, nil, o))
-	if c.kids.opq[len(c.kids.opq)-1] != o {
+	if c.kids.opaqueAt(c.kids.OpaqueLen()-1) != o {
 		t.Fatal("opaque node not last")
 	}
 
@@ -318,7 +318,7 @@ func TestOpaqueAnchor(t *testing.T) {
 	mustLink(t, lc.nodeInsert(c, nil, x1))
 	mustLink(t, lc.nodeInsert(c, nil, y))
 	mustLink(t, lc.nodeInsert(c, x1, x2))
-	if !reflect.DeepEqual(c.kids.opq, []*Node{x1, x2, y}) {
+	if !reflect.DeepEqual(c.kids.opaqueSpan().Collect(), []*Node{x1, x2, y}) {
 		t.Fatalf("%v", names(c.Children()))
 	}
 }

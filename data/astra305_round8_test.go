@@ -18,7 +18,7 @@ func round8CopiedRPCChildren(t *testing.T, set *schema.Set) (*Tree, *Tree, *Node
 	t.Helper()
 	_, parsed := opIndexParseRPC(t, set, `{"m:r":{"l":[{"v":"a"},{"v":"b"}]}}`)
 	src := newTree(set)
-	first, _, err := src.DupSiblings(parsed.kids.list[0], nil, DupOptions{Recursive: true})
+	first, _, err := src.DupSiblings(parsed.kids.At(0), nil, DupOptions{Recursive: true})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -74,7 +74,7 @@ func TestMergeDistinctKeylessRPCListsWithinDefaultBudget(t *testing.T) {
 	if err := dst.Merge(src); err != nil {
 		t.Fatal(err)
 	}
-	if got := len(opidxSchemaNodes(op, src.top.first().kids.list[0].schema)); got != 4096 {
+	if got := len(opidxSchemaNodes(op, src.top.first().kids.At(0).schema)); got != 4096 {
 		t.Fatalf("merged keyless instances = %d, want 4096", got)
 	}
 	opidxAssertTreeInvariant(t, dst)

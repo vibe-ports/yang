@@ -435,7 +435,7 @@ func TestLeafrefForms(t *testing.T) {
 	ref := newTerm(lk, v)
 	mustLink(t, vc.t.insert(c, ref, insertDefault))
 	got, err := vc.deref(xn{ref, f.set})
-	if err != nil || len(got) != 1 || got[0].(xn).n != inst.kids.list[0] {
+	if err != nil || len(got) != 1 || got[0].(xn).n != inst.kids.At(0) {
 		t.Fatalf("deref leafref: %v %v", got, err)
 	}
 	got, err = vc.deref(xn{nodes["iid=/u:c/t[.='5']"], f.set})

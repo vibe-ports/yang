@@ -540,13 +540,13 @@ func TestSortedSetValueRetainedRBTopologyBounded(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	member := tr.top.list[1]
+	member := tr.top.At(1)
 	for i := range 256 {
 		if changed, err := member.SetValue(fmt.Sprint(i + 2)); err != nil || !changed {
 			t.Fatalf("SetValue %d: changed=%t error=%v", i, changed, err)
 		}
 	}
-	group := tr.top.rbGroups[tr.top.list[0]]
+	group := tr.top.rbGroups[tr.top.At(0)]
 	order := tr.top.rbOrders[group]
 	checkRetainedRBTopology(t, order, 2)
 	if retainedRBNodeCount(order.root) != 2 {
@@ -578,7 +578,7 @@ func TestRetainedRBRemoveRebalances(t *testing.T) {
 		}
 		nodes[i] = n
 	}
-	group := tr.top.rbGroups[tr.top.list[0]]
+	group := tr.top.rbGroups[tr.top.At(0)]
 	order := tr.top.rbOrders[group]
 	checkRetainedRBTopology(t, order, count)
 	for removed := range count - 1 {
@@ -605,7 +605,7 @@ func removedSortedNodeWeak(t *testing.T, bulk bool) (*Tree, weak.Pointer[Node]) 
 			t.Fatal(err)
 		}
 	}
-	victim := tr.top.list[1]
+	victim := tr.top.At(1)
 	observed := weak.Make(victim)
 	if bulk {
 		if err := tr.unlinkAll([]*Node{victim}); err != nil {

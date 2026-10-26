@@ -168,11 +168,8 @@ func (n *Node) allAny() iter.Seq[*Node] {
 			if d.any != nil {
 				sib = &d.any.children
 			}
-			for i := len(sib.opq) - 1; i >= 0; i-- {
-				stack = append(stack, sib.opq[i])
-			}
-			for i := len(sib.list) - 1; i >= 0; i-- {
-				stack = append(stack, sib.list[i])
+			for _, child := range sib.reverseAll() {
+				stack = append(stack, child)
 			}
 		}
 	}
@@ -346,7 +343,7 @@ func (n *Node) takeAnyChildren(t *Tree, child *Node) {
 	if sib := child.siblingsOf(); child.parent == nil && sib != nil && sib.first() == child {
 		// The usual case is a complete owned forest. Move its sibling storage and
 		// sorting state in one operation, leaving no storage shared with its tree.
-		n.any.children, *sib = *sib, siblings{}
+		n.any.children.transferFrom(sib)
 	} else {
 		// Remove a suffix from the end so wide input does not repeatedly shift
 		// its remaining siblings. Preserve their original order in the payload.
@@ -354,11 +351,7 @@ func (n *Node) takeAnyChildren(t *Tree, child *Node) {
 			unlink(nodes[i])
 		}
 		for _, c := range nodes {
-			if c.schema == nil {
-				n.any.children.opq = append(n.any.children.opq, c)
-			} else {
-				n.any.children.list = append(n.any.children.list, c)
-			}
+			n.any.children.appendNode(c)
 		}
 	}
 	bindSubtreeWork(n, &t.work)
@@ -405,11 +398,7 @@ func (n *Node) copyAnyValue(w *anyWork, child *Node, value *string, hints types.
 	}
 	src := &Node{schema: n.schema, any: &anyValue{text: value, hints: hints}, payloadSet: set}
 	for _, c := range anyFollowing(child) {
-		if c.schema == nil {
-			src.any.children.opq = append(src.any.children.opq, c)
-		} else {
-			src.any.children.list = append(src.any.children.list, c)
-		}
+		src.any.children.appendNode(c)
 	}
 	d, err := newTree(set).dupWork(src, nil, false, insertDefault, 0, set, w)
 	if err != nil {

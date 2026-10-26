@@ -235,8 +235,8 @@ func TestParseValidates(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	cn := tr.top.list[0]
-	if cn.kids.len() != 1 || cn.kids.list[0].value.Canonical() != "dv" || cn.flags&FlagDefault == 0 {
+	cn := tr.top.At(0)
+	if cn.kids.len() != 1 || cn.kids.At(0).value.Canonical() != "dv" || cn.flags&FlagDefault == 0 {
 		t.Fatalf("implicit default: %d children, flags %x", cn.kids.len(), cn.flags)
 	}
 	o.Budget.MaxNodes = 1

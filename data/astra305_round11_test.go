@@ -32,7 +32,7 @@ func TestMergeKeylessChildrenTableUsesTargetFirstComparison(t *testing.T) {
 		t.Fatal(err)
 	}
 	var outer int
-	for _, child := range op.kids.list {
+	for _, child := range op.kids.SchemaAll() {
 		if child.Name() == "outer" {
 			outer++
 		}
@@ -79,7 +79,7 @@ func TestParseDistinctDatastoreLeafListsScaling(t *testing.T) {
 		if root == nil {
 			t.Fatal("parsed tree has no root")
 		}
-		if got := len(root.kids.list); got != count {
+		if got := root.kids.SchemaLen(); got != count {
 			t.Fatalf("parsed children = %d, want %d", got, count)
 		}
 		return lc.tree.work.Load()
@@ -106,7 +106,7 @@ func TestKeyedInstanceIdentifierProbeBudgetPropagates(t *testing.T) {
 	}
 	root := tr.top.first()
 	var ref, unionRef *Node
-	for _, child := range root.kids.list {
+	for _, child := range root.kids.SchemaAll() {
 		switch child.Name() {
 		case "ref":
 			ref = child

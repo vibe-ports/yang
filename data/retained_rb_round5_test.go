@@ -44,8 +44,8 @@ func retainedRBXML(element string, values ...int) string {
 }
 
 func retainedRBValues(sib *siblings) []string {
-	out := make([]string, 0, len(sib.list))
-	for _, n := range sib.list {
+	out := make([]string, 0, sib.SchemaLen())
+	for _, n := range sib.SchemaAll() {
 		if n.schema != nil && n.schema.Kind == schema.LeafList {
 			out = append(out, n.Value())
 		}
@@ -176,7 +176,7 @@ func checkTreeRetainedRB(t *testing.T, tr *Tree) {
 				t.Fatalf("retained RB group %p has no physical leader", group)
 			}
 			physical := make([]*Node, 0, len(order.nodes))
-			for _, n := range sib.list {
+			for _, n := range sib.SchemaAll() {
 				if n.inRB && n.rbGroup == group {
 					physical = append(physical, n)
 				}
@@ -216,8 +216,8 @@ func checkTreeRetainedRB(t *testing.T, tr *Tree) {
 			count, _ := walk(order.root, nil)
 			// A node can keep its node in an earlier tree after its own run got a new one
 			// (dual membership, as libyang's rb nodes): it must still be a linked RB member.
-			linked := make(map[*Node]bool, len(sib.list))
-			for _, n := range sib.list {
+			linked := make(map[*Node]bool, sib.SchemaLen())
+			for _, n := range sib.SchemaAll() {
 				linked[n] = true
 			}
 			own := make([]*Node, 0, len(inorder))
@@ -248,7 +248,7 @@ func checkTreeRetainedRB(t *testing.T, tr *Tree) {
 				t.Fatalf("RB leader %p has no retained topology", leader)
 			}
 		}
-		for _, n := range sib.list {
+		for _, n := range sib.SchemaAll() {
 			checkSiblings(&n.kids)
 			if n.any != nil {
 				checkSiblings(&n.any.children)
@@ -313,14 +313,14 @@ func TestRetainedRBRandomMixedContextMutations(t *testing.T) {
 				t.Fatalf("step %d insert: %v", step, err)
 			}
 		case 2:
-			if len(tr.top.list) > 2 {
-				if err := tr.top.list[rng.IntN(len(tr.top.list))].Remove(); err != nil {
+			if tr.top.SchemaLen() > 2 {
+				if err := tr.top.At(rng.IntN(tr.top.SchemaLen())).Remove(); err != nil {
 					t.Fatalf("step %d remove: %v", step, err)
 				}
 			}
 		case 3:
-			if len(tr.top.list) > 0 {
-				n := tr.top.list[rng.IntN(len(tr.top.list))]
+			if tr.top.SchemaLen() > 0 {
+				n := tr.top.At(rng.IntN(tr.top.SchemaLen()))
 				if err := n.Unlink(); err != nil {
 					t.Fatalf("step %d unlink: %v", step, err)
 				}
@@ -329,8 +329,8 @@ func TestRetainedRBRandomMixedContextMutations(t *testing.T) {
 				}
 			}
 		case 4:
-			if len(tr.top.list) > 0 {
-				n := tr.top.list[rng.IntN(len(tr.top.list))]
+			if tr.top.SchemaLen() > 0 {
+				n := tr.top.At(rng.IntN(tr.top.SchemaLen()))
 				if _, err := n.SetValue(fmt.Sprint(rng.IntN(512))); err != nil {
 					t.Fatalf("step %d SetValue: %v", step, err)
 				}
@@ -366,8 +366,8 @@ func TestRetainedRBRandomMixedContextMutations(t *testing.T) {
 				t.Fatalf("step %d dup siblings: %v", step, err)
 			}
 		case 7:
-			if len(tr.top.list) > 128 {
-				remove := slices.Clone(tr.top.list[:len(tr.top.list)/2])
+			if tr.top.SchemaLen() > 128 {
+				remove := slices.Clone(tr.top.schemaSpan().Collect()[:tr.top.SchemaLen()/2])
 				if err := tr.unlinkAll(remove); err != nil {
 					t.Fatalf("step %d unlinkAll: %v", step, err)
 				}

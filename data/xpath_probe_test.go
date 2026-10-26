@@ -115,7 +115,7 @@ func TestXPathProbeRegistrationOrder(t *testing.T) {
 	}
 	first := findNode(t, tr, "/m:r/l[k='a']")
 	for _, value := range []string{"b", "a"} {
-		if _, err := first.kids.list[0].SetValue(value); err != nil {
+		if _, err := first.kids.At(0).SetValue(value); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -129,7 +129,7 @@ func TestXPathProbeRegistrationOrder(t *testing.T) {
 	if _, err := tr.NewPath("/m:r/l[k='a']/v", "updated", NewPathOptions{Update: true}); err != nil {
 		t.Fatal(err)
 	}
-	if first.kids.list[1].Value() != "first" || findNode(t, tr, "/m:r/l[k='a']/v").Value() != "updated" {
+	if first.kids.At(1).Value() != "first" || findNode(t, tr, "/m:r/l[k='a']/v").Value() != "updated" {
 		t.Fatal("NewPath updated the wrong duplicate")
 	}
 }
@@ -192,7 +192,7 @@ func TestLeafrefProbeFailureIsMemberValidation(t *testing.T) {
 	if err != nil || len(diags) != 0 || tr == nil {
 		t.Fatalf("union fallback: tree=%t diagnostics=%v error=%v", tr != nil, diags, err)
 	}
-	fallback := tr.top.list[1].kids.list[1]
+	fallback := tr.top.At(1).kids.At(1)
 	_, member := fallback.value.Union().Member()
 	if got := fallback.Value(); got != value || member != 1 {
 		t.Fatalf("fallback value = %q, selected member = %d", got, member)
@@ -330,7 +330,7 @@ func TestLinkLeafrefsProbeFailureSkipsLink(t *testing.T) {
 			t.Fatalf("diagnostic = %#v", d)
 		}
 	}
-	for n := range tr.top.list[1].All() {
+	for n := range tr.top.At(1).All() {
 		if l, tg := n.LeafrefLinks(); len(l)+len(tg) != 0 {
 			t.Fatalf("%s linked: %v %v", n.Path(), l, tg)
 		}

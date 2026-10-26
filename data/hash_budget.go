@@ -94,10 +94,10 @@ func (w *workCounter) termHashBound(parent *Node, sn *schema.Node, value types.V
 		switch {
 		case i == at:
 			current = sn
-		case i < len(parent.kids.list) && i < at:
-			current = parent.kids.list[i].schema
-		case i > at && i-1 < len(parent.kids.list):
-			current = parent.kids.list[i-1].schema
+		case i < parent.kids.SchemaLen() && i < at:
+			current = parent.kids.At(i).schema
+		case i > at && i-1 < parent.kids.SchemaLen():
+			current = parent.kids.At(i - 1).schema
 		}
 		if current != key {
 			return 0, nil
@@ -115,7 +115,7 @@ func (w *workCounter) termHashBound(parent *Node, sn *schema.Node, value types.V
 		start = 0
 	}
 	var amount uint64
-	for i := start; i <= len(parent.kids.list); i++ {
+	for i := start; i <= parent.kids.SchemaLen(); i++ {
 		w.Add(1)
 		if err := w.chargeHash(1); err != nil {
 			return 0, err
@@ -128,10 +128,10 @@ func (w *workCounter) termHashBound(parent *Node, sn *schema.Node, value types.V
 		if i > at {
 			old--
 		}
-		if !parent.kids.list[old].isKey() {
+		if !parent.kids.At(old).isKey() {
 			break
 		}
-		amount = addHashBound(amount, types.HashLYBWorkBound(parent.kids.list[old].value))
+		amount = addHashBound(amount, types.HashLYBWorkBound(parent.kids.At(old).value))
 	}
 	if ps := parent.siblingsOf(); ps != nil && ps.ht != nil {
 		amount = addHashBound(amount, indexInsertedBound(parent, &Node{schema: sn, value: value}, at, w))
@@ -184,7 +184,7 @@ func (w *workCounter) checkChangedHash(n *Node, value types.Value) (uint64, erro
 		}
 	}
 	var amount uint64
-	for _, key := range n.parent.kids.list {
+	for _, key := range n.parent.kids.SchemaAll() {
 		w.Add(1)
 		if err := w.chargeHash(1); err != nil {
 			return 0, err
@@ -241,7 +241,7 @@ func (w *workCounter) checkRefreshHash(n *Node) error {
 		return nil
 	}
 	var amount uint64
-	for _, key := range n.kids.list {
+	for _, key := range n.kids.SchemaAll() {
 		w.Add(1)
 		if err := w.chargeHash(1); err != nil {
 			return err

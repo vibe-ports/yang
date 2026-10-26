@@ -45,21 +45,21 @@ func TestOpIndexSortPublishesSequenceBeforeMarkRB(t *testing.T) {
 		t.Fatal(err)
 	}
 	_, source := opIndexParse(t, tr.set, `{"m:r":{"v":[5,7]}}`, opRPC, Reject)
-	if _, _, err := tr.DupSiblings(source.kids.list[0], op, DupOptions{}); err != nil {
+	if _, _, err := tr.DupSiblings(source.kids.At(0), op, DupOptions{}); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := tr.NewTerm(op, "v", "2", NewOptions{}); err != nil {
 		t.Fatal(err)
 	}
 	var got []string
-	for _, n := range op.kids.list {
+	for _, n := range op.kids.SchemaAll() {
 		got = append(got, n.value.Canonical())
 	}
 	if want := []string{"1", "2", "3", "4", "5", "7"}; !slices.Equal(got, want) {
 		t.Fatalf("values = %v, want %v", got, want)
 	}
-	if ordered := opidxRound4Sequence(&op.kids); !slices.Equal(ordered, op.kids.list) {
-		t.Fatalf("ordered sequence differs from physical children: %v vs %v", ordered, op.kids.list)
+	if ordered := opidxRound4Sequence(&op.kids); !slices.Equal(ordered, op.kids.schemaSpan().Collect()) {
+		t.Fatalf("ordered sequence differs from physical children: %v vs %v", ordered, op.kids.schemaSpan().Collect())
 	}
 }
 
@@ -71,28 +71,28 @@ func TestOpIndexNotificationSpliceMaintainsExistingOrder(t *testing.T) {
   notification n { leaf-list v { type uint32; } } }`)
 	dst, notif := opIndexParse(t, set, `{"m:n":{"v":[1,3],"unknown":"opaque"}}`, opNotif, Opaque)
 	src, _ := opIndexParse(t, set, `{"m:n":{"v":[5,7]}}`, opNotif, Opaque)
-	if notif.kids.order == nil || len(notif.kids.opq) != 1 {
+	if notif.kids.order == nil || notif.kids.OpaqueLen() != 1 {
 		t.Fatal("fixture needs the ordered index created by an opaque notification child")
 	}
 	// Notification terms compile as user-ordered. Retained foreign children can
 	// nevertheless carry a system-ordered schema at this level; model that
 	// otherwise unreachable parent/schema combination without changing the
 	// splice and value-mutation paths under test.
-	vs := notif.kids.list[0].schema
+	vs := notif.kids.At(0).schema
 	vs.UserOrdered = false
-	for _, n := range notif.kids.list {
+	for _, n := range notif.kids.SchemaAll() {
 		n.inRB = true
 	}
-	markRB(&notif.kids, notif.kids.list[0])
+	markRB(&notif.kids, notif.kids.At(0))
 	// the run's retained native topology (#242), as lyds_additionally_create_rb_tree builds it
-	dst.buildRBOrder(&notif.kids, notif.kids.rbGroups[notif.kids.list[0]], notif.kids.list)
+	dst.buildRBOrder(&notif.kids, notif.kids.rbGroups[notif.kids.At(0)], notif.kids.schemaSpan().Collect())
 	if err := dst.Merge(src); err != nil {
 		t.Fatal(err)
 	}
-	entry := notif.kids.order.entries[notif.kids.list[0].schema]
-	if entry == nil || entry.count != 4 || !slices.Equal(opidxRound4Sequence(&notif.kids), slices.Concat(notif.kids.list, notif.kids.opq)) {
+	entry := notif.kids.order.entries[notif.kids.At(0).schema]
+	if entry == nil || entry.count != 4 || !slices.Equal(opidxRound4Sequence(&notif.kids), slices.Concat(notif.kids.schemaSpan().Collect(), notif.kids.opaqueSpan().Collect())) {
 		t.Fatalf("splice left a stale notification index: entry=%+v sequence=%v children=%v",
-			entry, opidxRound4Sequence(&notif.kids), slices.Concat(notif.kids.list, notif.kids.opq))
+			entry, opidxRound4Sequence(&notif.kids), slices.Concat(notif.kids.schemaSpan().Collect(), notif.kids.opaqueSpan().Collect()))
 	}
 	one, err := dst.Find("/m:n/v[.='1']")
 	if err != nil || one == nil {
@@ -109,13 +109,13 @@ func TestOpIndexNotificationSpliceMaintainsExistingOrder(t *testing.T) {
 		t.Fatalf("changeTerm: %s", rc)
 	}
 	var got []string
-	for _, n := range notif.kids.list {
+	for _, n := range notif.kids.SchemaAll() {
 		got = append(got, n.value.Canonical())
 	}
 	if want := []string{"5", "6", "7"}; !slices.Equal(got, want) {
 		t.Fatalf("values = %v, want %v", got, want)
 	}
-	if ordered := opidxRound4Sequence(&notif.kids); !slices.Equal(ordered, slices.Concat(notif.kids.list, notif.kids.opq)) {
+	if ordered := opidxRound4Sequence(&notif.kids); !slices.Equal(ordered, slices.Concat(notif.kids.schemaSpan().Collect(), notif.kids.opaqueSpan().Collect())) {
 		t.Fatalf("ordered sequence is stale after splice and edits")
 	}
 }
@@ -140,7 +140,7 @@ func TestOpIndexKeylessDigestIgnoresChoiceCaseAncestry(t *testing.T) {
 	dst, op := opIndexParse(t, a, `{"m:r":{"outer":[{"x":1}]}}`, opRPC, Reject)
 	src, srcOp := opIndexParse(t, a, `{"m:r":{}}`, opRPC, Reject)
 	_, foreignOp := opIndexParse(t, b, `{"m:r":{"outer":[{"x":1}]}}`, opRPC, Reject)
-	outer := foreignOp.kids.list[0]
+	outer := foreignOp.kids.At(0)
 	if err := outer.Unlink(); err != nil {
 		t.Fatal(err)
 	}
@@ -148,7 +148,7 @@ func TestOpIndexKeylessDigestIgnoresChoiceCaseAncestry(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	candidate := op.kids.list[0]
+	candidate := op.kids.At(0)
 	left, okLeft := subtreeEquivalenceKey(candidate, &dst.work)
 	right, okRight := subtreeEquivalenceKey(outer, &dst.work)
 	if !okLeft || !okRight || left != right {

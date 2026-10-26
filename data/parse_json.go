@@ -103,7 +103,7 @@ func newJSONParser(lc *lydCtx, in []byte) (p *jsonParser, pop func(), err error)
 	if lc.parent != nil {
 		// the parent's existing opaque children are found by name as libyang's sibling search
 		// finds them: the first one of each name and module
-		for _, n := range lc.parent.kids.opq {
+		for _, n := range lc.parent.kids.opaqueAll() {
 			if k := (opqKey{lc.parent, n.opaq.Name, n.opaq.ModuleNS}); p.opqFirst[k] == nil {
 				p.opqFirst[k] = n
 			}
@@ -402,7 +402,7 @@ func (p *jsonParser) metadataFinish(parent *Node) (result error) {
 	}
 	var ats []*Node
 	byName := map[string][]*Node{} // opaque siblings by name, in order
-	for _, n := range sib.opq {
+	for _, n := range sib.opaqueAll() {
 		lc.tree.work.Add(1)
 		byName[n.opaq.Name] = append(byName[n.opaq.Name], n)
 		if strings.HasPrefix(n.opaq.Name, "@") {
@@ -412,8 +412,8 @@ func (p *jsonParser) metadataFinish(parent *Node) (result error) {
 	if len(ats) == 0 {
 		return nil
 	}
-	runs := map[*schema.Node][]*Node{} // the instances of a schema node in sibling order
-	firstList := map[string]int{}      // index of the first list-hinted opaque node of a name, -1: none
+	runs := map[*schema.Node]siblingSpan{} // the instances of a schema node in sibling order
+	firstList := map[string]int{}          // index of the first list-hinted opaque node of a name, -1: none
 	var done []*Node
 	// libyang frees each one when it is attached; none of them is a target of another (their
 	// names start with '@'), except for a "@@name" member
@@ -435,7 +435,7 @@ func (p *jsonParser) metadataFinish(parent *Node) (result error) {
 		// found nothing, except for the top-level "@", whose error it logs once per schema sibling
 		// (D-0060: once here)
 		var sn *schema.Node
-		if len(sib.list) > 0 {
+		if sib.SchemaLen() > 0 {
 			name, prefix, _, isAttr := parseName(at.opaq.Name)
 			sn, _ = p.getSnode(isAttr, prefix, name, parent)
 		}
@@ -444,25 +444,25 @@ func (p *jsonParser) metadataFinish(parent *Node) (result error) {
 			if opChild(sn) || sib.schemaUnordered {
 				// Anchors may split operation children and unordered copies:
 				// libyang counts every instance in sibling order
-				r = slices.Clone(sib.opInst(sn))
-				lc.tree.work.Add(int64(len(r)))
+				r = spanOf(slices.Clone(sib.opInst(sn)))
+				lc.tree.work.Add(int64(r.Len()))
 			} else if i := lc.tree.schemaIndex(sib, sn); i >= 0 {
 				// Non-operation metadata numbering uses a logarithmic start lookup,
 				// then this counted run walk, cached once per schema.
 				j := i
-				for ; j < len(sib.list) && sib.list[j].schema == sn; j++ {
+				for ; j < sib.SchemaLen() && sib.At(j).schema == sn; j++ {
 					lc.tree.work.Add(1)
 				}
-				r = sib.list[i:j:j]
+				r = sib.schemaSpan().Slice(i, j)
 			}
 			runs[sn] = r
 		}
 		var n *Node
-		if instance <= len(r) {
-			n = r[instance-1]
+		if instance <= r.Len() {
+			n = r.At(instance - 1)
 		} else {
 			// then the opaque siblings of the name; a list-hinted one before the instance fails
-			m, same := instance-len(r), byName[at.opaq.Name[1:]]
+			m, same := instance-r.Len(), byName[at.opaq.Name[1:]]
 			fl, ok := firstList[at.opaq.Name[1:]]
 			if !ok {
 				fl = slices.IndexFunc(same, func(o *Node) bool { return o.opaq.Hints&hintList != 0 })
@@ -557,10 +557,10 @@ func sibAt(sib *siblings, i int) *Node {
 		return nil
 	}
 	switch {
-	case i < len(sib.list):
-		return sib.list[i]
-	case i-len(sib.list) < len(sib.opq):
-		return sib.opq[i-len(sib.list)]
+	case i < sib.SchemaLen():
+		return sib.At(i)
+	case i-sib.SchemaLen() < sib.OpaqueLen():
+		return sib.opaqueAt(i - sib.SchemaLen())
 	}
 	return nil
 }
@@ -614,21 +614,21 @@ func (p *jsonParser) metaAttr(node *Node, idx int) (rc error) {
 			// coupling, and only the representation error names it, so it is located on that
 			// error path alone (pastRun).
 			lo, hi, ok := sib.contiguousBounds(node)
-			var run []*Node
+			var run siblingSpan
 			if ok {
-				run = sib.list[lo:hi]
+				run = sib.schemaSpan().Slice(lo, hi)
 			} else {
 				// A stale or foreign ordered handle is not expected here, but it
 				// must not turn untrusted input into a panic. walkFrom is counted.
-				run = sib.walkFrom(node)
+				run = spanOf(sib.walkFrom(node))
 			}
 			idx = 0
 			next = func(i int) *Node {
-				if i < len(run) {
-					return run[i]
+				if i < run.Len() {
+					return run.At(i)
 				}
 				pastRun = func() *Node {
-					return sibAt(sib, lc.tree.indexFromEnd(sib.list, run[len(run)-1])+1+i-len(run))
+					return sibAt(sib, sib.schemaSpan().indexFromEnd(&lc.tree.work, run.At(run.Len()-1))+1+i-run.Len())
 				}
 				return nil
 			}

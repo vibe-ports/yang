@@ -139,7 +139,7 @@ func TestNewImplicit(t *testing.T) {
 	if err := vc.newImplicitR(nil, nil, f.m, implNoState); err != nil {
 		t.Fatal(err)
 	}
-	top := tr.top.list[0]
+	top := tr.top.At(0)
 	want := []string{"top D", "a=1 D", "ll=7 D", "ll=8 D", "inner D", "b=2 D", "x=4 D", "w=9 D W"}
 	if got := dump(top); !reflect.DeepEqual(got, want) {
 		t.Fatalf("got  %v\nwant %v", got, want)
@@ -188,7 +188,7 @@ func TestValidateNew(t *testing.T) {
 	if err := vc.newImplicitR(nil, nil, f.m, 0); err != nil {
 		t.Fatal(err)
 	}
-	top := tr.top.list[0]
+	top := tr.top.At(0)
 	*diffs = nil
 	mustLink(t, tr.insert(top, f.term(t, f.ll, "9", FlagNew), insertDefault))
 	mustLink(t, tr.insert(top, f.term(t, f.a, "1", FlagNew), insertDefault)) // explicit a beside the default one

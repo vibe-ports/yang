@@ -56,7 +56,7 @@ func TestInternalDupRetainsEachSourceRootContext(t *testing.T) {
 	source := round12Tree(t, b, `{"pv2-detached:c":{"extra":"x"}}`)
 	foreign := source.top.first()
 	unlink(foreign)
-	if err := mixed.link(nil, &mixed.top, foreign, len(mixed.top.list)); err != nil {
+	if err := mixed.link(nil, &mixed.top, foreign, mixed.top.SchemaLen()); err != nil {
 		t.Fatal(err)
 	}
 	if ctxOf(mixed.top.first()) != a {
@@ -94,10 +94,10 @@ func TestMergeRetainsForeignChildContext(t *testing.T) {
 	if c == nil || ctxOf(c) != a {
 		t.Fatalf("matched destination parent changed context: %v", c)
 	}
-	if len(c.kids.list) != 2 || c.kids.list[1].Name() != "base" {
-		t.Fatalf("foreign child must precede the destination child: %v", c.kids.list)
+	if c.kids.SchemaLen() != 2 || c.kids.At(1).Name() != "base" {
+		t.Fatalf("foreign child must precede the destination child: %v", c.kids.schemaSpan().Collect())
 	}
-	extra := c.kids.list[0]
+	extra := c.kids.At(0)
 	if extra.Name() != "extra" || extra.Value() != "x" || ctxOf(extra) != b {
 		t.Fatalf("unmatched child did not retain source context: %v", extra)
 	}
@@ -140,7 +140,7 @@ func TestEmptyAnchorChecksOnlySelectedInstance(t *testing.T) {
 	other := round12Tree(t, b, `{"pv2-detached:ll":["b"]}`)
 	foreign := other.top.first()
 	unlink(foreign)
-	if err := target.link(nil, &target.top, foreign, len(target.top.list)); err != nil {
+	if err := target.link(nil, &target.top, foreign, target.top.SchemaLen()); err != nil {
 		t.Fatal(err)
 	}
 	diff := parseOnlyXML(t, a, `<ll xmlns="urn:vibe-ports:yang:conformance:pv2-detached"`+
@@ -148,8 +148,8 @@ func TestEmptyAnchorChecksOnlySelectedInstance(t *testing.T) {
 	if err := target.ApplyDiff(diff, ApplyDiffOptions{}); err != nil {
 		t.Fatalf("empty anchor must use A:a: %v", err)
 	}
-	if target.top.list[0].Value() != "c" || target.top.list[1].Value() != "a" || target.top.list[2].Value() != "b" {
-		t.Fatalf("ordered run: %v", target.top.list)
+	if target.top.At(0).Value() != "c" || target.top.At(1).Value() != "a" || target.top.At(2).Value() != "b" {
+		t.Fatalf("ordered run: %v", target.top.schemaSpan().Collect())
 	}
 }
 
@@ -159,10 +159,10 @@ func TestDuplicateInstanceCacheIncludesForeignEqualSibling(t *testing.T) {
 	other := round12Tree(t, b, `{"pv2-detached:sll":["x"]}`)
 	foreign := other.top.first()
 	unlink(foreign)
-	if err := target.link(nil, &target.top, foreign, len(target.top.list)); err != nil {
+	if err := target.link(nil, &target.top, foreign, target.top.SchemaLen()); err != nil {
 		t.Fatal(err)
 	}
-	first := target.top.list[0]
+	first := target.top.At(0)
 	cache := &dupCache{}
 	if got, err := target.dupInstNext(first, cache); err != nil || got != first {
 		t.Fatalf("first instance: %v, %v", got, err)
@@ -189,16 +189,16 @@ func TestDuplicateInstanceCacheIncludesForeignEqualSiblingWithTable(t *testing.T
 	target := round12Tree(t, a, `{"m:c":{"a":"a","b":"b","d":"d","ll":["x"]}}`)
 	foreignTree := round12Tree(t, b, `{"m:c":{"ll":["x"]}}`)
 	parent := target.top.first()
-	first := parent.kids.list[len(parent.kids.list)-1]
+	first := parent.kids.At(parent.kids.SchemaLen() - 1)
 	if parent.kids.ht == nil {
 		t.Fatal("four schema children must have a hash table")
 	}
-	foreign := foreignTree.top.first().kids.list[0]
+	foreign := foreignTree.top.first().kids.At(0)
 	unlink(foreign)
-	if err := target.link(parent, &parent.kids, foreign, len(parent.kids.list)-1); err != nil {
+	if err := target.link(parent, &parent.kids, foreign, parent.kids.SchemaLen()-1); err != nil {
 		t.Fatal(err)
 	}
-	if parent.kids.list[len(parent.kids.list)-2] != foreign {
+	if parent.kids.At(parent.kids.SchemaLen()-2) != foreign {
 		t.Fatal("foreign equal instance was not prepended")
 	}
 	cache := &dupCache{}
@@ -495,7 +495,7 @@ func TestMergeForeignLeafChange(t *testing.T) {
 			t.Fatalf("different foreign value: %v", err)
 		}
 		c := target.schemaLookup(&target.top, foreign.schema)
-		if c == nil || c.kids.list[0].Value() != "old" || ctxOf(c.kids.list[0]) != a {
+		if c == nil || c.kids.At(0).Value() != "old" || ctxOf(c.kids.At(0)) != a {
 			t.Fatalf("target leaf changed: %v", c)
 		}
 	}
@@ -512,7 +512,7 @@ func TestMergeForeignUnionLeafrefRefused(t *testing.T) {
 		{"ref", `{"pv2:c":{"l":[{"k":"k1"}],"ref":"k1"}}`, `{"pv2:c":{"ref":"k1"}}`, "leafref"},
 	} {
 		target := round12Tree(t, a, tc.local)
-		before := target.top.first().kids.list
+		before := target.top.first().kids.schemaSpan().Collect()
 		var local *Node
 		for _, n := range before {
 			if n.Name() == tc.name {
@@ -560,7 +560,7 @@ func TestMergeForeignTypeHandlerRefused(t *testing.T) {
 	for _, foreignBuiltin := range []bool{true, false} {
 		a, b := load(!foreignBuiltin), load(foreignBuiltin)
 		target := round12Tree(t, a, `{"ty3:c":{"v4":"1.2.3.4"}}`)
-		local := target.top.first().kids.list[0]
+		local := target.top.first().kids.At(0)
 		source := round12Tree(t, a, `{"ty2:c":{"id":"ty2:der"}}`) // a first root of the target's context
 		foreign := round12Tree(t, b, `{"ty3:c":{"v4":"1.2.3.4"}}`).top.first()
 		unlink(foreign)
@@ -599,7 +599,7 @@ func TestMergeForeignZonedAddressTwice(t *testing.T) {
 	}
 	a, b := load(), load()
 	target := round12Tree(t, a, `{"ty3:c":{"v4":"1.2.3.4%eth0"}}`)
-	local := target.top.first().kids.list[0]
+	local := target.top.first().kids.At(0)
 	for round := range 2 {
 		local.flags &^= FlagNew // validated
 		source := round12Tree(t, a, `{"ty2:c":{"id":"ty2:der"}}`)
@@ -655,9 +655,9 @@ func TestMergeForeignUnionRoundTrip(t *testing.T) {
 		}
 	}
 	treeA := round12Tree(t, a, `{"rt:c":{"u":"x"}}`)
-	leafA := treeA.top.first().kids.list[0]
+	leafA := treeA.top.first().kids.At(0)
 	treeB := round12Tree(t, b, `{"rt:c":{"u":"x"}}`)
-	leafB := treeB.top.first().kids.list[0]
+	leafB := treeB.top.first().kids.At(0)
 	// A -> B: the member realtypes differ, lyplg_type_dup_bits copies A's value with A's member
 	carrier := round12Tree(t, a, `{"rt:c":{"u":"x"}}`).top.first()
 	leafB.flags &^= FlagNew

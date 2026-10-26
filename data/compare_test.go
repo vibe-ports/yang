@@ -38,7 +38,8 @@ func TestCompareMixedSchemaParentPayload(t *testing.T) {
 		t.Fatal(diag)
 	}
 	nodes := []*Node{newTerm(first, v), newTerm(second, v)}
-	sibs := &siblings{nodeDeque: nodeDeque{list: nodes}} // like an any payload: no children hash table
+	sibs := &siblings{} // like an any payload: no children hash table
+	sibs.Build(nodes, nil)
 	tr := newTree(&schema.Set{Modules: []*schema.Module{mod}})
 	frames, ok, err := compareSiblingFrames(tr, &tr.work, nil, sibs, sibs, CompareOptions{})
 	equal, compareErr := compareDataStack(tr, &tr.work, frames)
@@ -74,7 +75,7 @@ func TestCompareOpaqueSystemLeafList(t *testing.T) {
 			first := parseOnlyXML(t, set, prefix+tc.first+`</c>`)
 			second := parseOnlyXML(t, set, prefix+tc.second+`</c>`)
 			a, b := first.top.first(), second.top.first()
-			if a == nil || b == nil || len(a.kids.list) == 0 || a.kids.list[0].schema == nil || len(b.kids.opq) != 1 {
+			if a == nil || b == nil || a.kids.SchemaLen() == 0 || a.kids.At(0).schema == nil || b.kids.OpaqueLen() != 1 {
 				t.Fatal("fixture must pair a typed leaf-list with an opaque counterpart")
 			}
 			if (b.kids.ht != nil) != tc.hasHash {

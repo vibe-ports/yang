@@ -117,7 +117,7 @@ func TestParseDeferredRunAnchors(t *testing.T) {
 				wantL = append(wantL, it.val) // parse-only keeps duplicate instances
 			}
 		}
-		for _, n := range parent.kids.list {
+		for _, n := range parent.kids.SchemaAll() {
 			if len(gotNames) == 0 || gotNames[len(gotNames)-1] != n.schema.Name {
 				gotNames = append(gotNames, n.schema.Name)
 			}
@@ -126,7 +126,7 @@ func TestParseDeferredRunAnchors(t *testing.T) {
 				x, _ := strconv.Atoi(n.value.Canonical())
 				gotV = append(gotV, x)
 			case "l":
-				x, _ := strconv.Atoi(n.kids.list[0].value.Canonical())
+				x, _ := strconv.Atoi(n.kids.At(0).value.Canonical())
 				gotL = append(gotL, x)
 			}
 		}

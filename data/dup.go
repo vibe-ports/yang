@@ -322,23 +322,23 @@ func (t *Tree) dupLink(f dupFrame) error {
 		// schema-order constraint (D-0058 applies to ordered parsing).
 		sib := t.childrenOf(f.parent)
 		// markUnsorted is visible: reserve the whole link before it.
-		amount, boundErr := t.linkBound(f.parent, sib, d, len(sib.list))
+		amount, boundErr := t.linkBound(f.parent, sib, d, sib.SchemaLen())
 		if boundErr != nil {
 			return boundErr
 		}
 		if err := t.reserveHash(amount); err != nil {
 			return err
 		}
-		if sortedSupported(d) && len(sib.list) > 0 &&
-			sib.list[len(sib.list)-1].schema == d.schema && sib.list[len(sib.list)-1].inRB {
-			leader := sib.list[len(sib.list)-1]
-			for i := len(sib.list) - 2; i >= 0 && sib.list[i].schema == d.schema; i-- {
+		if sortedSupported(d) && sib.SchemaLen() > 0 &&
+			sib.At(sib.SchemaLen()-1).schema == d.schema && sib.At(sib.SchemaLen()-1).inRB {
+			leader := sib.At(sib.SchemaLen() - 1)
+			for i := sib.SchemaLen() - 2; i >= 0 && sib.At(i).schema == d.schema; i-- {
 				t.work.Add(1)
-				leader = sib.list[i]
+				leader = sib.At(i)
 			}
 			markUnsorted(sib, leader)
 		}
-		err = t.link(f.parent, sib, d, len(sib.list))
+		err = t.link(f.parent, sib, d, sib.SchemaLen())
 	} else {
 		err = t.insert(f.parent, d, f.order)
 	}
@@ -591,9 +591,9 @@ func hasNext(d *Node) bool {
 		return false
 	}
 	if d.schema == nil {
-		return sib.opq[len(sib.opq)-1] != d
+		return sib.opaqueAt(sib.OpaqueLen()-1) != d
 	}
-	return sib.list[len(sib.list)-1] != d || len(sib.opq) > 0
+	return sib.At(sib.SchemaLen()-1) != d || sib.OpaqueLen() > 0
 }
 
 // dupTo is lyd_dup_single / lyd_dup_siblings (trg nil: the context of n) and their _to_ctx
@@ -768,7 +768,7 @@ func (t *Tree) preflightDupHash(n, parent *Node, o DupOptions, siblings bool) er
 	rootIndexed := false
 	if parent != nil && parent.schema != nil {
 		sib := t.childrenOf(parent)
-		rootIndexed = sib.ht != nil || len(sib.list)+len(orig) >= htMinItems
+		rootIndexed = sib.ht != nil || sib.SchemaLen()+len(orig) >= htMinItems
 	}
 	visit := func(child *Node, indexed bool) error {
 		if indexed {
@@ -780,7 +780,7 @@ func (t *Tree) preflightDupHash(n, parent *Node, o DupOptions, siblings bool) er
 		if child.schema != nil && child.schema.Kind == schema.List && !child.schema.Keyless() {
 			// lyd_dup_r hashes the completed list once more after copying its
 			// children, independently of each key-link hash event.
-			for _, key := range child.kids.list {
+			for _, key := range child.kids.SchemaAll() {
 				if !key.isKey() {
 					break
 				}
@@ -795,7 +795,7 @@ func (t *Tree) preflightDupHash(n, parent *Node, o DupOptions, siblings bool) er
 				indexed := rootIndexed
 				if child != root {
 					p := child.parent
-					indexed = p != nil && p.schema != nil && (p.kids.ht != nil || len(p.kids.list) >= htMinItems)
+					indexed = p != nil && p.schema != nil && (p.kids.ht != nil || p.kids.SchemaLen() >= htMinItems)
 				}
 				if err := visit(child, indexed); err != nil {
 					return err
@@ -807,7 +807,7 @@ func (t *Tree) preflightDupHash(n, parent *Node, o DupOptions, siblings bool) er
 			}
 			if root.schema != nil && root.schema.Kind == schema.List {
 				indexed := root.kids.ht != nil || len(root.schema.Keys) >= htMinItems
-				for _, child := range root.kids.list {
+				for _, child := range root.kids.SchemaAll() {
 					if !child.isKey() {
 						break
 					}
@@ -827,7 +827,7 @@ func (t *Tree) preflightDupHash(n, parent *Node, o DupOptions, siblings bool) er
 				return err
 			}
 			if ancestor.schema != nil && ancestor.schema.Kind == schema.List {
-				for _, key := range ancestor.kids.list {
+				for _, key := range ancestor.kids.SchemaAll() {
 					if !key.isKey() {
 						break
 					}
@@ -840,8 +840,8 @@ func (t *Tree) preflightDupHash(n, parent *Node, o DupOptions, siblings bool) er
 	}
 	if parent != nil {
 		sib := t.childrenOf(parent)
-		if sib.ht == nil && len(sib.list)+len(orig) >= htMinItems {
-			for _, old := range sib.list {
+		if sib.ht == nil && sib.SchemaLen()+len(orig) >= htMinItems {
+			for _, old := range sib.SchemaAll() {
 				amount = addHashBound(amount, indexWorkBound(old, nil, nil, &t.work))
 			}
 		}

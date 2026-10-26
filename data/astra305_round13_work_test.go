@@ -45,7 +45,7 @@ func TestAstra305Round13CountedWork(t *testing.T) {
 					// the digest deque grows throughout the measured merge.
 					roots := func(tr *Tree) *Tree {
 						out := newTree(set)
-						for _, child := range append([]*Node(nil), tr.top.first().kids.list...) {
+						for _, child := range append([]*Node(nil), tr.top.first().kids.schemaSpan().Collect()...) {
 							if err := child.Unlink(); err != nil {
 								t.Fatal(err)
 							}
@@ -63,7 +63,7 @@ func TestAstra305Round13CountedWork(t *testing.T) {
 				if operation == "move-whole" {
 					dst, op = round13RPC(t, set, `{}`)
 					forest := newTree(set)
-					if _, _, err := forest.DupSiblings(src.top.first().kids.list[0], nil, DupOptions{Recursive: true}); err != nil {
+					if _, _, err := forest.DupSiblings(src.top.first().kids.At(0), nil, DupOptions{Recursive: true}); err != nil {
 						t.Fatal(err)
 					}
 					src = forest

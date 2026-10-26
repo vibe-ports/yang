@@ -18,7 +18,7 @@ func TestKeylessAddedPreservesPhysicalAndRegistrationOrder(t *testing.T) {
 	if _, _, ds, err := parseOp(context.Background(), strings.NewReader(round13Reply), set, FormatJSON, opReply, op, Reject); err != nil {
 		t.Fatal(err, ds)
 	}
-	old := op.kids.list[1]
+	old := op.kids.At(1)
 	cache := &dupCache{}
 	if _, err := dst.keylessFirst(cache, &op.kids, old); err != nil {
 		t.Fatal(err)
@@ -29,7 +29,7 @@ func TestKeylessAddedPreservesPhysicalAndRegistrationOrder(t *testing.T) {
 	consumed := cache.inst[old]
 	for range 4 {
 		_, sourceOp := round13RPC(t, set, round13MergeTarget)
-		n := sourceOp.kids.list[0]
+		n := sourceOp.kids.At(0)
 		if err := n.Unlink(); err != nil {
 			t.Fatal(err)
 		}
@@ -127,7 +127,7 @@ func TestSplitRBRebuildCountsRegisteredMembers(t *testing.T) {
 	}
 	opidxAssertTreeInvariant(t, tr)
 	var values []*Node
-	for _, n := range op.kids.list {
+	for _, n := range op.kids.SchemaAll() {
 		if n.Name() == "v" {
 			values = append(values, n)
 		}

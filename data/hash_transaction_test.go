@@ -38,7 +38,7 @@ func TestApplyDiffBudgetRestoresMetadataValue(t *testing.T) {
 		t.Fatal(diff, err)
 	}
 	before := snapshotHashBudgetTree(first)
-	a := first.top.first().kids.list[0]
+	a := first.top.first().kids.At(0)
 	called := false
 	err = first.ApplyDiff(diff, ApplyDiffOptions{Callback: func(_, n *Node) error {
 		if n == a {
@@ -80,8 +80,8 @@ func TestApplyDiffBudgetRestoresCrossTreeLinks(t *testing.T) {
 		t.Fatal(err)
 	}
 	dst := parse(`{"pv2-links:c":{"t":["y"]}}`)
-	list, r := src.top.first().kids.list[0], src.top.first().kids.list[1]
-	k := list.kids.list[0]
+	list, r := src.top.first().kids.At(0), src.top.first().kids.At(1)
+	k := list.kids.At(0)
 	if err := dst.Insert(dst.top.first(), list); err != nil {
 		t.Fatal(err)
 	}
@@ -167,7 +167,7 @@ func TestDupLocalJournalChargePoints(t *testing.T) {
 			return err
 		}, func(t *testing.T, dst *Tree) {
 			np, _ := dst.Find("/m:np")
-			if np.flags&FlagDefault != 0 || np.kids.list[0].flags&FlagDefault != 0 {
+			if np.flags&FlagDefault != 0 || np.kids.At(0).flags&FlagDefault != 0 {
 				t.Fatal("the copy left its NP-container ancestors default")
 			}
 		}},
@@ -187,7 +187,7 @@ func TestDupLocalJournalChargePoints(t *testing.T) {
 			return err
 		}, func(t *testing.T, dst *Tree) {
 			e, _ := dst.Find("/m:big/e[k='3']")
-			if got := len(e.kids.list); got != 8 { // the key, three values and the four copies
+			if got := e.kids.SchemaLen(); got != 8 { // the key, three values and the four copies
 				t.Fatalf("%d children after the copy, want 8", got)
 			}
 		}},
@@ -239,7 +239,7 @@ func TestDupJournalIgnoresUnrelatedSubtree(t *testing.T) {
 			charged += dst.work.hashUsed
 			bytes += after.TotalAlloc - before.TotalAlloc
 			if i < copies-1 {
-				if err := inner.kids.list[slices.IndexFunc(inner.kids.list, func(c *Node) bool { return c.Name() == "x" })].Remove(); err != nil {
+				if err := inner.kids.At(slices.IndexFunc(inner.kids.schemaSpan().Collect(), func(c *Node) bool { return c.Name() == "x" })).Remove(); err != nil {
 					t.Fatal(err)
 				}
 			}
@@ -452,7 +452,7 @@ func TestJournalLongCollisionChain(t *testing.T) {
 		return tr
 	}
 	dst, src := parse(b.String()), parse(`{"m:c":{"s":["x"]}}`)
-	c, x := dst.top.first(), src.top.first().kids.list[0]
+	c, x := dst.top.first(), src.top.first().kids.At(0)
 	if len(c.kids.ht) != 1 {
 		t.Fatalf("%d hash chains, want the one of all the duplicates", len(c.kids.ht))
 	}
@@ -461,7 +461,7 @@ func TestJournalLongCollisionChain(t *testing.T) {
 	if _, _, err := dst.Dup(x, c, DupOptions{}); err != nil {
 		t.Fatal(err)
 	}
-	if got := len(c.kids.list); got != n+1 {
+	if got := c.kids.SchemaLen(); got != n+1 {
 		t.Fatalf("%d values after the copy, want %d", got, n+1)
 	}
 }
@@ -526,8 +526,8 @@ func TestValidateOpBudgetRestoresReboundWork(t *testing.T) {
 		if after := snapshotHashBudgetTree(tr); !reflect.DeepEqual(after, before) {
 			t.Fatalf("limit %d: ApplyDiff budget failure changed the tree\nbefore=%v\nafter=%v", at-1, before.dump, after.dump)
 		}
-		if len(r.kids.list) != 0 {
-			t.Fatalf("limit %d: %d children left after the rollback", at-1, len(r.kids.list))
+		if r.kids.SchemaLen() != 0 {
+			t.Fatalf("limit %d: %d children left after the rollback", at-1, r.kids.SchemaLen())
 		}
 	}
 	if failed == 0 {

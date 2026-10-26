@@ -48,12 +48,12 @@ func TestSplitValidationWork(t *testing.T) {
 					t.Fatal(ds, err)
 				}
 				var flags []*Node
-				for _, entry := range tr.top.list {
-					for _, n := range entry.kids.list {
+				for _, entry := range tr.top.SchemaAll() {
+					for _, n := range entry.kids.SchemaAll() {
 						if n.Name() == "flags" {
 							// A default-only diff changes the leaf flag directly and
 							// leaves the ancestor explicit until final validation.
-							n.kids.list[0].flags |= FlagDefault
+							n.kids.At(0).flags |= FlagDefault
 							flags = append(flags, n)
 						}
 					}

@@ -52,15 +52,15 @@ func TestNewTermBudgetCoversAncestorReindex(t *testing.T) {
 				t.Fatal(err)
 			}
 		}
-		list, _, err := dst.Dup(src.top.first().kids.list[0], root, DupOptions{Recursive: true})
+		list, _, err := dst.Dup(src.top.first().kids.At(0), root, DupOptions{Recursive: true})
 		if err != nil {
 			t.Fatal(err)
 		}
-		if root.kids.ht == nil || len(list.kids.list) != 2 || list.kids.list[1].schema.Name != "v" {
+		if root.kids.ht == nil || list.kids.SchemaLen() != 2 || list.kids.At(1).schema.Name != "v" {
 			t.Fatal("fixture needs an indexed copied prefix exposing v")
 		}
-		v := list.kids.list[1]
-		if tableGrows && (v.kids.ht != nil || len(v.kids.list) != htMinItems-1) {
+		v := list.kids.At(1)
+		if tableGrows && (v.kids.ht != nil || v.kids.SchemaLen() != htMinItems-1) {
 			t.Fatal("fixture needs v one child short of its table")
 		}
 		return dst, v
@@ -123,12 +123,12 @@ func TestDupUnderForeignParentInTree(t *testing.T) {
 	if err := tr.Insert(nil, c); err != nil {
 		t.Fatal(err)
 	}
-	d, _, err := tr.Dup(c.kids.list[0], c, DupOptions{})
+	d, _, err := tr.Dup(c.kids.At(0), c, DupOptions{})
 	if err != nil {
 		t.Fatalf("Dup under its own-context parent: %v", err)
 	}
-	if d.parent != c || ctxOf(d) != b || len(c.kids.list) != 3 {
-		t.Fatalf("copy parent=%p ctx=%p children=%d", d.parent, ctxOf(d), len(c.kids.list))
+	if d.parent != c || ctxOf(d) != b || c.kids.SchemaLen() != 3 {
+		t.Fatalf("copy parent=%p ctx=%p children=%d", d.parent, ctxOf(d), c.kids.SchemaLen())
 	}
 }
 
@@ -180,8 +180,8 @@ func TestBudgetFourthChildSortsUnindexedRun(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if c.kids.ht != nil || len(c.kids.list) != htMinItems-1 || c.kids.rbTree[c.kids.list[0]] ||
-			c.kids.list[0].value.Canonical() != "c" {
+		if c.kids.ht != nil || c.kids.SchemaLen() != htMinItems-1 || c.kids.rbTree[c.kids.At(0)] ||
+			c.kids.At(0).value.Canonical() != "c" {
 			t.Fatal("fixture needs an unsorted, unindexed run one child short of its table")
 		}
 		return dst, c
@@ -221,7 +221,7 @@ func TestBudgetFourthChildSortsUnindexedRun(t *testing.T) {
 			if err := tc.add(dst, c); err != nil {
 				t.Fatalf("%s within the default quota: %v", tc.name, err)
 			}
-			if c.kids.ht == nil || c.kids.list[0].value.Canonical() != "a" {
+			if c.kids.ht == nil || c.kids.At(0).value.Canonical() != "a" {
 				t.Fatal("successful insertion must sort the run and build the table")
 			}
 		})
@@ -254,12 +254,12 @@ func TestBudgetSortExposesParentPrefix(t *testing.T) {
 				t.Fatal(err)
 			}
 		}
-		l, _, err := dst.Dup(src.top.first().kids.list[0], root, DupOptions{Recursive: true})
+		l, _, err := dst.Dup(src.top.first().kids.At(0), root, DupOptions{Recursive: true})
 		if err != nil {
 			t.Fatal(err)
 		}
-		if root.kids.ht == nil || len(l.kids.list) != 3 || l.kids.list[1].value.Canonical() != "z" ||
-			l.kids.rbTree[l.kids.list[1]] {
+		if root.kids.ht == nil || l.kids.SchemaLen() != 3 || l.kids.At(1).value.Canonical() != "z" ||
+			l.kids.rbTree[l.kids.At(1)] {
 			t.Fatal("fixture needs an indexed incomplete list with an unsorted copied run")
 		}
 		return dst, l
@@ -277,7 +277,7 @@ func TestBudgetSortExposesParentPrefix(t *testing.T) {
 	if _, err := dst.NewTerm(l, "ll", "m", NewOptions{}); err != nil {
 		t.Fatalf("NewTerm within the default quota: %v", err)
 	}
-	if l.kids.list[1].value.Canonical() != long {
+	if l.kids.At(1).value.Canonical() != long {
 		t.Fatal("successful insertion must sort the run")
 	}
 }

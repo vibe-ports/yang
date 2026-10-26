@@ -34,8 +34,8 @@ func opaqueOnlyChildrenTable(t *testing.T) (*Tree, *Node) {
 			t.Fatalf("remove %s: %v", path, err)
 		}
 	}
-	if c.kids.ht == nil || len(c.kids.list) != 0 || len(c.kids.opq) != 1 {
-		t.Fatalf("opaque-only children: schema=%d opaque=%d table=%v", len(c.kids.list), len(c.kids.opq), c.kids.ht != nil)
+	if c.kids.ht == nil || c.kids.SchemaLen() != 0 || c.kids.OpaqueLen() != 1 {
+		t.Fatalf("opaque-only children: schema=%d opaque=%d table=%v", c.kids.SchemaLen(), c.kids.OpaqueLen(), c.kids.ht != nil)
 	}
 	return tr, c
 }
@@ -83,8 +83,8 @@ func TestFindFirstOpaqueOnlyHashTableAfterDup(t *testing.T) {
 	if err != nil || len(diags) != 0 {
 		t.Fatalf("Dup: %v %v", err, diags)
 	}
-	if d.kids.ht == nil || len(d.kids.list) != 0 || len(d.kids.opq) != 1 {
-		t.Fatalf("duplicate children: schema=%d opaque=%d table=%v", len(d.kids.list), len(d.kids.opq), d.kids.ht != nil)
+	if d.kids.ht == nil || d.kids.SchemaLen() != 0 || d.kids.OpaqueLen() != 1 {
+		t.Fatalf("duplicate children: schema=%d opaque=%d table=%v", d.kids.SchemaLen(), d.kids.OpaqueLen(), d.kids.ht != nil)
 	}
 	if n, err := dst.Find("/pj:c/ll[.='7']"); err != nil || n != nil {
 		t.Fatalf("Find duplicate: %v %v", n, err)
@@ -149,8 +149,8 @@ func TestInsertOutputOpaqueOnlyHashTable(t *testing.T) {
 			t.Fatalf("remove %s: %v", name, err)
 		}
 	}
-	if op.kids.ht == nil || len(op.kids.list) != 0 || len(op.kids.opq) != 1 {
-		t.Fatalf("opaque-only operation: schema=%d opaque=%d table=%v", len(op.kids.list), len(op.kids.opq), op.kids.ht != nil)
+	if op.kids.ht == nil || op.kids.SchemaLen() != 0 || op.kids.OpaqueLen() != 1 {
+		t.Fatalf("opaque-only operation: schema=%d opaque=%d table=%v", op.kids.SchemaLen(), op.kids.OpaqueLen(), op.kids.ht != nil)
 	}
 	var v *schema.Node
 	for _, sn := range tr.opOrder(op.schema, true) {

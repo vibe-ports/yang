@@ -108,8 +108,8 @@ func TestOpIndexXMLDistinctOpaqueNamesScaling(t *testing.T) {
 		if err != nil {
 			t.Fatal(err, diags)
 		}
-		if lc.opNode == nil || len(lc.opNode.kids.opq) != n {
-			t.Fatalf("opaque children = %d, want %d", len(lc.opNode.kids.opq), n)
+		if lc.opNode == nil || lc.opNode.kids.OpaqueLen() != n {
+			t.Fatalf("opaque children = %d, want %d", lc.opNode.kids.OpaqueLen(), n)
 		}
 		return tr.work.Load()
 	})
@@ -140,8 +140,8 @@ func TestOpIndexXMLOpaqueAnchorIgnoresSchemaPrefix(t *testing.T) {
 		if !reached || root == nil {
 			t.Fatalf("parser reached=%t root=%v", reached, root)
 		}
-		if len(root.kids.list) != n || len(root.kids.opq) != n {
-			t.Fatalf("reached=%t children=%d schema/%d opaque; want %d each", reached, len(root.kids.list), len(root.kids.opq), n)
+		if root.kids.SchemaLen() != n || root.kids.OpaqueLen() != n {
+			t.Fatalf("reached=%t children=%d schema/%d opaque; want %d each", reached, root.kids.SchemaLen(), root.kids.OpaqueLen(), n)
 		}
 		return tr.work.Load()
 	})

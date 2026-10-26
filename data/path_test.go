@@ -55,8 +55,8 @@ func TestLydPath(t *testing.T) {
 	tr := newTree(f.set)
 	c := newInner(f.c)
 	mustLink(t, tr.insert(nil, c, insertDefault))
-	l := f.list(t, tr, c, "eth0", "x")
-	q := f.list(t, tr, c, "a'b", "")
+	l := f.makeList(t, tr, c, "eth0", "x")
+	q := f.makeList(t, tr, c, "a'b", "")
 	ll := f.term(t, f.ll, "3")
 	mustLink(t, tr.insert(c, ll, insertDefault))
 	var sl []*Node
@@ -84,7 +84,7 @@ func TestLydPath(t *testing.T) {
 		want string
 	}{
 		{c, "/b:c"},
-		{l.kids.list[1], "/b:c/l[k='eth0']/v"},
+		{l.kids.At(1), "/b:c/l[k='eth0']/v"},
 		{q, `/b:c/l[k="a'b"]`},
 		{ll, "/b:c/ll[.='3']"},
 		{sl[1], "/b:c/sl[2]"},
@@ -150,7 +150,7 @@ func TestLocation(t *testing.T) {
 		t.Fatal("warnings only must not fail")
 	}
 	// a key refusal of the tree operations is a LOGERR without location
-	key := f.list(t, tr, c, "k", "").kids.list[0]
+	key := f.makeList(t, tr, c, "k", "").kids.At(0)
 	e := &logger{set: f.set}
 	var oe *opError
 	if !errors.As(freeTree(key), &oe) {

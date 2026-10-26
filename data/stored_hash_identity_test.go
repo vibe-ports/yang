@@ -34,21 +34,21 @@ func TestStoredHashIdentityDup(t *testing.T) {
 				t.Fatal(err)
 			}
 			dst := newTree(dstSet)
-			if _, _, err := dst.Dup(src.top.list[0], nil, DupOptions{Recursive: true}); err != nil {
+			if _, _, err := dst.Dup(src.top.At(0), nil, DupOptions{Recursive: true}); err != nil {
 				t.Fatal(err)
 			}
-			source, copied := src.top.list[0].kids.list[0], dst.top.list[0].kids.list[0]
+			source, copied := src.top.At(0).kids.At(0), dst.top.At(0).kids.At(0)
 			if source.Equal(copied, CompareOptions{}) || copied.Equal(source, CompareOptions{}) {
 				t.Fatal("identityref copy still compares equal to the string source")
 			}
-			if got := copied.kids.list[len(copied.kids.list)-1].Value(); got != "child" {
+			if got := copied.kids.At(copied.kids.SchemaLen() - 1).Value(); got != "child" {
 				t.Fatalf("LYB print replaced the canonical cache: %q", got)
 			}
 			fresh, _, err := parseJSONString(dstSet, freshInput, Reject, true)
 			if err != nil {
 				t.Fatal(err)
 			}
-			if got := copied.Equal(fresh.top.list[0].kids.list[0], CompareOptions{}); got != repeated {
+			if got := copied.Equal(fresh.top.At(0).kids.At(0), CompareOptions{}); got != repeated {
 				t.Fatalf("fresh identityref comparison = %t, want %t", got, repeated)
 			}
 		})

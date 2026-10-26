@@ -308,7 +308,7 @@ func (vc *valCtx) addImplicit(parent, n *Node) error {
 // agree while the module's nodes are in schema order).
 func (vc *valCtx) modInsert(n *Node) error {
 	t, sib := vc.t, &vc.t.top
-	fi, err := vc.siblingIndex(sib.list, vc.modFirst)
+	fi, err := vc.siblingIndex(sib.schemaSpan(), vc.modFirst)
 	if err != nil {
 		return err
 	}
@@ -317,7 +317,7 @@ func (vc *valCtx) modInsert(n *Node) error {
 	switch {
 	case fi < 0:
 		return t.link(nil, sib, n, at)
-	case at == len(sib.list) && len(sib.opq) == 0:
+	case at == sib.SchemaLen() && sib.OpaqueLen() == 0:
 		at = fi // no anchor: after first->prev
 		moveFirst = false
 	}
@@ -335,12 +335,12 @@ func (vc *valCtx) modStart() (int, error) {
 	if vc.modFirst == nil {
 		return 0, nil
 	}
-	i, err := vc.siblingIndex(vc.t.top.list, vc.modFirst)
+	i, err := vc.siblingIndex(vc.t.top.schemaSpan(), vc.modFirst)
 	return max(0, i), err
 }
 
-func (vc *valCtx) siblingIndex(nodes []*Node, target *Node) (int, error) {
-	for i, n := range nodes {
+func (vc *valCtx) siblingIndex(nodes siblingSpan, target *Node) (int, error) {
+	for i, n := range nodes.All() {
 		if err := vc.checkContext(); err != nil {
 			return -1, err
 		}
@@ -357,15 +357,15 @@ func (vc *valCtx) newImplicitR(parent *Node, sparent *schema.Node, mod *schema.M
 	if err := vc.newImplicit(parent, sparent, mod, o); err != nil {
 		return err
 	}
-	kids := vc.t.childrenOf(parent).list
+	kids := vc.t.childrenOf(parent).schemaSpan()
 	if parent == nil {
 		start, err := vc.modStart()
 		if err != nil {
 			return err
 		}
-		kids = kids[start:] // LY_LIST_FOR(*first): from lyd_validate's first2
+		kids = kids.Slice(start, kids.Len()) // LY_LIST_FOR(*first): from lyd_validate's first2
 	}
-	for _, c := range kids { // lyd_child_no_keys: keys are not containers
+	for _, c := range kids.All() { // lyd_child_no_keys: keys are not containers
 		if err := vc.checkContext(); err != nil {
 			return err
 		}

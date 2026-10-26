@@ -4,8 +4,6 @@
 package data
 
 import (
-	"slices"
-
 	"github.com/vibe-ports/yang/internal/schema"
 	"github.com/vibe-ports/yang/internal/types"
 )
@@ -89,7 +87,7 @@ func (n *Node) refreshHash(work *workCounter) {
 			n.hash = 0
 			return
 		}
-		for _, key := range snapshotKeys(n) {
+		for _, key := range snapshotKeys(n).All() {
 			if work != nil {
 				work.Add(1)
 			}
@@ -102,11 +100,11 @@ func (n *Node) refreshHash(work *workCounter) {
 
 // snapshotKeys is the typed input of the last keyed-list lyd_hash call. A live
 // prefix avoids copying on every repeated last key; displacement freezes it once.
-func snapshotKeys(n *Node) []*Node {
+func snapshotKeys(n *Node) siblingSpan {
 	if n.lkeyFrozen != nil {
-		return n.lkeyFrozen
+		return spanOf(n.lkeyFrozen)
 	}
-	return n.kids.list[:n.lkeyN]
+	return n.kids.schemaSpan().Slice(0, n.lkeyN)
 }
 
 func (t *Tree) beforeKeyLink(list, child *Node, at int) {
@@ -120,7 +118,7 @@ func (t *Tree) beforeKeyLink(list, child *Node, at int) {
 	child.touch()
 	if at < list.lkeyN && list.lkeyFrozen == nil {
 		t.work.Add(int64(list.lkeyN))
-		list.lkeyFrozen = slices.Clone(snapshotKeys(list))
+		list.lkeyFrozen = snapshotKeys(list).Collect()
 	}
 	if !child.schema.IsKey() {
 		if at < list.keyN {
@@ -146,7 +144,7 @@ func (t *Tree) keyLinked(list, child *Node) {
 	}
 	for i, key := range list.schema.Keys {
 		t.work.Add(1)
-		if i >= len(list.kids.list) || list.kids.list[i].schema != key {
+		if i >= list.kids.SchemaLen() || list.kids.At(i).schema != key {
 			// No native hash or registration event, but positional equality has
 			// changed. Keep the existing record's place in its native chain.
 			reindexList(list)
@@ -160,7 +158,7 @@ func (t *Tree) keyLinked(list, child *Node) {
 		list.lkeyPrefix = schemaHashWork(list.schema, &t.work)
 	}
 	list.lkeyN, list.lkeyFrozen, list.lkeyOK, list.lkeyDirty = list.keyN, nil, true, false
-	for i, key := range snapshotKeys(list)[start:] {
+	for i, key := range snapshotKeys(list).Slice(start, snapshotKeys(list).Len()).All() {
 		t.work.Add(1)
 		key.touch()
 		key.keySlot = start + i + 1
@@ -212,7 +210,7 @@ func resetListKey(work *workCounter, list *Node) {
 	}
 	list.touch()
 	list.keyN = 0
-	for _, key := range list.kids.list {
+	for _, key := range list.kids.SchemaAll() {
 		if work != nil {
 			work.Add(1)
 		}
@@ -238,7 +236,7 @@ func beforeKeyUnlink(list *Node, at int, work *workCounter) {
 		if work != nil {
 			work.Add(int64(list.lkeyN))
 		}
-		list.lkeyFrozen = slices.Clone(snapshotKeys(list))
+		list.lkeyFrozen = snapshotKeys(list).Collect()
 	}
 	if at < list.keyN {
 		list.keyN--
@@ -250,11 +248,11 @@ func beforeKeyUnlink(list *Node, at int, work *workCounter) {
 // a later native rehash event replaces it.
 func exposeListKeys(work *workCounter, list *Node) {
 	list.touch()
-	for list.keyN < len(list.kids.list) {
+	for list.keyN < list.kids.SchemaLen() {
 		if work != nil {
 			work.Add(1)
 		}
-		key := list.kids.list[list.keyN]
+		key := list.kids.At(list.keyN)
 		if !key.isKey() {
 			break
 		}

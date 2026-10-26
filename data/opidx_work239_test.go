@@ -73,10 +73,10 @@ func opidxAssertSortedInput(t *testing.T, op *Node, vs, ls *schema.Node, n int) 
 			}
 			vi++
 		case ls:
-			if len(child.kids.list) == 0 {
+			if child.kids.SchemaLen() == 0 {
 				t.Fatalf("l[%d] has no key", li)
 			}
-			if got := child.kids.list[0].value.Canonical(); got != strconv.Itoa(li) {
+			if got := child.kids.At(0).value.Canonical(); got != strconv.Itoa(li) {
 				t.Fatalf("l[%d].k = %s", li, got)
 			}
 			li++

@@ -226,7 +226,7 @@ func TestDupDetachedContext(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if d == c || d.schema != c.schema || len(d.kids.list) != 1 || d.kids.list[0].value.Canonical() != "z" {
+	if d == c || d.schema != c.schema || d.kids.SchemaLen() != 1 || d.kids.At(0).value.Canonical() != "z" {
 		t.Fatalf("duplicate = %#v", d)
 	}
 }
@@ -452,7 +452,7 @@ func TestDupCrossSchemaChildOrder(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			list, _, err := dst.Dup(src.top.first().kids.list[0], root, DupOptions{Recursive: recursive})
+			list, _, err := dst.Dup(src.top.first().kids.At(0), root, DupOptions{Recursive: recursive})
 			if err != nil {
 				t.Fatal(err)
 			}

@@ -17,7 +17,7 @@ import (
 func TestNewTree(t *testing.T) {
 	set := editSet(t)
 	tr := NewTree(snap.New(set))
-	if len(tr.top.list) != 0 {
+	if tr.top.SchemaLen() != 0 {
 		t.Fatal("NewTree is not empty")
 	}
 	for _, s := range []editStep{{set: "/pv2-edit:c/l[k='a']/v", value: "1"}, {set: "/pv2-edit:c/a", value: "x"},

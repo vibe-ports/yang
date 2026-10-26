@@ -32,7 +32,7 @@ func TestXMLAnyPayload(t *testing.T) {
 		if n.schema != ad || n.kids.len() != 0 || n.any.children.len() != 2 {
 			t.Fatalf("any ownership: %+v", n)
 		}
-		first, second := n.any.children.opq[0], n.any.children.opq[1]
+		first, second := n.any.children.opaqueAt(0), n.any.children.opaqueAt(1)
 		if first.opaq.ModuleNS != "urn:inner" || second.opaq.ModuleNS != "urn:outer" ||
 			first.opaq.Value != "p:x" || second.opaq.Value != "p:y" {
 			t.Fatalf("namespace shadowing: %+v %+v", first.opaq, second.opaq)
@@ -53,8 +53,8 @@ func TestXMLAnyPayload(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		inner := got.top.first().any.children.list[0]
-		if inner.schema != ad || inner.any.children.len() != 1 || inner.any.children.list[0].Value() != "v" {
+		inner := got.top.first().any.children.At(0)
+		if inner.schema != ad || inner.any.children.len() != 1 || inner.any.children.At(0).Value() != "v" {
 			t.Fatalf("nested payload: %+v", inner)
 		}
 	})
@@ -72,7 +72,7 @@ func TestXMLAnyPayload(t *testing.T) {
 			}
 		}
 		got, err := parse(`<a`+ns+`><known>v</known></a>`, true)
-		if err != nil || got.top.first().any.children.list[0].schema != leaf {
+		if err != nil || got.top.first().any.children.At(0).schema != leaf {
 			t.Fatalf("strict known: %v, %+v", err, got)
 		}
 	})

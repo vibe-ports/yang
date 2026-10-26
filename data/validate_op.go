@@ -8,7 +8,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"slices"
 
 	"github.com/vibe-ports/yang"
 	"github.com/vibe-ports/yang/internal/schema"
@@ -77,7 +76,7 @@ func validateOp(ctx context.Context, set *schema.Set, op *Node, dep *Tree, typ o
 	} else if opNode == nil || opNode.schema.Kind != schema.Notification {
 		return lg.diags, lg.finish(lg.logErr("LY_EINVAL", "No notification to validate found."))
 	}
-	if dep != nil && len(dep.top.list) > 0 && dep.top.list[0] == op {
+	if dep != nil && dep.top.SchemaLen() > 0 && dep.top.At(0) == op {
 		dep = nil // redundant dependency
 	}
 	return validateOpNode(ctx, set, opNode, dep, oo, b)
@@ -115,9 +114,9 @@ func validateOpNode(ctx context.Context, set *schema.Set, opNode *Node, dep *Tre
 	switch {
 	case sib == nil: // a detached operation
 	case sub.schema != nil:
-		at = slices.Index(sib.list, sub)
+		at = sib.schemaSpan().Index(sub)
 	default:
-		at = slices.Index(sib.opq, sub)
+		at = sib.opaqueSpan().Index(sub)
 	}
 	unlink(sub)
 	linkErr := t.insert(tparent, sub, insertDefault)
@@ -171,7 +170,7 @@ func (vc *valCtx) validateOp(opNode *Node) error {
 		if err != nil {
 			return err
 		}
-		for _, c := range slicesOf(&opNode.kids) {
+		for _, c := range slicesOf(&opNode.kids).All() {
 			if err := vc.validateTree(c); err != nil {
 				return err
 			}

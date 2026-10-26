@@ -67,7 +67,7 @@ func TestAstra305Round13NativeRPC(t *testing.T) {
 				err = dst.ApplyDiff(src, ApplyDiffOptions{})
 			case "move":
 				forest := newTree(set)
-				first, _, dupErr := forest.DupSiblings(srcOp.kids.list[0], nil, DupOptions{Recursive: true})
+				first, _, dupErr := forest.DupSiblings(srcOp.kids.At(0), nil, DupOptions{Recursive: true})
 				if dupErr != nil {
 					t.Fatal(dupErr)
 				}

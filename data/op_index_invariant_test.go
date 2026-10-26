@@ -40,7 +40,7 @@ func opidxCheckOrderInvariant(tr *Tree, s *siblings) error {
 	s.work = nil
 	defer func() { s.work = work }()
 
-	live := slices.Concat(slices.Clone(s.list), slices.Clone(s.opq))
+	live := slices.Concat(slices.Clone(s.schemaSpan().Collect()), slices.Clone(s.opaqueSpan().Collect()))
 	var sequence []*Node
 	for h := s.order.seq.First(); h != nil; h = s.order.seq.Next(h) {
 		sequence = append(sequence, h.Value)
@@ -130,17 +130,17 @@ func opidxCheckOrderInvariant(tr *Tree, s *siblings) error {
 	for _, nodes := range byRB {
 		rbCount += len(nodes)
 	}
-	if opidxOccurrenceCount(s.order.bySchema) != len(s.list) ||
+	if opidxOccurrenceCount(s.order.bySchema) != s.SchemaLen() ||
 		opidxOccurrenceCount(s.order.byExact) != exactCount ||
 		opidxOccurrenceCount(s.order.byRB) != rbCount ||
-		opidxOccurrenceCount(s.order.byOpaqName) != len(s.opq) ||
-		opidxOccurrenceCount(s.order.byOpaqExact) != len(s.opq) {
+		opidxOccurrenceCount(s.order.byOpaqName) != s.OpaqueLen() ||
+		opidxOccurrenceCount(s.order.byOpaqExact) != s.OpaqueLen() {
 		return fmt.Errorf("ordered occurrence index retains a non-live class")
 	}
 
 	runs := map[*schema.Node]int{}
 	var previous *schema.Node
-	for i, n := range s.list {
+	for i, n := range s.SchemaAll() {
 		if i == 0 || n.schema != previous {
 			runs[n.schema]++
 		}
@@ -217,7 +217,7 @@ func opidxAssertTreeInvariant(t *testing.T, tr *Tree) {
 // are not live indexes, so only the two narrowing tables are checked here.
 func opidxCheckKeylessCache(tr *Tree, c *dupCache) error {
 	var work workCounter
-	check := func(index map[string]*nodeDeque, candidates []*Node) error {
+	check := func(index map[string]*cacheDeque, candidates []*Node) error {
 		want := map[string][]*Node{}
 		for _, n := range candidates {
 			key, ok := subtreeEquivalenceKey(n, &work)
@@ -230,7 +230,7 @@ func opidxCheckKeylessCache(tr *Tree, c *dupCache) error {
 			return fmt.Errorf("keyless digest buckets = %d, want %d", len(index), len(want))
 		}
 		for key, nodes := range want {
-			if index[key] == nil || !slices.Equal(index[key].list, nodes) {
+			if index[key] == nil || !slices.Equal(index[key].schemaSpan().Collect(), nodes) {
 				return fmt.Errorf("keyless digest bucket is stale")
 			}
 		}
@@ -262,7 +262,7 @@ func opidxCheckKeylessCache(tr *Tree, c *dupCache) error {
 		for sn, index := range bySchema {
 			var candidates []*Node
 			var first *Node
-			for _, n := range sib.list {
+			for _, n := range sib.SchemaAll() {
 				if n.schema == sn {
 					first = n
 					break

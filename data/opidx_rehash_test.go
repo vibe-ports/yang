@@ -107,10 +107,10 @@ func TestOpIndexDirtyFlushManyRuns(t *testing.T) {
 			if at >= 2 {
 				t.Fatalf("%s has more than 2 instances", name)
 			}
-			if len(child.kids.list) != 1 {
-				t.Fatalf("%s[%d] has %d children, want key k", name, at, len(child.kids.list))
+			if child.kids.SchemaLen() != 1 {
+				t.Fatalf("%s[%d] has %d children, want key k", name, at, child.kids.SchemaLen())
 			}
-			if got, want := child.kids.list[0].value.Canonical(), fmt.Sprint(at); got != want {
+			if got, want := child.kids.At(0).value.Canonical(), fmt.Sprint(at); got != want {
 				t.Fatalf("%s[%d].k = %s, want %s", name, at, got, want)
 			}
 			counts[name]++

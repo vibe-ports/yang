@@ -39,7 +39,7 @@ func trimLinkedTree(t *testing.T, count int, targetFirst bool) (*Tree, *Node, []
 	if !targetFirst {
 		mustLink(t, tr.insert(nil, c, insertLast))
 	}
-	if (tr.top.list[0] == c) != targetFirst {
+	if (tr.top.At(0) == c) != targetFirst {
 		t.Fatal("fixture did not put target and referrers in the requested order")
 	}
 	return tr, target, lrefs
@@ -136,7 +136,7 @@ func TestTrimXPathDefaultPropagationLinear(t *testing.T) {
 		t.Fatalf("default propagation took %d units of work for %d containers", work, count)
 	}
 	for c := range r.Children() {
-		if c.flags&FlagDefault == 0 || c.kids.len() != 1 || c.kids.list[0].Name() != "keep" {
+		if c.flags&FlagDefault == 0 || c.kids.len() != 1 || c.kids.At(0).Name() != "keep" {
 			t.Fatal("trimmed container did not retain only its default leaf")
 		}
 	}
@@ -148,7 +148,7 @@ func TestTrimXPathRetainedTarget(t *testing.T) {
 	const count = 2000
 	tr, target, lrefs := trimLinkedTree(t, count, true)
 	trimWork(t, tr, "/b:c", count)
-	if tr.top.len() != 1 || tr.top.list[0].kids.list[0] != target || target.links != nil {
+	if tr.top.len() != 1 || tr.top.At(0).kids.At(0) != target || target.links != nil {
 		t.Fatal("target was not retained without links")
 	}
 	for _, n := range lrefs {
@@ -329,7 +329,7 @@ func TestTrimXPathBudgetStopsSiblingWalk(t *testing.T) {
 	for _, sn := range rSchema.Children {
 		mustLink(t, tr.insert(r, f.term(t, sn, sn.Name), insertDefault))
 	}
-	before := slices.Clone(r.kids.list)
+	before := slices.Clone(r.kids.schemaSpan().Collect())
 	topGen, childGen := tr.top.gen, r.kids.gen
 
 	tr.work.Store(0)
@@ -347,7 +347,7 @@ func TestTrimXPathBudgetStopsSiblingWalk(t *testing.T) {
 	if trimVisits := tr.work.Load() - evalVisits; trimVisits < 0 || trimVisits > stepCap+8 {
 		t.Fatalf("budget %d exhausted after %d trim sibling visits, want at most %d", stepCap, trimVisits, stepCap+8)
 	}
-	if tr.top.gen != topGen || r.kids.gen != childGen || !slices.Equal(r.kids.list, before) {
+	if tr.top.gen != topGen || r.kids.gen != childGen || !slices.Equal(r.kids.schemaSpan().Collect(), before) {
 		t.Fatal("budget failure changed the tree")
 	}
 	for _, n := range before {
@@ -377,7 +377,7 @@ func TestTrimXPathBudgetStopsRemovedSubtreeWalk(t *testing.T) {
 		mustLink(t, tr.insert(c, f.term(t, f.ul, "1"), insertLast))
 	}
 	topBefore := tr.top.nodes()
-	childrenBefore := slices.Clone(c.kids.list)
+	childrenBefore := slices.Clone(c.kids.schemaSpan().Collect())
 	topGen, childGen := tr.top.gen, c.kids.gen
 
 	tr.work.Store(0)
@@ -397,7 +397,7 @@ func TestTrimXPathBudgetStopsRemovedSubtreeWalk(t *testing.T) {
 		t.Fatalf("budget %d exhausted after %d trim sibling visits, want near the stepCap", stepCap, trimVisits)
 	}
 	if tr.top.gen != topGen || c.kids.gen != childGen ||
-		!slices.Equal(tr.top.nodes(), topBefore) || !slices.Equal(c.kids.list, childrenBefore) {
+		!slices.Equal(tr.top.nodes(), topBefore) || !slices.Equal(c.kids.schemaSpan().Collect(), childrenBefore) {
 		t.Fatal("budget failure changed the tree")
 	}
 	for _, n := range childrenBefore {

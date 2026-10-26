@@ -98,7 +98,7 @@ func TestStoredHashCrossTypeDup(t *testing.T) {
 				t.Fatal(err)
 			}
 			dst := newTree(dstSet)
-			root, _, err := dst.Dup(src.top.list[0], nil, DupOptions{Recursive: true})
+			root, _, err := dst.Dup(src.top.At(0), nil, DupOptions{Recursive: true})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -154,7 +154,7 @@ func TestStoredHashRepeatedKeyDescendingMerge(t *testing.T) {
 	if err := dst.Merge(src); err != nil {
 		t.Fatal(err)
 	}
-	if n := len(dst.top.list[0].kids.list); n != 4 {
+	if n := dst.top.At(0).kids.SchemaLen(); n != 4 {
 		t.Fatalf("merged %d instances, want 4", n)
 	}
 }
@@ -167,7 +167,7 @@ func TestStoredHashChildrenTableHistory(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	r := tr.top.list[0]
+	r := tr.top.At(0)
 	for i, name := range []string{"a", "b", "c"} {
 		if _, err := tr.NewPath("/m:r/"+name, "x", NewPathOptions{}); err != nil {
 			t.Fatal(err)

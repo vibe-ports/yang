@@ -66,7 +66,7 @@ func TestOpRunLookupWork(t *testing.T) {
 					src.work.visits, src.work.shifts = true, true
 					lv := &mergeLevel{parent: op, cache: &dupCache{}}
 					for _, i := range indices {
-						target := srcOp.kids.list[i]
+						target := srcOp.kids.At(i)
 						switch operation {
 						case "merge":
 							if err := tr.mergeSibling(lv, target); err != nil {
@@ -75,12 +75,12 @@ func TestOpRunLookupWork(t *testing.T) {
 						case "find":
 							p := types.Path{{Node: op.schema}, {Node: target.schema, Preds: []types.PathPred{{Kind: types.PredLeafList, Value: target.value}}}}
 							got, used, err := tr.evalPartial(&logger{set: set}, p)
-							if err != nil || used != len(p) || got != op.kids.list[i] {
+							if err != nil || used != len(p) || got != op.kids.At(i) {
 								t.Fatalf("find %d: %v, %d, %v", i, got, used, err)
 							}
 						case "instances":
 							got := slices.Collect(tr.instances(&op.kids, target.schema))
-							if len(got) != 1 || got[0] != op.kids.list[i] {
+							if len(got) != 1 || got[0] != op.kids.At(i) {
 								t.Fatalf("instances %d: %v", i, got)
 							}
 						}
@@ -89,8 +89,8 @@ func TestOpRunLookupWork(t *testing.T) {
 						t.Fatal(err)
 					}
 					work := tr.work.Load() + src.work.Load()
-					if operation == "merge" && len(op.kids.list) != len(indices) {
-						t.Fatalf("merge: %d instances, want %d", len(op.kids.list), len(indices))
+					if operation == "merge" && op.kids.SchemaLen() != len(indices) {
+						t.Fatalf("merge: %d instances, want %d", op.kids.SchemaLen(), len(indices))
 					}
 					return work
 				})
@@ -115,7 +115,7 @@ func TestOpRunGaps(t *testing.T) {
 	if got := slices.Collect(op.kids.all()); len(got) != 5 || got[3].Name() != "in" {
 		t.Fatalf("split order: %v", got)
 	}
-	sn := op.kids.list[1].schema
+	sn := op.kids.At(1).schema
 	check := func(gaps, run int) {
 		t.Helper()
 		if got := op.kids.order.entries[sn].gaps; got != gaps {
@@ -129,12 +129,12 @@ func TestOpRunGaps(t *testing.T) {
 		}
 	}
 	check(1, 2)
-	in := op.kids.list[3]
+	in := op.kids.At(3)
 	if err := unlinkTree(in); err != nil {
 		t.Fatal(err)
 	}
 	check(0, 3)
-	mustLink(t, tr.insertBefore(op.kids.list[3], in))
+	mustLink(t, tr.insertBefore(op.kids.At(3), in))
 	check(1, 2)
 	op.kids.opBuild(tr)
 	check(1, 2)
@@ -143,7 +143,7 @@ func TestOpRunGaps(t *testing.T) {
 	}
 	check(0, 3)
 	// A singleton split run disappears and returns, updating its own entry too.
-	v3 := op.kids.list[3]
+	v3 := op.kids.At(3)
 	mustLink(t, tr.insertBefore(v3, in))
 	if err := unlinkTree(v3); err != nil {
 		t.Fatal(err)

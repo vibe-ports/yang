@@ -33,7 +33,7 @@ func TestSortRelocationOutsideOperation(t *testing.T) {
 	}
 	mustLink(t, tr.insert(cn, opIndexTerm(t, sn, 11), insertDefault))
 	var got []string
-	for _, n := range cn.kids.list {
+	for _, n := range cn.kids.SchemaAll() {
 		got = append(got, n.value.Canonical())
 	}
 	if want := []string{"2", "3", "4", "10", "11"}; !slices.Equal(got, want) {

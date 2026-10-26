@@ -134,7 +134,7 @@ func snapshotHashBudgetSiblings(s *siblings) string {
 	sort.Strings(occurrence)
 	sort.Strings(pending)
 	return fmt.Sprintf("order=%d gen=%d work=%p schemaUnordered=%t list=%v opq=%v ht=%v leaders=%v first=%v rb=%v rbOrders=%v unsorted=%v occurrences=%v pending=%v",
-		s.exactOrder, s.gen, s.work, s.schemaUnordered, s.list, s.opq, entries, leaders, first, rb, rbOrders, unsorted, occurrence, pending)
+		s.exactOrder, s.gen, s.work, s.schemaUnordered, s.schemaSpan().Collect(), s.opaqueSpan().Collect(), entries, leaders, first, rb, rbOrders, unsorted, occurrence, pending)
 }
 
 func dirtyOrderDataNode(n *dirtyOrderNode) *Node {
@@ -411,7 +411,7 @@ func TestHashBudgetOpaqueComparedPrefix(t *testing.T) {
 		}
 		var list *Node
 		for range 4 {
-			list, _, err = dst.Dup(src.top.first().kids.list[0], root, DupOptions{Recursive: true})
+			list, _, err = dst.Dup(src.top.first().kids.At(0), root, DupOptions{Recursive: true})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -428,7 +428,7 @@ func TestHashBudgetOpaqueComparedPrefix(t *testing.T) {
 	}
 	checkEveryHashBudgetPointPair(t, build, func(t *testing.T, pair []*Tree) {
 		t.Helper()
-		if pair[0].top.len() != 0 || len(pair[1].top.first().kids.list[3].kids.opq) != 1 {
+		if pair[0].top.len() != 0 || pair[1].top.first().kids.At(3).kids.OpaqueLen() != 1 {
 			t.Fatal("opaque move did not reach the copied list")
 		}
 	})
@@ -476,7 +476,7 @@ func TestHashBudgetComparedParentSetValue(t *testing.T) {
 		}
 		var list *Node
 		for range 4 {
-			list, _, err = dst.Dup(src.top.first().kids.list[0], root, DupOptions{Recursive: true})
+			list, _, err = dst.Dup(src.top.first().kids.At(0), root, DupOptions{Recursive: true})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -493,8 +493,8 @@ func TestHashBudgetComparedParentSetValue(t *testing.T) {
 	checkEveryHashBudgetPointPair(t, build, func(t *testing.T, trees []*Tree) {
 		t.Helper()
 		root := trees[0].top.first()
-		list := root.kids.list[3]
-		if list.kids.list[1].Value() != "new value" {
+		list := root.kids.At(3)
+		if list.kids.At(1).Value() != "new value" {
 			t.Fatal("successful value change did not reach the compared prefix")
 		}
 		if want, ok := hashOf(list); !ok || list.hkey != want {
@@ -530,7 +530,7 @@ func TestParseOpHashBudgetChargePoints(t *testing.T) {
 			checkEveryHashBudgetPointPair(t, build, func(t *testing.T, trees []*Tree) {
 				t.Helper()
 				var p, s bool
-				for _, n := range trees[0].top.first().kids.list {
+				for _, n := range trees[0].top.first().kids.SchemaAll() {
 					p = p || n.Name() == "p" && n.Value() == "parsed"
 					s = s || n.Name() == "s" && n.Value() == "value"
 				}
@@ -565,7 +565,7 @@ func TestValidateImplicitHashBudgetChargePoints(t *testing.T) {
 	checkEveryHashBudgetPointPair(t, build, func(t *testing.T, trees []*Tree) {
 		t.Helper()
 		root := trees[0].top.first()
-		if len(root.kids.list) != 5 || root.kids.list[3].Name() != "d" || root.kids.list[4].Name() != "e" {
+		if root.kids.SchemaLen() != 5 || root.kids.At(3).Name() != "d" || root.kids.At(4).Name() != "e" {
 			t.Fatal("validation did not create the default")
 		}
 	})
@@ -605,7 +605,7 @@ func TestValidationPublicVariantsHashBudgetChargePoints(t *testing.T) {
 			checkEveryHashBudgetPointPair(t, build, func(t *testing.T, trees []*Tree) {
 				t.Helper()
 				root := trees[0].top.first()
-				if len(root.kids.list) != 5 || root.kids.list[3].Name() != "d" || root.kids.list[4].Name() != "e" {
+				if root.kids.SchemaLen() != 5 || root.kids.At(3).Name() != "d" || root.kids.At(4).Name() != "e" {
 					t.Fatalf("%s defaults = %v", variant, typedDump(trees[0]))
 				}
 			})
@@ -659,16 +659,16 @@ func TestValidateAutodeleteHashBudgetChargePoints(t *testing.T) {
 				t.Fatal(err)
 			}
 		}
-		list, _, err := dst.Dup(src.top.first().kids.list[0], root, DupOptions{Recursive: true, WithFlags: true})
+		list, _, err := dst.Dup(src.top.first().kids.At(0), root, DupOptions{Recursive: true, WithFlags: true})
 		if err != nil {
 			t.Fatal(err)
 		}
 		explicit := modelFreshTerm(t, list, "d", "new value")
 		explicit.flags = FlagNew
-		if err := dst.link(list, &list.kids, explicit, len(list.kids.list)); err != nil {
+		if err := dst.link(list, &list.kids, explicit, list.kids.SchemaLen()); err != nil {
 			t.Fatal(err)
 		}
-		if root.kids.ht == nil || len(list.kids.list) != 3 || list.kids.list[1].flags&FlagDefault == 0 {
+		if root.kids.ht == nil || list.kids.SchemaLen() != 3 || list.kids.At(1).flags&FlagDefault == 0 {
 			t.Fatal("fixture needs an indexed default before an explicit leaf")
 		}
 		return []*Tree{dst}, func() error {
@@ -678,8 +678,8 @@ func TestValidateAutodeleteHashBudgetChargePoints(t *testing.T) {
 	}
 	checkEveryHashBudgetPointPair(t, build, func(t *testing.T, trees []*Tree) {
 		t.Helper()
-		list := trees[0].top.first().kids.list[3]
-		if len(list.kids.list) != 2 || list.kids.list[1].Value() != "new value" {
+		list := trees[0].top.first().kids.At(3)
+		if list.kids.SchemaLen() != 2 || list.kids.At(1).Value() != "new value" {
 			t.Fatalf("validation children=%v", typedDump(trees[0]))
 		}
 		if want, ok := hashOf(list); !ok || list.hkey != want {
@@ -718,16 +718,16 @@ func TestDupSiblingsListHashBudgetChargePoints(t *testing.T) {
 			}
 		}
 		return []*Tree{dst, src}, func() error {
-			_, _, err := dst.DupSiblings(sr.kids.list[0], dr, DupOptions{})
+			_, _, err := dst.DupSiblings(sr.kids.At(0), dr, DupOptions{})
 			return err
 		}
 	}
 	checkEveryHashBudgetPointPair(t, build, func(t *testing.T, trees []*Tree) {
 		t.Helper()
-		if got := len(trees[0].top.first().kids.list); got != 7 {
+		if got := trees[0].top.first().kids.SchemaLen(); got != 7 {
 			t.Fatalf("duplicate left %d children, want 7", got)
 		}
-		if got := len(trees[1].top.first().kids.list); got != 2 {
+		if got := trees[1].top.first().kids.SchemaLen(); got != 2 {
 			t.Fatalf("duplication changed source children: %d", got)
 		}
 	})
@@ -852,13 +852,13 @@ func TestPublicHashMutationChargePoints(t *testing.T) {
 		},
 		"SetValue": func() (*Tree, func() error) {
 			tr, root := base()
-			return tr, func() error { _, err := root.kids.list[3].SetValue("new"); return err }
+			return tr, func() error { _, err := root.kids.At(3).SetValue("new"); return err }
 		},
 		"SetValueCanonical": func() (*Tree, func() error) {
 			tr, root := base()
-			return tr, func() error { _, err := root.kids.list[3].SetValueCanonical("new"); return err }
+			return tr, func() error { _, err := root.kids.At(3).SetValueCanonical("new"); return err }
 		},
-		"Remove": func() (*Tree, func() error) { tr, root := base(); return tr, root.kids.list[3].Remove },
+		"Remove": func() (*Tree, func() error) { tr, root := base(); return tr, root.kids.At(3).Remove },
 		"TrimXPath": func() (*Tree, func() error) {
 			tr, _ := base()
 			return tr, func() error { _, err := tr.TrimXPath("/m:r/a", XPathOptions{}); return err }
@@ -871,17 +871,17 @@ func TestPublicHashMutationChargePoints(t *testing.T) {
 		"Insert": func() (*Tree, func() error) {
 			tr, root := base()
 			_, srcRoot := source("new")
-			return tr, func() error { return tr.Insert(root, srcRoot.kids.list[0]) }
+			return tr, func() error { return tr.Insert(root, srcRoot.kids.At(0)) }
 		},
 		"Dup": func() (*Tree, func() error) {
 			tr, root := base()
 			_, srcRoot := source("new")
-			return tr, func() error { _, _, err := tr.Dup(srcRoot.kids.list[0], root, DupOptions{}); return err }
+			return tr, func() error { _, _, err := tr.Dup(srcRoot.kids.At(0), root, DupOptions{}); return err }
 		},
 		"DupSiblings": func() (*Tree, func() error) {
 			tr, root := base()
 			_, srcRoot := source("new", "next")
-			return tr, func() error { _, _, err := tr.DupSiblings(srcRoot.kids.list[0], root, DupOptions{}); return err }
+			return tr, func() error { _, _, err := tr.DupSiblings(srcRoot.kids.At(0), root, DupOptions{}); return err }
 		},
 		"ApplyDiff": func() (*Tree, func() error) {
 			tr, _ := base()
@@ -973,7 +973,7 @@ func TestMergeBatchHashBudgetAtomic(t *testing.T) {
 				t.Fatal(err)
 			}
 		}
-		if root.kids.ht == nil || !root.kids.hasRB(srcRoot.kids.list[0].schema) {
+		if root.kids.ht == nil || !root.kids.hasRB(srcRoot.kids.At(0).schema) {
 			t.Fatal("fixture needs an indexed sorted destination run")
 		}
 		return dst, src, root
@@ -984,13 +984,13 @@ func TestMergeBatchHashBudgetAtomic(t *testing.T) {
 	}
 	limit := full.work.hashUsed - 1
 	dst, src, root := build()
-	before := slices.Clone(root.kids.list)
+	before := slices.Clone(root.kids.schemaSpan().Collect())
 	dst.work.hashLimit = limit
 	if err := dst.Merge(src); !errors.Is(err, yang.ErrBudget) {
 		t.Fatalf("Merge at limit %d: %v; want ErrBudget", limit, err)
 	}
-	if !slices.Equal(root.kids.list, before) {
-		t.Fatalf("failed Merge published part of its batch: before=%d after=%d used=%d limit=%d", len(before), len(root.kids.list), dst.work.hashUsed, limit)
+	if !slices.Equal(root.kids.schemaSpan().Collect(), before) {
+		t.Fatalf("failed Merge published part of its batch: before=%d after=%d used=%d limit=%d", len(before), root.kids.SchemaLen(), dst.work.hashUsed, limit)
 	}
 	for _, n := range before {
 		if n.schema != nil && n.schema.Name == "s" {
@@ -1033,7 +1033,7 @@ func TestInsertBudgetPreservesFirstRegistration(t *testing.T) {
 	if srcRoot.kids.ht == nil || dstRoot.kids.ht == nil {
 		t.Fatal("fixture needs both child indexes")
 	}
-	before := slices.Clone(srcRoot.kids.list)
+	before := slices.Clone(srcRoot.kids.schemaSpan().Collect())
 	firstRecord := srcRoot.kids.exactByNode[first]
 	secondRecord := srcRoot.kids.exactByNode[second]
 	if firstRecord == nil || secondRecord == nil {
@@ -1043,7 +1043,7 @@ func TestInsertBudgetPreservesFirstRegistration(t *testing.T) {
 	if err := dst.Insert(dstRoot, first); !errors.Is(err, yang.ErrBudget) {
 		t.Fatalf("Insert: %v; want ErrBudget", err)
 	}
-	if !slices.Equal(srcRoot.kids.list, before) || first.parent != srcRoot ||
+	if !slices.Equal(srcRoot.kids.schemaSpan().Collect(), before) || first.parent != srcRoot ||
 		srcRoot.kids.exactByNode[first] != firstRecord || srcRoot.kids.exactByNode[second] != secondRecord ||
 		srcRoot.kids.exactByNode[first].order != firstRecord.order {
 		t.Fatal("failed Insert changed source order or registrations")
@@ -1075,16 +1075,16 @@ func TestRemoveAfterFailedValueHashReindexesCopiedList(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	list, _, err := dst.Dup(src.top.first().kids.list[0], root, DupOptions{Recursive: true})
+	list, _, err := dst.Dup(src.top.first().kids.At(0), root, DupOptions{Recursive: true})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if root.kids.ht == nil || len(list.kids.list) != 3 || list.kids.list[1].schema.Name != "x" {
-		t.Fatalf("fixture needs an indexed copied prefix: ht=%t children=%d", root.kids.ht != nil, len(list.kids.list))
+	if root.kids.ht == nil || list.kids.SchemaLen() != 3 || list.kids.At(1).schema.Name != "x" {
+		t.Fatalf("fixture needs an indexed copied prefix: ht=%t children=%d", root.kids.ht != nil, list.kids.SchemaLen())
 	}
-	x := list.kids.list[1]
+	x := list.kids.At(1)
 	oldKey := list.hkey
-	before := slices.Clone(list.kids.list)
+	before := slices.Clone(list.kids.schemaSpan().Collect())
 	dst.work.hashLimit = 1
 	if changed, err := x.SetValue("new"); changed || !errors.Is(err, yang.ErrBudget) {
 		t.Fatalf("SetValue changed=%t err=%v; want ErrBudget", changed, err)
@@ -1092,7 +1092,7 @@ func TestRemoveAfterFailedValueHashReindexesCopiedList(t *testing.T) {
 	if err := x.Remove(); !errors.Is(err, yang.ErrBudget) {
 		t.Fatalf("Remove with exhausted quota: %v; want ErrBudget", err)
 	}
-	if !slices.Equal(list.kids.list, before) || list.hkey != oldKey || x.parent != list {
+	if !slices.Equal(list.kids.schemaSpan().Collect(), before) || list.hkey != oldKey || x.parent != list {
 		t.Fatal("failed Remove changed copied list or its index")
 	}
 	dst.work.hashLimit = 4096
@@ -1121,11 +1121,11 @@ func TestRemoveAfterFailedValueHashReindexesCopiedList(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	list2, _, err := dst2.Dup(src2.top.first().kids.list[0], root2, DupOptions{Recursive: true})
+	list2, _, err := dst2.Dup(src2.top.first().kids.At(0), root2, DupOptions{Recursive: true})
 	if err != nil {
 		t.Fatal(err)
 	}
-	x2, oldKey2 := list2.kids.list[1], list2.hkey
+	x2, oldKey2 := list2.kids.At(1), list2.hkey
 	beforeTrim := snapshotHashBudgetTree(dst2)
 	dst2.work.hashLimit = 1
 	if _, err := dst2.TrimXPath("/m:r/l/b", XPathOptions{}); !errors.Is(err, yang.ErrBudget) {

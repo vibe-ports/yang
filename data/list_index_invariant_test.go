@@ -37,7 +37,7 @@ const listIndexCrossSchema = `module m {
 func liveStringListHash(n *Node) uint32 {
 	h := types.HashMulti32(0, []byte(n.schema.Module.Name))
 	h = types.HashMulti32(h, []byte(n.schema.Name))
-	for _, c := range n.kids.list {
+	for _, c := range n.kids.SchemaAll() {
 		if !c.schema.IsKey() {
 			break
 		}
@@ -53,10 +53,10 @@ func positionalListEqual(a, b *Node) bool {
 		return false
 	}
 	for i := range a.schema.Keys {
-		if i == len(a.kids.list) || i == len(b.kids.list) {
-			return len(a.kids.list) == len(b.kids.list)
+		if i == a.kids.SchemaLen() || i == b.kids.SchemaLen() {
+			return a.kids.SchemaLen() == b.kids.SchemaLen()
 		}
-		x, y := a.kids.list[i], b.kids.list[i]
+		x, y := a.kids.At(i), b.kids.At(i)
 		if x.schema != y.schema || x.hash != y.hash || x.Value() != y.Value() {
 			return false
 		}
@@ -108,7 +108,7 @@ func (m *listIndexModel) refresh() {
 
 func (m *listIndexModel) keyInserted(n *Node) bool {
 	for i, sn := range n.schema.Keys {
-		if i >= len(n.kids.list) || n.kids.list[i].schema != sn {
+		if i >= n.kids.SchemaLen() || n.kids.At(i).schema != sn {
 			return false // tree_data.c:684-702,836-842: neither hash nor registration
 		}
 	}
@@ -157,7 +157,7 @@ func (m *listIndexModel) check(t *testing.T, tr *Tree, root *Node) {
 				}
 				c := newTerm(sn, v)
 				c.parent = probe
-				probe.kids.list = append(probe.kids.list, c)
+				probe.kids.appendNode(c)
 			}
 			probe.hash, probe.lkeyOK = liveStringListHash(probe), true
 			matches := m.checkProbe(t, tr, root, probe)
@@ -195,7 +195,7 @@ func (m *listIndexModel) checkProbe(t *testing.T, tr *Tree, root, probe *Node) [
 
 // keylessInstance reports whether a list instance under root has no term first child.
 func keylessInstance(root *Node) bool {
-	for _, c := range root.kids.list {
+	for _, c := range root.kids.SchemaAll() {
 		if c.schema.Kind == schema.List && !isTermNode(firstChild(c)) {
 			return true
 		}
@@ -218,7 +218,7 @@ func TestListIndexMutationInvariant(t *testing.T) {
 			}
 			root := tr.top.first()
 			model := &listIndexModel{hashes: map[*Node]uint32{}}
-			for _, n := range root.kids.list[3:] {
+			for _, n := range root.kids.schemaSpan().Collect()[3:] {
 				model.register(n, true)
 			}
 			model.check(t, tr, root)
@@ -243,8 +243,8 @@ func TestListIndexMutationInvariant(t *testing.T) {
 						}
 						n := model.order[rng.IntN(len(model.order))]
 						value := []string{"x", "y", "z"}[rng.IntN(3)]
-						keys := slices.DeleteFunc(slices.Clone(n.kids.list), func(c *Node) bool { return !c.isKey() })
-						if len(n.kids.list) >= 6 {
+						keys := slices.DeleteFunc(slices.Clone(n.kids.schemaSpan().Collect()), func(c *Node) bool { return !c.isKey() })
+						if n.kids.SchemaLen() >= 6 {
 							unlink(keys[len(keys)-1])
 							keys = keys[:len(keys)-1]
 							model.check(t, tr, root)
@@ -354,15 +354,15 @@ func TestListIndexMutationInvariant(t *testing.T) {
 								break
 							}
 							var copied *Node
-							copied, _, err = dst.Dup(src.top.first().kids.list[0], dstRoot, DupOptions{Recursive: true})
+							copied, _, err = dst.Dup(src.top.first().kids.At(0), dstRoot, DupOptions{Recursive: true})
 							if err != nil {
 								break
 							}
-							nonkeys := slices.DeleteFunc(slices.Clone(copied.kids.list), func(c *Node) bool { return c.isKey() })
+							nonkeys := slices.DeleteFunc(slices.Clone(copied.kids.schemaSpan().Collect()), func(c *Node) bool { return c.isKey() })
 							// The target context sorts its key first. Recreate the source copy's
 							// leading non-key prefix while retaining the cross-context hash snapshot;
 							// internal relocation/removal paths can leave exactly this native state.
-							copied.lkeyFrozen = slices.Clone(snapshotKeys(copied))
+							copied.lkeyFrozen = snapshotKeys(copied).Collect()
 							for _, c := range nonkeys {
 								unlink(c)
 							}
@@ -408,7 +408,7 @@ func TestListIndexMutationInvariant(t *testing.T) {
 						if retainsOrder && (r == nil || r.order != oldOrder) {
 							t.Fatal("mutation without native registration moved the record")
 						}
-						for _, c := range root.kids.list {
+						for _, c := range root.kids.SchemaAll() {
 							if c.schema.Kind == schema.List {
 								if _, known := model.hashes[c]; !known {
 									model.register(c, true)
@@ -442,7 +442,7 @@ func TestListIndexRepeatedEarlierKey(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		root, list := tr.top.first(), tr.top.first().kids.list[3]
+		root, list := tr.top.first(), tr.top.first().kids.At(3)
 		hash, order := list.hash, root.kids.exactByNode[list].order
 		if _, err := tr.NewTerm(list, "a", value, NewOptions{}); err != nil {
 			t.Fatal(err)
@@ -470,15 +470,15 @@ func TestListIndexShortPrefix(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		root, list := tr.top.first(), tr.top.first().kids.list[3]
+		root, list := tr.top.first(), tr.top.first().kids.At(3)
 		mustLink(t, tr.insert(list, newOpaque(opaque{Name: "extra", Value: value, Format: types.FormatJSON}), insertDefault))
 		for range 2 {
-			unlink(list.kids.list[0])
+			unlink(list.kids.At(0))
 		}
 		if tr.findFirst(&root.kids, list) != list {
 			t.Fatal("short prefix lost its registration")
 		}
-		if _, err := list.kids.list[0].SetValue("changed"); err != nil {
+		if _, err := list.kids.At(0).SetValue("changed"); err != nil {
 			t.Fatal(err)
 		}
 		if tr.findFirst(&root.kids, list) != list {

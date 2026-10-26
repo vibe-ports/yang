@@ -253,10 +253,10 @@ func parseXMLNetconf(lc *lydCtx, in []byte) error {
 func (lc *lydCtx) envEventTime() (moved *Node, err error) {
 	top := &lc.tree.top
 	var last *Node
-	if n := len(top.opq); n > 0 {
-		last = top.opq[n-1]
-	} else if n := len(top.list); n > 0 {
-		last = top.list[n-1]
+	if n := top.OpaqueLen(); n > 0 {
+		last = top.opaqueAt(n - 1)
+	} else if n := top.SchemaLen(); n > 0 {
+		last = top.At(n - 1)
 	}
 	if last == nil || last.schema != nil {
 		return nil, lc.log.val(nil, "", ly.Data, "Missing notification \"eventTime\" node.")

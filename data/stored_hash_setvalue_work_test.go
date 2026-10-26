@@ -23,7 +23,7 @@ func TestStoredHashMaxLeafListSetValueWork(t *testing.T) {
 				t.Fatal(err)
 			}
 		}
-		tail := tr.top.list[n-1]
+		tail := tr.top.At(n - 1)
 		tr.work.Store(0)
 		tr.work.visits, tr.work.shifts = true, true
 		var charged uint64
@@ -32,7 +32,7 @@ func TestStoredHashMaxLeafListSetValueWork(t *testing.T) {
 				t.Fatalf("SetValue %d: changed=%t error=%v", i, changed, err)
 			}
 			charged += tr.work.hashUsed
-			if tr.top.list[n-1] != tail {
+			if tr.top.At(n-1) != tail {
 				t.Fatalf("SetValue %d moved maximum away from tail", i)
 			}
 		}
@@ -50,19 +50,19 @@ func TestStoredHashMaxLeafListSetValueWork(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	tail := tr.top.list[31]
+	tail := tr.top.At(31)
 	tr.work.hashLimit = 1
 	if changed, err := tail.SetValue("32"); changed || !errors.Is(err, yang.ErrBudget) {
 		t.Fatalf("budget: changed=%t error=%v", changed, err)
 	}
-	if tail.Value() != "31" || tr.top.list[31] != tail {
+	if tail.Value() != "31" || tr.top.At(31) != tail {
 		t.Fatal("budget refusal changed the ordered run")
 	}
 	tr.work.hashLimit = 2
 	end := tr.work.beginHashWork()
-	_, _, err := tr.linkOrigin(tr.top.list[16])
+	_, _, err := tr.linkOrigin(tr.top.At(16))
 	end()
-	if !errors.Is(err, yang.ErrBudget) || tr.work.hashUsed != 2 || tr.top.list[16].Value() != "16" {
+	if !errors.Is(err, yang.ErrBudget) || tr.work.hashUsed != 2 || tr.top.At(16).Value() != "16" {
 		t.Fatalf("middle-position lookup: error=%v charged=%d", err, tr.work.hashUsed)
 	}
 }
@@ -80,7 +80,7 @@ func TestStoredHashMiddleRemovalAppendWork(t *testing.T) {
 				t.Fatal(err)
 			}
 		}
-		if err := tr.top.list[n/2].Remove(); err != nil {
+		if err := tr.top.At(n / 2).Remove(); err != nil {
 			t.Fatal(err)
 		}
 		tr.work.Store(0)
@@ -90,7 +90,7 @@ func TestStoredHashMiddleRemovalAppendWork(t *testing.T) {
 				t.Fatal(err)
 			}
 		}
-		if tr.top.unsorted[tr.top.list[0]] || tr.top.list[len(tr.top.list)-1].Value() != fmt.Sprint(2*n-1) {
+		if tr.top.unsorted[tr.top.At(0)] || tr.top.At(tr.top.SchemaLen()-1).Value() != fmt.Sprint(2*n-1) {
 			t.Fatal("middle removal lost the sorted append path")
 		}
 		return tr.work.Load()

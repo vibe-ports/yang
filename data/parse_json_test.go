@@ -319,7 +319,7 @@ func TestParseJSONFlags(t *testing.T) {
 	if err == nil || len(diags) != 2 {
 		t.Fatalf("%v %v", err, diags)
 	}
-	sn := lc.tree.top.list[0].kids.list[0]
+	sn := lc.tree.top.At(0).kids.At(0)
 	// queued when created and again after each of its two metadata
 	if !reflect.DeepEqual(lc.nodeWhen.items, []*Node{sn, sn, sn}) || sn.flags&FlagDefault == 0 ||
 		len(sn.meta) != 1 || sn.meta[0].name != "ann" {

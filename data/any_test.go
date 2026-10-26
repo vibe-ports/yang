@@ -128,7 +128,7 @@ func TestAnyDupOwnership(t *testing.T) {
 	if err := n.copyAnyValue(newAnyWork(context.Background(), Budget{}), nil, &text, 0); err != nil {
 		t.Fatal(err)
 	}
-	c := n.any.children.opq[0]
+	c := n.any.children.opaqueAt(0)
 	c.flags = FlagWhenTrue
 	n.flags = FlagWhenTrue | FlagDefault
 	n.meta = []*meta{{mod: x.Module, name: "outer"}}
@@ -136,17 +136,17 @@ func TestAnyDupOwnership(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	dc := d.any.children.opq[0]
+	dc := d.any.children.opaqueAt(0)
 	if d.flags != FlagWhenTrue|FlagDefault || len(d.meta) != 0 || dc.flags != FlagNew || len(dc.opaq.Attrs) != 1 {
 		t.Fatal("payload inherited outer duplication options")
 	}
-	if dc == c || dc.parent != d || dc.kids.opq[0] == c.kids.opq[0] || d.any.children.ht != nil {
+	if dc == c || dc.parent != d || dc.kids.opaqueAt(0) == c.kids.opaqueAt(0) || d.any.children.ht != nil {
 		t.Fatal("payload copy ownership")
 	}
 	dc.opaq.Attrs[0].Value = "changed"
 	dc.opaq.Attrs[0].Prefixes.(types.XMLNamespaces).NS["p"] = "urn:changed"
-	dc.kids.opq[0].opaq.Prefixes.(types.XMLNamespaces).NS["p"] = "urn:changed"
-	if c.opaq.Attrs[0].Value != "p:v" || c.opaq.Attrs[0].Prefixes.(types.XMLNamespaces).NS["p"] != "urn:p" || c.kids.opq[0].opaq.Prefixes.(types.XMLNamespaces).NS["p"] != "urn:p" {
+	dc.kids.opaqueAt(0).opaq.Prefixes.(types.XMLNamespaces).NS["p"] = "urn:changed"
+	if c.opaq.Attrs[0].Value != "p:v" || c.opaq.Attrs[0].Prefixes.(types.XMLNamespaces).NS["p"] != "urn:p" || c.kids.opaqueAt(0).opaq.Prefixes.(types.XMLNamespaces).NS["p"] != "urn:p" {
 		t.Fatal("mutable namespace/attributes shared")
 	}
 	if len(slices.Collect(n.Children())) != 0 || len(slices.Collect(n.ChildrenNoKeys())) != 0 || len(slices.Collect(n.All())) != 1 {
@@ -187,18 +187,18 @@ func TestAnyCrossContextAndDeep(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if d.schema != da || setOf(d.any.children.list[0]) != tr.set || d.any.children.list[0].schema != a {
+	if d.schema != da || setOf(d.any.children.At(0)) != tr.set || d.any.children.At(0).schema != a {
 		t.Fatal("payload contexts rebound")
 	}
 	if !root.Equal(d, CompareOptions{}) {
 		t.Fatal("deep equal")
 	}
 	for range depth {
-		d = d.any.children.list[0]
+		d = d.any.children.At(0)
 	}
 	changed := "changed"
 	d.any.text = &changed
-	if root.Equal(dst.top.list[0], CompareOptions{}) || *last.any.text != "end" {
+	if root.Equal(dst.top.At(0), CompareOptions{}) || *last.any.text != "end" {
 		t.Fatal("deep comparison or isolation")
 	}
 }
@@ -222,7 +222,7 @@ func TestAnyMerge(t *testing.T) {
 	if err := tr.Merge(src); err != nil {
 		t.Fatal(err)
 	}
-	if n.any.text != nil || n.any.children.len() != 1 || n.flags != FlagDefault|FlagNew || n.any.children.opq[0] == m.any.children.opq[0] {
+	if n.any.text != nil || n.any.children.len() != 1 || n.flags != FlagDefault|FlagNew || n.any.children.opaqueAt(0) == m.any.children.opaqueAt(0) {
 		t.Fatal("unequal merge must replace")
 	}
 }
@@ -273,14 +273,14 @@ func TestAnySchemaPayload(t *testing.T) {
 		t.Fatal(err)
 	}
 	mustLink(t, tr.insert(nil, n, insertDefault))
-	if payload.top.len() != 1 || n.any.children.list[0] == container {
+	if payload.top.len() != 1 || n.any.children.At(0) == container {
 		t.Fatal("copy consumed its input")
 	}
 	d, _, err := tr.Dup(n, nil, DupOptions{NoMeta: true, WithFlags: true})
 	if err != nil {
 		t.Fatal(err)
 	}
-	dl := d.any.children.list[0].kids.list[0]
+	dl := d.any.children.At(0).kids.At(0)
 	if dl.flags != FlagDefault|FlagNew || len(dl.meta) != 1 || dl.meta[0] == leaf.meta[0] {
 		t.Fatal("payload metadata or flags lost/shared")
 	}
@@ -299,7 +299,7 @@ func TestAnySchemaPayload(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if payload.top.len() != 0 || owned.any.children.list[0] != container || container.Parent() != owned {
+	if payload.top.len() != 0 || owned.any.children.At(0) != container || container.Parent() != owned {
 		t.Fatal("ownership transfer")
 	}
 	if err := container.Remove(); err != nil {
@@ -309,7 +309,7 @@ func TestAnySchemaPayload(t *testing.T) {
 		t.Fatal("removal from transferred payload")
 	}
 	// Mandatory payload descendants are not revisited by ordinary validation.
-	if err := n.any.children.list[0].kids.list[0].Remove(); err != nil {
+	if err := n.any.children.At(0).kids.At(0).Remove(); err != nil {
 		t.Fatal(err)
 	}
 	if diags, err := tr.validateAll(context.Background(), ValidateOptions{Present: true}, Budget{}, nil); err != nil {
@@ -434,7 +434,7 @@ func TestAnyOpaqueContextCopy(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	payload := d.any.children.opq[0]
+	payload := d.any.children.opaqueAt(0)
 	if !payload.Equal(orig, CompareOptions{}) || payload.Equal(want, CompareOptions{}) ||
 		payload.opaq.Prefixes.(types.XMLNamespaces).Set != src.set || payload.opaq.Attrs[0].Prefixes.(types.XMLNamespaces).Set != src.set {
 		t.Fatal("any payload prefix contexts rebound")

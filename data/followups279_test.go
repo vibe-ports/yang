@@ -196,7 +196,7 @@ func TestApplyDiffCreatedDuplicateMixedTable(t *testing.T) {
 		t.Fatal(err)
 	}
 	var notes []string
-	for _, n := range c.kids.list {
+	for _, n := range c.kids.SchemaAll() {
 		if n.Name() == "ll" && n.Value() == "x" {
 			var own []string
 			for _, m := range n.meta {
@@ -229,7 +229,7 @@ func TestApplyDiffMovedDuplicateLiveOrder(t *testing.T) {
 		t.Fatal(err)
 	}
 	var got []string
-	for _, n := range tr.top.list {
+	for _, n := range tr.top.SchemaAll() {
 		var notes []string
 		for _, m := range n.meta {
 			notes = append(notes, m.value.Canonical())
