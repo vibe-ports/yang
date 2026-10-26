@@ -1234,3 +1234,29 @@ func TestStage3TrimRefusalCleansPrefixLinks(t *testing.T) {
 	}
 	checkTreeRetainedRB(t, tr)
 }
+
+// TestStage3DetachedReplyBudgetCleanup parses a reply into a detached request with a node
+// budget that fails after the first output leaf. A detached parent has no journal, so the
+// parsed nodes must still be freed: failed reply data must not stay under the request.
+func TestStage3DetachedReplyBudgetCleanup(t *testing.T) {
+	set := opIndexSet(t, `module m { yang-version 1.1; namespace "urn:m"; prefix m;
+  rpc r { input { leaf i { type string; } } output { leaf o1 { type string; } leaf o2 { type string; } } } }`)
+	for _, tc := range []struct {
+		f     Format
+		reply string
+	}{
+		{FormatXML, `<o1 xmlns="urn:m">a</o1><o2 xmlns="urn:m">b</o2>`},
+		{FormatJSON, `{"m:o1":"a","m:o2":"b"}`},
+	} {
+		_, op := opIndexParseRPC(t, set, `{"m:r":{"i":"x"}}`)
+		mustLink(t, unlink(op))
+		before := op.kids.Len()
+		_, _, _, _, err := parseOpWith(context.Background(), strings.NewReader(tc.reply), set, tc.f, opReply, op, Reject, Budget{MaxNodes: 1})
+		if !errors.Is(err, yang.ErrBudget) {
+			t.Fatalf("format %v: %v", tc.f, err)
+		}
+		if got := op.kids.Len(); got != before {
+			t.Fatalf("format %v: failed reply left %d children under the detached request, want %d", tc.f, got, before)
+		}
+	}
+}

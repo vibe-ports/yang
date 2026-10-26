@@ -283,8 +283,10 @@ func parseOpWith(ctx context.Context, r io.Reader, s *schema.Set, f Format, t op
 			if errors.As(err, &ve) {
 				ve.rc = ve.RC()
 			}
-			if !errors.Is(err, yang.ErrBudget) {
-				if cleanupErr := lc.freeParsed(); cleanupErr != nil {
+			// A budget failure under a linked parent is restored by the journal. A detached parent
+			// has none: its parsed nodes are freed as for any other error, keeping the budget error.
+			if budget := errors.Is(err, yang.ErrBudget); !budget || parent.treeOf() == nil {
+				if cleanupErr := lc.freeParsed(); cleanupErr != nil && (!budget || errors.Is(cleanupErr, yang.ErrBudget)) {
 					err = lc.log.done(cleanupErr)
 				}
 			} // nil lc: the input was not read, nothing was parsed
