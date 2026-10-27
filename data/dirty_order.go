@@ -370,7 +370,10 @@ func (d *dirtyOrder) checkInsertCompatible(work *workCounter, n *Node,
 ) (bool, error) {
 	for cur := d.root; cur != nil; {
 		// the callback's bound is charged before it runs, as chargedCompare does
-		if err := work.chargeHash(1 + rbCompareCost(cur.node, n)); err != nil {
+		if err := work.chargeHash(1); err != nil {
+			return false, err
+		}
+		if err := chargeCompareCost(work, cur.node, n); err != nil {
 			return false, err
 		}
 		order, ok := compare(cur.node, n)

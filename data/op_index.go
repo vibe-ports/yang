@@ -648,6 +648,9 @@ func (s *siblings) refreshExact(n *Node, change func()) {
 		return
 	}
 	if err := s.touch(); err != nil {
+		if s.work != nil {
+			s.work.hashErr = err // the change is skipped: its caller tests the sticky error
+		}
 		return
 	}
 	if _, ok := opExactValue(n); ok {

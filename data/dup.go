@@ -438,7 +438,7 @@ func (t *Tree) dupSingle(n, parent *Node, sourceSet, dest *schema.Set, opts dupO
 			d.kids.ht = map[idxKey]*recordChain{}
 		}
 	}
-	d.kids.work = &t.work // copied children are linked with this same counter
+	d.kids.work = kidsWork(d, &t.work) // copied children are linked with this same counter
 	return d, nil
 }
 
@@ -887,4 +887,14 @@ func (t *Tree) preflightDupHash(n, parent *Node, o DupOptions, siblings bool) er
 		return err
 	}
 	return nil
+}
+
+// kidsWork is the counter a copy's kids start with: an any node's live child storage is its
+// payload, bound when the payload is adopted, so its unused kids keep no counter that would
+// retain the copying tree.
+func kidsWork(d *Node, w *workCounter) *workCounter {
+	if d.schema != nil && isAny(d.schema) {
+		return nil
+	}
+	return w
 }

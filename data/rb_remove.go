@@ -61,7 +61,7 @@ func (w *workCounter) rbFind(d *dirtyOrder, target *Node) (bool, error) {
 		return true, nil
 	}
 	compare := func(a, b *Node) (int, bool) {
-		if w.chargeHash(rbCompareCost(a, b)) != nil {
+		if chargeCompareCost(w, a, b) != nil {
 			return 0, false
 		}
 		if a.schema.Kind != b.schema.Kind {

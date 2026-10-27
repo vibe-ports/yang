@@ -24,7 +24,8 @@ func rbAdoptionBound(s *siblings, n *Node, w *workCounter) (uint64, error) {
 	if slots == 0 {
 		return 0, nil
 	}
-	bound := 3*slots + 4*uint64(len(s.rbMore[n])) + 8
+	// adoptCarried reserves its scan of the queue (slots + 1) before reading it
+	bound := 4*slots + 4*uint64(len(s.rbMore[n])) + 9
 	if w.forestMove || carried == 0 {
 		return bound, nil
 	}
@@ -306,8 +307,15 @@ func (t *Tree) adoptCarried(s *siblings, n *Node) error {
 	if err := s.touch(); err != nil {
 		return err
 	}
+	// the bound below scans the carried queue: reserve that scan before reading it
+	if err := t.work.chargeHash(uint64(len(n.carriedRB)) + 1); err != nil {
+		return err
+	}
 	amount := 2*uint64(len(n.carriedRB)) + 4*uint64(len(s.rbMore[n])) + 8
 	for _, c := range n.carriedRB {
+		if t.work.visits { // tests only
+			t.work.Add(1)
+		}
 		if !t.work.forestMove {
 			amount = addHashBound(amount, 2*uint64(len(c.order.nodes))+1)
 		}

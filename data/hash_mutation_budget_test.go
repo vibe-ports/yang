@@ -32,8 +32,11 @@ func snapshotHashBudgetTree(tr *Tree) hashBudgetSnapshot {
 // snapshotHashBudgetRoots adds the subtrees of roots (top-level or detached) to s.
 func snapshotHashBudgetRoots(s *hashBudgetSnapshot, roots []*Node) {
 	for _, root := range roots {
-		for n := range root.All() {
+		for n := range root.allAny() { // payload descendants and their sibling state too
 			s.sibs[&n.kids] = snapshotHashBudgetSiblings(&n.kids)
+			if n.any != nil {
+				s.sibs[&n.any.children] = snapshotHashBudgetSiblings(&n.any.children)
+			}
 			sib := n.siblingsOf()
 			var order uint64
 			var more []uint64
@@ -72,8 +75,13 @@ func snapshotHashBudgetRoots(s *hashBudgetSnapshot, roots []*Node) {
 					anyState += fmt.Sprintf(":%p/%p/%d", c, c.parent, c.hash)
 				}
 			}
-			s.index[n] = fmt.Sprintf("any=%s schema=%p parent=%p tree=%p value=%#v opaque=%#v meta=%v links=%#v flags=%d hash=%d hkey=%v hashed=%t order=%d more=%v history=%v key=%d/%d frozen=%v ok=%t prefix=%d dirty=%t slot=%d rb=%t group=%p detached=%p:%p carried=%v",
-				anyState, n.schema, n.parent, n.tree, n.value, n.opaq, metadata, links, n.flags, n.hash, n.hkey, n.hashed, order, more, history,
+			// a detached or carried graph's topology and work binding, not only its identity
+			var carried []string
+			for _, c := range n.carriedRB {
+				carried = append(carried, fmt.Sprintf("%p:%s", c.group, snapshotOrder(c.order)))
+			}
+			s.index[n] = fmt.Sprintf("dtopo=%s ctopo=%v any=%s schema=%p parent=%p tree=%p value=%#v opaque=%#v meta=%v links=%#v flags=%d hash=%d hkey=%v hashed=%t order=%d more=%v history=%v key=%d/%d frozen=%v ok=%t prefix=%d dirty=%t slot=%d rb=%t group=%p detached=%p:%p carried=%v",
+				snapshotOrder(n.detachedRB), carried, anyState, n.schema, n.parent, n.tree, n.value, n.opaq, metadata, links, n.flags, n.hash, n.hkey, n.hashed, order, more, history,
 				n.keyN, n.lkeyN, n.lkeyFrozen, n.lkeyOK, n.lkeyPrefix, n.lkeyDirty, n.keySlot, n.inRB, n.rbGroup, n.detachedRB, n.detachedGroup, n.carriedRB)
 		}
 	}
@@ -135,6 +143,19 @@ func snapshotHashBudgetSiblings(s *siblings) string {
 	for owner, groups := range s.rbMore {
 		rb = append(rb, fmt.Sprintf("more:%p=%v", owner, groups))
 	}
+	// every ordered metadata slot (an empty primary owner too), dual memberships, topology work
+	for owner, group := range s.rbGroups {
+		rb = append(rb, fmt.Sprintf("slot0:%p=%p", owner, group))
+	}
+	for member, groups := range s.rbDual {
+		rb = append(rb, fmt.Sprintf("dual:%p=%v", member, groups))
+	}
+	for group, count := range s.rbDualCount {
+		rb = append(rb, fmt.Sprintf("dualcount:%p=%d", group, count))
+	}
+	for group, order := range s.rbOrders {
+		rb = append(rb, fmt.Sprintf("work:%p=%p", group, order.work))
+	}
 	sort.Strings(first)
 	sort.Strings(rb)
 	sort.Strings(rbOrders)
@@ -143,6 +164,20 @@ func snapshotHashBudgetSiblings(s *siblings) string {
 	sort.Strings(pending)
 	return fmt.Sprintf("order=%d gen=%d work=%p schemaUnordered=%t list=%v opq=%v ht=%v leaders=%v first=%v rb=%v rbOrders=%v unsorted=%v occurrences=%v pending=%v",
 		s.exactOrder, s.gen, s.work, s.schemaUnordered, s.schemaSpan().Collect(), s.opaqueSpan().Collect(), entries, leaders, first, rb, rbOrders, unsorted, occurrence, pending)
+}
+
+// snapshotOrder is a retained graph's root, topology and work binding.
+func snapshotOrder(order *dirtyOrder) string {
+	if order == nil {
+		return "nil"
+	}
+	var nodes []string
+	for n, state := range order.nodes {
+		nodes = append(nodes, fmt.Sprintf("%p=%p:%p:%p:%d:%t:%t", n, dirtyOrderDataNode(state.left),
+			dirtyOrderDataNode(state.right), dirtyOrderDataNode(state.parent), state.size, state.red, state.active))
+	}
+	sort.Strings(nodes)
+	return fmt.Sprintf("%p:%v:work=%p", dirtyOrderDataNode(order.root), nodes, order.work)
 }
 
 func dirtyOrderDataNode(n *dirtyOrderNode) *Node {

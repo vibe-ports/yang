@@ -356,7 +356,12 @@ func (t *Tree) linkOrigin(n *Node) (restore func(), arm func() error, err error)
 	gen := sib.gen
 	detachedOrigin := owner == nil
 	originWork, subtreeWork := sib.work, childStorage(n).work
+	var originRoot *Node
 	if owner == nil {
+		// recovery rebinds the origin tree: its ancestor walk is charged here, before any change
+		if originRoot, _, err = detachedRoot(parent, &t.work); err != nil {
+			return nil, nil, err
+		}
 		owner = t // a subtree under a detached parent
 	}
 	inRB := n.inRB
@@ -408,6 +413,7 @@ func (t *Tree) linkOrigin(n *Node) (restore func(), arm func() error, err error)
 	recordUndo := func() {}
 	linksUndo := func() {}
 	var recovery uint64
+	disarm := func() {} // a refusal after arming drops the armed removal undos, restoring nothing
 	armOrigin := func() error {
 		plan, err := prepareUnlink(n)
 		if err != nil {
@@ -475,11 +481,19 @@ func (t *Tree) linkOrigin(n *Node) (restore func(), arm func() error, err error)
 			return err
 		}
 		var restores []func()
+		armed := orders
 		if current != nil {
-			restores = append(restores, current.armRemovalUndo(n, &t.work))
+			armed = append([]*dirtyOrder{current}, orders...)
 		}
-		for _, d := range orders {
+		previous := make([]*removalUndo, len(armed))
+		for i, d := range armed {
+			previous[i] = d.undo
 			restores = append(restores, d.armRemovalUndo(n, &t.work))
+		}
+		disarm = func() {
+			for i, d := range armed {
+				d.undo = previous[i]
+			}
 		}
 		undo = func() {
 			if err := sib.touch(); err != nil {
@@ -519,7 +533,11 @@ func (t *Tree) linkOrigin(n *Node) (restore func(), arm func() error, err error)
 		}
 		// The recovery reservation spends the same quota: recheck the removal's parent-list
 		// reindex (preflightUnlink, its plan cached) so unlink cannot fail after the removal.
-		return preflightUnlink(n)
+		if err := preflightUnlink(n); err != nil {
+			disarm() // nothing was removed: no undo stays armed (or keeps the destination alive)
+			return err
+		}
+		return nil
 	}
 	restore = func() {
 		if n.siblingsOf() == nil {
@@ -530,11 +548,10 @@ func (t *Tree) linkOrigin(n *Node) (restore func(), arm func() error, err error)
 			n.rbGroup = group
 			owner.restoreLink(parent, n, at, recovery)
 			if detachedOrigin && t.work.journal == nil {
-				// restoreLink bound the detached origin to t; give it its own counter back
+				// restoreLink bound the detached origin tree to t (bindDestination); give it
+				// its own counters back
 				unbindSubtreeWork(n, &t.work, subtreeWork)
-				if sib.work == &t.work {
-					sib.setWork(originWork)
-				}
+				unbindSubtreeWork(originRoot, &t.work, originWork)
 			}
 			sib.gen = gen
 			undo()
@@ -911,6 +928,9 @@ func (t *Tree) merge(parent *Node, dst *siblings, run []*Node, state movedRunSta
 	// lyds_get_rb_tree of the matched destination leader selects nodes1, 2 or 3 (1701-1725)
 	t.switchMixed(dst, run[0])
 	lo := t.sortedLeaderIndex(dst, run[0]) // the leader lyd_move_nodes_by_schema passes lyds_merge
+	if lo < 0 && t.work.hashErr != nil {
+		return t.work.hashErr // the leader probe's reservation was refused
+	}
 	if lo < 0 {
 		t.work.hashErr = &opError{"LY_EINT", "Missing destination run of a merged system-ordered run."}
 		return t.work.hashErr

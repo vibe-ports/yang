@@ -50,6 +50,18 @@ func TestStage3MutationOracle(t *testing.T) {
 			map[string]any{"do": "trim", "xpath": "/stage3:c/v[.='13']"},
 			edit(`{"stage3:c":{"v":[2,10,12]}}`), dump})
 	})
+	t.Run("merge-runs-then-remove", func(t *testing.T) {
+		// lyd_merge_sibling_r inserts each copy with lyd_insert_node, whose lyds_insert frees the
+		// copy's first (empty) metadata slot: every member is removable after the merge.
+		run(t, "merge-remove", []any{
+			parse(`{"stage3:c":{"v":[3,4]}}`),
+			edit(`{"stage3:c":{"v":[1,2]}}`), dump,
+			map[string]any{"do": "edit", "delete": "/stage3:c/v[.='1']"}, dump,
+			map[string]any{"do": "edit", "delete": "/stage3:c/v[.='3']"}, dump,
+			edit(`{"stage3:c":{"v":[6,0,5]}}`), dump,
+			map[string]any{"do": "edit", "delete": "/stage3:c/v[.='2']"},
+			map[string]any{"do": "edit", "delete": "/stage3:c/v[.='6']"}, dump})
+	})
 	t.Run("parser-resume-and-cleanup", func(t *testing.T) {
 		run(t, "parser-resume", []any{
 			map[string]any{"do": "parse", "format": "json", "data_type": "rpc", "parse_only": true, "data": `{"stage3:r":{}}`},

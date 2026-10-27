@@ -323,6 +323,7 @@ func (s *siblings) transferFrom(src *siblings) error {
 		return err
 	}
 	*s, *src = *src, siblings{}
+	s.setOrderHooks() // the index work hooks were bound to src, which no longer counts anything
 	return nil
 }
 func (s *siblings) reset() error {

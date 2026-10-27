@@ -48,6 +48,9 @@ type hashTransaction struct {
 	// lent are the work counters of trees without a transaction of their own that a subtree of
 	// this tree moved into (validateOp's temporary tree): changes there are journaled here
 	lent []*workCounter
+	// detached are the detached roots captureDetachedParent journaled whole: a later boundary of
+	// the same operation (Insert, then linkOrigin) does not walk them again
+	detached map[*Node]bool
 }
 
 // beginHashTransaction starts journaling t for an operation that may change any part of it. It
@@ -159,7 +162,7 @@ func (t *Tree) touch(s *siblings) error {
 
 // touch journals n before its own fields (value, flags, metadata, links, stored hash) change.
 func (n *Node) touch() error {
-	j := n.kids.journal()
+	j := childStorage(n).journal()
 	if j == nil {
 		if t := n.treeOf(); t != nil {
 			j = t.work.journal
@@ -174,10 +177,7 @@ func (n *Node) touch() error {
 // joinLinkJournal associates both sides before either a linked or detached source changes.
 // A detached subtree can still belong to an outer transaction through its work binding.
 func joinLinkJournal(t *Tree, n *Node) error {
-	from := n.kids.journal()
-	if n.any != nil {
-		from = n.any.children.journal()
-	}
+	from := childStorage(n).journal()
 	source := n.treeOf()
 	if from == nil && source != nil {
 		from = source.work.journal
@@ -203,6 +203,9 @@ func joinLinkJournal(t *Tree, n *Node) error {
 			if err := lend(j, &source.work); err != nil {
 				return err
 			}
+		} else if err := j.captureDetachedParent(n.parent); err != nil {
+			// a detached source tree changes on unlink and recovery: journal it whole
+			return err
 		}
 		return j.captureNode(n)
 	}
@@ -259,12 +262,27 @@ func (s *siblings) rebind(work *workCounter) error {
 // instead. Design 12 states the invariant: every node a mutation can reach is under the active
 // journal before it changes.
 func (j *hashTransaction) captureDetachedParent(parent *Node) error {
-	if j == nil || parent == nil || parent.treeOf() != nil {
+	if j == nil || parent == nil {
 		return nil
+	}
+	if j.err != nil {
+		return j.err
 	}
 	root := parent
 	for root.parent != nil {
+		if err := j.charge(1); err != nil {
+			return err
+		}
+		if j.tree.work.visits { // tests only
+			j.tree.work.Add(1)
+		}
 		root = root.parent
+	}
+	if root.tree != nil || j.detached[root] {
+		return nil
+	}
+	if err := j.charge(1); err != nil { // the record below
+		return err
 	}
 	if err := j.captureNode(root); err != nil {
 		return err
@@ -274,12 +292,21 @@ func (j *hashTransaction) captureDetachedParent(parent *Node) error {
 		n := stack[len(stack)-1]
 		stack = stack[:len(stack)-1]
 		s := childStorage(n)
-		if err := j.captureSiblings(s); err != nil {
+		if _, captured := j.siblings[s]; captured {
+			// journaled already (a lazy touch): its children are still walked, so charge them
+			if err := j.charge(1 + uint64(s.SchemaLen()+s.OpaqueLen())); err != nil { //nolint:gosec // sibling counts are nonnegative
+				return err
+			}
+		} else if err := j.captureSiblings(s); err != nil {
 			return err
 		}
 		stack = s.schemaSpan().AppendTo(stack)
 		stack = s.opaqueSpan().AppendTo(stack)
 	}
+	if j.detached == nil {
+		j.detached = map[*Node]bool{}
+	}
+	j.detached[root] = true
 	return nil
 }
 

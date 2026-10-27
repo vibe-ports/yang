@@ -323,6 +323,88 @@ The fuzzer found two more instances of this class:
   left the copy pending, and the error path flushed it again ("inserting a linked node"). A
   linked copy now leaves the pending list before it is recorded.
 
+The fuzzer's generator and checks were then extended for six more instances that state
+comparison over its former shapes could not reach (an exhaustive snapshot review found them):
+
+- **Work bindings cover whole subtrees.** `bindSubtreeWork` and `bindSubtreeBound` stop at a set
+  already bound to the counter, which holds only if every set below a bound set is bound too. A
+  link into a detached tree used to rebind just the parent's set, so a later `Insert` of that
+  root left its descendants on a counter no journal sees. `bindDestination` (link, `rbPublish`)
+  now binds the whole detached destination tree, and `linkApplyBound` reserves it; a refused
+  one-node move gives the origin tree its counter back (`linkOrigin`).
+- **A detached source is journaled whole.** `joinLinkJournal` captured only the moved node of a
+  detached source; under a running journal (`switchJournal`, e.g. an opaque destination) its
+  sibling set changed outside it. It now captures the source's whole detached tree.
+- **Batched Merge frees the incoming slot.** `flushMerge` replays `lyd_insert_node` of every
+  copy, and `lyds_insert` frees each copy's first metadata slot as `rbPos` does; the batch kept
+  it, so a later removal of a merged leader refused (D-0121). Whole-run `lyds_merge` keeps its own
+  rule (`move.go`). Oracle history `stage3/merge-remove`.
+- **Charged scans.** `mixedLeaderProbe` reserves its sibling scan before materializing the
+  logical view (a refusal reaches `flushMerge` and whole-run moves through `t.work.hashErr`);
+  `captureDetachedParent` walks to its root in charged steps and stops on a failed journal;
+  `adoptCarried` reserves its queue scan before reading it, and `rbAdoptionBound` includes that
+  reservation.
+
+A second exhaustive review of that candidate found five more, fixed the same way:
+
+- **A first retained graph raised the binding bound.** `rbPos` adds a graph to the destination
+  set before `link` recomputes its binding bound, one more than the reservation made before the
+  publication allowed, so a one-node `Insert` or `NewTerm` under a detached parent could refuse
+  after publishing. `insertNode` now binds a detached destination tree before `insertPos`
+  (restored on a refusal without a journal); `TestStage3DetachedFirstRBCreationBudget` sweeps
+  every limit of the first graph's creation.
+- **Repeated captures walked again.** A journal records the detached roots it holds whole and
+  does not walk them again (Insert's boundary, then `linkOrigin`'s); a set captured lazily
+  before is charged for its children when walked (`TestStage3DetachedCaptureOncePerRoot`).
+- **The leader lookup.** `sortedLeaderIndex` reserves the first-instance record lookup and the
+  position search before either runs, the fast path included.
+- **`detachedRoot` is charged.** Each ancestor step is charged before it is taken (opaque
+  nesting is not schema-bounded); `linkApplyBound` reserves the walk `bindDestination` repeats,
+  and `linkOrigin` charges the origin's walk before any change.
+- **Comparison bounds.** `chargeCompareCost` charges `rbCompareCost` one key pair at a time
+  (`rbFind`, `chargedCompare`, `checkInsertCompatible`), so a refused quota stops a long
+  repeated-key prefix scan at once (`TestStage3CompareCostChargedPerKey`).
+
+Later reviews added: `NewPath` reserves a finite recovery allowance before its first insertion
+when the path creates more than one node, and its cleanup unlink of what the call created runs
+within it outside the forward quota (as `restoreLink` does), so an exhausted quota cannot strand
+a created ancestor; the allowance covers the cleanup's linear scans of the destination and
+its retained-tree comparisons (each against a distinct member: the new keys' share per
+comparison plus all members' key text, read once and charged) (`TestStage3NewPathCleanupWithoutJournal`:
+a container created between 1,000 siblings on each side, a list instance among 4 KiB keys).
+A refused move disarms the removal undos it armed (`linkOrigin`), so none stays behind to keep
+the destination alive; the fuzzer checks that no refusal leaves one. Every `sortedLeaderIndex` branch reserves its lookup first, a foreign-context name scan of
+operation children included (`TestStage3ForeignOperationLeaderCharged`); `chargedIndex` charges the rank walk or each step of its scan before
+it, and the completed-prefix link cleanup after a D-0121 bulk refusal reserves its owned
+traversal and reciprocal cleanup (`ownedNodes`, `reserveFreeLinks`) first (a refused reservation
+turns the refusal into a budget failure, which restores the batch). A copied anydata node binds
+only its payload storage, and `Node.touch` consults the live child storage
+(`TestStage3DupAnyKeepsNoStaleCounter`). A refused capture in a value change sets the sticky
+error, rather than reporting no change (`TestStage3ValueChangeRefusedTouchIsSticky`). The
+rollback snapshots include payload descendants, every metadata slot owner, dual memberships,
+topology work and detached and carried graphs (`TestStage3SnapshotSeesSlotsAndPayloads`,
+`TestStage3SnapshotSeesDetachedGraphs`). A whole-forest `transferFrom` rebinds
+the ordered index's work hooks to the new owner (`TestStage3TransferMovesIndexWorkHooks`).
+`reserveHash` checks without debiting by design; `TestStage3ReservationHistoryBudget` sweeps
+every limit of a multi-edit sorted history (NewTerm, NewList and one-node moves into an indexed
+set, linked and detached) across the whole link and attach. The index helpers that skip
+their update on a failed `touch` rely on that failure being sticky (`TestStage3FailedTouchIsSticky`).
+
+`TestStage3RefusalIsNoOpFuzz` now also builds detached roots populated through another tree's
+`NewTerm` (`insert-bound-root`), moves out of detached sources into switching destinations
+(`move-detached-switch`), and batch merges of retained runs (`merge-runs`). A scenario may carry
+a further mutation: its refusals are swept after an unrefused operation, and both must give the
+unrefused history; `merge-runs` also compares that history (removal result, every member's
+slots, the tree) with merging the copies one by one. Every scenario is finally refused at the
+first unit of all its counters, once as built and once with 256 more instances in every wide
+sibling set: sibling visits on all counters involved, and the allocation, must not grow (the
+read-only query and parse entries, and the allocation of Dup and Merge, are exempt as in
+`TestStage3RefusalCostIndependentOfInput`). `YANG_STAGE3_FUZZ_ENTRY` restricts a run to one entry.
+On `a7cc143a` with only this test file, the extended fuzzer fails on the binding, detached-source
+and batch-slot shapes and on the Dup leader probe's visits. The ancestor walk and the carried
+queue scan read nothing observable before the charge there; `TestStage3DetachedCaptureChargesAncestors`
+and `TestStage3AdoptCarriedChargesBeforeScan` count their steps.
+
 Every row orders its work as the rule above requires. The stabilization tests check refusal at
 every boundary followed by another mutation: `TestStage3FailureThenMutation` (move, remove, dup,
 merge, detached insert; both trees, hash records, metadata and reciprocal links, then retry plus
@@ -359,7 +441,7 @@ the parent's children (`TestStage3DetachedReplyBudgetCleanup`,
 
 Live request ids in `conformance/retained_rb_stage3_oracle_test.go`:
 `stage3/removals`, `stage3/parser-resume`, `stage3/multikey`, `stage3/payload`,
-`stage3/defaults-dummy-path`, `stage3/netconf-cleanup`, `stage3/restconf-cleanup`,
+`stage3/defaults-dummy-path`, `stage3/netconf-cleanup`, `stage3/restconf-cleanup`, `stage3/merge-remove`,
 `stage3/detached-singleton`, `stage3/temporary-operation`, and
 `stage3/seed-301-3-0` through `stage3/seed-301-3-7`.
 The direct metadata probe is `TestStage3NativeMetadataMoves/{empty-selection,empty-unlink,singleton,retain,promote,many,unrebuilt}` in

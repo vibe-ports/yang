@@ -629,12 +629,34 @@ func rbCompareCost(a, b *Node) uint64 {
 	return cost
 }
 
+// chargeCompareCost charges rbCompareCost(a, b) while computing it, each key pair before the
+// next is read, so a refused quota stops the scan of a long repeated-key prefix at once.
+func chargeCompareCost(w *workCounter, a, b *Node) error {
+	if a.schema == nil || b.schema == nil || a.schema.Kind == schema.LeafList {
+		return w.chargeHash(rbCompareCost(a, b))
+	}
+	if err := w.chargeHash(1); err != nil {
+		return err
+	}
+	for i := range min(a.kids.SchemaLen(), b.kids.SchemaLen()) {
+		ka, kb := a.kids.At(i), b.kids.At(i)
+		if i > 0 && (!ka.isKey() || !kb.isKey()) {
+			break
+		}
+		// the same total as rbCompareCost, one pair at a time
+		if err := w.chargeHash(1 + types.CompareCost(ka.value, kb.value)); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // chargedCompare charges each comparison to the operation's enforced quota before its result is
 // used. A refused charge reports an incompatible comparison with t.work.hashErr set, so a
 // descent stops before changing anything.
 func (t *Tree) chargedCompare(compare func(*Node, *Node) (int, bool)) func(*Node, *Node) (int, bool) {
 	return func(a, b *Node) (int, bool) {
-		if t.work.chargeHash(rbCompareCost(a, b)) != nil {
+		if chargeCompareCost(&t.work, a, b) != nil {
 			return 0, false
 		}
 		return compare(a, b)
@@ -824,15 +846,30 @@ func (t *Tree) rbPos(sib *siblings, n *Node, lo, hi int, compare func(*Node, *No
 // chargedIndex is the position of n in sib.schemaSpan(), scanned from both ends with the steps charged
 // to the enforced quota.
 func (t *Tree) chargedIndex(sib *siblings, n *Node) (int, error) {
-	if at := sib.orderPosition(n); at >= 0 {
-		return at, nil // the ordered sequence index charges its own work
+	if sib.order != nil {
+		// the ordered sequence's rank walk (a balanced tree): reserved before it runs
+		if err := t.work.chargeHash(rbHeight(sib.Len()) + 1); err != nil {
+			return -1, err
+		}
+		if at := sib.orderPosition(n); at >= 0 {
+			return at, nil
+		}
 	}
-	before := t.work.Load()
-	i := sib.schemaSpan().indexFromEnd(&t.work, n)
-	if err := t.work.chargeHash(uint64(t.work.Load() - before)); err != nil { //nolint:gosec // the counter only grows
-		return -1, err
+	// indexFromEnd's scan, each step charged before it reads its two slots
+	l := sib.schemaSpan().nodes
+	for i, j := 0, len(l)-1; i <= j; i, j = i+1, j-1 {
+		if err := t.work.chargeHash(1); err != nil {
+			return -1, err
+		}
+		t.work.Add(1)
+		if l[j] == n {
+			return j, nil
+		}
+		if l[i] == n {
+			return i, nil
+		}
 	}
-	return i, nil
+	return -1, nil
 }
 
 // linkCost is everything link reserves or charges for n at position at, so a caller that changes
@@ -944,22 +981,39 @@ func mixedSortedLookup(sib *siblings, n *Node) bool {
 // sortedLeaderIndex is the leader lyd_insert_node passes to lyds_insert, found by
 // lyd_find_sibling_schema (tree_data.c:820-822) among siblings of several contexts: with a
 // children table the bucket's first registered first-instance record (leaderFirstMixed), without
-// one the first sibling matching by name. -1: none.
+// one the first sibling matching by name. -1: none, or the probe's refused reservation
+// (t.work.hashErr, which callers check first).
 func (t *Tree) sortedLeaderIndex(sib *siblings, n *Node) int {
 	if sib.SchemaLen() == 0 {
 		return -1
 	}
 	if !mixedSortedLookup(sib, n) {
-		return t.schemaIndex(sib, n.schema) // one context: the ordinary schema-order lookup
+		// one context: the ordinary schema-order lookup, a binary search or a record lookup,
+		// unless schemaIndex scans siblings of another context by name (foreignFor)
+		bound := rbHeight(sib.SchemaLen()) + 1
+		if sib.foreignFor(n.schema) {
+			bound = uint64(sib.SchemaLen()) + 1 //nolint:gosec // a sibling count is nonnegative
+		}
+		if err := t.work.chargeHash(bound); err != nil {
+			return -1
+		}
+		return t.schemaIndex(sib, n.schema)
+	}
+	// Every lookup below (the linear foreign-name scan of schemaIndex, or the record lookup and
+	// the position search) reads up to every record and sibling: reserve that first.
+	if err := t.work.chargeHash(uint64(len(sib.leaders)+sib.SchemaLen()) + 1); err != nil { //nolint:gosec // collection sizes are nonnegative
+		return -1
 	}
 	// In the lookup mode insertPos switches to first (markMixed). The lookup is read-only: a
 	// preflight probes that mode rather than entering it, so a refusal leaves sib as it was.
 	if sib.ht == nil || !sib.schemaUnordered && !t.mixedSwitch(sib, sib.At(0).parent, n) {
 		return t.schemaIndex(sib, n.schema)
 	}
-	leader := sib.leaderFirstMixed(n.schema)
-	if !sib.schemaUnordered {
-		leader = sib.mixedLeaderProbe(n.schema)
+	var leader *Node
+	if sib.schemaUnordered {
+		leader = sib.leaderFirstMixed(n.schema)
+	} else {
+		leader = sib.mixedLeaderProbe(n.schema, &t.work)
 	}
 	if leader != nil {
 		return sib.schemaSpan().indexFromEnd(&t.work, leader)
@@ -1536,6 +1590,17 @@ func (t *Tree) insertNode(parent, n *Node, order insertOrder) (err error) {
 		}
 	}()
 	sib := t.childrenOf(parent)
+	restoreDestination, err := t.bindDetachedDestination(parent, sib)
+	if err != nil {
+		return err
+	}
+	if restoreDestination != nil {
+		defer func() {
+			if err != nil && t.work.journal == nil {
+				restoreDestination()
+			}
+		}()
+	}
 	if err := t.preflightInsertPosition(sib, n, order); err != nil {
 		return err
 	}
@@ -1544,6 +1609,36 @@ func (t *Tree) insertNode(parent, n *Node, order insertOrder) (err error) {
 		at = t.insertPos(sib, n, order)
 	}
 	return t.link(parent, sib, n, at)
+}
+
+// bindDetachedDestination binds a detached destination tree whole before insertPos: a sorted
+// publication (rbPos) adds a graph to sib, which would raise link's binding bound past the
+// reservation made before it. Without a journal, a refused insertion gives the tree its
+// counter back through restore (as linkOrigin does for a detached origin).
+func (t *Tree) bindDetachedDestination(parent *Node, sib *siblings) (restore func(), err error) {
+	if sib.work == &t.work {
+		return nil, nil
+	}
+	root, _, err := detachedRoot(parent, &t.work)
+	if err != nil || root == nil {
+		return nil, err
+	}
+	bound, err := bindSubtreeBound(root, &t.work)
+	if err != nil {
+		return nil, err
+	}
+	if err := t.reserveHash(bound); err != nil {
+		return nil, err
+	}
+	was := childStorage(root).work
+	restore = func() { unbindSubtreeWork(root, &t.work, was) }
+	if err := bindSubtreeWork(root, &t.work); err != nil {
+		if t.work.journal == nil {
+			restore()
+		}
+		return nil, err
+	}
+	return restore, nil
 }
 
 // preflightInsertPosition covers the old run's exact-record reinsertions that
@@ -1765,6 +1860,9 @@ func (t *Tree) link(parent *Node, sib *siblings, n *Node, at int) error {
 	if err := t.touch(sib); err != nil {
 		return err
 	}
+	if err := t.bindDestination(parent, sib); err != nil {
+		return err
+	}
 	if n.detachedRB != nil {
 		if err := t.work.chargeHash(3); err != nil {
 			return err
@@ -1798,7 +1896,6 @@ func (t *Tree) link(parent *Node, sib *siblings, n *Node, at int) error {
 		n.detachedRB.work = &t.work
 		n.detachedRB, n.detachedGroup = nil, nil
 	}
-	sib.work = &t.work
 	hadHT := sib.ht != nil
 	switch {
 	case n.schema == nil && (at < 0 || at >= sib.OpaqueLen()):
@@ -1872,6 +1969,21 @@ func (t *Tree) linkApplyBound(parent *Node, sib *siblings, n *Node, at int) (uin
 		return 0, err
 	}
 	amount = addHashBound(amount, bind)
+	if sib.work != &t.work { // a set bound to t has its whole detached tree bound already
+		root, steps, err := detachedRoot(parent, &t.work)
+		if err != nil {
+			return 0, err
+		}
+		// bindDestination repeats the ancestor walk
+		amount = addHashBound(amount, steps)
+		if root != nil {
+			// bindDestination binds the whole detached destination tree
+			if bind, err = bindSubtreeBound(root, &t.work); err != nil {
+				return 0, err
+			}
+			amount = addHashBound(amount, bind)
+		}
+	}
 	if n.schema != nil && n.schema.IsKey() && parent != nil {
 		a, err := t.work.termHashBound(parent, n.schema, n.value, at)
 		if err != nil {
@@ -2011,6 +2123,51 @@ func (t *Tree) attach(parent *Node, sib *siblings, n *Node) {
 		npContDfltDel(parent)
 	}
 	t.keyLinked(parent, n)
+}
+
+// detachedRoot is the root of the detached tree parent belongs to, nil for a linked parent (or
+// none), with the ancestor steps it took. Each step is charged to w before it is taken: opaque
+// nesting is not bounded by the schema depth.
+func detachedRoot(parent *Node, w *workCounter) (root *Node, steps uint64, err error) {
+	if parent == nil {
+		return nil, 0, nil
+	}
+	root = parent
+	for root.parent != nil {
+		if err := w.chargeHash(1); err != nil {
+			return nil, steps, err
+		}
+		if w.visits { // tests only
+			w.Add(1)
+		}
+		root = root.parent
+		steps++
+	}
+	if root.tree != nil {
+		return nil, steps, nil
+	}
+	return root, steps, nil
+}
+
+// bindDestination binds sib, the children of parent, to t before a link publishes into it. A
+// detached destination tree is bound whole (linkApplyBound reserves it, its ancestor walk
+// included): every set below a set bound to a counter stays bound to it, which bindSubtreeWork's
+// shortcut relies on.
+func (t *Tree) bindDestination(parent *Node, sib *siblings) error {
+	if sib.work == &t.work {
+		return nil
+	}
+	root, _, err := detachedRoot(parent, &t.work)
+	if err != nil {
+		return err
+	}
+	if root != nil {
+		if err := bindSubtreeWork(root, &t.work); err != nil {
+			return err
+		}
+	}
+	sib.work = &t.work
+	return nil
 }
 
 // bindSubtreeWork binds the sibling sets of root's subtree, any payloads included, to work:
@@ -2233,7 +2390,9 @@ func (t *Tree) rbPublish(parent *Node, sib *siblings, lo, hi int, group *rbGroup
 	if err := t.touch(sib); err != nil {
 		return err
 	}
-	sib.work = &t.work
+	if err := t.bindDestination(parent, sib); err != nil {
+		return err
+	}
 	out := make([]*Node, 0, size)
 	out = old.Slice(0, lo).AppendTo(out)
 	out = append(out, run...)
@@ -2712,13 +2871,26 @@ func (t *Tree) unlinkAllDefaults(ns, defaults []*Node) (result error) {
 			// A refusal publishes the completed prefix, whose callers then return without their
 			// subtree cleanup (lyd_free_tree's link part): finish it here. A budget failure
 			// restores the batch instead.
-			cleaner := bulkLinkCleaner{work: &t.work}
+			// The owned traversal and the reciprocal cleanup are reserved first (ownedNodes,
+			// reserveFreeLinks, as discard does); a refused reservation turns the refusal into a
+			// budget failure, which restores the batch.
+			var roots []*Node
 			for _, n := range ns {
 				if gone[n] {
-					for d := range n.allAny() {
-						cleaner.free(d)
-					}
+					roots = append(roots, n)
 				}
+			}
+			nodes, err := ownedNodes(roots, &t.work)
+			if err == nil {
+				err = reserveFreeLinks(nodes, &t.work)
+			}
+			if err != nil {
+				result = err
+				return
+			}
+			cleaner := bulkLinkCleaner{work: &t.work}
+			for _, d := range nodes {
+				cleaner.free(d)
 			}
 		}
 	}()

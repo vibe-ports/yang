@@ -553,11 +553,11 @@ func (t *Tree) newPath(lg *logger, path, value string, o NewPathOptions) (*Node,
 			return nil, err
 		}
 	}
-	if err := t.preflightNewPathHash(p[idx:], node, value, position); err != nil {
+	recovery, err := t.newPathRecovery(p[idx:], node, value, position)
+	if err != nil {
 		return nil, err
 	}
-	var first, last *Node
-	created := false
+	first, last, created := (*Node)(nil), (*Node)(nil), false
 	for ; idx < len(p); idx++ {
 		seg, parent := p[idx], node
 		var err error
@@ -606,7 +606,7 @@ func (t *Tree) newPath(lg *logger, path, value string, o NewPathOptions) (*Node,
 		}
 		if err != nil {
 			if created {
-				if uerr := unlink(first); uerr != nil {
+				if uerr := t.newPathCleanup(first, recovery); uerr != nil {
 					return nil, uerr // the sticky budget/journal failure outranks err
 				}
 			}
@@ -614,7 +614,7 @@ func (t *Tree) newPath(lg *logger, path, value string, o NewPathOptions) (*Node,
 		}
 		if err := t.insert(parent, node, insertDefault); err != nil {
 			if created {
-				if uerr := unlink(first); uerr != nil {
+				if uerr := t.newPathCleanup(first, recovery); uerr != nil {
 					return nil, uerr // the sticky budget/journal failure outranks err
 				}
 			}
@@ -859,6 +859,7 @@ func (t *Tree) changeNodeValue(n *Node, v types.Value, hashAmount uint64) {
 		target = n.parent
 	default:
 		if err := n.touch(); err != nil {
+			t.work.hashErr = err // the caller tests the sticky error
 			return
 		}
 		n.value = v
@@ -868,6 +869,7 @@ func (t *Tree) changeNodeValue(n *Node, v types.Value, hashAmount uint64) {
 	sib, parent := target.siblingsOf(), target.parent
 	if sib == nil {
 		if err := n.touch(); err != nil {
+			t.work.hashErr = err // the caller tests the sticky error
 			return
 		}
 		n.value = v
@@ -958,6 +960,7 @@ func (t *Tree) changeNodeValue(n *Node, v types.Value, hashAmount uint64) {
 			return
 		}
 		if err := n.touch(); err != nil {
+			t.work.hashErr = err // the caller tests the sticky error
 			return
 		}
 		n.value = v
@@ -1005,6 +1008,7 @@ func (t *Tree) changeNodeValue(n *Node, v types.Value, hashAmount uint64) {
 	}
 	sib.hashRemove(target)
 	if err := n.touch(); err != nil {
+		t.work.hashErr = err // the caller tests the sticky error
 		return
 	}
 	sib.refreshExact(target, func() {
@@ -1950,6 +1954,9 @@ func (t *Tree) flushMerge(lv *mergeLevel) error {
 	// detached until everything is charged; the publication already walks the sibling slice.
 	t.switchMixed(sib, lv.pend[0])
 	lo := t.sortedLeaderIndex(sib, lv.pend[0]) // lyd_insert_node's leader (lyd_find_sibling_schema)
+	if lo < 0 && t.work.hashErr != nil {
+		return t.work.hashErr // the leader probe's reservation was refused
+	}
 	if lo < 0 {
 		return &opError{"LY_EINT", "Missing retained red-black topology for a system-ordered run."}
 	}
@@ -1965,6 +1972,20 @@ func (t *Tree) flushMerge(lv *mergeLevel) error {
 	order := cloneDirtyOrder(current)
 	if err := t.rbReplay(order, lv.pend); err != nil {
 		return err
+	}
+	// lyd_insert_node of each copy: lyds_insert frees the incoming first metadata slot (design 12,
+	// metadata slot order), as rbPos does for a single insertion. The journal restores it.
+	for _, d := range lv.pend {
+		if d.detachedRB == nil && len(d.carriedRB) == 0 {
+			continue
+		}
+		if err := d.touch(); err != nil {
+			return err
+		}
+		if d.detachedRB == nil {
+			d.carriedRB = d.carriedRB[1:]
+		}
+		d.detachedRB, d.detachedGroup = nil, nil
 	}
 	if err := t.rbPublish(lv.parent, sib, lo, hi, group, order, lv.pend); err != nil {
 		return err
@@ -1989,4 +2010,60 @@ func opaqNext(s *siblings, name string) *Node {
 // its subtree with the flags and metadata; children keep their order (LYD_INSERT_NODE_LAST).
 func (t *Tree) dup(n *Node) (*Node, error) {
 	return t.dupWork(n, nil, false, insertDefault, dupRecursive|dupWithFlags, ctxOf(n), newAnyWork(context.Background(), Budget{}))
+}
+
+// newPathRecovery runs preflightNewPathHash and, when the path creates more than its first
+// node, reserves the finite allowance newPathCleanup may spend removing that node again after a
+// later failure: four times the first insertion's position bound, linear scans of the
+// destination and a retained-tree search of it, charged before anything is created (as
+// linkOrigin reserves a relink).
+func (t *Tree) newPathRecovery(segments types.Path, parent *Node, value string, position uint64) (uint64, error) {
+	if err := t.preflightNewPathHash(segments, parent, value, position); err != nil {
+		return 0, err
+	}
+	if len(segments) < 2 {
+		return 0, nil // one creation: an insertion that fails leaves nothing to clean up
+	}
+	// the cleanup's own scans of the destination (prepareUnlink's position scan and shift,
+	// reindexing) are linear in it, its retained-tree search logarithmic
+	dest := t.childrenOf(parent)
+	n := dest.Len() + 1
+	size := uint64(n) //nolint:gosec // a sibling count is nonnegative
+	recovery := addHashBound(addHashBound(mulHashBound(4, position), mulHashBound(8, size)), 64+16*rbHeight(n))
+	if sn := segments[0].Node; sn.Kind == schema.List && len(sn.Keys) != 0 {
+		// rbFind's comparisons: each compares the new instance's keys with a distinct member's
+		// (rbCompareCost: a unit per pair plus both texts), so their sum is bounded by every
+		// comparison's own share and all members' key text, which is read here once, charged
+		keys := uint64(len(sn.Keys))
+		if err := t.work.chargeHash(mulHashBound(size, keys+1)); err != nil {
+			return 0, err
+		}
+		var own, members uint64
+		for _, pred := range segments[0].Preds {
+			own += uint64(len(pred.Value.Canonical()))
+		}
+		for _, m := range dest.SchemaAll() {
+			if m.schema == nil || m.schema.Name != sn.Name {
+				continue
+			}
+			for i := range min(m.kids.SchemaLen(), len(sn.Keys)) {
+				members += uint64(len(m.kids.At(i).value.Canonical()))
+			}
+		}
+		recovery = addHashBound(recovery, addHashBound(mulHashBound(size, 1+2*keys+own), members))
+	}
+	return recovery, t.work.chargeHash(recovery)
+}
+
+// newPathCleanup unlinks first, the root of what this NewPath call created, after a later
+// failure (lyd_new_path frees it), within the allowance newPathRecovery reserved: like
+// restoreLink, it runs outside the forward quota, which the failure may have exhausted (a
+// sticky error included), and the forward state is restored after it. ponytail: a removal
+// beyond the allowance (a long duplicate state run) still fails and returns its error.
+func (t *Tree) newPathCleanup(first *Node, allowance uint64) error {
+	used, limit, sticky := t.work.hashUsed, t.work.hashLimit, t.work.hashErr
+	t.work.hashUsed, t.work.hashLimit, t.work.hashErr = 0, max(allowance, 1), nil
+	err := unlink(first)
+	t.work.hashUsed, t.work.hashLimit, t.work.hashErr = used, limit, sticky
+	return err
 }
