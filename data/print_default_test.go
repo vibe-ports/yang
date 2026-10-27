@@ -140,7 +140,7 @@ func TestPrintDefaultConcurrent(t *testing.T) {
 // yang.ErrBudget and writes nothing, instead of printing r as if it were not a default.
 func TestPrintDefaultBudget(t *testing.T) {
 	tr, _ := dfltLeafrefTree(t, "x", "x", "y")
-	o := PrintOptions{WithDefaults: WDTrim,
+	o := printConfig{PrintOptions: PrintOptions{WithDefaults: WDTrim},
 		dflt: &defaultCheck{vc: &valCtx{t: tr, log: &logger{set: tr.set}, budget: xpathBudget{max: 1}}}}
 	var b bytes.Buffer
 	if err := printData(&b, tr.set, o, slices.Collect(tr.top.all()), 0, true, printJSON); !errors.Is(err, yang.ErrBudget) {
@@ -195,9 +195,9 @@ func TestPrintDetachedLeafDefaultRootError(t *testing.T) {
 	if err := r.Unlink(); err != nil {
 		t.Fatal(err)
 	}
-	o := PrintOptions{WithDefaults: WDTrim, dflt: &defaultCheck{}}
+	o := printConfig{PrintOptions: PrintOptions{WithDefaults: WDTrim}, dflt: &defaultCheck{}}
 	var b bytes.Buffer
-	if err := r.PrintJSON(&b, o); err != nil {
+	if err := r.print(&b, o, printJSON); err != nil {
 		t.Fatal(err)
 	}
 	var got []string

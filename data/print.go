@@ -41,8 +41,13 @@ type PrintOptions struct {
 	Shrink        bool // LYD_PRINT_SHRINK: no newlines and no indentation
 	EmptyLeafList bool // LYD_PRINT_EMPTY_LEAF_LIST: JSON prints lists and leaf-lists without instances as []
 	WithDefaults  WD
+}
 
-	dflt     *defaultCheck // set by printData: the evaluation state shared by one print
+// printConfig is one print's PrintOptions with its private state. Each print builds its own, so
+// PrintOptions stays a comparable value that never carries execution state.
+type printConfig struct {
+	PrintOptions
+	dflt     *defaultCheck // set by printDataResult: the evaluation state shared by one print
 	step     func() error  // XPath casts charge each printed node and poll cancellation
 	byteStep func() error  // XPath casts charge each 64 output, type-conversion and diagnostic bytes
 }
@@ -85,7 +90,7 @@ func inOpNotif(s *schema.Node) bool {
 // also links the node to the default's targets under LY_CTX_LEAFREF_LINKING
 // (plugins_types/leafref.c:94-107); here the check is read-only (D-0128). A budget overrun is
 // kept in o.dflt and fails the print (printData).
-func (o PrintOptions) isDefault(n *Node) bool {
+func (o printConfig) isDefault(n *Node) bool {
 	if !n.isTerm() {
 		return false
 	}
@@ -156,13 +161,13 @@ func (o PrintOptions) isDefault(n *Node) bool {
 }
 
 // tagged reports whether the with-defaults mode puts the default attribute on n.
-func (o PrintOptions) tagged(n *Node) bool {
+func (o printConfig) tagged(n *Node) bool {
 	return (n.flags&FlagDefault != 0 && (o.WithDefaults == WDAllTagged || o.WithDefaults == WDImplicitTagged)) ||
 		(o.WithDefaults == WDAllTagged && o.isDefault(n))
 }
 
 // shouldPrint is lyd_node_should_print.
-func (o PrintOptions) shouldPrint(n *Node, flags printopts.Flags) bool {
+func (o printConfig) shouldPrint(n *Node, flags printopts.Flags) bool {
 	switch {
 	case o.WithDefaults == WDTrim:
 		switch {
@@ -208,25 +213,29 @@ func (o PrintOptions) shouldPrint(n *Node, flags printopts.Flags) bool {
 // PrintJSON writes the top-level siblings of the tree as RFC 7951 JSON, as lyd_print_all with
 // LYD_JSON and LYD_PRINT_WITHSIBLINGS: 2-space indentation unless o.Shrink.
 func (t *Tree) PrintJSON(w io.Writer, o PrintOptions) error {
-	return printData(w, t.context(), o, slices.Collect(t.top.all()), 0, true, printJSON)
+	return printData(w, t.context(), printConfig{PrintOptions: o}, slices.Collect(t.top.all()), 0, true, printJSON)
 }
 
 // PrintXML writes the top-level siblings of the tree as XML, as lyd_print_all with LYD_XML and
 // LYD_PRINT_WITHSIBLINGS.
 func (t *Tree) PrintXML(w io.Writer, o PrintOptions) error {
-	return printData(w, t.context(), o, slices.Collect(t.top.all()), 0, true, printXML)
+	return printData(w, t.context(), printConfig{PrintOptions: o}, slices.Collect(t.top.all()), 0, true, printXML)
 }
 
 // PrintJSON writes n and its descendants, not its siblings, as RFC 7951 JSON (lyd_print_tree with
 // LYD_JSON): a member of the top-level object, qualified with its module name.
-func (n *Node) PrintJSON(w io.Writer, o PrintOptions) error { return n.print(w, o, printJSON) }
+func (n *Node) PrintJSON(w io.Writer, o PrintOptions) error {
+	return n.print(w, printConfig{PrintOptions: o}, printJSON)
+}
 
 // PrintXML writes n and its descendants, not its siblings, as XML (lyd_print_tree with LYD_XML).
-func (n *Node) PrintXML(w io.Writer, o PrintOptions) error { return n.print(w, o, printXML) }
+func (n *Node) PrintXML(w io.Writer, o PrintOptions) error {
+	return n.print(w, printConfig{PrintOptions: o}, printXML)
+}
 
 // print is lyd_print_tree: n with its real siblings, so that leaf-list arrays and empty
 // (leaf-)lists see the instances around it as libyang does.
-func (n *Node) print(w io.Writer, o PrintOptions, f func(*printer, []*Node, int) error) error {
+func (n *Node) print(w io.Writer, o printConfig, f func(*printer, []*Node, int) error) error {
 	if n == nil {
 		return printData(w, nil, o, nil, 0, false, f)
 	}
@@ -236,7 +245,7 @@ func (n *Node) print(w io.Writer, o PrintOptions, f func(*printer, []*Node, int)
 }
 
 // printData runs f over sibs from index from: all of them with siblings, else only sibs[from].
-func printData(w io.Writer, set *schema.Set, o PrintOptions, sibs []*Node, from int, siblings bool,
+func printData(w io.Writer, set *schema.Set, o printConfig, sibs []*Node, from int, siblings bool,
 	f func(*printer, []*Node, int) error) error {
 	diags, err := printDataResult(w, set, o, sibs, from, siblings, f)
 	if err != nil {
@@ -255,10 +264,10 @@ func printData(w io.Writer, set *schema.Set, o PrintOptions, sibs []*Node, from 
 // printDataResult keeps lyd_print_'s return status separate from diagnostics left in the
 // context log. In particular, xml_print_meta is void: a type printer may log an error and
 // return NULL, after which the XML printer emits an empty attribute and succeeds.
-func printDataResult(w io.Writer, set *schema.Set, o PrintOptions, sibs []*Node, from int, siblings bool,
+func printDataResult(w io.Writer, set *schema.Set, o printConfig, sibs []*Node, from int, siblings bool,
 	f func(*printer, []*Node, int) error) ([]printDiagnostic, error) {
 	w, flags := printopts.Unwrap(w)
-	if o.dflt == nil { // callers cannot set it; tests do
+	if o.dflt == nil { // contextopts.PrintNode and tests supply their own
 		o.dflt = &defaultCheck{}
 	}
 	p := &printer{set: set, opts: o, flags: flags, siblings: siblings}
@@ -327,7 +336,7 @@ func printDataResult(w io.Writer, set *schema.Set, o PrintOptions, sibs []*Node,
 // printer is the state the JSON and XML printers share (jsonpr_ctx, xmlpr_ctx).
 type printer struct {
 	set        *schema.Set
-	opts       PrintOptions
+	opts       printConfig
 	flags      printopts.Flags
 	siblings   bool          // LYD_PRINT_SIBLINGS: lyd_print_all, else lyd_print_tree
 	printDiags []printerDiag // xml_print_meta may log without stopping the printer

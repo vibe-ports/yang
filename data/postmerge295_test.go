@@ -103,9 +103,9 @@ func TestPrintDetachedUnionDefaultSuppressesMemberProbe(t *testing.T) {
 	if err := r.Unlink(); err != nil {
 		t.Fatal(err)
 	}
-	o := PrintOptions{WithDefaults: WDTrim, dflt: &defaultCheck{}}
+	o := printConfig{PrintOptions: PrintOptions{WithDefaults: WDTrim}, dflt: &defaultCheck{}}
 	var b bytes.Buffer
-	if err := r.PrintJSON(&b, o); err != nil {
+	if err := r.print(&b, o, printJSON); err != nil {
 		t.Fatal(err)
 	}
 	if len(o.dflt.diags) != 1 || o.dflt.diags[0].Err != "LY_EVALID" {

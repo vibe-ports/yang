@@ -340,7 +340,7 @@ func (v xpathAnyValue) StringWithBudget(ctx context.Context, step, byteStep func
 		}
 	}
 	var b bytes.Buffer
-	diags, err := printDataResult(&b, ctxOf(root), PrintOptions{step: step, byteStep: byteStep}, nodes, 0, true, printXML)
+	diags, err := printDataResult(&b, ctxOf(root), printConfig{step: step, byteStep: byteStep}, nodes, 0, true, printXML)
 	if err != nil {
 		if errors.Is(err, yang.ErrBudget) || errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
 			return "", &xpathPrintResourceFailure{diags: diags, err: err}

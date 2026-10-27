@@ -137,13 +137,13 @@ func init() {
 	contextopts.PrintNode = func(v any, mode uint8) (map[string]any, []snap.Diagnostic, error) {
 		n, _ := v.(*Node)
 		var j, x strings.Builder
-		jsonOpts := PrintOptions{WithDefaults: WD(mode), dflt: &defaultCheck{}}
-		if err := n.PrintJSON(&j, jsonOpts); err != nil {
+		jsonOpts := printConfig{PrintOptions: PrintOptions{WithDefaults: WD(mode)}, dflt: &defaultCheck{}}
+		if err := n.print(&j, jsonOpts, printJSON); err != nil {
 			return nil, nil, err
 		}
 		diags := append([]snap.Diagnostic(nil), jsonOpts.dflt.diags...)
-		xmlOpts := PrintOptions{WithDefaults: WD(mode), dflt: &defaultCheck{}}
-		if err := n.PrintXML(&x, xmlOpts); err != nil {
+		xmlOpts := printConfig{PrintOptions: PrintOptions{WithDefaults: WD(mode)}, dflt: &defaultCheck{}}
+		if err := n.print(&x, xmlOpts, printXML); err != nil {
 			return nil, diags, err
 		}
 		diags = append(diags, xmlOpts.dflt.diags...)

@@ -63,7 +63,7 @@ func (n *Node) anyValueString(format Format, step func() error) (string, bool, e
 	if format == FormatXML {
 		fn = printXML
 	}
-	if err := printData(&b, set, PrintOptions{step: step}, children, 0, true, fn); err != nil {
+	if err := printData(&b, set, printConfig{step: step}, children, 0, true, fn); err != nil {
 		return "", false, err
 	}
 	return b.String(), true, nil
