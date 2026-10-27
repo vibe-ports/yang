@@ -16,7 +16,13 @@ import (
 	"github.com/vibe-ports/yang/internal/types"
 )
 
-var opIndexSizes = scaleSizes([]int{2048, 4096, 8192, 16384}, 3)
+var opIndexSizes = func() []int {
+	if raceEnabled {
+		// Smaller runs retain the 2x and 4x work ratios under race instrumentation.
+		return []int{256, 512, 1024}
+	}
+	return []int{2048, 4096, 8192, 16384}
+}()
 
 // scaleSizes keeps the first keep of the ascending sizes of a scaling test under the race
 // detector. The tests compare counted work (and allocations) between sizes, which the detector's
@@ -171,7 +177,8 @@ func TestOpIndexDescendingInput(t *testing.T) {
 }
 
 func TestOpIndexAbsentSiblings(t *testing.T) {
-	sizes := []int{256, 512, 1024, 2048}
+	// Under race, keep two sizes so the 2.5x work bound still rejects quadratic growth.
+	sizes := scaleSizes([]int{256, 512, 1024, 2048}, 2)
 	opIndexScaling(t, sizes, func(n int) int64 {
 		var y strings.Builder
 		y.WriteString(`module m { yang-version 1.1; namespace "urn:m"; prefix m; rpc r { output { leaf-list v { type uint32; }`)
@@ -198,7 +205,8 @@ func TestOpIndexAbsentSiblings(t *testing.T) {
 }
 
 func TestOpIndexManySortedRuns(t *testing.T) {
-	sizes := []int{256, 512, 1024, 2048}
+	// Under race, keep two sizes so the 2.5x work bound still rejects quadratic growth.
+	sizes := scaleSizes([]int{256, 512, 1024, 2048}, 2)
 	opIndexScaling(t, sizes, func(n int) int64 {
 		var y, input strings.Builder
 		y.WriteString(`module m { yang-version 1.1; namespace "urn:m"; prefix m; rpc r { input {`)

@@ -14,7 +14,13 @@ import (
 	"github.com/vibe-ports/yang/internal/schema"
 )
 
-var opidxR10Sizes = []int{512, 1024, 2048, 4096}
+var opidxR10Sizes = func() []int {
+	if raceEnabled {
+		// Smaller runs retain the 2x and 4x work ratios under race instrumentation.
+		return []int{128, 256, 512}
+	}
+	return []int{512, 1024, 2048, 4096}
+}()
 
 func opidxR10MetaInput(values []int) (string, map[int][]string) {
 	var input strings.Builder

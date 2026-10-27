@@ -16,10 +16,15 @@ import (
 // Exercise Merge and Find's value-predicate path with distinct output schemas. Public Find
 // compiles input paths only, so the find case uses evalPartial with an output path segment.
 func TestOpRunLookupWork(t *testing.T) {
+	sizes := []int{64, 128, 256, 512}
+	if raceEnabled {
+		// Smaller schema sets retain two sizes and the quadratic-growth rejection under race.
+		sizes = []int{16, 32}
+	}
 	for _, operation := range []string{"merge", "find", "instances"} {
 		for _, order := range []string{"sorted", "reverse", "shuffled", "duplicates"} {
 			t.Run(operation+"/"+order, func(t *testing.T) {
-				opIndexScaling(t, []int{64, 128, 256, 512}, func(n int) int64 {
+				opIndexScaling(t, sizes, func(n int) int64 {
 					var y, reply strings.Builder
 					y.WriteString(`module m { yang-version 1.1; namespace "urn:m"; prefix m; rpc r { output {`)
 					reply.WriteByte('{')

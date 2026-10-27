@@ -75,9 +75,14 @@ func TestParseRepeatedKeyScaling(t *testing.T) {
 		{"first-of-two", pv2Set(t, "pv2-sort-keys"), firstOfTwo, false},
 		{"last-of-two", pv2Set(t, "pv2-sort-keys"), lastOfTwo, true},
 	}
+	sizes := []int{500, 2000, 8000}
+	if raceEnabled {
+		// One smaller N/4N pair still checks work and allocation growth under race.
+		sizes = []int{250}
+	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			for _, n := range scaleSizes([]int{500, 2000, 8000}, 2) {
+			for _, n := range sizes {
 				one := measure(t, tc.set, tc.input(n), tc.wantValid)
 				four := measure(t, tc.set, tc.input(4*n), tc.wantValid)
 				minWork := uint64(n) //nolint:gosec // the measured sizes above are all positive
@@ -109,11 +114,16 @@ func TestParseRepeatedKeyScaling(t *testing.T) {
 			b.WriteString(`]}}`)
 			return b.String()
 		}
-		fifty := measure(t, set, input(50), true)
-		twoHundred := measure(t, set, input(200), true)
-		if twoHundred.work > 6*fifty.work || twoHundred.bytes > 6*fifty.bytes {
-			t.Fatalf("M=50 -> 200, 50 repeated keys each: work %d -> %d, allocated bytes %d -> %d: not linear",
-				fifty.work, twoHundred.work, fifty.bytes, twoHundred.bytes)
+		n := 50
+		if raceEnabled {
+			// Reduce instance counts under race while retaining the 4x growth check.
+			n = 10
+		}
+		one := measure(t, set, input(n), true)
+		four := measure(t, set, input(4*n), true)
+		if four.work > 6*one.work || four.bytes > 6*one.bytes {
+			t.Fatalf("M=%d -> %d, 50 repeated keys each: work %d -> %d, allocated bytes %d -> %d: not linear",
+				n, 4*n, one.work, four.work, one.bytes, four.bytes)
 		}
 	})
 }
@@ -251,9 +261,14 @@ func TestKeyConcatCollisionScaling(t *testing.T) {
 		}
 		return lc.tree.work.Load(), after.TotalAlloc - before.TotalAlloc
 	}
+	sizes := []int{500, 2000, 8000}
+	if raceEnabled {
+		// One smaller N/4N pair still separates n log n from quadratic work under race.
+		sizes = []int{250}
+	}
 	for _, parseOnly := range []bool{true, false} {
 		t.Run(fmt.Sprintf("parse-only=%v", parseOnly), func(t *testing.T) {
-			for _, n := range scaleSizes([]int{500, 2000, 8000}, 2) {
+			for _, n := range sizes {
 				w1, b1 := measure(t, input(n), parseOnly)
 				w4, b4 := measure(t, input(4*n), parseOnly)
 				if w4 > 6*w1 || b4 > 6*b1 {

@@ -131,14 +131,19 @@ func TestParseRepeatedKeyRunScaling(t *testing.T) {
 		}
 		return s
 	}
+	sizes := []int{500, 2000, 8000}
+	if raceEnabled {
+		// One smaller N/4N pair still checks work and allocation growth under race.
+		sizes = []int{250}
+	}
 	for _, operation := range []bool{true, false} {
 		top := map[bool]string{true: "r", false: "c"}[operation]
 		for _, name := range []string{"even-odd", "shuffled", "descending"} {
 			t.Run(fmt.Sprintf("%s/%s", top, name), func(t *testing.T) {
-				for _, n := range scaleSizes([]int{500, 2000, 8000}, 2) {
+				for _, n := range sizes {
 					one := parse(t, operation, input(top, shapes[name](n)))
 					four := parse(t, operation, input(top, shapes[name](4*n)))
-					if n == 500 {
+					if n == sizes[0] {
 						if want := reference(shapes[name](n)); !slices.Equal(one.order, want) {
 							t.Fatalf("order %v, want %v", one.order[:8], want[:8])
 						}

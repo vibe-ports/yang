@@ -311,7 +311,12 @@ func TestOpIndexRecordRandomized(t *testing.T) {
 			add(op, set1, mod1, "sep", fresh(), true)
 			checkAll()
 
-			for step := range 320 {
+			steps := 320
+			if raceEnabled {
+				// Keep every seed and guaranteed mutation kind, with fewer accumulated copies.
+				steps = 64
+			}
+			for step := range steps {
 				kind := rng.IntN(9)
 				if step < 9 {
 					kind = step
