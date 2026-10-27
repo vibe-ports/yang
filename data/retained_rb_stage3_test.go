@@ -3,6 +3,7 @@
 package data
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -15,6 +16,7 @@ import (
 
 	"github.com/vibe-ports/yang"
 	"github.com/vibe-ports/yang/internal/contextopts"
+	"github.com/vibe-ports/yang/internal/schema"
 )
 
 func TestStage3ParserOneTopology(t *testing.T) {
@@ -1253,6 +1255,130 @@ func TestStage3DetachedReplyBudgetCleanup(t *testing.T) {
 		before := op.kids.Len()
 		_, _, _, _, err := parseOpWith(context.Background(), strings.NewReader(tc.reply), set, tc.f, opReply, op, Reject, Budget{MaxNodes: 1})
 		if !errors.Is(err, yang.ErrBudget) {
+			t.Fatalf("format %v: %v", tc.f, err)
+		}
+		if got := op.kids.Len(); got != before {
+			t.Fatalf("format %v: failed reply left %d children under the detached request, want %d", tc.f, got, before)
+		}
+	}
+}
+
+// stage3SingletonRoundTrip mirrors the native "singleton" probe: a copy of a many-slot owner
+// becomes a singleton whose first metadata slot is populated and whose secondary slots are
+// empty; it is unlinked, linked into an empty tree, unlinked again and reinserted sorted.
+// It returns the probe's output lines.
+func stage3SingletonRoundTrip(t *testing.T, set *schema.Set) string {
+	t.Helper()
+	add := func(tr *Tree, key string) *Node {
+		t.Helper()
+		n, err := tr.NewList(nil, "stage3-extra:l", []string{key}, NewOptions{})
+		if err != nil {
+			t.Fatal(err)
+		}
+		return n
+	}
+	src := newTree(set)
+	add(src, "3")
+	add(src, "11")
+	for range 32 {
+		dst := newTree(set)
+		if _, _, err := dst.Dup(src.top.first(), nil, DupOptions{Recursive: true, NoSort: true}); err != nil {
+			t.Fatal(err)
+		}
+		src = newTree(set)
+		for _, key := range []string{"5", "7", "9"} {
+			add(src, key)
+		}
+		if err := dst.Insert(nil, src.top.first()); err != nil {
+			t.Fatal(err)
+		}
+		src = dst
+	}
+	holder := newTree(set)
+	d, _, err := holder.Dup(src.top.first(), nil, DupOptions{Recursive: true, NoSort: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := add(holder, "20").Remove(); err != nil {
+		t.Fatal(err)
+	}
+	var got strings.Builder
+	for step := range 2 {
+		if err := d.Unlink(); err != nil {
+			t.Fatalf("unlink %d: %v", step, err)
+		}
+		slots := len(d.carriedRB)
+		if d.detachedRB != nil {
+			slots++
+		}
+		fmt.Fprintf(&got, "unlinked-slots=%d\n", slots)
+		if step == 0 {
+			empty := newTree(set)
+			if err := empty.Insert(nil, d); err != nil {
+				t.Fatal(err)
+			}
+			checkTreeRetainedRB(t, empty)
+		}
+	}
+	dst := newTree(set)
+	add(dst, "1")
+	if err := dst.Insert(nil, d); err != nil {
+		t.Fatal(err)
+	}
+	for step := range 2 {
+		if step == 1 {
+			add(dst, "2")
+		}
+		checkTreeRetainedRB(t, dst)
+		fmt.Fprintf(&got, "slots=%d\n", len(dst.top.metaGroups(d)))
+		var out bytes.Buffer
+		if err := dst.PrintJSON(&out, PrintOptions{Shrink: true}); err != nil {
+			t.Fatal(err)
+		}
+		got.WriteString(strings.TrimSpace(out.String()) + "\n")
+	}
+	return got.String()
+}
+
+// TestStage3SingletonMetadataRoundTrip: the selected singleton tree stays ahead of its carried
+// secondary slots through an unlink/link/unlink round trip, and a sorted reinsertion frees only
+// the first slot (lyds_insert). Expected output is the native probe's (TestStage3NativeMetadataMoves/singleton).
+func TestStage3SingletonMetadataRoundTrip(t *testing.T) {
+	set := reviewDiffSet(t, `module stage3-extra {yang-version 1.1;namespace "urn:stage3-extra";prefix s;
+ list l {key k;leaf k {type uint32;}leaf p {type string;}action act {input {leaf x {type string;}}}}
+ container c {list l {key k;leaf k {type uint32;}}}}`)
+	want := `unlinked-slots=33
+unlinked-slots=33
+slots=32
+{"stage3-extra:l":[{"k":1},{"k":3}]}
+slots=32
+{"stage3-extra:l":[{"k":1},{"k":2},{"k":3}]}
+`
+	if got := stage3SingletonRoundTrip(t, set); got != want {
+		t.Fatalf("got\n%swant\n%s", got, want)
+	}
+}
+
+// TestStage3DetachedReplyHashBudgetCleanup: a reply into a detached request links a small
+// output leaf, then exhausts stored-hash work on sparse empty bits values (512 MiB of zero
+// bytes each). The sticky hash error refuses any cleanup unlink; the parser tree's journal
+// restores the request instead.
+func TestStage3DetachedReplyHashBudgetCleanup(t *testing.T) {
+	set := opIndexSet(t, `module m { yang-version 1.1; namespace "urn:m"; prefix m;
+  rpc r { input { leaf i { type string; } } output { leaf o1 { type string; }
+    leaf-list o2 { type bits { bit high { position 4294967294; } } } } } }`)
+	for _, tc := range []struct {
+		f     Format
+		reply string
+	}{
+		{FormatXML, `<o1 xmlns="urn:m">a</o1>` + strings.Repeat(`<o2 xmlns="urn:m"/>`, 1024)},
+		{FormatJSON, `{"m:o1":"a","m:o2":[` + strings.Repeat(`"",`, 1023) + `""]}`},
+	} {
+		_, op := opIndexParseRPC(t, set, `{"m:r":{"i":"x"}}`)
+		mustLink(t, unlink(op))
+		before := op.kids.Len()
+		_, _, _, _, err := parseOpWith(context.Background(), strings.NewReader(tc.reply), set, tc.f, opReply, op, Reject, Budget{})
+		if !errors.Is(err, yang.ErrBudget) || !strings.Contains(err.Error(), "stored-hash") {
 			t.Fatalf("format %v: %v", tc.f, err)
 		}
 		if got := op.kids.Len(); got != before {

@@ -137,6 +137,18 @@ func TestStage3NativeMetadataMoves(t *testing.T) {
 			t.Fatal("NULL metadata did not move to the native successor")
 		}
 	})
+	t.Run("singleton", func(t *testing.T) {
+		//nolint:gosec // Executes the native probe built immediately above.
+		native, err := exec.CommandContext(ctx, probe, model, "singleton").CombinedOutput()
+		if err != nil {
+			t.Fatalf("native singleton round trip: %v: %s", err, native)
+		}
+		got := stage3SingletonRoundTrip(t, reviewDiffSet(t, module))
+		if strings.TrimSpace(got) != strings.TrimSpace(string(native)) {
+			t.Fatalf("native=%s\nGo=%s", native, got)
+		}
+		t.Logf("native singleton metadata round trip matches:\n%s", native)
+	})
 	for _, mode := range []string{"retain", "promote", "many", "unrebuilt"} {
 		t.Run(mode, func(t *testing.T) {
 			//nolint:gosec // Executes the native probe built immediately above.

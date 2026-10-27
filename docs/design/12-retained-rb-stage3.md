@@ -229,6 +229,34 @@ temporary operation validation amid key changes, duplication, unlink, merge and 
 the checker runs after every transition. The mixed leaf-list history retains its parser,
 whole-move and payload transitions with seed `(0x301, 5)`; multikey uses `(0x301, 33)`.
 
+## Metadata slot order invariant
+
+A node's native `lyds_tree` metadata is one ordered list, and the Go fields are views of it:
+linked, it is `metaGroups(n)` (`rbGroups[n]` then `rbMore[n]`); unlinked, it is `detachedRB`
+(when set, always slot 0) followed by `carriedRB`. **Every transition preserves this sequence;
+it changes only by the native edits: `lyds_insert` frees exactly slot 0 of the incoming node,
+`lyds_merge` frees the source leader's first empty slot, and `lyds_link_data_node`/`lyds_move_meta`
+append a moved slot after the receiver's own.** Path check against it:
+
+- `lyd_unlink` (`removeRBNode`/`runGone`): the selected slot 0 becomes `detachedRB`, the remaining
+  empty slots are appended to `carriedRB` in `metaGroups` order; a populated secondary refuses
+  (D-0121) before anything moves.
+- Plain link (`link` then `attach`/`adoptCarried`): with no carried slots `detachedRB` is
+  republished as `rbGroups[n]`; otherwise it is prepended to `carriedRB`, and `adoptCarried`
+  publishes `[slot 0, carried…]` ahead of any receiver metadata. `rbAdoptionBound` reserves
+  that extra slot with the link.
+- Sorted insertion (`rbPos`): frees slot 0 only — `detachedRB` when present, otherwise
+  `carriedRB[0]`; the rest is adopted in order.
+- Whole-run moves (`takeTree`/`give`, `lyd_unlink_ignore_lyds`) and `lyds_merge_nodes1/2/3`
+  carry slots in `metaGroups` order; they never produce `detachedRB`.
+- Duplication copies every slot (slot 0 included) as an empty slot in order; free releases all.
+- Rollback (`rbMetadataOrigin`, journal `captureNode`) restores `detachedRB`/`carriedRB` and the
+  owners' `metaGroups` as one snapshot, so no partial order survives a failed move.
+
+`TestStage3SingletonMetadataRoundTrip` and the native `singleton` probe check unlink → link into
+an empty tree → unlink → sorted reinsertion of a singleton with a populated slot 0 and 32 empty
+secondary slots (33/33/32 slots, identical JSON).
+
 ## Evidence index
 
 Removal failures propagate: `unlink`, `unlinkRetainingHistory` and `bindSubtreeWork` return
@@ -243,13 +271,17 @@ A refusal's published prefix still gets its descendants' reciprocal leafref clea
 callers skip on error (`TestStage3TrimRefusalCleansPrefixLinks`). Temporary operation
 validation that cannot move its subtree back (a D-0121 cleanup refusal) restores both trees
 from their journals (`TestStage3ValidateOpCleanupRefusalRestores`).
+Operation parsing under a detached parent journals its parser tree like a linked owner, so every
+budget failure, including a sticky stored-hash error that would refuse cleanup unlinks, restores
+the parent's children (`TestStage3DetachedReplyBudgetCleanup`,
+`TestStage3DetachedReplyHashBudgetCleanup`).
 
 Live request ids in `conformance/retained_rb_stage3_oracle_test.go`:
 `stage3/removals`, `stage3/parser-resume`, `stage3/multikey`, `stage3/payload`,
 `stage3/defaults-dummy-path`, `stage3/netconf-cleanup`, `stage3/restconf-cleanup`,
 `stage3/detached-singleton`, `stage3/temporary-operation`, and
 `stage3/seed-301-3-0` through `stage3/seed-301-3-7`.
-The direct metadata probe is `TestStage3NativeMetadataMoves/{empty-selection,empty-unlink,retain,promote,many,unrebuilt}` in
+The direct metadata probe is `TestStage3NativeMetadataMoves/{empty-selection,empty-unlink,singleton,retain,promote,many,unrebuilt}` in
 `data/retained_rb_stage3_oracle_test.go`, using `conformance/oracle/retained_rb_stage3.c`.
 
 The cancellation test now accepts an empty run when cancellation precedes the first insertion;

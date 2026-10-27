@@ -669,7 +669,9 @@ func (t *Tree) rbAdd(d *dirtyOrder, n *Node, compare func(*Node, *Node) (int, bo
 // reserved before the run is reordered or the topology changes. It returns where link puts n;
 // false means a refused comparison (t.work.hashErr is set when the quota refused it).
 func (t *Tree) rbPos(sib *siblings, n *Node, lo, hi int, compare func(*Node, *Node) (int, bool)) (int, bool) {
-	if len(n.carriedRB) > 0 {
+	// lyds_insert frees only the incoming first metadata slot: detachedRB when present
+	// (cleared below), otherwise the first carried one.
+	if n.detachedRB == nil && len(n.carriedRB) > 0 {
 		if len(n.carriedRB[0].order.nodes) > 1 {
 			t.work.hashErr = rbUnlinkError(n)
 			return lo, false
@@ -1734,7 +1736,13 @@ func (t *Tree) link(parent *Node, sib *siblings, n *Node, at int) error {
 			sib.rbGroups = map[*Node]*rbGroup{}
 		}
 		sib.rbOrders[n.detachedGroup] = n.detachedRB
-		sib.rbTree[n], sib.rbGroups[n] = true, n.detachedGroup
+		if len(n.carriedRB) == 0 {
+			sib.rbTree[n], sib.rbGroups[n] = true, n.detachedGroup
+		} else {
+			// detachedRB is slot 0, ahead of the carried secondary slots (design 12, metadata
+			// slot order): adoptCarried publishes all of them in that order.
+			n.carriedRB = append([]rbCarry{{n.detachedGroup, n.detachedRB}}, n.carriedRB...)
+		}
 		n.inRB, n.rbGroup = true, n.detachedGroup
 		n.detachedRB.work = &t.work
 		n.detachedRB, n.detachedGroup = nil, nil

@@ -271,7 +271,12 @@ func parseOpWith(ctx context.Context, r io.Reader, s *schema.Set, f Format, t op
 			c.parsedParentGen = parent.kids.gen
 			if pt := parent.treeOf(); pt != nil {
 				c.tree = pt
-			} // a detached parent (LYD_CTX(parent)): the parser's own tree of s stands in for lookups
+			} else {
+				// A detached parent (LYD_CTX(parent)): the parser's own tree of s stands in for
+				// lookups, and its journal (Tree.touch captures the parent's children before the
+				// first link) restores the parent on any budget failure, sticky hash work included.
+				journal = beginHashTransaction(c.tree)
+			}
 		}
 	})
 	journal.fail(&err)
@@ -283,10 +288,10 @@ func parseOpWith(ctx context.Context, r io.Reader, s *schema.Set, f Format, t op
 			if errors.As(err, &ve) {
 				ve.rc = ve.RC()
 			}
-			// A budget failure under a linked parent is restored by the journal. A detached parent
-			// has none: its parsed nodes are freed as for any other error, keeping the budget error.
-			if budget := errors.Is(err, yang.ErrBudget); !budget || parent.treeOf() == nil {
-				if cleanupErr := lc.freeParsed(); cleanupErr != nil && (!budget || errors.Is(cleanupErr, yang.ErrBudget)) {
+			// A budget failure is restored by the journal (the owner's, or the parser tree's for
+			// a detached parent); other failures free the parsed nodes.
+			if !errors.Is(err, yang.ErrBudget) {
+				if cleanupErr := lc.freeParsed(); cleanupErr != nil {
 					err = lc.log.done(cleanupErr)
 				}
 			} // nil lc: the input was not read, nothing was parsed

@@ -9,7 +9,12 @@ import "slices"
 // rbAdoptionBound includes the empty metadata that unlink will leave on a linked source.
 // It is reserved with the link, before physical publication can make adoption fail late.
 func rbAdoptionBound(s *siblings, n *Node, w *workCounter) (uint64, error) {
-	slots := uint64(len(n.carriedRB))
+	carried := n.carriedRB
+	if n.detachedRB != nil && len(carried) > 0 {
+		// link hands slot 0 to adoptCarried ahead of the carried secondary slots
+		carried = append([]rbCarry{{n.detachedGroup, n.detachedRB}}, carried...)
+	}
+	slots := uint64(len(carried))
 	if from := n.siblingsOf(); from != nil && from.rbGroups[n] != nil {
 		slots += 1 + uint64(len(from.rbMore[n]))
 		if from.rbTree[n] {
@@ -20,7 +25,7 @@ func rbAdoptionBound(s *siblings, n *Node, w *workCounter) (uint64, error) {
 		return 0, nil
 	}
 	bound := 3*slots + 4*uint64(len(s.rbMore[n])) + 8
-	for _, c := range n.carriedRB {
+	for _, c := range carried {
 		if w.forestMove {
 			continue
 		}

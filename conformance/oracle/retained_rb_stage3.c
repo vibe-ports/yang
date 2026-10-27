@@ -58,7 +58,7 @@ main(int argc, char **argv)
         if (!rc) puts("empty-unlink=ok");
         goto cleanup;
     }
-    if (!rc && !strcmp(argv[2], "many")) {
+    if (!rc && (!strcmp(argv[2], "singleton") || !strcmp(argv[2], "many"))) {
         rc = add(&src, mod, "3");
         if (!rc) rc = add(&src, mod, "11");
         for (unsigned round = 0; !rc && round < 32; ++round) {
@@ -71,12 +71,47 @@ main(int argc, char **argv)
             if (!rc) rc = lyd_insert_sibling(dst, src, &dst);
             if (!rc) {src = dst; dst = NULL;}
         }
-        if (!rc) {
+        if (!rc && !strcmp(argv[2], "many")) {
             owner = src;
             kept = owner->meta;
             while (kept && kept->next) kept = kept->next;
+            goto duplicate;
         }
-        goto duplicate;
+    }
+    if (!rc && !strcmp(argv[2], "singleton")) {
+        /* A singleton with a populated first slot and empty secondary slots: unlink it,
+         * link it into an empty tree, unlink it again, then reinsert it sorted. */
+        struct lyd_node *d = NULL, *other = NULL;
+        unsigned count;
+        rc = lyd_dup_single(src, NULL, LYD_DUP_RECURSIVE | LYD_DUP_NO_LYDS, &d);
+        lyd_free_all(src);
+        src = d;
+        if (!rc) rc = add(&src, mod, "20");
+        if (!rc) {
+            other = src->next;
+            lyd_free_tree(other);
+        }
+        for (unsigned step = 0; !rc && step < 2; ++step) {
+            lyd_unlink_tree(d);
+            src = NULL;
+            count = 0;
+            for (meta = d->meta; meta; meta = meta->next) ++count;
+            printf("unlinked-slots=%u\n", count);
+            if (!step) rc = lyd_insert_sibling(NULL, d, &src);
+        }
+        if (!rc) rc = add(&dst, mod, "1");
+        if (!rc) rc = lyd_insert_sibling(dst, d, &dst);
+        for (unsigned step = 0; !rc && step < 2; ++step) {
+            if (step) rc = add(&dst, mod, "2");
+            count = 0;
+            for (meta = d->meta; meta; meta = meta->next) ++count;
+            if (!rc) printf("slots=%u\n", count);
+            if (!rc) rc = lyd_print_mem(&json, dst, LYD_JSON, LYD_PRINT_SHRINK | LYD_PRINT_SIBLINGS);
+            if (!rc) puts(json);
+            free(json);
+            json = NULL;
+        }
+        goto cleanup;
     }
     if (!rc && !strcmp(argv[2], "empty")) {
         rc = add(&src, mod, "3");
