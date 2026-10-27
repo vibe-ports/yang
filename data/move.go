@@ -693,6 +693,9 @@ func (t *Tree) moveNodes(parent *Node, src *Tree) (result error) {
 	if err := j.captureSiblings(dst); err != nil {
 		return err
 	}
+	if err := j.captureDetachedParent(parent); err != nil {
+		return err
+	}
 	// A refused whole-run move restores both forests, including hash registrations and work
 	// ownership. One journal replaces the topology-only snapshots and recovery relinking.
 	defer func() {

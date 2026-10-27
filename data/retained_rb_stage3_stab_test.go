@@ -518,3 +518,175 @@ func TestStage3DupIntoDetachedParentBudget(t *testing.T) {
 		}
 	}
 }
+
+// snapshotHashBudgetDetached is snapshotHashBudgetTree of the detached subtree of root.
+func snapshotHashBudgetDetached(set *schema.Set, root *Node) hashBudgetSnapshot {
+	s := hashBudgetSnapshot{dump: []string{}, index: map[*Node]string{}, sibs: map[*siblings]string{}}
+	for n := range root.allAny() {
+		s.dump = append(s.dump, typedLine(set, n))
+	}
+	snapshotHashBudgetRoots(&s, []*Node{root})
+	return s
+}
+
+// TestStage3DetachedDestinationChainBudget sweeps the hash-work quota of every public mutation
+// that can write below a detached destination: a default NP-container chain a/b detached from a
+// holder tree and filled from a third tree. Linking the first explicit child clears the default
+// flags of the whole chain, whose counter has no journal of its own. Each refusal must leave the
+// operation's tree, the source tree and the detached chain (flags, hashes, children, work
+// bindings) exactly as they were; retrying without a limit gives the unrefused result.
+func TestStage3DetachedDestinationChainBudget(t *testing.T) {
+	set := reviewDiffSet(t, `module stage3-chain {yang-version 1.1;namespace "urn:stage3-chain";prefix s;
+ container a {container b {leaf-list w {type string;} list l {key k; leaf k {type string;}}
+  leaf d {type string; default "x";}}}}`)
+	const full = `<a xmlns="urn:stage3-chain"><b><w>p</w><w>q</w><w>r</w></b></a>`
+	values := func(tr *Tree) []*Node { return tr.top.first().kids.first().kids.schemaSpan().Collect() }
+	wSchema := values(parseOnlyXML(t, set, full))[0].schema
+	chain := func() (*Node, *Node) {
+		holder := newTree(set)
+		a, err := holder.NewInner(nil, "stage3-chain:a", NewOptions{})
+		if err != nil {
+			t.Fatal(err)
+		}
+		b, err := holder.NewInner(a, "b", NewOptions{})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := a.Unlink(); err != nil {
+			t.Fatal(err)
+		}
+		if a.flags&FlagDefault == 0 || b.flags&FlagDefault == 0 {
+			t.Fatalf("setup: chain not default (%#x, %#x)", a.flags, b.flags)
+		}
+		return a, b
+	}
+	// op prepares one entry below the detached parent b: the source tree (nil: none) and the call.
+	type entry struct {
+		name string
+		op   func(dst *Tree, b *Node) (*Tree, func() error)
+	}
+	entries := []entry{
+		{"insert", func(dst *Tree, b *Node) (*Tree, func() error) {
+			src := parseOnlyXML(t, set, full)
+			n := values(src)[1]
+			return src, func() error { return dst.Insert(b, n) }
+		}},
+		{"insert-detached-node", func(dst *Tree, b *Node) (*Tree, func() error) {
+			src := parseOnlyXML(t, set, full)
+			n := values(src)[1]
+			mustLink(t, n.Unlink())
+			return src, func() error { return dst.Insert(b, n) }
+		}},
+		{"insert-forest", func(dst *Tree, b *Node) (*Tree, func() error) {
+			src := newTree(set)
+			for _, v := range []string{"q", "p", "r"} {
+				mustLink(t, src.insert(nil, retainedRBTerm(t, wSchema, v), insertDefault))
+			}
+			return src, func() error { return dst.Insert(b, src.top.first()) }
+		}},
+		{"dup", func(dst *Tree, b *Node) (*Tree, func() error) {
+			src := parseOnlyXML(t, set, full)
+			return src, func() error {
+				_, _, err := dst.DupSiblings(values(src)[0], b, DupOptions{})
+				return err
+			}
+		}},
+		{"new-term", func(dst *Tree, b *Node) (*Tree, func() error) {
+			return nil, func() error {
+				_, err := dst.NewTerm(b, "w", "p", NewOptions{})
+				return err
+			}
+		}},
+		{"new-list", func(dst *Tree, b *Node) (*Tree, func() error) {
+			return nil, func() error {
+				_, err := dst.NewList(b, "l", []string{"k1"}, NewOptions{})
+				return err
+			}
+		}},
+		{"new-opaque", func(dst *Tree, b *Node) (*Tree, func() error) {
+			return nil, func() error {
+				_, err := dst.NewOpaque(b, "o", "v", OpaqueOptions{Module: "stage3-chain"})
+				return err
+			}
+		}},
+		{"merge-diff-tree", func(dst *Tree, b *Node) (*Tree, func() error) {
+			diff, err := Diff(newTree(set), parseOnlyXML(t, set, full), DiffOptions{})
+			if err != nil {
+				t.Fatal(err)
+			}
+			src := values(diff)[0]
+			return diff, func() error { return dst.MergeDiffTree(b, src, MergeDiffOptions{}) }
+		}},
+	}
+	type state struct {
+		dst, src, chain hashBudgetSnapshot
+	}
+	snapshot := func(dst, src *Tree, a *Node) state {
+		s := state{dst: snapshotHashBudgetTree(dst), chain: snapshotHashBudgetDetached(set, a)}
+		if src != nil {
+			s.src = snapshotHashBudgetTree(src)
+		}
+		return s
+	}
+	for _, e := range entries {
+		t.Run(e.name, func(t *testing.T) {
+			a, b := chain()
+			dst := newTree(set)
+			_, op := e.op(dst, b)
+			var points []uint64
+			dst.work.hashTrace = &points
+			if err := op(); err != nil {
+				t.Fatalf("unlimited: %v", err)
+			}
+			dst.work.hashTrace = nil
+			need := dst.work.hashUsed
+			if a.flags&FlagDefault != 0 {
+				t.Fatal("unlimited run left the detached chain default")
+			}
+			want := snapshotHashBudgetDetached(set, a).dump
+			limits := map[uint64]bool{}
+			for limit := uint64(1); limit < need; limit++ {
+				limits[limit] = true
+			}
+			for _, at := range points {
+				if at > 1 && at <= need {
+					limits[at-1] = true
+				}
+			}
+			for limit := range limits {
+				a, b := chain()
+				dst := newTree(set)
+				src, op := e.op(dst, b)
+				before := snapshot(dst, src, a)
+				dst.work.hashLimit = limit
+				err := op()
+				if err == nil {
+					// the traced reference charged more than the call needs (a journal opened for
+					// the trace): success must still give the unrefused result
+					if got := snapshotHashBudgetDetached(set, a).dump; !reflect.DeepEqual(got, want) {
+						t.Fatalf("limit %d/%d: success gives\n%v\nwant\n%v", limit, need, got, want)
+					}
+					continue
+				}
+				if !errors.Is(err, yang.ErrBudget) {
+					t.Fatalf("limit %d/%d: %v, want ErrBudget", limit, need, err)
+				}
+				if after := snapshot(dst, src, a); !reflect.DeepEqual(after, before) {
+					t.Fatalf("limit %d/%d: refusal changed state:\nchain %v\nwas   %v", limit, need,
+						after.chain.dump, before.chain.dump)
+				}
+				checkTreeRetainedRB(t, dst)
+				if src != nil {
+					checkTreeRetainedRB(t, src)
+				}
+				dst.work.hashLimit = 0
+				if err := op(); err != nil {
+					t.Fatalf("limit %d: retry: %v", limit, err)
+				}
+				if got := snapshotHashBudgetDetached(set, a).dump; !reflect.DeepEqual(got, want) {
+					t.Fatalf("limit %d: refusal+retry gives\n%v\nwant\n%v", limit, got, want)
+				}
+			}
+		})
+	}
+}

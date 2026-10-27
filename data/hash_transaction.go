@@ -250,14 +250,24 @@ func (s *siblings) rebind(work *workCounter) error {
 	return nil
 }
 
-// captureDetachedParent journals the children of a detached parent and its ancestor chain, which
-// changes under it (default flags, key slots) reach through no journal: their counter has none.
+// captureDetachedParent journals a detached destination (or operation source) parent at its
+// operation's boundary, before the first mutation: its children, its own sibling set when it is a
+// list instance (a key or keyless child changes its hash there) and every node of its ancestor
+// chain (default flags, key slots). Changes there reach no journal on their own: the chain's
+// counter has none. A linked parent is journaled lazily by its tree's transaction instead. Every
+// journaled operation that can write below or remove from a detached parent calls it (design 12,
+// mutation inventory).
 func (j *hashTransaction) captureDetachedParent(parent *Node) error {
-	if j == nil || parent == nil {
+	if j == nil || parent == nil || parent.treeOf() != nil {
 		return nil
 	}
 	if err := j.captureSiblings(childStorage(parent)); err != nil {
 		return err
+	}
+	if ps := parent.siblingsOf(); ps != nil && parent.schema != nil && parent.schema.Kind == schema.List {
+		if err := j.captureSiblings(ps); err != nil {
+			return err
+		}
 	}
 	for p := parent; p != nil; p = p.parent {
 		if err := j.captureNode(p); err != nil {

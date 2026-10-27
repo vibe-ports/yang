@@ -25,7 +25,13 @@ type hashBudgetSnapshot struct {
 func snapshotHashBudgetTree(tr *Tree) hashBudgetSnapshot {
 	s := hashBudgetSnapshot{dump: typedDump(tr), index: map[*Node]string{}, sibs: map[*siblings]string{}}
 	s.sibs[&tr.top] = snapshotHashBudgetSiblings(&tr.top)
-	for _, root := range tr.top.nodes() {
+	snapshotHashBudgetRoots(&s, tr.top.nodes())
+	return s
+}
+
+// snapshotHashBudgetRoots adds the subtrees of roots (top-level or detached) to s.
+func snapshotHashBudgetRoots(s *hashBudgetSnapshot, roots []*Node) {
+	for _, root := range roots {
 		for n := range root.All() {
 			s.sibs[&n.kids] = snapshotHashBudgetSiblings(&n.kids)
 			sib := n.siblingsOf()
@@ -71,7 +77,6 @@ func snapshotHashBudgetTree(tr *Tree) hashBudgetSnapshot {
 				n.keyN, n.lkeyN, n.lkeyFrozen, n.lkeyOK, n.lkeyPrefix, n.lkeyDirty, n.keySlot, n.inRB, n.rbGroup, n.detachedRB, n.detachedGroup, n.carriedRB)
 		}
 	}
-	return s
 }
 
 func snapshotHashBudgetSiblings(s *siblings) string {

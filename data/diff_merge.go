@@ -147,6 +147,9 @@ func (t *Tree) MergeDiffTree(parent, src *Node, o MergeDiffOptions) (result erro
 	}
 	journal := beginHashTransaction(t)
 	defer journal.end(&result)
+	if err := t.work.journal.captureDetachedParent(parent); err != nil {
+		return err
+	}
 	err := t.diffMergeR(src, parent, &dupCache{}, mergeOpts{defaults: o.Defaults, cb: o.Callback})
 	if t.work.hashErr != nil {
 		err = t.work.hashErr

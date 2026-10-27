@@ -264,12 +264,24 @@ checks that an exhausted adoption bound neither copies nor scans a 33-slot queue
 
 | Public entry | Failure contract | Detached inputs |
 |---|---|---|
-| `Insert` of one node (`insertChild`, `insertSibling`, `insertAfter`) | no journal of its own (a source journal is lent); `linkOrigin` restorer, armed after every preflight: topology, metadata, registrations and both endpoints of every reciprocal leafref link; `arm` rechecks the removal's reindex after its recovery charge; a refused `insert` returns the input's work binding | node; node under a detached parent (its counter gets the operation scope, and is restored with that parent's binding) |
-| `Insert` of a whole top level (`moveNodes`), `Merge`, `Dup`/`DupSiblings`, `ApplyDiff`, `MergeDiff`, `Validate*`, `ValidateOp` | journal on every tree involved; a detached destination parent (Dup) or operation source (ValidateOp) has its parent chain captured explicitly | copied or operation subtrees, detached destination parents |
-| `Remove`/`Unlink`, `TrimXPath` | preflight only (single), batch-local journal (bulk; a D-0121 refusal publishes the prefix) | root rebound to a fresh counter |
-| `New*`, `NewPath` | through `insert`; `NewPath` journals large or limited inputs | detached parent |
-| `SetValue` | relocation through `linkOrigin`, values restored by hand | target bound to a fresh tree |
-| `ParseOp` with a parent | owner journal, or the parser tree's journal plus the detached parent chain | detached parent |
+| `Insert` of one node (`insertChild`, `insertSibling`, `insertAfter`) | no journal of its own (a source journal is lent); `linkOrigin` restorer, armed after every preflight: topology, metadata, registrations and both endpoints of every reciprocal leafref link; `arm` rechecks the removal's reindex after its recovery charge; a refused `insert` returns the input's work binding | node; node under a detached parent (its counter gets the operation scope, and is restored with that parent's binding). The chain's flags and hashes change only in `attach`, after the last fallible step |
+| `Insert` of a whole top level (`moveNodes`), `Merge`, `Dup`/`DupSiblings`, `ApplyDiff`, `MergeDiff`, `MergeDiffTree`, `Validate*`, `ValidateOp` | journal on every tree involved; a detached destination parent (`moveNodes`, Dup, `MergeDiffTree`) or operation source (ValidateOp) is captured by `captureDetachedParent` before the first mutation | copied or operation subtrees, detached destination parents |
+| `Remove`/`Unlink`, `TrimXPath` | preflight only (single), batch-local journal (bulk; a D-0121 refusal publishes the prefix) | root rebound to a fresh counter, which has no quota: no budget refusal |
+| `New*`, `NewPath` | through `insert`; `NewPath` journals large or limited inputs | detached parent (`New*`, as one-node `Insert`); `NewPath` refuses one |
+| `SetValue` | relocation through `linkOrigin`, values restored by hand | target bound to a fresh tree without a quota |
+| `ParseOp` with a parent | owner journal, or the parser tree's journal plus `captureDetachedParent` | detached parent |
+
+`captureDetachedParent` is the one boundary helper for a detached parent: it journals the
+parent's children, its own sibling set when it is a list instance (a key or keyless child
+changes its hash there) and every ancestor node (default flags, key slots), because the chain's
+counter has no journal of its own; a linked parent is a no-op there. `Merge`, `ApplyDiff`,
+`MergeDiff`, `TrimXPath` and `Validate` write only below their own linked tree.
+`TestStage3DetachedDestinationChainBudget` sweeps every hash-work limit of one-node `Insert`
+(linked and detached source), whole-forest `Insert`, `DupSiblings`, `NewTerm`, `NewList`,
+`NewOpaque` and `MergeDiffTree` into a default NP-container chain detached from a holder tree,
+fed from a third tree. It checks byte-identical destination, source and chain state after each
+refusal, then a retry. Without the `moveNodes` call, whole-forest insertion leaves the chain
+root's default flag cleared.
 
 Every row orders its work as the rule above requires. The stabilization tests check refusal at
 every boundary followed by another mutation: `TestStage3FailureThenMutation` (move, remove, dup,
