@@ -28,7 +28,7 @@ const s4JournalModule = `module s4j {yang-version 1.1;namespace "urn:s4j";prefix
   leaf-list u {type string;ordered-by user;}
   leaf-list v {type string;}
  }
- rpc op {input {leaf-list w {type uint32;} list e {key k;leaf k {type uint32;}} leaf z {type string;}}
+ rpc op {input {leaf-list w {type uint32;} list e {key k;leaf k {type uint32;}} leaf z {type string;} leaf d {type string;default "v";}}
   output {leaf-list o {type uint32;} list f {key k;leaf k {type uint32;}}}}}`
 
 // s4DataTree has a hashed keyed list (more than htMinItems), a user-ordered and a
@@ -389,7 +389,46 @@ func TestS4JournalRefusalHistories(t *testing.T) {
 			if src.top.order == nil || src.top.Len() < 4 {
 				t.Fatal("setup: copied operation children have no top-level sequence index")
 			}
-			return []*Tree{dst, src}, func() error { return dst.Insert(dop, first) }, furtherOp(dst, dop)
+			further := furtherOp(dst, dop)
+			return []*Tree{dst, src}, func() error { return dst.Insert(dop, first) }, func() error {
+				if err := further(); err != nil {
+					return err
+				}
+				// the source too: remove what is left, then copy a fresh operation child in
+				if n := src.top.first(); n != nil {
+					if err := n.Remove(); err != nil {
+						return err
+					}
+				}
+				_, fresh := s4OpTree(t, set, "3")
+				_, _, err := src.Dup(s4Child(fresh, "w", "3"), nil, DupOptions{Recursive: true})
+				return err
+			}
+		}},
+		// refreshExact: a value change re-keys the exact-value index of an operation child.
+		{name: "op/set-value", limited: []int{0}, build: func(t *testing.T) ([]*Tree, func() error, func() error) {
+			tr, op := s4OpTree(t, set, "5", "1", "9")
+			n := s4Child(op, "w", "9")
+			return []*Tree{tr}, func() error {
+				_, err := n.SetValue("4")
+				return err
+			}, furtherOp(tr, op)
+		}},
+		// ValidateOp: the operation moves into the dependency tree and back, under the journals
+		// of both trees (implicit default added to the request).
+		{name: "op/validate", limited: []int{0, 1}, build: func(t *testing.T) ([]*Tree, func() error, func() error) {
+			req, op := s4OpTree(t, set, "5", "1", "9")
+			oper := s4DataTree(t, set, keys...)
+			further := furtherOp(req, op)
+			return []*Tree{req, oper}, func() error {
+					_, err := req.ValidateOp(context.Background(), OpRPC, ValidateOpOptions{Operational: oper})
+					return err
+				}, func() error {
+					if err := further(); err != nil {
+						return err
+					}
+					return furtherData(oper)()
+				}
 		}},
 		{name: "op/parse-reply", limited: []int{0}, build: func(t *testing.T) ([]*Tree, func() error, func() error) {
 			tr, op := s4OpTree(t, set, "5", "1", "9")
