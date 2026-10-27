@@ -90,16 +90,23 @@ func TestRetainedRBRound5Oracle(t *testing.T) {
 	}
 }
 
-// TestRetainedRBWiderForeignLeaderOracle: a foreign empty bits value whose type has a wider
-// bitmap becomes the physical leader of a local run but not its RB root. libyang's
-// rb_insert_node compares only its descent, so a later local insertion never reads the
-// foreign value (no D-0121 refusal).
+// TestRetainedRBWiderForeignLeaderOracle: a foreign empty bits value with another declaration
+// becomes the physical leader of a local run but not its RB root. libyang's rb_insert_node
+// compares only its descent, so a later local insertion never reads the foreign value. With the
+// same bitmap byte width that is D-0121's bits profile and matches libyang; a wider bitmap is
+// refused when the diff joins the run (an accepted compatibility restriction).
 func TestRetainedRBWiderForeignLeaderOracle(t *testing.T) {
+	for _, position := range []string{"3", "8"} {
+		t.Run("position-"+position, func(t *testing.T) { retainedRBForeignLeaderOracle(t, position) })
+	}
+}
+
+func retainedRBForeignLeaderOracle(t *testing.T, position string) {
 	base := t.TempDir()
 	const moduleName = "retained-rb-bits"
 	modules := map[string]string{
 		"a": `bit a { position 0; } bit b { position 1; } bit c { position 2; }`,
-		"b": `bit a { position 0; } bit b { position 1; } bit c { position 2; } bit w { position 8; }`,
+		"b": `bit a { position 0; } bit b { position 1; } bit c { position 2; } bit w { position ` + position + `; }`,
 	}
 	for dir, bits := range modules {
 		if err := os.MkdirAll(filepath.Join(base, dir), 0o755); err != nil {
@@ -123,6 +130,10 @@ func TestRetainedRBWiderForeignLeaderOracle(t *testing.T) {
 			"merge": `{"retained-rb-bits:top":["c"]}`},
 		map[string]any{"do": "dump"},
 	}}
+	if position == "8" {
+		oracleRefusedSequence(t, base, "ut-diff/retained-rb-wider-foreign-leader", params)
+		return
+	}
 	got, err := (Yang{}).Run(Request{ID: "ut-diff/retained-rb-wider-foreign-leader", BaseDir: base, Params: params})
 	if err != nil {
 		t.Fatal(err)
@@ -144,7 +155,7 @@ func TestDiffReviewOracleCases(t *testing.T) {
 	base := filepath.Join("corpus", "ut-diff")
 	tests := []struct {
 		name, module, firstDir, secondDir, first, second, order string
-		foreign                                                 bool
+		foreign, refused                                        bool // refused: outside D-0121's closed profile
 	}{
 		{
 			name: "mixed-width-rb-rotation", module: "diff-cross-context-int-width-rb-order",
@@ -165,7 +176,7 @@ func TestDiffReviewOracleCases(t *testing.T) {
 			firstDir: "schemas/cross-context-int-boolean-order-a", secondDir: "schemas/cross-context-int-boolean-order-b",
 			first:  `<top xmlns="urn:vibe-ports:yang:diff-cross-context-int-boolean-order"><v>-1</v></top>`,
 			second: `<top xmlns="urn:vibe-ports:yang:diff-cross-context-int-boolean-order"><v>true</v></top>`,
-			order:  ">-1</v>|>true</v>", foreign: true,
+			order:  ">-1</v>|>true</v>", foreign: true, refused: true,
 		},
 		{
 			name: "disjoint-index-misses", module: "diff-cross-context-foreign-creates-toplevel",
@@ -206,7 +217,9 @@ func TestDiffReviewOracleCases(t *testing.T) {
 			}
 			want, _ = withoutSkipped(want, Yang{}.SkippedFields("sequence"))
 			got, _ = withoutSkipped(got, Yang{}.SkippedFields("sequence"))
-			if diff := diffResponses(want, got); diff != "" {
+			if tc.refused {
+				assertD0121Response(t, got)
+			} else if diff := diffResponses(want, got); diff != "" {
 				t.Fatalf("oracle mismatch: %s\noracle: %#v\nengine: %#v", diff, want, got)
 			}
 			if tc.order != "" {
@@ -247,20 +260,12 @@ var oracleBuiltIns = []oracleBuiltInCase{
 	{"int32", "int32", "-1", "2"}, {"int64", "int64", "-1", "2"},
 }
 
+// oracleBuiltInSupported is D-0121's closed profile between two independently compiled copies:
+// the same declaration (a union never: lyplg_type_sort_union dispatches on compiled member
+// identity), R1 (integers of one signedness across widths) and R2 (an integer and a plain
+// string, either direction). A leafref stores its string target's realtype.
 func oracleBuiltInSupported(first, second string) bool {
-	switch first {
-	case "string", "empty", "instance-identifier", "leafref":
-		// lyplg_type_sort_simple reads only canonical strings: defined for any second value
-		return true
-	case "binary":
-		// lyplg_type_sort_binary reads its fixed-memory struct: all-zero string or empty
-		// storage is the empty binary
-		switch second {
-		case "string", "empty", "leafref":
-			return true
-		}
-	}
-	store := func(name string) string {
+	kind := func(name string) string {
 		switch name {
 		case "int8", "int16", "int32", "int64":
 			return "int"
@@ -268,22 +273,22 @@ func oracleBuiltInSupported(first, second string) bool {
 			return "uint"
 		case "leafref":
 			return "string"
-		default:
-			return name
 		}
+		return name
 	}
-	if store(first) == store(second) {
-		return true
-	}
-	scalar := func(name string) bool {
-		switch name {
-		case "int8", "int16", "int32", "int64", "uint8", "uint16", "uint32", "uint64",
-			"boolean", "decimal64", "string", "empty", "leafref":
-			return true
-		}
+	a, b := kind(first), kind(second)
+	integer := func(k string) bool { return k == "int" || k == "uint" }
+	switch {
+	case a == "union" || b == "union":
 		return false
+	case a == b:
+		return true
+	case a == "string":
+		return integer(b)
+	case b == "string":
+		return integer(a)
 	}
-	return scalar(first) && scalar(second)
+	return false
 }
 
 func oracleTypeStatement(declaration string) string {
@@ -330,9 +335,9 @@ func oracleMatrixXML(first oracleBuiltInCase, seconds []oracleBuiltInCase, sourc
 	return b.String()
 }
 
-// TestDiffBuiltInCallbackMatrixOracle compares every defined built-in callback/storage pair in
-// 19 batched live-oracle requests. The complementary unsafe cross-callback pairs are exhaustively
-// required to return D-0121 by data/TestDiffCrossContextBuiltInTypeMatrix.
+// TestDiffBuiltInCallbackMatrixOracle compares every built-in pair of D-0121's closed profile
+// (R1 and R2 included) in batched live-oracle requests. The complementary pairs, deterministic in
+// C or not, are exhaustively required to return D-0121 by data/TestDiffCrossContextBuiltInTypeMatrix.
 func TestDiffBuiltInCallbackMatrixOracle(t *testing.T) {
 	oracle := nativeRequestRunner(t)
 	base := t.TempDir()
@@ -342,6 +347,9 @@ func TestDiffBuiltInCallbackMatrixOracle(t *testing.T) {
 			if oracleBuiltInSupported(first.name, second.name) {
 				seconds = append(seconds, second)
 			}
+		}
+		if len(seconds) == 0 {
+			continue
 		}
 		t.Run(first.name, func(t *testing.T) {
 			firstDir, secondDir := first.name+"-a", first.name+"-b"
@@ -554,8 +562,10 @@ func oracleSequence(t *testing.T, base, id string, params map[string]any) {
 }
 
 // TestDiffStringTimePeriodOracle: libnetconf2's time-period is stored by lyplg_type_store_string
-// and sorted from canonical text (time_period.c:41-75), so a string run and a time-period run
-// from independently compiled contexts compare natively in both directions.
+// and sorted from canonical text (time_period.c:41-75), so libyang compares a string run and a
+// time-period run deterministically in both directions. That pair is outside D-0121's closed
+// profile (an accepted compatibility restriction, refused); string/string and
+// time-period/time-period across contexts match libyang.
 func TestDiffStringTimePeriodOracle(t *testing.T) {
 	base := t.TempDir()
 	typedef, err := os.ReadFile(filepath.Join("corpus", "types", "schemas", "libnetconf2-netconf-server@2026-04-17.yang"))
@@ -580,9 +590,13 @@ func TestDiffStringTimePeriodOracle(t *testing.T) {
 		}
 	}
 	module := []any{map[string]any{"name": "rb-time-period"}}
-	for _, dirs := range [][2]string{{"string", "period"}, {"period", "string"}} {
+	for _, dirs := range [][2]string{{"string", "period"}, {"period", "string"}, {"string", "string"}, {"period", "period"}} {
 		t.Run(dirs[0]+"-"+dirs[1], func(t *testing.T) {
-			oracleSequence(t, base, "ut-diff/retained-rb-time-period-"+dirs[0], map[string]any{
+			run := oracleSequence
+			if dirs[0] != dirs[1] {
+				run = oracleRefusedSequence
+			}
+			run(t, base, "ut-diff/retained-rb-time-period-"+dirs[0], map[string]any{
 				"op": "sequence", "searchdirs": []any{dirs[0]}, "modules": module, "steps": []any{
 					map[string]any{"do": "parse", "format": "json", "data_type": "data", "parse_only": true,
 						"data": `{"rb-time-period:c":{"v":["1h","3h"]}}`},
@@ -632,7 +646,9 @@ func TestMoveNodes3TieOrderOracle(t *testing.T) {
 // libyang: each diff's order depends on rb_compare_lists comparing a retained instance with a
 // foreign one (first child unconditionally, later pairs while both are keys, a trailing opaque
 // child ignored). The refused shapes (a first child that is no term) make libyang read storage it
-// cannot interpret and have no live counterpart.
+// cannot interpret and have no live counterpart. A keyless list against a keyed one and a
+// string key against a binary one are deterministic in libyang but outside D-0121's closed
+// profile (refused).
 func TestRBCompareListsOracle(t *testing.T) {
 	cases := []struct {
 		name, first, second string // list statements of the two contexts
@@ -673,7 +689,11 @@ func TestRBCompareListsOracle(t *testing.T) {
 			if tc.opaque {
 				parse["unknown"] = "opaque"
 			}
-			oracleSequence(t, base, "ut-diff/retained-rb-compare-lists-"+tc.name, map[string]any{
+			run := oracleSequence
+			if strings.HasPrefix(tc.name, "keyless-state-to-keyed") || tc.name == "keyed-string-before-binary" {
+				run = oracleRefusedSequence
+			}
+			run(t, base, "ut-diff/retained-rb-compare-lists-"+tc.name, map[string]any{
 				"op": "sequence", "searchdirs": []any{"first"}, "modules": module, "steps": []any{
 					parse,
 					map[string]any{"do": "diff", "format": "json", "data_type": "data", "parse_only": true,
@@ -712,7 +732,8 @@ func TestDiffMetaForeignYangOracle(t *testing.T) {
 }
 
 // TestDiffUint8ToHexStringOracle: lyplg_type_store_hex_string writes only the canonical string,
-// so lyplg_type_sort_uint reads a zero union for it across contexts.
+// so lyplg_type_sort_uint reads a zero union for it across contexts. A plugin is never plain
+// string storage (R2): an accepted compatibility restriction, refused.
 func TestDiffUint8ToHexStringOracle(t *testing.T) {
 	base := t.TempDir()
 	for dir, typ := range map[string]string{"first": "uint8", "second": "yang:hex-string"} {
@@ -726,7 +747,7 @@ func TestDiffUint8ToHexStringOracle(t *testing.T) {
 		}
 	}
 	module := []any{map[string]any{"name": "rb-hex"}}
-	oracleSequence(t, base, "ut-diff/retained-rb-uint8-hex-string", map[string]any{
+	oracleRefusedSequence(t, base, "ut-diff/retained-rb-uint8-hex-string", map[string]any{
 		"op": "sequence", "searchdirs": []any{"first"}, "modules": module, "steps": []any{
 			map[string]any{"do": "parse", "format": "json", "data_type": "data", "parse_only": true,
 				"data": `{"rb-hex:c":{"v":[1]}}`},
@@ -739,8 +760,8 @@ func TestDiffUint8ToHexStringOracle(t *testing.T) {
 // TestRegisteredLeaderOracle: lyd_insert_node passes lyds_insert the leader lyd_find_sibling_schema
 // finds, the first registered first-instance record, not the physical first instance. As in
 // #267's repro, a foreign diff creates B's c with v=[a] beside A's root and A's v=[b,c,d,e] is
-// merged into it, so A:b is that leader; a string insertion past a foreign enumeration and a
-// multi-instance Merge both use A:b's tree.
+// merged into it, so A:b is that leader; a multi-instance Merge uses A:b's tree. Merging strings
+// into a run with a foreign enumeration is outside D-0121's closed profile and refused.
 func TestRegisteredLeaderOracle(t *testing.T) {
 	for _, tc := range []struct{ name, foreign, edit string }{
 		{"insert-past-foreign-enumeration", "enumeration { enum a; }", "set"},
@@ -778,7 +799,11 @@ func TestRegisteredLeaderOracle(t *testing.T) {
 					map[string]any{"do": "edit", "data_type": "data", "merge_into": `{"rb-lead:c":{"v":["aa","ab"]}}`},
 				}
 			}
-			oracleSequence(t, base, "seq/retained-rb-registered-leader-"+tc.name, map[string]any{
+			run := oracleSequence
+			if tc.edit == "set" {
+				run = oracleRefusedSequence
+			}
+			run(t, base, "seq/retained-rb-registered-leader-"+tc.name, map[string]any{
 				"op": "sequence", "searchdirs": []any{"local"}, "modules": local, "steps": append([]any{
 					map[string]any{"do": "diff", "format": "json", "data_type": "data", "parse_only": true,
 						"data":   `{"rb-lead:c":{"v":["a"]}}`,
@@ -816,4 +841,22 @@ func TestDiffUserOrderedConfigToStateOracle(t *testing.T) {
 				"data":   `{"rb-uo:c":{"v":["b","a"]}}`,
 				"target": map[string]any{"searchdirs": []any{"state"}, "modules": module}},
 		}})
+}
+
+// oracleRefusedSequence: libyang completes the request (deterministically, or in release-build
+// undefined behavior that happens to finish), the engine returns the logged D-0121 refusal.
+func oracleRefusedSequence(t *testing.T, base, id string, params map[string]any) {
+	t.Helper()
+	got, err := (Yang{}).Run(Request{ID: id, BaseDir: base, Params: params})
+	if err != nil {
+		t.Fatal(err)
+	}
+	assertD0121Response(t, got)
+	want, err := nativeRequestRunner(t)(base, params)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want.Verdict() != "valid" {
+		t.Fatalf("excluded native case = %#v, want a completed request", want)
+	}
 }

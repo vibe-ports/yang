@@ -114,8 +114,9 @@ func TestDiffCrossContextIntegerCallbackReadsZeroedStringStorage(t *testing.T) {
 	}
 }
 
-// TestDiffCrossContextIntegerCallbackReadsBooleanStorage covers scalar storage with a distinct
-// callback. boolean_store writes 1 into the zeroed union, so int8 orders true after -1.
+// TestDiffCrossContextIntegerCallbackReadsBooleanStorage: boolean_store writes 1 into the zeroed
+// union, so native int8 orders true after -1 deterministically. Integer/boolean is outside R1-R3:
+// an accepted compatibility restriction of D-0121's closed profile, refused in both directions.
 func TestDiffCrossContextIntegerCallbackReadsBooleanStorage(t *testing.T) {
 	module := func(typ string) string {
 		return `module review-int-boolean { yang-version 1.1; namespace "urn:review-int-boolean"; prefix r;
@@ -125,13 +126,8 @@ func TestDiffCrossContextIntegerCallbackReadsBooleanStorage(t *testing.T) {
 	firstSet, secondSet := reviewDiffSet(t, module("int8")), reviewDiffSet(t, module("boolean"))
 	first := parseOnlyXML(t, firstSet, `<top xmlns="urn:review-int-boolean"><v>-1</v></top>`)
 	second := parseOnlyXML(t, secondSet, `<top xmlns="urn:review-int-boolean"><v>true</v></top>`)
-	diff, err := Diff(first, second, DiffOptions{})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if got, want := names(topOf(diff).Children()), []string{"v=-1", "v=true"}; !slices.Equal(got, want) {
-		t.Fatalf("diff order = %v, want boolean union payload order %v", got, want)
-	}
+	requireD0121Refusal(t, first, second)
+	requireD0121Refusal(t, second, first)
 }
 
 type crossContextBuiltInCase struct {
@@ -156,44 +152,30 @@ var crossContextBuiltIns = []crossContextBuiltInCase{
 	{"int32", "int32", "-1", "2"}, {"int64", "int64", "-1", "2"},
 }
 
+// crossContextBuiltInSupported is D-0121's closed profile over the matrix: a diagonal pair (one
+// schema snapshot), R1 (integers of one signedness across widths) and R2 (an integer and a plain
+// string, either direction). A leafref stores its string target's realtype.
 func crossContextBuiltInSupported(first, second string) bool {
-	switch first {
-	case "string", "empty", "instance-identifier", "leafref":
-		// lyplg_type_sort_simple reads only canonical strings: defined for any second value
-		return true
-	case "binary":
-		// lyplg_type_sort_binary reads its fixed-memory struct: all-zero string or empty
-		// storage is the empty binary
-		switch second {
-		case "string", "empty", "leafref":
-			return true
-		}
-	}
-	store := func(name string) string {
+	kind := func(name string) string {
 		switch name {
 		case "int8", "int16", "int32", "int64":
 			return "int"
 		case "uint8", "uint16", "uint32", "uint64":
 			return "uint"
 		case "leafref":
-			return "string" // stored using its target realtype
-		default:
-			return name
+			return "string"
 		}
+		return name
 	}
-	if store(first) == store(second) {
+	a, b := kind(first), kind(second)
+	integer := func(k string) bool { return k == "int" || k == "uint" }
+	switch {
+	case first == second || a == b && (a == "string" || integer(a)):
 		return true
-	}
-	scalar := func(name string) bool {
-		switch name {
-		case "int8", "int16", "int32", "int64", "uint8", "uint16", "uint32", "uint64",
-			"boolean", "decimal64", "string", "empty", "leafref":
-			return true
-		}
-		return false
-	}
-	if scalar(first) {
-		return scalar(second)
+	case a == "string":
+		return integer(b)
+	case b == "string":
+		return integer(a)
 	}
 	return false
 }
@@ -266,8 +248,8 @@ func crossContextBuiltInXML(value string) string {
 	return `<top xmlns="urn:review-built-in-matrix" xmlns:r="urn:review-built-in-matrix"><anchor>a</anchor><other>b</other>` + v + `</top>`
 }
 
-// TestDiffCrossContextBuiltInTypeMatrix makes every built-in callback/storage pair explicit.
-// Defined storage must diff; incompatible pointer and fixed-buffer reinterpretations must return
+// TestDiffCrossContextBuiltInTypeMatrix makes every built-in pair explicit: the closed D-0121
+// profile (R1, R2 included) must diff; every other pair, deterministic in C or not, must return
 // D-0121 instead of quietly using schema order.
 func TestDiffCrossContextBuiltInTypeMatrix(t *testing.T) {
 	sets := make(map[string]*schema.Set, len(crossContextBuiltIns))
@@ -288,7 +270,7 @@ func TestDiffCrossContextBuiltInTypeMatrix(t *testing.T) {
 					return
 				}
 				if diff != nil || err == nil || !strings.Contains(err.Error(), "D-0121") {
-					t.Fatalf("indeterminate storage pair Diff = (%v, %v), want nil D-0121 refusal", diff, err)
+					t.Fatalf("excluded profile pair Diff = (%v, %v), want nil D-0121 refusal", diff, err)
 				}
 			})
 		}

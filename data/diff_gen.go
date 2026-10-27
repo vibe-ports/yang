@@ -12,6 +12,7 @@ import (
 	"slices"
 	"strconv"
 
+	"github.com/vibe-ports/yang"
 	"github.com/vibe-ports/yang/internal/schema"
 	"github.com/vibe-ports/yang/internal/types"
 )
@@ -130,14 +131,18 @@ func diffNodesLookupLimit(first, second *Node, o DiffOptions, nosiblings bool, f
 	d.mixedDiff = fs != nil && ss != nil && fs != ss
 	defer d.work.beginHashWork()()
 	defer d.work.beginLookupWork()()
-	if err := d.diffSiblingsR(first, second, o, nosiblings); err != nil {
+	err := d.diffSiblingsR(first, second, o, nosiblings)
+	if d.work.lookupErr != nil {
+		return nil, d.work.lookupErr // a budget error outranks a D-0121 refusal
+	}
+	if errors.Is(d.work.hashErr, yang.ErrBudget) {
+		return nil, d.work.hashErr
+	}
+	if err != nil {
 		return nil, lg.done(err)
 	}
-	if d.work.lookupErr != nil {
-		return nil, d.work.lookupErr
-	}
 	if d.work.hashErr != nil {
-		return nil, d.work.hashErr
+		return nil, lg.done(d.work.hashErr) // a sticky refusal recorded by a sort path
 	}
 	if d.top.len() == 0 {
 		return nil, nil
@@ -330,9 +335,7 @@ func (t *Tree) findMatch(sib *siblings, target *Node, defaults bool, cache *dupC
 type userord struct {
 	schema *schema.Node
 	pos    int
-	inst   []*Node // allocated slots; slots at or after count model native out-of-count writes
-	count  int
-	unsafe bool // a previous native out-of-count transition makes the next access undefined
+	inst   []*Node // the native instance array; every access is checked against P1-P5 first
 }
 
 // userordGet is lyd_diff_userord_get: the entry of sn, created with the instances of first's
@@ -349,7 +352,6 @@ func (t *Tree) userordGet(first *Node, sn *schema.Node, items *[]*userord) *user
 			u.inst = append(u.inst, n)
 		}
 	}
-	u.count = len(u.inst)
 	*items = append(*items, u)
 	return u
 }
@@ -370,32 +372,36 @@ func (t *Tree) userordAttrs(first, second *Node, o DiffOptions, u *userord) (dif
 	case second != nil:
 		sn = second.schema
 	}
+	// The entry was just built through the lookup budget, which may have left it empty: a budget
+	// error outranks a precondition refusal.
+	if t.work.lookupErr != nil {
+		return 0, a, t.work.lookupErr
+	}
+	if t.work.hashErr != nil {
+		return 0, a, t.work.hashErr
+	}
+	// Entries are keyed by schema pointer (diff.c:546-547), so the entry can omit first or end
+	// before second_pos, across contexts and also in one. Refuse at the first native array
+	// access out of range, before it and before any array update, even when nothing reads its
+	// result (D-0121 P1-P5; libyang v5.8.6 src/diff.c:700-849).
+	refuse := func(why string) error {
+		return &opError{"LY_EINVAL", fmt.Sprintf("Invalid arguments - the user-ordered instance bookkeeping of %q "+
+			"fails libyang's array precondition (%s) (D-0121) (lyd_diff()).", sn.Name, why)}
+	}
+	count := len(u.inst)
 	firstPos := 0
-	wasUnsafe := u.unsafe
 	if first != nil {
-		firstPos = slices.Index(u.inst[:u.count], first)
-		if firstPos < 0 {
-			// LY_ARRAY_FOR leaves first_pos at the logical count after the release assertion.
-			firstPos = u.count
-			u.unsafe = true
+		if firstPos = slices.Index(u.inst, first); firstPos < 0 {
+			return 0, a, refuse("first instance missing") // P1
 		}
 	}
 	secondPos := u.pos
-	// Entries are keyed by schema pointer (diff.c:546-547). Across contexts the entry used in
-	// the second pass can therefore omit first or end before second_pos; native
-	// lyd_diff_userord_attrs then asserts or accesses outside the array. Refuse only those native
-	// undefined states before reading them (D-0121; libyang v5.8.6 src/diff.c:700-705,827-849).
-	refuse := func() error {
-		return &opError{"LY_EINVAL", fmt.Sprintf("Invalid arguments - the user-ordered instances of %q "+
-			"in two schema contexts leave libyang's diff bookkeeping out of range, a diff of such data is not "+
-			"supported (D-0121) (lyd_diff()).", sn.Name)}
-	}
-	if wasUnsafe && second != nil {
-		return 0, a, refuse()
-	}
 	u.pos++
 	positionEqual := false
-	if second != nil && first != nil && secondPos < u.count {
+	if second != nil && first != nil {
+		if secondPos >= count {
+			return 0, a, refuse("comparison index") // P2
+		}
 		var err error
 		positionEqual, err = compareSingleErr(t, second, u.inst[secondPos], isDupInstList(second.schema))
 		if err != nil {
@@ -408,7 +414,7 @@ func (t *Tree) userordAttrs(first, second *Node, o DiffOptions, u *userord) (dif
 		op = diffDelete
 	case first == nil:
 		op = diffCreate
-	case secondPos >= u.count || !positionEqual:
+	case !positionEqual:
 		op = diffReplace // another instance on this position in first: first is moved here
 	case o.Defaults && first.flags&FlagDefault != second.flags&FlagDefault:
 		op = diffNone
@@ -417,19 +423,21 @@ func (t *Tree) userordAttrs(first, second *Node, o DiffOptions, u *userord) (dif
 	default:
 		return 0, a, errNoChange
 	}
-	if op == diffReplace && firstPos < secondPos {
-		// The release build reaches the write with an underflowed move range. Preserve the
-		// observed slots for this last operation, but refuse before a later operation consumes
-		// that undefined state. This keeps defined sweeps 06 and 37 compatible while refusing
-		// the crashing three-operation shapes 04, 20 and 22.
-		u.unsafe = true
+	dup := isDupInstList(sn)
+	// P3's orig-value/orig-key anchor before first_pos is in range by P1, the value/key anchor of
+	// a replace by P2.
+	switch {
+	case !dup && op == diffCreate && secondPos > count:
+		return 0, a, refuse("anchor index") // P3
+	case op == diffCreate && secondPos > count:
+		return 0, a, refuse("insertion past the sequence") // P4
+	case op == diffReplace && firstPos < secondPos:
+		return 0, a, refuse("move-length underflow") // P5
 	}
 	str := func(s string) *string { return &s }
 	pred := func(pos int) *string { // the anchor: the instance before pos, "" for the first
 		switch {
 		case pos == 0:
-			return str("")
-		case pos-1 >= len(u.inst) || u.inst[pos-1] == nil:
 			return str("")
 		case sn.Kind == schema.List:
 			return str(listPredicate(u.inst[pos-1]))
@@ -442,7 +450,6 @@ func (t *Tree) userordAttrs(first, second *Node, o DiffOptions, u *userord) (dif
 		}
 		return str(strconv.Itoa(pos))
 	}
-	dup := isDupInstList(sn)
 	if sn.Kind == schema.LeafList && (op == diffReplace || op == diffNone) {
 		a.origDefault = str(strconv.FormatBool(first.flags&FlagDefault != 0))
 	}
@@ -469,34 +476,13 @@ func (t *Tree) userordAttrs(first, second *Node, o DiffOptions, u *userord) (dif
 			a.origKey = pred(firstPos)
 		}
 	}
-	ensure := func(n int) {
-		if n > len(u.inst) {
-			u.inst = append(u.inst, make([]*Node, n-len(u.inst))...)
-		}
-	}
-	switch op { // the change applied to the virtual order
+	switch op { // the change applied to the native array, in range by P1-P5
 	case diffCreate:
-		if secondPos > u.count {
-			u.unsafe = true
-		}
-		ensure(max(u.count+1, secondPos+1))
-		if secondPos < u.count {
-			copy(u.inst[secondPos+1:u.count+1], u.inst[secondPos:u.count])
-		}
-		u.count++
-		u.inst[secondPos] = second
+		u.inst = slices.Insert(u.inst, secondPos, second)
 	case diffDelete:
-		if firstPos < u.count {
-			copy(u.inst[firstPos:u.count-1], u.inst[firstPos+1:u.count])
-			u.count--
-		} else {
-			u.unsafe = true
-		}
+		u.inst = slices.Delete(u.inst, firstPos, firstPos+1)
 	case diffReplace:
-		ensure(max(u.count+1, secondPos+1))
-		if firstPos >= secondPos {
-			copy(u.inst[secondPos+1:firstPos+1], u.inst[secondPos:firstPos])
-		}
+		copy(u.inst[secondPos+1:firstPos+1], u.inst[secondPos:firstPos])
 		u.inst[secondPos] = first
 	}
 	return op, a, nil

@@ -17,13 +17,13 @@ const defaultMaxHashWork uint64 = 1 << 26
 
 func (w *workCounter) beginHashWork() func() {
 	if w.hashDepth == 0 {
-		w.hashUsed, w.hashErr, w.unlinkPlan = 0, nil, nil
+		w.hashUsed, w.hashErr, w.unlinkPlan, w.sortKeys = 0, nil, nil, nil
 	}
 	w.hashDepth++
 	return func() {
 		w.hashDepth--
 		if w.hashDepth == 0 {
-			w.unlinkPlan = nil
+			w.unlinkPlan, w.sortKeys = nil, nil
 		}
 	}
 }

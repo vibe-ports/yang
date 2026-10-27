@@ -64,13 +64,10 @@ func (w *workCounter) rbFind(d *dirtyOrder, target *Node) (bool, error) {
 		if chargeCompareCost(w, a, b) != nil {
 			return 0, false
 		}
-		if a.schema.Kind != b.schema.Kind {
-			return 0, false
+		if a.schema != nil && a.schema.Kind == schema.LeafList {
+			w.Add(1)
 		}
-		if a.schema.Kind == schema.LeafList {
-			return rbSortClb(w, a.value, b.value)
-		}
-		return rbCompareLists(w, a, b)
+		return sortedPairCompatible(w, a, b) // D-0121 §2.1, R1-R3 included
 	}
 	for x := d.root; x != nil; {
 		c, ok := compare(x.node, target)

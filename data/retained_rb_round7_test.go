@@ -19,8 +19,8 @@ import (
 )
 
 // TestDiffUint8ToHexString: lyplg_type_store_hex_string zeroes the value and writes only its
-// canonical string, so lyplg_type_sort_uint reads a zero union for it and the cross-context
-// comparison is defined (no D-0121).
+// canonical string, so native lyplg_type_sort_uint reads a zero union for it deterministically.
+// A plugin is never plain string storage (R2): an accepted compatibility restriction (D-0121).
 func TestDiffUint8ToHexString(t *testing.T) {
 	module := func(typ string) string {
 		return `module rb-hex { yang-version 1.1; namespace "urn:rb-hex"; prefix r;
@@ -29,9 +29,8 @@ func TestDiffUint8ToHexString(t *testing.T) {
 	}
 	first := parseOnlyXML(t, reviewDiffSet(t, module("uint8")), `<c xmlns="urn:rb-hex"><v>1</v></c>`)
 	second := parseOnlyXML(t, reviewDiffSet(t, module("yang:hex-string")), `<c xmlns="urn:rb-hex"><v>aa</v></c>`)
-	if diff, err := Diff(first, second, DiffOptions{}); err != nil || diff == nil {
-		t.Fatalf("uint8/hex-string Diff = (%v, %v), want the native diff", diff, err)
-	}
+	requireD0121Refusal(t, first, second)
+	requireD0121Refusal(t, second, first)
 }
 
 // TestForeignSchemaIndexKeepsOwnContextIdentity: with mixed siblings [A:output/x, A:input/x, B:z]
@@ -167,12 +166,12 @@ func childValues(c *Node) string {
 }
 
 // TestPreflightUsesRegisteredLeader: the storage preflight descends the tree of the leader
-// lyd_insert_node will use (the registered A:b, an all-string tree), not the physical first
-// instance B:a, whose enumeration callback would refuse the string.
+// lyd_insert_node will use (the registered A:b), not the physical first instance B:a. Both
+// contexts use the string profile: a foreign enumeration is refused by D-0121 when it joins.
 func TestPreflightUsesRegisteredLeader(t *testing.T) {
-	tr, c := mixedLeaderTree(t, "enumeration { enum a; }")
+	tr, c := mixedLeaderTree(t, "string;")
 	if _, err := tr.NewPath("v[.='aa']", "", NewPathOptions{Parent: c}); err != nil {
-		t.Fatalf("insert past the foreign enumeration = %v, want the native insertion", err)
+		t.Fatalf("insert past the foreign leader = %v, want the native insertion", err)
 	}
 	checkTreeRetainedRB(t, tr)
 }

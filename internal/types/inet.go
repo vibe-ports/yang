@@ -26,8 +26,8 @@ func init() {
 		}
 	}
 	const inet = "ietf-inet-types"
-	reg(inet, "", "ipv4-address", &plugin{store: storeIPv4Addr, equal: equalIP, compare: compareIP},
-		"ipv4-address", "ipv4-address-link-local")
+	ipv4AddressPlugin = &plugin{store: storeIPv4Addr, equal: equalIP, compare: compareIP}
+	reg(inet, "", "ipv4-address", ipv4AddressPlugin, "ipv4-address", "ipv4-address-link-local")
 	reg(inet, "", "ipv4-address-no-zone", &plugin{store: storeIPv4NoZone, equal: equalIP, compare: compareIP},
 		"ipv4-address-no-zone")
 	reg(inet, "", "ipv4-address-prefix", &plugin{store: storeIPv4Prefix, equal: equalIP, compare: compareIP},
@@ -39,6 +39,9 @@ func init() {
 	reg(inet, "", "ipv6-address-prefix", &plugin{store: storeIPv6Prefix, equal: equalIP, compare: compareIP},
 		"ipv6-prefix", "ipv6-address-and-prefix")
 }
+
+// ipv4AddressPlugin is the registered ipv4-address implementation, the only plugin of D-0121 R3.
+var ipv4AddressPlugin *plugin
 
 // ipValue is the stored form of the inet plugins: the address in network byte order, the zone
 // and the prefix length.

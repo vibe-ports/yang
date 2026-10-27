@@ -181,6 +181,7 @@ func (n *Node) beginHashWork() (func(), error) {
 func (t *Tree) Merge(src *Tree) (result error) {
 	defer t.work.beginHashWork()()
 	lg := &logger{set: t.context()}
+	defer func() { result = lg.done(result) }() // a sticky D-0121 refusal returned as hashErr
 	if src == nil {
 		return nil
 	}

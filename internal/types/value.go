@@ -24,6 +24,10 @@ type Value struct {
 	path  Path
 	union *UnionValue
 	ext   any // type-specific storage of an ietf-* plugin (ipValue, dateTime)
+	// sortPlugin and sortVariant are the store/sort implementation and its name-dependent
+	// representation parameter, selected once at store time (D-0121 profile identity).
+	sortPlugin  *plugin
+	sortVariant string
 
 	needsTree bool // leafref/instance-identifier with require-instance: ValidateTree pending
 }
@@ -319,7 +323,11 @@ func (d *DefWalk) same(a, b *schema.Type) bool {
 // prefix handlers zero host bits only for "ipv4-prefix" and "ipv6-prefix". A typedef derived from
 // one of them with the same restrictions keeps the handler but not that name.
 func storageVariant(t *schema.Type) string {
-	if p := pluginFor(t); p != nil {
+	return sortStorageVariant(t, pluginFor(t))
+}
+
+func sortStorageVariant(t *schema.Type, p *plugin) string {
+	if p != nil {
 		switch p.id {
 		case "date", "time", "ipv4-address-prefix", "ipv6-address-prefix":
 			if t.Typedef == "date" || t.Typedef == "time" || t.Typedef == "ipv4-prefix" || t.Typedef == "ipv6-prefix" {
@@ -483,273 +491,139 @@ func sortCallback(t *schema.Type) string {
 	}
 }
 
-// CompareCompatible invokes the first value's callback for values compiled in distinct schema
-// contexts. lyds_compare_single() does not check the second realtype before passing its storage
-// to that callback (libyang v5.8.6 src/tree_data_sorted.c:195-199,212-222), so what is defined
-// depends on what that sort callback reads of the second value (src/plugins_types):
-//   - only the canonical string (lyd_value_get_canonical): lyplg_type_sort_simple (string,
-//     empty, instance-identifier, hex-string, xpath1.0, node-instance-identifier,
-//     instance-identifier-keys) and lyplg_type_sort_time_period. Defined for any second value;
-//     time-period indexes before an empty string, so that one pair is refused;
-//   - a specific storage layout: the integer, boolean and decimal64 union fields (deterministic
-//     for built-in scalar storage, which is zeroed first), and bits (bitmap of val1's width).
-//     Defined when the second value's storage provides that layout;
-//   - a plugin's own fixed-memory struct (LYD_VALUE_GET): binary, date, time, date-and-time and
-//     the inet addresses. Defined for the same store callback, and against a second value whose
-//     storage is all zero (string, empty, time-period, hex-string: their store callbacks zero the value
-//     first), which the callback reads as the zero struct;
-//   - a pointer it dereferences: enumeration, identityref and union. Defined only for the same
-//     store callback; any other second value is indeterminate and refused (D-0121).
+// CompareCompatible is rb_sort_clb's call of the first value's realtype sort callback on two
+// stored values, under the closed direct-sort profile of D-0121. lyds_compare_single() does not
+// check the second realtype before passing its storage to that callback
+// (libyang v5.8.6 src/tree_data_sorted.c:195-199,212-222). Leafrefs have already selected their
+// stored realtype. false: the pair is outside the profile (SortCompatible), or the time-period
+// callback would index before an empty canonical value (time_period.c:52), also for one realtype.
+// Inside the profile, R1-R3 reproduce the canonical linux/amd64 ABI byte reinterpretation, not a
+// numeric or textual conversion.
 func CompareCompatible(a, b Value) (order int, compatible bool) {
-	if a.typ == nil || b.typ == nil {
-		return 0, false
-	}
-	switch sortCallback(a.typ) {
-	case "simple":
-		return strings.Compare(a.canon, b.canon), true
-	case "time-period":
-		if a.canon == "" || b.canon == "" {
-			return 0, false
-		}
-		return compareTimePeriod(a, b), true
-	}
-	if storeCallback(a.typ) != storeCallback(b.typ) && zeroStorage(b) {
-		if z, ok := zeroStructValue(a); ok {
-			if p := pluginFor(a.typ); p != nil {
-				return p.compare(a, z), true
-			}
-			return Compare(a, z), true
-		}
-	}
-	if storeCallback(a.typ) != storeCallback(b.typ) &&
-		(!plainBuiltInScalarStorage(a.typ) || !plainBuiltInScalarStorage(b.typ)) {
-		return 0, false
-	}
-	switch sortCallback(a.typ) {
-	case "int":
-		x, okX := integerSortStorage(a, a)
-		y, okY := integerSortStorage(a, b)
-		if !okX || !okY {
-			return 0, false
-		}
-		return cmp3(x < y, x > y), true
-	case "uint":
-		x, okX := unsignedSortStorage(a, a)
-		y, okY := unsignedSortStorage(a, b)
-		if !okX || !okY {
-			return 0, false
-		}
-		return cmp3(x < y, x > y), true
-	}
-	switch a.typ.Base {
-	case schema.Bool:
-		x, okX := scalarUnionStorage(a)
-		y, okY := scalarUnionStorage(b)
-		if !okX || !okY {
-			return 0, false
-		}
-		x8, y8 := int8(x), int8(y) //nolint:gosec // the C callback reads the union's signed low byte
-		return cmp3(x8 < y8, x8 > y8), true
-	case schema.Dec64:
-		x, okX := scalarUnionStorage(a)
-		y, okY := scalarUnionStorage(b)
-		if !okX || !okY {
-			return 0, false
-		}
-		x64, y64 := int64(x), int64(y) //nolint:gosec // the C callback reads the union's int64 field
-		return cmp3(x64 < y64, x64 > y64), true
-	case schema.Bits:
-		if b.typ.Base != schema.Bits || len(a.typ.Bits) == 0 || len(b.typ.Bits) == 0 {
-			return 0, false
-		}
-		// lyplg_type_sort_bits uses val1's declaration width for memcmp. Reading that
-		// many bytes from a shorter foreign bitmap is undefined; otherwise compare the
-		// same full-byte prefix, including val2 bits above val1's last declared bit.
-		firstBytes := uint64(a.typ.Bits[len(a.typ.Bits)-1].Position)/8 + 1
-		secondBytes := uint64(b.typ.Bits[len(b.typ.Bits)-1].Position)/8 + 1
-		if firstBytes > secondBytes {
-			return 0, false
-		}
-		return compareBitsPrefix(a.bits, b.bits, firstBytes), true
-	}
 	if !SortCompatible(a, b) {
 		return 0, false
 	}
-	if p := pluginFor(a.typ); p != nil {
+	p := a.sortPlugin
+	if p != nil && p.id == "time-period" && (a.canon == "" || b.canon == "") {
+		return 0, false
+	}
+	if a.typ == b.typ {
+		return Compare(a, b), true
+	}
+	if p != nil {
+		if b.sortPlugin == nil { // R3: LYD_VALUE_GET of plain-string storage is the zero struct
+			z, _ := zeroStructValue(a)
+			return p.compare(a, z), true
+		}
+		if p.compare == nil {
+			return strings.Compare(a.canon, b.canon), true
+		}
 		return p.compare(a, b), true
+	}
+	switch sortCallback(a.typ) {
+	case "simple": // lyplg_type_sort_simple reads only canonical text (R2, R3 string first)
+		return strings.Compare(a.canon, b.canon), true
+	case "int": // R1, R2: the first value's field width over the second's payload
+		x, y := integerSortStorage(a, a), integerSortStorage(a, b)
+		return cmp3(x < y, x > y), true
+	case "uint":
+		x, y := unsignedSortStorage(a, a), unsignedSortStorage(a, b)
+		return cmp3(x < y, x > y), true
 	}
 	return Compare(a, b), true
 }
 
-// storeCallback identifies the callback that populated struct lyd_value. Leafrefs have already
-// selected their target realtype before a Value is returned. Plugin IDs identify the shared
-// handler records registered for standard-module typedefs.
-func storeCallback(t *schema.Type) string {
-	if t == nil {
-		return ""
-	}
-	base, builtIn := storageBase(t)
-	if !builtIn {
-		// date-and-time's two revisions have distinct store callbacks writing one
-		// lyd_value_date_and_time representation, sorted by one callback: one class
-		return "plugin:" + pluginFor(t).id
-	}
-	switch base {
-	case schema.Int8, schema.Int16, schema.Int32, schema.Int64:
-		return "int"
-	case schema.Uint8, schema.Uint16, schema.Uint32, schema.Uint64:
-		return "uint"
-	default:
-		return "builtin:" + base.String()
-	}
-}
-
-// zeroStorage reports a value whose whole lyd_value union is zero: the string and empty store
-// callbacks and the canonical-only plugin ones (plugin.canonOnly) write only the canonical form,
-// whatever the callback's identity.
-func zeroStorage(v Value) bool {
-	return zeroStorageType(v.typ)
-}
-
-func zeroStorageType(t *schema.Type) bool {
-	if t == nil {
+// SortCompatible is the closed direct-sort profile of D-0121, without invoking a callback: the
+// same base type with the same store/sort implementation and name-dependent representation
+// (decimal64 with equal fraction-digits, bits with an equal bitmap byte width, a union only of
+// one compiled type), or one of the canonical-ABI pairs R1-R3.
+func SortCompatible(a, b Value) bool {
+	if a.typ == nil || b.typ == nil {
 		return false
 	}
-	if p := pluginFor(t); p != nil {
-		return p.canonOnly
+	if a.typ.Base != b.typ.Base || a.sortPlugin != b.sortPlugin || a.sortVariant != b.sortVariant {
+		return abiSortPair(a, b) || abiSortPair(b, a)
 	}
-	return t.Base == schema.String || t.Base == schema.Empty
+	if a.sortPlugin != nil {
+		return true
+	}
+	switch a.typ.Base {
+	case schema.Union:
+		return a.typ == b.typ
+	case schema.Dec64:
+		return a.typ.FracDigits == b.typ.FracDigits
+	case schema.Bits:
+		return len(a.typ.Bits) != 0 && len(b.typ.Bits) != 0 &&
+			a.typ.Bits[len(a.typ.Bits)-1].Position/8 == b.typ.Bits[len(b.typ.Bits)-1].Position/8
+	}
+	return true
 }
 
-// zeroStructValue is what a's sort callback reads from all-zero storage through LYD_VALUE_GET:
-// its fixed-memory struct zeroed (a zero address without zone, the epoch without fractions, an
-// empty binary). false: a's callback dereferences a pointer there instead.
-func zeroStructValue(a Value) (Value, bool) {
-	switch x := a.ext.(type) {
-	case *ipValue:
-		return Value{typ: a.typ, ext: &ipValue{addr: make([]byte, len(x.addr))}}, true
-	case *dateVal:
-		return Value{typ: a.typ, ext: &dateVal{}}, true
-	case *timeVal:
-		return Value{typ: a.typ, ext: &timeVal{}}, true
-	case *dateTime:
-		return Value{typ: a.typ, ext: &dateTime{}}, true
+// abiSortPair is R1-R3 (D-0121): built-in integers of one signedness across widths, a built-in
+// integer and a plain string, and the ietf-inet-types ipv4-address implementation in its default
+// representation and a plain string. Only lyplg_type_store_string storage counts as zero (plain
+// string): never a plugin, whatever its base.
+func abiSortPair(a, b Value) bool {
+	if b.sortPlugin != nil || b.typ.Base != schema.String { // R1
+		k := sortCallback(a.typ)
+		return a.sortPlugin == nil && b.sortPlugin == nil && (k == "int" || k == "uint") && k == sortCallback(b.typ)
 	}
-	if base, builtIn := storageBase(a.typ); builtIn && base == schema.Binary && a.union == nil {
-		return Value{typ: a.typ}, true // lyd_value_binary {NULL, 0}: sizes compare first
+	if a.sortPlugin != nil { // R3
+		return a.sortPlugin == ipv4AddressPlugin && a.sortVariant == ""
+	}
+	k := sortCallback(a.typ) // R2
+	return k == "int" || k == "uint"
+}
+
+// zeroStructValue is what the ipv4-address sort callback reads from all-zero plain-string
+// storage through LYD_VALUE_GET: a zero address without zone.
+func zeroStructValue(a Value) (Value, bool) {
+	if x, ok := a.ext.(*ipValue); ok {
+		return Value{typ: a.typ, ext: &ipValue{addr: make([]byte, len(x.addr))}}, true
 	}
 	return Value{}, false
 }
 
-// storageBase is the built-in type whose store callback writes t's values: t's own base, or
-// string for a plugin registered with lyplg_type_store_string. false: a plugin's own storage.
-func storageBase(t *schema.Type) (schema.BaseType, bool) {
-	p := pluginFor(t)
-	switch {
-	case p == nil:
-		return t.Base, true
-	case p.stringStore:
-		return schema.String, true
-	default:
-		return 0, false
+// scalarUnionStorage returns the first eight bytes of struct lyd_value's union on the canonical
+// linux/amd64 oracle (D-0121 R1, R2). Every store callback first zeroes the structure; integers
+// then write only their low bytes, a plain string leaves the whole union zero.
+func scalarUnionStorage(v Value) uint64 {
+	if v.typ.Base == schema.String {
+		return 0
 	}
-}
-
-// plainBuiltInScalarStorage is the set whose union bytes can be proved without modelling a
-// plugin's fixed_mem or dyn_mem. Enumeration is deliberately absent: its enum_item is a pointer,
-// but same-callback enumeration comparisons remain supported above.
-func plainBuiltInScalarStorage(t *schema.Type) bool {
-	if t == nil {
-		return false
-	}
-	if zeroStorageType(t) {
-		return true // an all-zero union: string, empty or a canonical-only plugin
-	}
-	base, builtIn := storageBase(t)
-	if !builtIn {
-		return false
-	}
-	switch base {
-	case schema.Int8, schema.Int16, schema.Int32, schema.Int64,
-		schema.Uint8, schema.Uint16, schema.Uint32, schema.Uint64,
-		schema.Bool, schema.Dec64:
-		return true
-	default:
-		return false
-	}
-}
-
-// SortCompatible reports whether two realtypes use the same libyang sort callback.
-func SortCompatible(a, b Value) bool {
-	return a.typ != nil && b.typ != nil && sortCallback(a.typ) == sortCallback(b.typ)
-}
-
-// scalarUnionStorage returns the first eight bytes of struct lyd_value's union when deterministic
-// on the canonical linux/amd64 oracle. Every store callback first zeroes the structure. Narrow
-// scalars then write only their low bytes; string and empty leave the whole union zero. Pointer-
-// backed and type-specific fixed-memory values are refused.
-func scalarUnionStorage(v Value) (uint64, bool) {
-	if v.typ == nil {
-		return 0, false
-	}
-	if zeroStorageType(v.typ) {
-		return 0, true
-	}
-	base, builtIn := storageBase(v.typ)
-	if !builtIn {
-		return 0, false
-	}
-	switch base {
-	case schema.Int8, schema.Int16, schema.Int32, schema.Int64,
-		schema.Uint8, schema.Uint16, schema.Uint32, schema.Uint64:
-		return integerLYB(v), true
-	case schema.Bool:
-		return uint64(v.i), true //nolint:gosec // stored boolean is exactly 0 or 1
-	case schema.Dec64:
-		return uint64(v.i), true //nolint:gosec // C union contains the two's-complement int64
-	case schema.String, schema.Empty:
-		return 0, true
-	default:
-		return 0, false
-	}
+	return integerLYB(v)
 }
 
 // integerSortStorage reads zero-initialized C union payloads using the first value's field width.
 // A narrower second value is not sign-extended before a wider field reads it
 // (libyang v5.8.6 src/plugins_types/integer.c:61-62,99-117,249-294; linux/amd64 oracle).
-func integerSortStorage(first, v Value) (int64, bool) {
-	u, ok := scalarUnionStorage(v)
-	if !ok {
-		return 0, false
-	}
+func integerSortStorage(first, v Value) int64 {
+	u := scalarUnionStorage(v)
 	switch first.typ.Base {
 	case schema.Int8:
-		return int64(int8(u)), true //nolint:gosec // the C callback reads this union field width
+		return int64(int8(u)) //nolint:gosec // the C callback reads this union field width
 	case schema.Int16:
-		return int64(int16(u)), true //nolint:gosec // the C callback reads this union field width
+		return int64(int16(u)) //nolint:gosec // the C callback reads this union field width
 	case schema.Int32:
-		return int64(int32(u)), true //nolint:gosec // the C callback reads this union field width
+		return int64(int32(u)) //nolint:gosec // the C callback reads this union field width
 	default:
-		return int64(u), true //nolint:gosec // the C callback reads this union field width
+		return int64(u) //nolint:gosec // the C callback reads this union field width
 	}
 }
 
 // unsignedSortStorage selects the first value's C union field width
 // (libyang v5.8.6 src/plugins_types/integer.c:472-517).
-func unsignedSortStorage(first, v Value) (uint64, bool) {
-	u, ok := scalarUnionStorage(v)
-	if !ok {
-		return 0, false
-	}
+func unsignedSortStorage(first, v Value) uint64 {
+	u := scalarUnionStorage(v)
 	switch first.typ.Base {
 	case schema.Uint8:
-		return uint64(uint8(u)), true //nolint:gosec // the C callback reads this union field width
+		return uint64(uint8(u)) //nolint:gosec // the C callback reads this union field width
 	case schema.Uint16:
-		return uint64(uint16(u)), true //nolint:gosec // the C callback reads this union field width
+		return uint64(uint16(u)) //nolint:gosec // the C callback reads this union field width
 	case schema.Uint32:
-		return uint64(uint32(u)), true //nolint:gosec // the C callback reads this union field width
+		return uint64(uint32(u)) //nolint:gosec // the C callback reads this union field width
 	default:
-		return u, true
+		return u
 	}
 }
 

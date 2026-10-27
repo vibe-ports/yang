@@ -150,6 +150,7 @@ type workCounter struct {
 	lookupLimit uint64                    // zero takes the internal default; tests may lower it
 	lookupErr   error                     // first lookup budget error, propagated at the diff boundary
 	lookupDepth int                       // recursive diff helpers share one lookup quota
+	sortKeys    map[[2]*schema.Node]bool  // immutable ordered key-name profiles, only during a mutation
 }
 
 // newTree returns an empty tree over the compiled schema s (the public constructor over a

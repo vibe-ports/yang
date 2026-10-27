@@ -136,29 +136,43 @@ func (t *Tree) compareSorted(a, b *Node) int {
 
 // compareSortedCompatible is the RB comparison of a retained tree member a with b, which may come
 // from another context: libyang keeps the run's comparator and calls it for b's value
-// (tree_data_sorted.c:195-199,212-222). false: libyang would read storage it cannot interpret.
+// (tree_data_sorted.c:195-199,212-222). false: the closed D-0121 direct-sort profile or list
+// layout is incompatible.
 func (t *Tree) compareSortedCompatible(a, b *Node) (int, bool) {
+	return sortedPairCompatible(&t.work, a, b)
+}
+
+// sortedPairCompatible is every RB comparison of a with b: insertion descent, native search
+// (rbFind) and diff-tree insertion. A union never sorts across contexts: lyplg_type_sort_union
+// dispatches on compiled member identity.
+func sortedPairCompatible(work *workCounter, a, b *Node) (int, bool) {
 	if a.schema == nil || b.schema == nil || a.schema.Kind != b.schema.Kind {
 		return 0, false
 	}
 	switch a.schema.Kind {
 	case schema.LeafList:
-		return rbSortClb(nil, a.value, b.value) // rb_compare_leaflists
+		if a.value.Type() == nil || b.value.Type() == nil {
+			return 0, false
+		}
+		if ctxOf(a) != ctxOf(b) && (a.value.Type().Base == schema.Union || b.value.Type().Base == schema.Union) {
+			return 0, false
+		}
+		return rbSortClb(nil, a.value, b.value) // RB descent already counts the leaf-list comparison
 	case schema.List:
-		return rbCompareLists(&t.work, a, b)
+		return rbCompareLists(work, a, b)
 	}
 	return 0, false
 }
 
 // rbSortClb is rb_sort_clb (tree_data_sorted.c:195-200): val1's realtype sort callback on both
-// values. A second value of the same realtype is the ordinary comparison; otherwise
-// CompareCompatible decides from what that callback reads, refusing indeterminate storage.
+// values. CompareCompatible enforces the closed D-0121 profile before invoking that callback,
+// for one realtype too (an empty time-period).
 func rbSortClb(work *workCounter, v1, v2 types.Value) (int, bool) {
+	if v1.Type() == nil || v2.Type() == nil {
+		return 0, false
+	}
 	if work != nil {
 		work.Add(1)
-	}
-	if v1.Type() == v2.Type() {
-		return types.Compare(v1, v2), true
 	}
 	return types.CompareCompatible(v1, v2)
 }
@@ -177,6 +191,9 @@ func rbSortClb(work *workCounter, v1, v2 types.Value) (int, bool) {
 // or a reinterpreted node), refused like an indeterminate value pair. The loop stops at an
 // opaque next sibling (no schema) or at the end, as the C does.
 func rbCompareLists(work *workCounter, n1, n2 *Node) (int, bool) {
+	if n1.schema != n2.schema && !listKeyProfile(work, n1, n2) {
+		return 0, false
+	}
 	k1, k2 := firstChild(n1), firstChild(n2)
 	if !isTermNode(k1) || !isTermNode(k2) {
 		return 0, false
@@ -195,6 +212,68 @@ func rbCompareLists(work *workCounter, n1, n2 *Node) (int, bool) {
 		}
 	}
 	return cmp, true
+}
+
+// listKeyProfile is the D-0121 list profile of two distinct compiled list schemas: the same
+// ordered key names, both instances holding their full leading key prefix (rb_compare_lists
+// would otherwise read a non-key first child), each key pair in the closed value profile. It
+// invokes no value callback: a key that is never compared is never sorted.
+func listKeyProfile(work *workCounter, n1, n2 *Node) bool {
+	keys := n1.schema.Keys
+	if len(keys) == 0 || len(keys) != len(n2.schema.Keys) || n1.kids.SchemaLen() < len(keys) || n2.kids.SchemaLen() < len(keys) {
+		return false
+	}
+	if !sortKeyProfile(work, n1.schema, n2.schema) {
+		return false
+	}
+	for i, key := range keys {
+		a, b := n1.kids.At(i), n2.kids.At(i)
+		if a.schema != key || b.schema != n2.schema.Keys[i] || a.value.Type() == nil || b.value.Type() == nil {
+			return false
+		}
+		if ctxOf(n1) != ctxOf(n2) && (a.value.Type().Base == schema.Union || b.value.Type().Base == schema.Union) {
+			return false
+		}
+		if work != nil {
+			work.Add(1)
+		}
+		if !types.SortCompatible(a.value, b.value) {
+			return false
+		}
+	}
+	return true
+}
+
+// sortKeyProfile builds each ordered schema-key name profile once per operation. It charges
+// before it allocates; a failed charge reports "incompatible" with w.hashErr set, which every
+// caller tests before it builds a D-0121 refusal.
+func sortKeyProfile(w *workCounter, a, b *schema.Node) bool {
+	pair := [2]*schema.Node{a, b}
+	if w != nil {
+		if result, ok := w.sortKeys[pair]; ok {
+			return result
+		}
+	}
+	result := len(a.Keys) == len(b.Keys)
+	for i := 0; result && i < len(a.Keys); i++ {
+		if w != nil {
+			if w.chargeHash(1+uint64(len(a.Keys[i].Name)+len(b.Keys[i].Name))) != nil {
+				return false
+			}
+			w.Add(1)
+		}
+		result = a.Keys[i].Name == b.Keys[i].Name
+	}
+	if w != nil {
+		if w.chargeHash(1) != nil {
+			return false
+		}
+		if w.sortKeys == nil {
+			w.sortKeys = make(map[[2]*schema.Node]bool)
+		}
+		w.sortKeys[pair] = result
+	}
+	return result
 }
 
 // firstChild is lyd_node_inner.child: the first schema child, else the first opaque one.
@@ -573,9 +652,10 @@ func (t *Tree) crossContextSortedPos(sib *siblings, n *Node, lo int) (int, bool)
 }
 
 // sortedShapeError is a same-context refusal: comparing these instances makes libyang read a
-// list's first child as a value although it is none (rb_compare_lists).
+// list's first child as a value although it is none (rb_compare_lists), or index before an empty
+// time-period (lyplg_type_sort_time_period).
 func sortedShapeError(n *Node) error {
-	return &opError{"LY_EINVAL", fmt.Sprintf("Invalid arguments - ordering the system-ordered instances of %q makes libyang read a list's first child as a value although it is none (D-0121) (lyd_insert_node()).", n.Name())}
+	return &opError{"LY_EINVAL", fmt.Sprintf("Invalid arguments - ordering the system-ordered instances of %q makes libyang's sort callback read invalid storage (a list's first child that is no value, or an empty time-period) (D-0121) (lyd_insert_node()).", n.Name())}
 }
 
 func sortedInsertRefusal(sib *siblings, n *Node) error {
@@ -586,7 +666,7 @@ func sortedInsertRefusal(sib *siblings, n *Node) error {
 }
 
 func crossContextStorageError(n *Node) error {
-	return &opError{"LY_EINVAL", fmt.Sprintf("Invalid arguments - the system-ordered instances of %q in two schema contexts require indeterminate libyang value storage, a diff of such data is not supported (D-0121) (lyd_diff()).", n.Name())}
+	return &opError{"LY_EINVAL", fmt.Sprintf("Invalid arguments - the system-ordered instances of %q in two schema contexts have incompatible direct-sort profiles (D-0121) (lyd_insert_node()).", n.Name())}
 }
 
 // buildRBOrder retains rb_insert_node's exact topology. The physical slice remains the in-order
@@ -1684,8 +1764,8 @@ func (t *Tree) preflightInsertPosition(sib *siblings, n *Node, order insertOrder
 
 // preflightSortedStorage prevents crossContextSortedPos from silently falling back to schema
 // order when the retained native callback would read indeterminate or invalid foreign storage.
-// Defined scalar and same-representation pairs are handled by CompareCompatible; the
-// remaining native states are undefined and use the existing D-0121 cross-context refusal.
+// CompareCompatible accepts the closed D-0121 profile (R1-R3 included); an excluded pair is
+// refused even when its native byte reinterpretation happens to be deterministic.
 func (t *Tree) preflightSortedStorage(sib *siblings, n *Node, order insertOrder) error {
 	// A refusal is sticky like the other insertion failures: batch callers read t.work.hashErr.
 	err := t.sortedStorageRefusal(sib, n, order)
@@ -1728,6 +1808,9 @@ func (t *Tree) sortedStorageRefusalMode(sib *siblings, n *Node, order insertOrde
 			return err
 		}
 		if !compatible {
+			if t.work.hashErr != nil {
+				return t.work.hashErr
+			}
 			return sortedInsertRefusal(sib, n)
 		}
 		return nil
@@ -1751,6 +1834,9 @@ func (t *Tree) sortedStorageRefusalMode(sib *siblings, n *Node, order insertOrde
 		return err
 	}
 	if !compatible {
+		if t.work.hashErr != nil {
+			return t.work.hashErr
+		}
 		return sortedInsertRefusal(sib, n)
 	}
 	return nil

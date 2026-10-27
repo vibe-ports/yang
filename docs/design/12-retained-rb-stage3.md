@@ -590,3 +590,76 @@ D-0121 refusal, and chooses a safely removable candidate when its retained histo
 existing size cap. Neither test skips the regression path.
 
 New manifest fixture ids: none (live oracle requests only).
+
+## Stage 4: the D-0121 cross-context sorting contract
+
+Stage 4 integrates the amended D-0121 contract (`c301-s4-amendment.md` rev 4.1) into this
+retained topology. It adds no mutation path: every check runs inside an existing preflight or
+search before its primitive changes anything.
+
+**Direct-sort profile (§2.1).** `types.CompareCompatible` is every `rb_sort_clb` call, for one
+realtype too. `types.SortCompatible` is the closed profile: the same base, with equal integer
+width and signedness, decimal64 fraction-digits and bits bitmap byte width; for a plugin, the same
+registered store/sort implementation and name-dependent representation, cached in the stored value
+(`Value.sortPlugin`, `Value.sortVariant`); a union only within one compiled type. Three
+canonical-ABI pairs reuse main's storage helpers (`scalarUnionStorage`, `integerSortStorage`,
+`unsignedSortStorage`, `zeroStructValue`) and nothing else: R1 integers of one signedness across
+widths, R2 a built-in integer and a plain `lyplg_type_store_string` string, R3 the ipv4-address
+implementation and a plain string. Every other pair is refused, including the pairs main's
+canonical-only and scalar-storage cases accepted (integer/boolean, string/time-period,
+scalar/hex-string, binary/string, plugin structs against a zero union). The time-period callback
+on an empty canonical value is refused on every sort path, also in one context. Lists compare only
+with the same ordered key names (`sortKeyProfile`, once per operation and dropped at its end), the
+full leading key prefix present and every key pair in the profile (`listKeyProfile`); no value
+callback runs for a key that is never compared. `rbFind` compares through
+`sortedPairCompatible`, so native search obeys the same profile, and R1-R3 members that native
+search cannot reach are refused by stage 3's removal rules, not repaired.
+
+**User-order preconditions (§2.3).** `userordGet` keeps libyang's schema-pointer keyed entries.
+`userordAttrs` checks P1 (first instance present), P2 (comparison index), P3 (value/key anchor),
+P4 (insertion past the array) and P5 (replace move length) at their native access, before it and
+before any array update; the virtual array now only holds live slots. The former "unsafe" latch,
+which tolerated a final out-of-range transition, is gone: sweeps 06 and 37 are refused at P1. A
+lookup or hash budget error from building the entry is returned before P1, and the Diff boundary
+returns `lookupErr` and a hash `ErrBudget` ahead of any refusal.
+
+**Invariants.** Charge before work: `sortKeyProfile` charges each key name pair and its map entry
+before it compares or allocates, and reports "incompatible" with `hashErr` set on a failed charge;
+every caller (`sortedStorageRefusalMode` in both modes, `rbFind`, `rbReplay`, insertion descent,
+move, value reinsertion, parser resume) tests `hashErr` before it builds a D-0121 error.
+Reserve before mutation: the profile checks run in the existing storage preflight and the
+detached-copy descent; the user-order array is diff-local and changes only after P1-P5 pass.
+Journal everything reachable: no new graph state; `sortKeys` holds only immutable schema pairs and
+is reset with `unlinkPlan` when the outermost operation begins and ends. No metadata-slot
+transition is added.
+
+**Taken from `91ddc38`, dropped.** Taken: the profile frame in `internal/types` (narrowed to keep
+main's R1-R3 helpers), `sortedPairCompatible`, the `rbSortClb` nil-type guard, the key-profile
+prefix of `rbCompareLists`, the `crossContextStorageError` text, hash-error precedence in the
+storage refusal, `sortKeyProfile`/`workCounter.sortKeys`, the user-order refusal hunk (tightened
+to P2 before the compare), the logged Merge and ApplyDiff refusals, and the tests the amendment
+lists. Dropped: `checkUserord`, `retainedRemovalRefusal`, `retainedBatchRefusal`, `retainedFind`
+and the rest of the stage-4 removal reimplementation (stage 3's `prepareUnlink`, `rbFind`,
+`rbAdjacent`, `removalOrder` and `preflightChangedReinsert` decide), stage 4's edits refusing
+R1-R3 and in-range user-order histories, and its edits from the old linear reachability proof.
+`Unlink` already logged its preflight error.
+
+**Classification.** Of the 27 classified fixtures, 25 agree with their native goldens (eight via
+R1-R3: int-string, int-width, uint-width, ipv4-string, sweeps 02, 26, 29, 35) and sweeps 06 and 37
+carry the D-0121 assert (`TestStage4RecordedRefusals`; `cmd/report` lists no other difference).
+`ut-diff/cross-context-bits-max-position` is the salvaged #319 fixture, without an assert. Against
+the native oracle the eight R1-R3 goldens and the bits fixture reproduce; sweep 06's native result
+differs from its golden and sweep 37 crashes the oracle on a different allocator, as expected of
+release-build undefined behaviour kept only as evidence.
+
+Evidence: `data/sort_refusal_stage4_test.go` (profiles both ways, R1-R3 as leaf-list values and
+list keys, mixed-context histories through `rbFind`, removal and value change, the R1
+retained-reference refusal, budget failures at every charge point, the empty time-period on every
+sort path, P1-P5 with the delete-only, one-sided, same-context P5, P2-before-compare and
+budget-precedence histories), `data/sort_refusal_work_test.go` (linear work),
+`internal/types/sort_profile_test.go` (every unequal width pair at extrema and truncation
+boundaries against a little-endian byte model, R2/R3 both ways with the zero address and zones,
+closed neighbours), and the live oracle `TestStage4SortNeighboursOracle`,
+`TestStage4UnusedKeyOracle`, `TestStage4UserordPreconditionsOracle`,
+`TestDiffBuiltInCallbackMatrixOracle` (closed profile with R1/R2) and the excluded native cases
+run by `oracleRefusedSequence`.

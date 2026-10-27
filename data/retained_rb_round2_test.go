@@ -45,19 +45,16 @@ func timePeriodSets(t *testing.T) (str, period *schema.Set) {
 	return str, period
 }
 
-// TestDiffStringTimePeriodCompatible: time-period is stored by lyplg_type_store_string and its
-// sort callback reads only canonical text (time_period.c:41-75), so a cross-context comparison
-// with a string value is defined in both directions (no D-0121).
+// TestDiffStringTimePeriodCompatible: time-period is stored by lyplg_type_store_string and both
+// callbacks read only canonical text (time_period.c:41-75), so native string/time-period sorting
+// is deterministic. It is still outside D-0121's closed profile and R1-R3: an accepted
+// compatibility restriction, refused in both directions.
 func TestDiffStringTimePeriodCompatible(t *testing.T) {
 	str, period := timePeriodSets(t)
 	for _, sets := range [][2]*schema.Set{{str, period}, {period, str}} {
 		first := parseOnlyXML(t, sets[0], `<c xmlns="urn:rb-time-period"><v>1h</v><v>3h</v></c>`)
 		second := parseOnlyXML(t, sets[1], `<c xmlns="urn:rb-time-period"><v>2h</v><v>4h</v></c>`)
-		diff, err := Diff(first, second, DiffOptions{})
-		if err != nil || diff == nil {
-			t.Fatalf("string/time-period Diff = (%v, %v), want a diff", diff, err)
-		}
-		checkTreeRetainedRB(t, diff)
+		requireD0121Refusal(t, first, second)
 	}
 }
 
@@ -137,9 +134,9 @@ func TestDiffDisjointForeignAnchorWorkCharged(t *testing.T) {
 	}
 }
 
-// TestSetValueForeignReinsertionRefusalReported: SetValue's unlink/change/reinsert can reach a
-// foreign enumeration comparator, which dereferences the string value's enum_item (D-0121). The
-// refusal must be the result, with the old value and the retained topology restored.
+// TestSetValueForeignReinsertionRefusalReported: a foreign enumeration never joins a string run
+// (D-0121's closed profile), so it is refused before insertion could set up the unsafe
+// reinsertion, whose enumeration callback would read a string as an enum_item pointer.
 func TestSetValueForeignReinsertionRefusalReported(t *testing.T) {
 	module := func(typ string) string {
 		return `module rb-setvalue { yang-version 1.1; namespace "urn:rb-setvalue"; prefix r;
@@ -147,33 +144,19 @@ func TestSetValueForeignReinsertionRefusalReported(t *testing.T) {
 	}
 	strSet, enumSet := reviewDiffSet(t, module("string;")), reviewDiffSet(t, module("enumeration { enum b; }"))
 	tr := parseOnlyXML(t, strSet, `<v xmlns="urn:rb-setvalue">a</v><v xmlns="urn:rb-setvalue">c</v><v xmlns="urn:rb-setvalue">d</v>`)
-	// String first values sort canonically, so linking the foreign b (as a's right child) is
-	// defined. c has the same-schema neighbour d, so lyd_change_node_value unlinks and reinserts
-	// it; the new value aa descends d, a and then b, whose enumeration callback reads aa's
-	// string storage as an enum_item pointer.
 	foreign := retainedRBTerm(t, retainedRBTopNamed(t, enumSet, "v"), "b")
-	mustLink(t, tr.insert(nil, foreign, insertDefault))
-	var c *Node
-	for _, n := range tr.top.SchemaAll() {
-		if n.Value() == "c" {
-			c = n
-		}
-	}
-	before := retainedRBValues(&tr.top)
-	changed, err := c.SetValue("aa")
-	if err == nil || changed || !strings.Contains(err.Error(), "D-0121") {
-		t.Fatalf("SetValue = (%t, %v), want the D-0121 refusal", changed, err)
-	}
-	if c.Value() != "c" || !slices.Equal(retainedRBValues(&tr.top), before) {
-		t.Fatalf("refused SetValue changed the run: %v", retainedRBValues(&tr.top))
+	err := (&logger{}).done(tr.insert(nil, foreign, insertDefault))
+	assertStage4Refusal(t, err, "v", "lyd_insert_node")
+	if got := retainedRBValues(&tr.top); !slices.Equal(got, []string{"a", "c", "d"}) {
+		t.Fatalf("refused insertion changed the run: %v", got)
 	}
 	checkTreeRetainedRB(t, tr)
 }
 
-// TestDiffKeylessStateToKeyedConfigOrder: rb_compare_lists compares the first children of a
-// keyless retained list unconditionally (tree_data_sorted.c:244-253): the retained keyless
-// instances 2, 1 are ordered by their first child when the tree is built, and the created k=3
-// sorts after them ([1 2 3], as libyang; conformance/TestRBCompareListsOracle).
+// TestDiffKeylessStateToKeyedConfigOrder: native rb_compare_lists compares the retained keyless
+// instances' first children with the created keyed one (tree_data_sorted.c:244-253). A keyless
+// list has no key profile, so D-0121 §2.1 refuses the direct sort (not user-order bookkeeping,
+// whose transitions here are in range).
 func TestDiffKeylessStateToKeyedConfigOrder(t *testing.T) {
 	first := parseOnlyXML(t, reviewDiffSet(t, `module rb-keyless { yang-version 1.1; namespace "urn:rb-keyless";
   prefix r; container c { list l { config false; leaf k { type uint8; } } } }`),
@@ -182,15 +165,12 @@ func TestDiffKeylessStateToKeyedConfigOrder(t *testing.T) {
   prefix r; container c { list l { key k; leaf k { type uint8; } } } }`),
 		`<c xmlns="urn:rb-keyless"><l><k>3</k></l></c>`)
 	diff, err := Diff(first, second, DiffOptions{})
-	if err != nil {
-		t.Fatal(err)
+	if diff != nil {
+		t.Fatal("refused Diff returned a result")
 	}
-	var got []string
-	for _, l := range topOf(diff).kids.SchemaAll() {
-		got = append(got, l.kids.At(0).Value())
-	}
-	if !slices.Equal(got, []string{"1", "2", "3"}) {
-		t.Fatalf("diff list order = %v, want [1 2 3]", got)
+	assertStage4Refusal(t, err, "l", "lyd_insert_node")
+	if !strings.Contains(err.Error(), "direct-sort profiles") {
+		t.Fatalf("refusal = %v, want the direct-sort profile reason", err)
 	}
 }
 
@@ -260,11 +240,11 @@ func TestRBCompareListsShapes(t *testing.T) {
 		{"keyless-to-keyed-other-context", func() *Node { return instance(setOf("keyless", keyless), `<l><k>2</k></l>`, false) },
 			func() *Node {
 				return instance(setOf("keyed-uint", `list l { key k; leaf k { type uint8; } }`), `<l><k>3</k></l>`, false)
-			}, -1, true},
+			}, 0, false}, // a keyless list has no key profile (D-0121)
 		{"keyed-string-before-binary", func() *Node { return instance(setOf("keyed", keyed), `<l><k>AQ==</k></l>`, false) },
-			func() *Node { return instance(setOf("bin", keyedBin), `<l><k>Ag==</k></l>`, false) }, -1, true},
+			func() *Node { return instance(setOf("bin", keyedBin), `<l><k>Ag==</k></l>`, false) }, 0, false},
 		{"keyed-binary-before-string", func() *Node { return instance(setOf("bin", keyedBin), `<l><k>Ag==</k></l>`, false) },
-			func() *Node { return instance(setOf("keyed", keyed), `<l><k>AQ==</k></l>`, false) }, 1, true}, // zeroed {NULL, 0}
+			func() *Node { return instance(setOf("keyed", keyed), `<l><k>AQ==</k></l>`, false) }, 0, false}, // cross-profile key sort is refused
 		{"keyed-enumeration-before-string", func() *Node {
 			return instance(setOf("enum", `list l { key k; leaf k { type enumeration { enum a; } } }`), `<l><k>a</k></l>`, false)
 		}, func() *Node { return instance(setOf("keyed", keyed), `<l><k>a</k></l>`, false) }, 0, false},
