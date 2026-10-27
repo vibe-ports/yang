@@ -952,15 +952,26 @@ func (t *Tree) sortedLeaderIndex(sib *siblings, n *Node) int {
 	if !mixedSortedLookup(sib, n) {
 		return t.schemaIndex(sib, n.schema) // one context: the ordinary schema-order lookup
 	}
-	// the lookup mode insertPos would switch to first (a representation change only)
-	t.markMixed(sib, sib.At(0).parent, n)
-	if leader := sib.leaderFirstMixed(n.schema); sib.ht != nil && sib.schemaUnordered && leader != nil {
-		return sib.schemaSpan().indexFromEnd(&t.work, leader)
-	}
-	if sib.ht == nil || !sib.schemaUnordered {
+	// In the lookup mode insertPos switches to first (markMixed). The lookup is read-only: a
+	// preflight probes that mode rather than entering it, so a refusal leaves sib as it was.
+	if sib.ht == nil || !sib.schemaUnordered && !t.mixedSwitch(sib, sib.At(0).parent, n) {
 		return t.schemaIndex(sib, n.schema)
 	}
+	leader := sib.leaderFirstMixed(n.schema)
+	if !sib.schemaUnordered {
+		leader = sib.mixedLeaderProbe(n.schema)
+	}
+	if leader != nil {
+		return sib.schemaSpan().indexFromEnd(&t.work, leader)
+	}
 	return -1
+}
+
+// switchMixed enters the lookup mode sortedLeaderIndex probes for n, as insertPos does first.
+func (t *Tree) switchMixed(sib *siblings, n *Node) {
+	if sib.SchemaLen() > 0 && mixedSortedLookup(sib, n) {
+		t.markMixed(sib, sib.At(0).parent, n)
+	}
 }
 
 // sortedLeader is the node sortedLeaderIndex selects (nil: none), with whether it carries an RB
@@ -1082,23 +1093,48 @@ func climbOrder(sn, sparent *schema.Node, children []*schema.Node) []*schema.Nod
 // that lyd_new_path_create put beside a nested parent, or its copy. Schema ranks of different
 // parents do not compare, while lyd_insert_get_next_anchor walks such siblings like any other.
 func (t *Tree) markMixed(sib *siblings, parent, n *Node) {
+	if t.mixedSwitch(sib, parent, n) {
+		t.markUnordered(sib)
+	}
+}
+
+// mixedSwitch reports whether markMixed switches sib for n under parent.
+func (t *Tree) mixedSwitch(sib *siblings, parent, n *Node) bool {
 	if sib.schemaUnordered || parent == nil || n.schema == nil {
-		return
+		return false
 	}
 	ps := parent.schema
 	switch {
 	case ps == nil:
 		ps = nodeSchema(ctxOf(parent), parent)
 	case ps.Kind == schema.AnyData || ps.Kind == schema.AnyXML:
-		return // a value tree's roots
+		return false // a value tree's roots
 	}
 	// Siblings of another context: libyang's lookups follow the children table's registration
 	// order (lyd_find_sibling_schema), which the first-instance records keep only once the
 	// siblings are unordered; their runs were contiguous until now, so they are materialized.
-	if !compareSchemaEqual(n.schema.DataParent(), ps, true) ||
-		sib.SchemaLen() > 0 && !sameSet(ctxOf(sib.At(0)), ctxOf(n)) {
-		t.markUnordered(sib)
+	return !compareSchemaEqual(n.schema.DataParent(), ps, true) ||
+		sib.SchemaLen() > 0 && !sameSet(ctxOf(sib.At(0)), ctxOf(n))
+}
+
+// switchJournal opens a journal of t, ended by the caller, when inserting n under parent switches
+// the destination to the unordered lookup mode (markMixed: another context, or a parent of another
+// schema) and no journal is running. The switch materializes first-instance records, in a
+// preflight before any restorer is armed (insertPositionBound, preflightInsertAnchor); only a
+// journal undoes it, so any failure of the insertion restores (rollback). A set switches once:
+// the capture is paid once per set.
+func (t *Tree) switchJournal(parent, n *Node) (*hashTransaction, error) {
+	if t.work.journal != nil || n == nil || n.schema == nil {
+		return nil, nil
 	}
+	sib := t.childrenOf(parent)
+	if !t.mixedSwitch(sib, parent, n) && (sib.SchemaLen() == 0 || !mixedSortedLookup(sib, n) ||
+		!t.mixedSwitch(sib, sib.At(0).parent, n)) {
+		return nil, nil
+	}
+	j := beginHashTransaction(t)
+	j.rollback = true
+	return j, j.captureDetachedParent(parent)
 }
 
 // unorderedAnchor follows lyd_insert_get_next_anchor for ordinary siblings retained in source
@@ -1468,6 +1504,15 @@ func markUnsorted(sib *siblings, leader *Node) {
 // insert is lyd_insert_node: link the unlinked node n under parent (nil: the top level of t).
 // A list instance must have all its keys (libyang links it into its parent only then).
 func (t *Tree) insert(parent, n *Node, order insertOrder) (err error) {
+	journal, err := t.switchJournal(parent, n)
+	if err == nil {
+		err = t.insertNode(parent, n, order)
+	}
+	journal.end(&err)
+	return err
+}
+
+func (t *Tree) insertNode(parent, n *Node, order insertOrder) (err error) {
 	if n.parent != nil || n.tree != nil {
 		panic("data: inserting a linked node") // native insertion requires an alone node
 	}

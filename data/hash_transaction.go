@@ -250,29 +250,35 @@ func (s *siblings) rebind(work *workCounter) error {
 	return nil
 }
 
-// captureDetachedParent journals a detached destination (or operation source) parent at its
-// operation's boundary, before the first mutation: its children, its own sibling set when it is a
-// list instance (a key or keyless child changes its hash there) and every node of its ancestor
-// chain (default flags, key slots). Changes there reach no journal on their own: the chain's
-// counter has none. A linked parent is journaled lazily by its tree's transaction instead. Every
-// journaled operation that can write below or remove from a detached parent calls it (design 12,
-// mutation inventory).
+// captureDetachedParent journals the whole detached tree parent belongs to, at its operation's
+// boundary and before the first mutation: every node and sibling set reachable from its root,
+// any payloads included. Their counters have no journal, so a lazy touch there records nothing;
+// an operation may reach any of them (the chain's default flags, a list parent's hash, a matched
+// descendant a diff merge replaces). captureSiblings charges each set and its nodes before the
+// walk continues into them. A linked parent is journaled lazily by its tree's transaction
+// instead. Design 12 states the invariant: every node a mutation can reach is under the active
+// journal before it changes.
 func (j *hashTransaction) captureDetachedParent(parent *Node) error {
 	if j == nil || parent == nil || parent.treeOf() != nil {
 		return nil
 	}
-	if err := j.captureSiblings(childStorage(parent)); err != nil {
+	root := parent
+	for root.parent != nil {
+		root = root.parent
+	}
+	if err := j.captureNode(root); err != nil {
 		return err
 	}
-	if ps := parent.siblingsOf(); ps != nil && parent.schema != nil && parent.schema.Kind == schema.List {
-		if err := j.captureSiblings(ps); err != nil {
+	stack := []*Node{root}
+	for len(stack) != 0 {
+		n := stack[len(stack)-1]
+		stack = stack[:len(stack)-1]
+		s := childStorage(n)
+		if err := j.captureSiblings(s); err != nil {
 			return err
 		}
-	}
-	for p := parent; p != nil; p = p.parent {
-		if err := j.captureNode(p); err != nil {
-			return err
-		}
+		stack = s.schemaSpan().AppendTo(stack)
+		stack = s.opaqueSpan().AppendTo(stack)
 	}
 	return nil
 }

@@ -6,8 +6,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math/rand/v2"
+	"os"
 	"reflect"
 	"runtime"
+	"slices"
 	"strconv"
 	"strings"
 	"testing"
@@ -530,19 +533,27 @@ func snapshotHashBudgetDetached(set *schema.Set, root *Node) hashBudgetSnapshot 
 }
 
 // TestStage3DetachedDestinationChainBudget sweeps the hash-work quota of every public mutation
-// that can write below a detached destination: a default NP-container chain a/b detached from a
-// holder tree and filled from a third tree. Linking the first explicit child clears the default
-// flags of the whole chain, whose counter has no journal of its own. Each refusal must leave the
-// operation's tree, the source tree and the detached chain (flags, hashes, children, work
-// bindings) exactly as they were; retrying without a limit gives the unrefused result.
+// that can write below a detached destination, fed from a third tree. Destinations: a default
+// NP-container chain a/b detached from a holder tree (linking the first explicit child clears the
+// chain's default flags), a populated detached a/b whose existing descendants the operation
+// reorders or replaces, a detached list instance without its key (a key or keyless child changes
+// its hash in its own sibling set), and a detached diff a/b/x whose x a merge replaces. Each
+// refusal must leave the operation's tree, the source tree and the whole detached tree (flags,
+// values, hashes, children, work bindings) exactly as they were; retrying without a limit gives
+// the unrefused result.
 func TestStage3DetachedDestinationChainBudget(t *testing.T) {
 	set := reviewDiffSet(t, `module stage3-chain {yang-version 1.1;namespace "urn:stage3-chain";prefix s;
- container a {container b {leaf-list w {type string;} list l {key k; leaf k {type string;}}
-  leaf d {type string; default "x";}}}}`)
+ container a {container b {leaf-list w {type string;} list l {key k; leaf k {type string;} leaf p {type string;}}
+  leaf x {type string;} leaf d {type string; default "x";}}}}`)
 	const full = `<a xmlns="urn:stage3-chain"><b><w>p</w><w>q</w><w>r</w></b></a>`
 	values := func(tr *Tree) []*Node { return tr.top.first().kids.first().kids.schemaSpan().Collect() }
 	wSchema := values(parseOnlyXML(t, set, full))[0].schema
-	chain := func() (*Node, *Node) {
+	detach := func(tr *Tree) *Node {
+		a := tr.top.first()
+		mustLink(t, a.Unlink())
+		return a
+	}
+	defaultChain := func() (*Node, *Node) {
 		holder := newTree(set)
 		a, err := holder.NewInner(nil, "stage3-chain:a", NewOptions{})
 		if err != nil {
@@ -552,70 +563,127 @@ func TestStage3DetachedDestinationChainBudget(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if err := a.Unlink(); err != nil {
-			t.Fatal(err)
-		}
+		mustLink(t, a.Unlink())
 		if a.flags&FlagDefault == 0 || b.flags&FlagDefault == 0 {
 			t.Fatalf("setup: chain not default (%#x, %#x)", a.flags, b.flags)
 		}
 		return a, b
 	}
-	// op prepares one entry below the detached parent b: the source tree (nil: none) and the call.
+	populated := func() (*Node, *Node) {
+		a := detach(parseOnlyXML(t, set, `<a xmlns="urn:stage3-chain"><b><w>m</w><w>c</w><w>s</w>`+
+			`<l><k>5</k><p>z</p></l><x>1</x></b></a>`))
+		return a, a.kids.first()
+	}
+	lSchema := values(parseOnlyXML(t, set, `<a xmlns="urn:stage3-chain"><b><l><k>5</k></l></b></a>`))[0].schema
+	// the only list instance, still without its key (as during parsing), among indexed siblings
+	keylessList := func() (*Node, *Node) {
+		tr := parseOnlyXML(t, set, `<a xmlns="urn:stage3-chain"><b><w>m</w><w>c</w>`+
+			`<w>s</w><x>1</x></b></a>`)
+		b := tr.top.first().kids.first()
+		l := newInner(lSchema, &tr.work)
+		mustLink(t, tr.insert(b, l, insertDefault))
+		a := detach(tr)
+		if b.kids.ht == nil || l.keyN != 0 {
+			t.Fatalf("setup: indexed %t, %d keys", b.kids.ht != nil, l.keyN)
+		}
+		return a, l
+	}
+	xTree := func(v string) *Tree {
+		return parseOnlyXML(t, set, `<a xmlns="urn:stage3-chain"><b><x>`+v+`</x></b></a>`)
+	}
+	diff := func(from, to string) *Tree {
+		d, err := Diff(xTree(from), xTree(to), DiffOptions{})
+		if err != nil {
+			t.Fatal(err)
+		}
+		return d
+	}
+	diffChain := func() (*Node, *Node) {
+		a := detach(diff("1", "2"))
+		return a, a
+	}
+	// chain builds the detached destination (root, parent); op prepares one call below parent:
+	// the source tree (nil: none) and the call. Without a chain the default a/b chain is used.
 	type entry struct {
-		name string
-		op   func(dst *Tree, b *Node) (*Tree, func() error)
+		name  string
+		chain func() (*Node, *Node)
+		op    func(dst *Tree, parent *Node) (*Tree, func() error)
+	}
+	insert := func(detached bool) func(*Tree, *Node) (*Tree, func() error) {
+		return func(dst *Tree, b *Node) (*Tree, func() error) {
+			src := parseOnlyXML(t, set, full)
+			n := values(src)[1]
+			if detached {
+				mustLink(t, n.Unlink())
+			}
+			return src, func() error { return dst.Insert(b, n) }
+		}
+	}
+	forest := func(dst *Tree, b *Node) (*Tree, func() error) {
+		src := newTree(set)
+		for _, v := range []string{"q", "p", "r"} {
+			mustLink(t, src.insert(nil, retainedRBTerm(t, wSchema, v), insertDefault))
+		}
+		return src, func() error { return dst.Insert(b, src.top.first()) }
+	}
+	dup := func(dst *Tree, b *Node) (*Tree, func() error) {
+		src := parseOnlyXML(t, set, full)
+		return src, func() error {
+			_, _, err := dst.DupSiblings(values(src)[0], b, DupOptions{})
+			return err
+		}
+	}
+	newTerm := func(name, value string) func(*Tree, *Node) (*Tree, func() error) {
+		return func(dst *Tree, parent *Node) (*Tree, func() error) {
+			return nil, func() error {
+				_, err := dst.NewTerm(parent, name, value, NewOptions{})
+				return err
+			}
+		}
+	}
+	newOpaque := func(dst *Tree, parent *Node) (*Tree, func() error) {
+		return nil, func() error {
+			_, err := dst.NewOpaque(parent, "o", "v", OpaqueOptions{Module: "stage3-chain"})
+			return err
+		}
 	}
 	entries := []entry{
-		{"insert", func(dst *Tree, b *Node) (*Tree, func() error) {
-			src := parseOnlyXML(t, set, full)
-			n := values(src)[1]
-			return src, func() error { return dst.Insert(b, n) }
-		}},
-		{"insert-detached-node", func(dst *Tree, b *Node) (*Tree, func() error) {
-			src := parseOnlyXML(t, set, full)
-			n := values(src)[1]
-			mustLink(t, n.Unlink())
-			return src, func() error { return dst.Insert(b, n) }
-		}},
-		{"insert-forest", func(dst *Tree, b *Node) (*Tree, func() error) {
-			src := newTree(set)
-			for _, v := range []string{"q", "p", "r"} {
-				mustLink(t, src.insert(nil, retainedRBTerm(t, wSchema, v), insertDefault))
-			}
-			return src, func() error { return dst.Insert(b, src.top.first()) }
-		}},
-		{"dup", func(dst *Tree, b *Node) (*Tree, func() error) {
-			src := parseOnlyXML(t, set, full)
-			return src, func() error {
-				_, _, err := dst.DupSiblings(values(src)[0], b, DupOptions{})
-				return err
-			}
-		}},
-		{"new-term", func(dst *Tree, b *Node) (*Tree, func() error) {
-			return nil, func() error {
-				_, err := dst.NewTerm(b, "w", "p", NewOptions{})
-				return err
-			}
-		}},
-		{"new-list", func(dst *Tree, b *Node) (*Tree, func() error) {
+		{"insert", nil, insert(false)},
+		{"insert-detached-node", nil, insert(true)},
+		{"insert-forest", nil, forest},
+		{"dup", nil, dup},
+		{"new-term", nil, newTerm("w", "p")},
+		{"new-list", nil, func(dst *Tree, b *Node) (*Tree, func() error) {
 			return nil, func() error {
 				_, err := dst.NewList(b, "l", []string{"k1"}, NewOptions{})
 				return err
 			}
 		}},
-		{"new-opaque", func(dst *Tree, b *Node) (*Tree, func() error) {
-			return nil, func() error {
-				_, err := dst.NewOpaque(b, "o", "v", OpaqueOptions{Module: "stage3-chain"})
-				return err
-			}
-		}},
-		{"merge-diff-tree", func(dst *Tree, b *Node) (*Tree, func() error) {
-			diff, err := Diff(newTree(set), parseOnlyXML(t, set, full), DiffOptions{})
+		{"new-opaque", nil, newOpaque},
+		{"merge-diff-tree", nil, func(dst *Tree, b *Node) (*Tree, func() error) {
+			d, err := Diff(newTree(set), parseOnlyXML(t, set, full), DiffOptions{})
 			if err != nil {
 				t.Fatal(err)
 			}
-			src := values(diff)[0]
-			return diff, func() error { return dst.MergeDiffTree(b, src, MergeDiffOptions{}) }
+			src := values(d)[0]
+			return d, func() error { return dst.MergeDiffTree(b, src, MergeDiffOptions{}) }
+		}},
+		{"populated-insert", populated, insert(false)},
+		{"populated-insert-forest", populated, forest},
+		{"populated-dup", populated, dup},
+		{"list-parent-dup", keylessList, func(dst *Tree, l *Node) (*Tree, func() error) {
+			src := parseOnlyXML(t, set, `<a xmlns="urn:stage3-chain"><b><l><k>9</k><p>q</p></l></b></a>`)
+			p := src.top.first().kids.first().kids.first().kids.schemaSpan().Collect()[1]
+			return src, func() error {
+				_, _, err := dst.Dup(p, l, DupOptions{})
+				return err
+			}
+		}},
+		{"list-parent-key", keylessList, newTerm("k", "7")},
+		{"list-parent-opaque", keylessList, newOpaque},
+		{"diff-nested-replace", diffChain, func(dst *Tree, a *Node) (*Tree, func() error) {
+			src := diff("2", "3")
+			return src, func() error { return dst.MergeDiffTree(a, src.top.first().kids.first(), MergeDiffOptions{}) }
 		}},
 	}
 	type state struct {
@@ -630,9 +698,14 @@ func TestStage3DetachedDestinationChainBudget(t *testing.T) {
 	}
 	for _, e := range entries {
 		t.Run(e.name, func(t *testing.T) {
-			a, b := chain()
+			chain := e.chain
+			if chain == nil {
+				chain = defaultChain
+			}
+			a, parent := chain()
 			dst := newTree(set)
-			_, op := e.op(dst, b)
+			_, op := e.op(dst, parent)
+			before := snapshotHashBudgetDetached(set, a)
 			var points []uint64
 			dst.work.hashTrace = &points
 			if err := op(); err != nil {
@@ -640,10 +713,13 @@ func TestStage3DetachedDestinationChainBudget(t *testing.T) {
 			}
 			dst.work.hashTrace = nil
 			need := dst.work.hashUsed
-			if a.flags&FlagDefault != 0 {
+			if e.chain == nil && a.flags&FlagDefault != 0 {
 				t.Fatal("unlimited run left the detached chain default")
 			}
 			want := snapshotHashBudgetDetached(set, a).dump
+			if reflect.DeepEqual(want, before.dump) {
+				t.Fatal("setup: the operation changed nothing in the detached tree")
+			}
 			limits := map[uint64]bool{}
 			for limit := uint64(1); limit < need; limit++ {
 				limits[limit] = true
@@ -654,9 +730,9 @@ func TestStage3DetachedDestinationChainBudget(t *testing.T) {
 				}
 			}
 			for limit := range limits {
-				a, b := chain()
+				a, parent := chain()
 				dst := newTree(set)
-				src, op := e.op(dst, b)
+				src, op := e.op(dst, parent)
 				before := snapshot(dst, src, a)
 				dst.work.hashLimit = limit
 				err := op()
@@ -689,4 +765,756 @@ func TestStage3DetachedDestinationChainBudget(t *testing.T) {
 			}
 		})
 	}
+	// A callback budget error after the nested replacement of x is a refusal too: the detached
+	// diff, x's value included, stays as it was.
+	t.Run("diff-nested-replace-callback", func(t *testing.T) {
+		a, _ := diffChain()
+		dst, src := newTree(set), diff("2", "3")
+		before := snapshot(dst, src, a)
+		calls := 0
+		err := dst.MergeDiffTree(a, src.top.first().kids.first(), MergeDiffOptions{Callback: func(s, d *Node) error {
+			if d != nil && d.schema != nil && d.schema.Name == "x" {
+				calls++
+				return yang.ErrBudget
+			}
+			return nil
+		}})
+		if !errors.Is(err, yang.ErrBudget) || calls != 1 {
+			t.Fatalf("%v after %d x callbacks, want ErrBudget after one", err, calls)
+		}
+		if after := snapshot(dst, src, a); !reflect.DeepEqual(after, before) {
+			t.Fatalf("callback refusal changed the detached diff:\n%v\nwas\n%v", after.chain.dump, before.chain.dump)
+		}
+	})
+}
+
+// The refusal fuzzer: random linked and detached, empty and populated trees (depth 1-4: keyed,
+// keyless and user-ordered lists, leaf-lists, NP containers with defaults, leafref links, a second
+// context for diffs and copies) under every public mutation entry of the design-12 inventory.
+// Each scenario is rebuilt from its seed for every probe. Hash-work limits below the traced total
+// and every reservation point (a seeded sample of fzSample per knob by default, all of them with
+// YANG_STAGE3_FUZZ_FULL=1), node limits of an operation parse and every callback refuse it in
+// turn: the refusal must leave all
+// involved trees and detached roots byte-identical (snapshotHashBudgetRoots), and a retry
+// without the limit must give the unrefused result.
+const fzModule = `module fz {yang-version 1.1;namespace "urn:fz";prefix f;
+ container top {
+  leaf dl {type string; default "d";}
+  container np {leaf-list ll {type string;} leaf dd {type string; default "z";}
+   container np2 {leaf v {type string;} leaf-list ll2 {type string;} leaf d2 {type string; default "y";}}}
+  list kl {key k; leaf k {type string;} leaf p {type string;} leaf-list q {type string;}
+   container c {leaf r {type leafref {path "/top/kl/k";}} leaf d3 {type string; default "w";}}}
+  list ul {key k; ordered-by user; leaf k {type string;} leaf p {type string;}}
+  leaf-list ull {type string; ordered-by user;}
+  leaf-list sl {type string;}
+  leaf ref {type leafref {path "../kl/k";}}
+  list nk {config false; leaf a {type string;}}
+  list al {key k; leaf k {type string;}
+   action go {input {leaf x {type string;}} output {leaf y {type string;} leaf-list z {type string;}}}}
+ }
+ rpc op {input {leaf i {type string;}} output {leaf o {type string;} leaf-list w {type string;}}}}`
+
+// fzSample bounds the limits probed per knob unless fzFull (YANG_STAGE3_FUZZ_FULL=1) is set.
+const fzSample = 24
+
+var fzFull = os.Getenv("YANG_STAGE3_FUZZ_FULL") == "1"
+
+type fzKnob struct {
+	name string
+	set  func(limit uint64, trace *[]uint64) // limit 0: none
+	used func() uint64
+}
+
+func fzWork(name string, w *workCounter) fzKnob {
+	return fzKnob{name, func(limit uint64, trace *[]uint64) { w.hashLimit, w.hashTrace = limit, trace },
+		func() uint64 { return w.hashUsed }}
+}
+
+// fzCallback refuses its failAt-th call (from 0) with a budget error; -1 never.
+type fzCallback struct{ calls, failAt int }
+
+func (c *fzCallback) hit() error {
+	c.calls++
+	if c.calls-1 == c.failAt {
+		return fmt.Errorf("fz callback %d: %w", c.failAt, yang.ErrBudget)
+	}
+	return nil
+}
+
+type fzScenario struct {
+	entry string
+	set   *schema.Set
+	trees []*Tree
+	roots []*Node // detached roots (holders of detached chains and detached sources)
+	knobs []fzKnob
+	cb    *fzCallback // nil: the entry takes no callback
+	op    func() error
+}
+
+func (s *fzScenario) dump() [][]string {
+	var out [][]string
+	for _, tr := range s.trees {
+		out = append(out, typedDump(tr))
+	}
+	for _, r := range s.roots {
+		var lines []string
+		for n := range r.allAny() {
+			lines = append(lines, typedLine(s.set, n))
+		}
+		out = append(out, lines)
+	}
+	return out
+}
+
+func (s *fzScenario) snapshot() []hashBudgetSnapshot {
+	var out []hashBudgetSnapshot
+	for _, tr := range s.trees {
+		out = append(out, snapshotHashBudgetTree(tr))
+	}
+	for _, r := range s.roots {
+		out = append(out, snapshotHashBudgetDetached(s.set, r))
+	}
+	return out
+}
+
+type fzGen struct {
+	t         *testing.T
+	rng       *rand.Rand
+	set, set2 *schema.Set
+}
+
+func (g *fzGen) vals(n int) []string {
+	pool := strings.Split("a b c d e f g h i j k l", " ")
+	g.rng.Shuffle(len(pool), func(i, j int) { pool[i], pool[j] = pool[j], pool[i] })
+	return pool[:n]
+}
+
+// xml is a random document: fill 0 is an empty top container, 2 has every node.
+func (g *fzGen) xml(fill int, state bool) string {
+	some := func() bool { return fill == 2 || fill == 1 && g.rng.IntN(2) == 0 }
+	count := func(most int) int {
+		switch fill {
+		case 0:
+			return 0
+		case 2:
+			return most
+		}
+		return g.rng.IntN(most + 1)
+	}
+	var b strings.Builder
+	leaves := func(name string, vs []string) {
+		for _, v := range vs {
+			b.WriteString("<" + name + ">" + v + "</" + name + ">")
+		}
+	}
+	b.WriteString(`<top xmlns="urn:fz">`)
+	if some() {
+		leaves("dl", g.vals(1))
+	}
+	if some() {
+		b.WriteString("<np>")
+		leaves("ll", g.vals(count(3)))
+		if some() {
+			b.WriteString("<np2>")
+			if some() {
+				leaves("v", g.vals(1))
+			}
+			leaves("ll2", g.vals(count(3)))
+			b.WriteString("</np2>")
+		}
+		b.WriteString("</np>")
+	}
+	keys := g.vals(count(3))
+	for _, k := range keys {
+		b.WriteString("<kl><k>" + k + "</k>")
+		if some() {
+			leaves("p", g.vals(1))
+		}
+		leaves("q", g.vals(count(2)))
+		if some() {
+			b.WriteString("<c><r>" + keys[g.rng.IntN(len(keys))] + "</r></c>")
+		}
+		b.WriteString("</kl>")
+	}
+	for _, k := range g.vals(count(3)) {
+		b.WriteString("<ul><k>" + k + "</k><p>" + k + "</p></ul>")
+	}
+	leaves("ull", g.vals(count(3)))
+	leaves("sl", g.vals(count(4)))
+	if len(keys) > 0 && some() {
+		leaves("ref", keys[:1])
+	}
+	if state {
+		for range count(2) {
+			leaves("nk", []string{"<a>" + g.vals(1)[0] + "</a>"})
+		}
+	}
+	for _, k := range g.vals(count(2)) {
+		b.WriteString("<al><k>" + k + "</k></al>")
+	}
+	b.WriteString("</top>")
+	return b.String()
+}
+
+// tree parses a random document of set and links its leafrefs; some trees are validated first,
+// which adds default leaves and default NP containers.
+func (g *fzGen) tree(set *schema.Set, fill int) *Tree {
+	validated := g.rng.IntN(3) == 0
+	tr := parseOnlyXML(g.t, set, g.xml(fill, !validated))
+	if validated {
+		_, _ = tr.Validate(context.Background(), ValidateOptions{NoState: true})
+	}
+	var keys []*Node
+	var refs []*Node
+	for top := range tr.Top() {
+		for n := range top.All() {
+			switch {
+			case n.schema == nil:
+			case n.schema.IsKey() && n.parent.schema.Name == "kl":
+				keys = append(keys, n)
+			case n.schema.Name == "r" || n.schema.Name == "ref":
+				refs = append(refs, n)
+			}
+		}
+	}
+	for _, r := range refs {
+		for _, k := range keys {
+			if k.Value() == r.Value() {
+				linkLeafrefNode(k, r)
+			}
+		}
+	}
+	return tr
+}
+
+func fzInner(root *Node) []*Node {
+	var out []*Node
+	for n := range root.All() {
+		if n.schema != nil && (n.schema.Kind == schema.Container || n.schema.Kind == schema.List) {
+			out = append(out, n)
+		}
+	}
+	return out
+}
+
+func fzChildren(p *Node, kinds ...schema.Kind) []*schema.Node {
+	var out []*schema.Node
+	for _, c := range p.schema.Children {
+		if !c.IsKey() && slices.Contains(kinds, c.Kind) {
+			out = append(out, c)
+		}
+	}
+	return out
+}
+
+func fzPick[T any](g *fzGen, xs []T) T { return xs[g.rng.IntN(len(xs))] }
+
+// dest is a destination parent: an inner node of a linked tree (returned) or of a subtree
+// detached from a holder tree (root returned).
+func (g *fzGen) dest(fill int, kinds ...schema.Kind) (tr *Tree, root, parent *Node) {
+	tr = g.tree(g.set, fill)
+	var inner []*Node
+	for _, n := range fzInner(tr.top.first()) {
+		if len(fzChildren(n, kinds...)) != 0 {
+			inner = append(inner, n)
+		}
+	}
+	parent = fzPick(g, inner)
+	if g.rng.IntN(2) == 0 {
+		root = parent // a random ancestor-or-self of parent leaves its holder
+		for root.parent != nil && g.rng.IntN(2) == 0 {
+			root = root.parent
+		}
+		if err := root.Unlink(); err != nil {
+			g.t.Fatal(err)
+		}
+		return nil, root, parent
+	}
+	return tr, nil, parent
+}
+
+// instance is a node of schema sn from a full third tree (of set2 sometimes), detached sometimes.
+func (g *fzGen) instance(sn *schema.Node, s *fzScenario) *Node {
+	set := g.set
+	if g.rng.IntN(5) == 0 {
+		set = g.set2
+	}
+	src := parseOnlyXML(g.t, set, g.xml(2, true))
+	var match []*Node
+	for n := range src.top.first().All() {
+		if n.schema != nil && n.schema.Name == sn.Name && n.parent != nil && n.parent.schema.Name == sn.Parent.Name {
+			match = append(match, n)
+		}
+	}
+	if len(match) == 0 {
+		return nil
+	}
+	n := fzPick(g, match)
+	s.trees = append(s.trees, src)
+	s.knobs = append(s.knobs, fzWork("source", &src.work))
+	if g.rng.IntN(3) == 0 {
+		if err := n.Unlink(); err != nil {
+			g.t.Fatal(err)
+		}
+		s.roots = append(s.roots, n)
+	}
+	return n
+}
+
+func (g *fzGen) diff(a, b *Tree) *Tree {
+	d, err := Diff(a, b, DiffOptions{})
+	if err != nil {
+		g.t.Fatal(err)
+	}
+	if d == nil {
+		return newTree(a.set) // no difference
+	}
+	return d
+}
+
+var fzEntries = []string{"insert", "insert-forest", "insert-top", "dup", "merge", "merge-diff",
+	"merge-diff-tree", "apply-diff", "new", "new-path", "set-value", "trim", "remove", "unlink",
+	"validate", "validate-op", "parse-op"}
+
+func (g *fzGen) scenario(entry string) *fzScenario {
+	s := &fzScenario{entry: entry, set: g.set}
+	ctx := context.Background()
+	// destination: the operation's tree t (a holder of a detached destination does not join)
+	all := []schema.Kind{schema.Leaf, schema.LeafList, schema.List, schema.Container}
+	foreign := false // a detached destination's operation tree of the second context
+	destination := func(fill int, kinds ...schema.Kind) (*Tree, *Node) {
+		tr, root, parent := g.dest(fill, kinds...)
+		if root != nil {
+			s.roots = append(s.roots, root)
+			tr = newTree(g.set)
+			if foreign = g.rng.IntN(3) == 0; foreign {
+				tr = newTree(g.set2)
+			}
+		}
+		s.trees = append(s.trees, tr)
+		s.knobs = append(s.knobs, fzWork("destination", &tr.work))
+		return tr, parent
+	}
+	linked := func(fill int) *Tree {
+		tr := g.tree(g.set, fill)
+		s.trees = append(s.trees, tr)
+		s.knobs = append(s.knobs, fzWork("tree", &tr.work))
+		return tr
+	}
+	nonKey := func(tr *Tree, terms bool) *Node {
+		var out []*Node
+		for n := range tr.top.first().All() {
+			if n.schema != nil && !n.schema.IsKey() && (!terms || n.isTerm()) {
+				out = append(out, n)
+			}
+		}
+		if len(out) == 0 {
+			return nil
+		}
+		return fzPick(g, out)
+	}
+	switch entry {
+	case "insert", "dup":
+		dst, parent := destination(g.rng.IntN(3), all...)
+		n := g.instance(fzPick(g, fzChildren(parent, all...)), s)
+		if n == nil {
+			return nil
+		}
+		if entry == "insert" {
+			s.op = func() error { return dst.Insert(parent, n) }
+			break
+		}
+		siblings, recursive := g.rng.IntN(2) == 0, g.rng.IntN(2) == 0
+		s.op = func() error {
+			o := DupOptions{Recursive: recursive}
+			var err error
+			if siblings {
+				_, _, err = dst.DupSiblings(n, parent, o)
+			} else {
+				_, _, err = dst.Dup(n, parent, o)
+			}
+			return err
+		}
+	case "insert-forest":
+		dst, parent := destination(g.rng.IntN(3), schema.LeafList)
+		sn := fzPick(g, fzChildren(parent, schema.LeafList))
+		src := newTree(g.set)
+		for _, v := range g.vals(1 + g.rng.IntN(4)) {
+			mustLink(g.t, src.insert(nil, retainedRBTerm(g.t, sn, v), insertDefault))
+		}
+		s.trees = append(s.trees, src)
+		s.knobs = append(s.knobs, fzWork("source", &src.work))
+		s.op = func() error { return dst.Insert(parent, src.top.first()) }
+	case "insert-top":
+		dst := newTree(g.set)
+		s.trees = append(s.trees, dst)
+		s.knobs = append(s.knobs, fzWork("destination", &dst.work))
+		src := linked(g.rng.IntN(3))
+		n := src.top.first()
+		s.op = func() error { return dst.Insert(nil, n) }
+	case "merge":
+		dst := linked(g.rng.IntN(3))
+		src := g.tree(g.set, 1+g.rng.IntN(2))
+		s.trees = append(s.trees, src)
+		s.op = func() error { return dst.Merge(src) }
+	case "merge-diff", "merge-diff-tree", "apply-diff":
+		set := g.set
+		if g.rng.IntN(4) == 0 {
+			set = g.set2
+		}
+		docs := []string{g.xml(g.rng.IntN(3), false), g.xml(g.rng.IntN(3), false), g.xml(g.rng.IntN(3), false)}
+		parse := func(set *schema.Set, i int) *Tree { return parseOnlyXML(g.t, set, docs[i]) }
+		s.cb = &fzCallback{failAt: -1}
+		switch entry {
+		case "apply-diff":
+			dst := parseOnlyXML(g.t, g.set, docs[0])
+			s.trees = append(s.trees, dst)
+			s.knobs = append(s.knobs, fzWork("tree", &dst.work))
+			d := g.diff(parse(set, 0), parse(set, 1))
+			s.trees = append(s.trees, d)
+			cb := s.cb
+			s.op = func() error {
+				return dst.ApplyDiff(d, ApplyDiffOptions{Callback: func(_, _ *Node) error { return cb.hit() }})
+			}
+		case "merge-diff":
+			dst := g.diff(parse(g.set, 0), parse(g.set, 1))
+			src := g.diff(parse(set, 1), parse(set, 2))
+			s.trees = append(s.trees, dst, src)
+			s.knobs = append(s.knobs, fzWork("tree", &dst.work))
+			cb := s.cb
+			s.op = func() error {
+				return dst.MergeDiff(src, MergeDiffOptions{Callback: func(_, _ *Node) error { return cb.hit() }})
+			}
+		default:
+			dst := g.diff(parse(g.set, 0), parse(g.set, 1))
+			src := g.diff(parse(set, 1), parse(set, 2))
+			if dst.top.first() == nil || src.top.first() == nil {
+				return nil
+			}
+			var nodes []*Node
+			for n := range src.top.first().All() {
+				if n.parent != nil {
+					nodes = append(nodes, n)
+				}
+			}
+			if len(nodes) == 0 {
+				return nil
+			}
+			sn := fzPick(g, nodes)
+			var parent *Node
+			for n := range dst.top.first().All() {
+				if n.Path() == sn.parent.Path() {
+					parent = n
+				}
+			}
+			if parent == nil {
+				parent, sn = dst.top.first(), src.top.first().kids.first()
+				if sn == nil {
+					return nil
+				}
+			}
+			t := dst
+			if g.rng.IntN(2) == 0 {
+				root := dst.top.first()
+				mustLink(g.t, root.Unlink())
+				s.roots = append(s.roots, root)
+				t = newTree(g.set)
+			}
+			s.trees = append(s.trees, t, src)
+			s.knobs = append(s.knobs, fzWork("tree", &t.work))
+			cb := s.cb
+			s.op = func() error {
+				return t.MergeDiffTree(parent, sn, MergeDiffOptions{Callback: func(_, _ *Node) error { return cb.hit() }})
+			}
+		}
+	case "new":
+		dst, parent := destination(g.rng.IntN(3), all...)
+		cs := fzChildren(parent, all...)
+		v := g.vals(1)[0]
+		if len(cs) == 0 || g.rng.IntN(5) == 0 {
+			s.op = func() error {
+				_, err := dst.NewOpaque(parent, "o", v, OpaqueOptions{Module: "fz"})
+				return err
+			}
+			break
+		}
+		sn := fzPick(g, cs)
+		name := sn.Name
+		if foreign {
+			name = "fz:" + name // a node of the operation tree's context under parent
+		}
+		s.op = func() error {
+			var err error
+			switch {
+			case sn.Kind == schema.Container:
+				_, err = dst.NewInner(parent, name, NewOptions{})
+			case sn.Kind == schema.List && len(sn.Keys) == 0:
+				_, err = dst.NewList(parent, name, nil, NewOptions{})
+			case sn.Kind == schema.List:
+				_, err = dst.NewList(parent, name, []string{v}, NewOptions{})
+			default:
+				_, err = dst.NewTerm(parent, name, v, NewOptions{})
+			}
+			return err
+		}
+	case "new-path":
+		dst := linked(g.rng.IntN(3))
+		v := g.vals(1)[0]
+		path := fzPick(g, []string{"/fz:top/np/ll", "/fz:top/np/np2/v", "/fz:top/np/np2/ll2", "/fz:top/sl",
+			"/fz:top/kl[k='" + v + "']/p", "/fz:top/kl[k='" + v + "']/c/r", "/fz:top/ul[k='" + v + "']",
+			"/fz:top/dl", "/fz:top/np/dd", "/fz:top/kl[k='" + v + "']/q"})
+		update := g.rng.IntN(2) == 0
+		s.op = func() error {
+			_, err := dst.NewPath(path, v, NewPathOptions{Update: update})
+			return err
+		}
+	case "set-value":
+		dst := linked(1 + g.rng.IntN(2))
+		n := nonKey(dst, true)
+		if n == nil {
+			return nil
+		}
+		v := g.vals(1)[0]
+		s.op = func() error {
+			_, err := n.SetValue(v)
+			return err
+		}
+	case "trim":
+		dst := linked(1 + g.rng.IntN(2))
+		expr := fzPick(g, []string{"/fz:top/sl", "/fz:top/kl[p]", "/fz:top/np/ll", "/fz:top/np", "/fz:top/kl/q",
+			"/fz:top/ul", "/fz:top/kl/c/r", "/fz:top/kl[k='a']", "/fz:top/ull"})
+		s.op = func() error {
+			_, err := dst.TrimXPath(expr, XPathOptions{})
+			return err
+		}
+	case "remove", "unlink":
+		dst := linked(1 + g.rng.IntN(2))
+		n := nonKey(dst, false)
+		if n == nil {
+			return nil
+		}
+		if entry == "remove" {
+			s.op = n.Remove
+			break
+		}
+		s.op = n.Unlink
+	case "validate":
+		dst := parseOnlyXML(g.t, g.set, g.xml(g.rng.IntN(3), false))
+		s.trees = append(s.trees, dst)
+		s.knobs = append(s.knobs, fzWork("tree", &dst.work))
+		o := ValidateOptions{NoState: true, MultiError: g.rng.IntN(2) == 0}
+		s.op = func() error {
+			_, err := dst.Validate(ctx, o)
+			return err
+		}
+	case "validate-op", "parse-op":
+		action := g.rng.IntN(2) == 0
+		in, reply := `{"fz:op":{"i":"x"}}`, `<o xmlns="urn:fz">a</o><w xmlns="urn:fz">z</w><w xmlns="urn:fz">b</w>`
+		if action {
+			in = `{"fz:top":{"al":[{"k":"a","go":{"x":"1"}}]}}`
+			reply = `<y xmlns="urn:fz">a</y><z xmlns="urn:fz">z</z><z xmlns="urn:fz">b</z><z xmlns="urn:fz">m</z>`
+		}
+		req, op := opIndexParseRPC(g.t, g.set, in)
+		if entry == "validate-op" {
+			s.trees = append(s.trees, req)
+			s.knobs = append(s.knobs, fzWork("request", &req.work))
+			oper := linked(g.rng.IntN(3))
+			s.op = func() error {
+				_, err := req.ValidateOp(ctx, OpRPC, ValidateOpOptions{Operational: oper})
+				return err
+			}
+			break
+		}
+		if g.rng.IntN(2) == 0 {
+			root := req.top.first()
+			mustLink(g.t, root.Unlink())
+			s.roots = append(s.roots, root)
+		} else {
+			s.trees = append(s.trees, req)
+			s.knobs = append(s.knobs, fzWork("request", &req.work))
+		}
+		var b Budget
+		s.knobs = append(s.knobs, fzKnob{"nodes", func(limit uint64, _ *[]uint64) { b.MaxNodes = int(limit) }, //nolint:gosec // small test limits
+			func() uint64 { return 8 }})
+		s.op = func() error {
+			_, _, _, _, err := parseOpWith(ctx, strings.NewReader(reply), g.set, FormatXML, opReply, op, Reject, b)
+			return err
+		}
+	}
+	if s.op == nil {
+		return nil
+	}
+	return s
+}
+
+// fzSnapDiff names what a refusal changed in one snapshot.
+func fzSnapDiff(was, now hashBudgetSnapshot) string {
+	var out []string
+	if !reflect.DeepEqual(was.dump, now.dump) {
+		out = append(out, fmt.Sprintf("dump %v\nwas  %v", now.dump, was.dump))
+	}
+	for n, v := range now.index {
+		if was.index[n] != v {
+			out = append(out, fmt.Sprintf("node %s:\n  now %s\n  was %s", n.Path(), v, was.index[n]))
+		}
+	}
+	for s, v := range now.sibs {
+		if was.sibs[s] != v {
+			out = append(out, fmt.Sprintf("siblings %p:\n  now %s\n  was %s", s, v, was.sibs[s]))
+		}
+	}
+	for n := range was.index {
+		if _, ok := now.index[n]; !ok {
+			out = append(out, "node gone: "+n.Path())
+		}
+	}
+	return strings.Join(out, "\n")
+}
+
+func fzErrText(err error) string {
+	if err == nil {
+		return ""
+	}
+	return err.Error()
+}
+
+// fzCheck runs one scenario's probes; build rebuilds it identically.
+func fzCheck(t *testing.T, seed uint64, build func() *fzScenario) (refusals int, wantErr string) {
+	ref := build()
+	if ref == nil {
+		return 0, "skipped"
+	}
+	fail := func(format string, args ...any) {
+		t.Helper()
+		t.Fatalf("seed %d (%s): %s", seed, ref.entry, fmt.Sprintf(format, args...))
+	}
+	wantErr = fzErrText(ref.op())
+	want := ref.dump()
+	calls := 0
+	if ref.cb != nil {
+		calls = ref.cb.calls
+	}
+	// refused checks one refusal: no change, then a retry without the limit
+	refused := func(s *fzScenario, before []hashBudgetSnapshot, err error, what string, reset func()) {
+		t.Helper()
+		if err == nil || !errors.Is(err, yang.ErrBudget) {
+			if fzErrText(err) != wantErr {
+				fail("%s: %v, want %q or ErrBudget", what, err, wantErr)
+			}
+			if got := s.dump(); !reflect.DeepEqual(got, want) {
+				fail("%s: unrefused result differs:\n%v\nwant\n%v", what, got, want)
+			}
+			return
+		}
+		if after := s.snapshot(); !reflect.DeepEqual(after, before) {
+			for i := range after {
+				if !reflect.DeepEqual(after[i], before[i]) {
+					fail("%s: refusal changed tree/root %d:\n%s", what, i, fzSnapDiff(before[i], after[i]))
+				}
+			}
+		}
+		refusals++
+		for _, tr := range s.trees {
+			checkTreeRetainedRB(t, tr)
+		}
+		reset()
+		if err := s.op(); fzErrText(err) != wantErr {
+			fail("%s: retry: %v, want %q", what, err, wantErr)
+		}
+		if got := s.dump(); !reflect.DeepEqual(got, want) {
+			fail("%s: refusal+retry differs:\n%v\nwant\n%v", what, got, want)
+		}
+	}
+	for k := range ref.knobs {
+		s := build()
+		var points []uint64
+		s.knobs[k].set(0, &points)
+		if fzErrText(s.op()) != wantErr {
+			fail("traced run differs")
+		}
+		s.knobs[k].set(0, nil)
+		need := s.knobs[k].used()
+		limits := map[uint64]bool{}
+		for limit := uint64(1); limit < need; limit++ {
+			limits[limit] = true
+		}
+		for _, at := range points {
+			if at > 1 && at <= need {
+				limits[at-1] = true
+			}
+		}
+		if !fzFull && len(limits) > fzSample {
+			// a seeded sample keeps the default run short; YANG_STAGE3_FUZZ_FULL=1 sweeps all
+			keep := rand.New(rand.NewPCG(seed, uint64(k))) //nolint:gosec // deterministic sample
+			total := len(limits)
+			for limit := range limits {
+				if keep.IntN(total) >= fzSample {
+					delete(limits, limit)
+				}
+			}
+		}
+		for limit := range limits {
+			s := build()
+			before := s.snapshot()
+			s.knobs[k].set(limit, nil)
+			err := s.op()
+			refused(s, before, err, fmt.Sprintf("%s limit %d/%d", s.knobs[k].name, limit, need),
+				func() { s.knobs[k].set(0, nil) })
+		}
+	}
+	for at := range calls {
+		s := build()
+		before := s.snapshot()
+		s.cb.failAt = at
+		err := s.op()
+		if !errors.Is(err, yang.ErrBudget) {
+			fail("callback %d/%d: %v, want ErrBudget", at, calls, err)
+		}
+		refused(s, before, err, fmt.Sprintf("callback %d/%d", at, calls), func() { s.cb.calls, s.cb.failAt = 0, -1 })
+	}
+	return refusals, wantErr
+}
+
+func TestStage3RefusalIsNoOpFuzz(t *testing.T) {
+	set, set2 := reviewDiffSet(t, fzModule), reviewDiffSet(t, fzModule)
+	iters := 200
+	if raceEnabled {
+		iters = 40
+	}
+	if v := os.Getenv("YANG_STAGE3_FUZZ_ITERS"); v != "" {
+		n, err := strconv.Atoi(v)
+		if err != nil {
+			t.Fatal(err)
+		}
+		iters = n
+	}
+	base := uint64(0x3017)
+	if v := os.Getenv("YANG_STAGE3_FUZZ_SEED"); v != "" {
+		n, err := strconv.ParseUint(v, 0, 64)
+		if err != nil {
+			t.Fatal(err)
+		}
+		base = n
+	}
+	refusals, ran, failed, skipped := 0, map[string]int{}, map[string]int{}, map[string]int{}
+	for i := range iters {
+		seed := base + uint64(i)                        //nolint:gosec // nonnegative iteration
+		entry := fzEntries[seed%uint64(len(fzEntries))] // YANG_STAGE3_FUZZ_SEED=seed ITERS=1 repeats it
+		build := func() *fzScenario {
+			g := &fzGen{t: t, rng: rand.New(rand.NewPCG(0x301, seed)), set: set, set2: set2} //nolint:gosec // deterministic scenario
+			return g.scenario(entry)
+		}
+		n, wantErr := fzCheck(t, seed, build)
+		refusals += n
+		switch wantErr {
+		case "":
+			ran[entry]++
+		case "skipped":
+			skipped[entry]++
+		default:
+			failed[entry]++ // an unrefused failure (an argument or validation error): still swept
+		}
+	}
+	t.Logf("%d iterations from seed %#x, %d refusals; succeeding scenarios %v, failing %v, not applicable %v",
+		iters, base, refusals, ran, failed, skipped)
 }

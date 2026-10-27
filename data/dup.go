@@ -745,22 +745,26 @@ func (t *Tree) dupPublic(n, parent *Node, o DupOptions, siblings bool, fn string
 		return nil, nil, lg.done(&opError{"LY_EINVAL", fmt.Sprintf(
 			"Duplicating \"%s\" under \"%s\", which is not an instance of its schema parent (D-0124).", n.Path(), parent.Path())})
 	}
-	if err := t.preflightDupHash(n, parent, o, siblings); err != nil {
-		return nil, nil, err
-	}
-	if parent != nil {
-		if err := t.preflightInsertPosition(t.childrenOf(parent), n, insertDefault); err != nil {
-			return nil, nil, err
-		}
-	}
+	// Journal before the preflights: a destination switching lookup mode (markMixed) changes in
+	// insertPositionBound already. A refused preflight restores it (rollback).
 	journal := beginHashTransaction(t)
-	var d *Node
 	err := journal.captureDetachedParent(parent)
 	if err == nil {
-		t.dupLog = lg
-		d, err = t.dupNodes(n, parent, o.opts(), siblings)
-		t.dupLog = nil
+		err = t.preflightDupHash(n, parent, o, siblings)
 	}
+	if err == nil && parent != nil {
+		err = t.preflightInsertPosition(t.childrenOf(parent), n, insertDefault)
+	}
+	if err != nil {
+		if journal != nil {
+			journal.rollback = true
+		}
+		journal.end(&err)
+		return nil, nil, err
+	}
+	t.dupLog = lg
+	d, err := t.dupNodes(n, parent, o.opts(), siblings)
+	t.dupLog = nil
 	if t.work.hashErr != nil {
 		err = t.work.hashErr
 	}

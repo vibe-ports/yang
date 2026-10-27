@@ -271,17 +271,57 @@ checks that an exhausted adoption bound neither copies nor scans a 33-slot queue
 | `SetValue` | relocation through `linkOrigin`, values restored by hand | target bound to a fresh tree without a quota |
 | `ParseOp` with a parent | owner journal, or the parser tree's journal plus `captureDetachedParent` | detached parent |
 
-`captureDetachedParent` is the one boundary helper for a detached parent: it journals the
-parent's children, its own sibling set when it is a list instance (a key or keyless child
-changes its hash there) and every ancestor node (default flags, key slots), because the chain's
-counter has no journal of its own; a linked parent is a no-op there. `Merge`, `ApplyDiff`,
-`MergeDiff`, `TrimXPath` and `Validate` write only below their own linked tree.
-`TestStage3DetachedDestinationChainBudget` sweeps every hash-work limit of one-node `Insert`
-(linked and detached source), whole-forest `Insert`, `DupSiblings`, `NewTerm`, `NewList`,
-`NewOpaque` and `MergeDiffTree` into a default NP-container chain detached from a holder tree,
-fed from a third tree. It checks byte-identical destination, source and chain state after each
-refusal, then a retry. Without the `moveNodes` call, whole-forest insertion leaves the chain
-root's default flag cleared.
+**Journal invariant: every node a mutation can reach is under the active journal before it
+changes.** A linked node is reached through its tree's transaction: its sibling set's counter
+carries the journal, and `touch` captures lazily. A detached tree's counters carry none, so a
+lazy `touch` there records nothing. `captureDetachedParent` is therefore the one boundary helper
+for a detached destination or operation source. Before the first mutation it journals the whole
+detached tree that the parent belongs to: every node and sibling set reachable from its root,
+any payloads included. `captureSiblings` charges each set and its nodes before the walk enters
+them. This covers the chain's default flags, a list parent's hash in its own sibling set, and
+existing descendants that the operation reorders or replaces (a `MergeDiffTree` match at any
+depth). For a linked parent it does nothing. `Merge`, `ApplyDiff`, `MergeDiff`, `TrimXPath` and
+`Validate` write only below their own linked tree.
+
+`TestStage3DetachedDestinationChainBudget` sweeps every hash-work limit of the following:
+
+- one-node `Insert` (linked and detached source), whole-forest `Insert`, `DupSiblings`, `NewTerm`,
+  `NewList`, `NewOpaque` and `MergeDiffTree` into a default NP-container chain detached from a
+  holder tree, fed from a third tree;
+- `Insert`, whole-forest `Insert` and `DupSiblings` into a populated detached tree;
+- `Dup`, a key `NewTerm` and `NewOpaque` under a detached list instance still without its key;
+- a nested `MergeDiffTree` replacement in a detached diff, plus a callback budget error.
+
+After each refusal it requires byte-identical state, then retries. Before the whole-forest fix,
+`Insert` left the chain root's default flag cleared. Before the whole-tree capture, the callback
+refusal left the replaced value in place.
+
+`TestStage3RefusalIsNoOpFuzz` generalizes this. It covers random linked and detached, empty and
+populated trees (depth 1–4: keyed, keyless and user-ordered lists, leaf-lists, NP containers with
+defaults, leafref links, a second context for diffs and copies) under every public entry above,
+plus `Merge`, `ApplyDiff`, `MergeDiff`, `NewPath`, `SetValue`, `TrimXPath`, `Remove`/`Unlink`,
+`Validate`, `ValidateOp` and `ParseOp` with a linked or detached request. Each probe rebuilds the
+scenario from its seed and refuses it at a hash-work limit, an operation-parse node limit or a
+callback. It then compares every involved tree and detached root through
+`snapshotHashBudgetRoots` and retries. `YANG_STAGE3_FUZZ_ITERS`, `YANG_STAGE3_FUZZ_SEED` and
+`YANG_STAGE3_FUZZ_FULL=1` (every limit rather than a sample) control long runs.
+
+The fuzzer found two more instances of this class:
+
+- **Preflights entered the unordered lookup mode before any journal.** `markMixed` switches a
+  destination that receives another context, or a node of another schema parent, to unordered
+  lookups and materializes its first-instance records. `sortedLeaderIndex` did that in
+  preflights (`sortedStorageRefusalMode`, `preflightChangedReinsert`), so a refused Dup
+  into a detached list instance left the switch behind. `sortedLeaderIndex` is now read-only:
+  `mixedLeaderProbe` computes the leader the materialization would select. Existing records
+  precede appended ones, which follow logical run starts. The remaining preflight switches
+  (`insertPositionBound`, `preflightInsertAnchor`) run under a journal: Dup opens its journal
+  before its preflights, and one-node `Insert` and `insert` (New*, internal single insertions)
+  open one through `switchJournal` when the switch will happen. A set switches once, so the
+  capture is paid once per set. Any failure of such an insertion restores.
+- **A refused Merge panicked.** When recording a linked copy failed (`mergeAdded`), `flushMerge`
+  left the copy pending, and the error path flushed it again ("inserting a linked node"). A
+  linked copy now leaves the pending list before it is recorded.
 
 Every row orders its work as the rule above requires. The stabilization tests check refusal at
 every boundary followed by another mutation: `TestStage3FailureThenMutation` (move, remove, dup,

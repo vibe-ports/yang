@@ -1936,11 +1936,10 @@ func (t *Tree) flushMerge(lv *mergeLevel) error {
 		if err := t.insert(lv.parent, lv.pend[0], insertDefault); err != nil {
 			return err
 		}
-		if err := t.mergeAdded(lv.cache, lv.pend[0], lv.first[0]); err != nil {
-			return err
-		}
+		// Linked: no longer pending, even when recording it fails (an error flushes again).
+		d, first := lv.pend[0], lv.first[0]
 		lv.pend, lv.first = lv.pend[:0], lv.first[:0]
-		return nil
+		return t.mergeAdded(lv.cache, d, first)
 	}
 	sib := t.childrenOf(lv.parent)
 	if err := t.preflightSplice(lv.parent, sib, lv.pend); err != nil {
@@ -1949,6 +1948,7 @@ func (t *Tree) flushMerge(lv *mergeLevel) error {
 	// lyd_merge_sibling_r inserts each pending copy with lyd_insert_node: replay those RB
 	// insertions on a copy of the run's topology, then publish the run once. The copy is
 	// detached until everything is charged; the publication already walks the sibling slice.
+	t.switchMixed(sib, lv.pend[0])
 	lo := t.sortedLeaderIndex(sib, lv.pend[0]) // lyd_insert_node's leader (lyd_find_sibling_schema)
 	if lo < 0 {
 		return &opError{"LY_EINT", "Missing retained red-black topology for a system-ordered run."}
@@ -1969,12 +1969,13 @@ func (t *Tree) flushMerge(lv *mergeLevel) error {
 	if err := t.rbPublish(lv.parent, sib, lo, hi, group, order, lv.pend); err != nil {
 		return err
 	}
-	for i, d := range lv.pend {
-		if err := t.mergeAdded(lv.cache, d, lv.first[i]); err != nil {
+	pend, first := lv.pend, lv.first
+	lv.pend, lv.first = nil, nil // linked: no longer pending (an error flushes again)
+	for i, d := range pend {
+		if err := t.mergeAdded(lv.cache, d, first[i]); err != nil {
 			return err
 		}
 	}
-	lv.pend, lv.first = lv.pend[:0], lv.first[:0]
 	return nil
 }
 

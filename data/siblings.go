@@ -2373,3 +2373,23 @@ func compareDataStack(t *Tree, work *workCounter, stack []compareFrame) (bool, e
 	}
 	return true, nil
 }
+
+// mixedLeaderProbe is leaderFirstMixed(sn) as markUnordered's leaderMaterialize would leave it,
+// read-only: existing records precede every record it appends (leaderSeq grows), and it
+// appends each ordinary list or leaf-list run start in logical order.
+func (s *siblings) mixedLeaderProbe(sn *schema.Node) *Node {
+	if leader := s.leaderFirstMixed(sn); leader != nil {
+		return leader
+	}
+	var prev *schema.Node
+	for _, n := range s.logical().All() {
+		s.visit()
+		if n.schema != nil && n.schema != prev && !opChild(n.schema) &&
+			(n.schema.Kind == schema.List || n.schema.Kind == schema.LeafList) &&
+			s.leaderByNode[n] == nil && compareSchemaEqual(sn, n.schema, true) {
+			return n
+		}
+		prev = n.schema
+	}
+	return nil
+}

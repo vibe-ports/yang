@@ -105,13 +105,18 @@ func (t *Tree) Insert(parent, n *Node) error {
 		// refusal there does not stay sticky for the next one
 		defer s.work.beginHashWork()()
 	}
-	if err := joinLinkJournal(t, n); err != nil {
-		return lg.done(err)
+	// A destination switching lookup mode is journaled from its preflights on (switchJournal).
+	journal, err := t.switchJournal(parent, n)
+	if err == nil {
+		err = joinLinkJournal(t, n)
 	}
-	if parent != nil {
-		return lg.done(t.insertChild(parent, n))
+	if err == nil && parent != nil {
+		err = t.insertChild(parent, n)
+	} else if err == nil {
+		err = t.insertSibling(t.top.first(), n)
 	}
-	return lg.done(t.insertSibling(t.top.first(), n))
+	journal.end(&err)
+	return lg.done(err)
 }
 
 // intoItself refuses a destination at or inside what moves (D-0112): n's subtree, or every
@@ -904,6 +909,7 @@ func (t *Tree) merge(parent *Node, dst *siblings, run []*Node, state movedRunSta
 		}
 	}
 	// lyds_get_rb_tree of the matched destination leader selects nodes1, 2 or 3 (1701-1725)
+	t.switchMixed(dst, run[0])
 	lo := t.sortedLeaderIndex(dst, run[0]) // the leader lyd_move_nodes_by_schema passes lyds_merge
 	if lo < 0 {
 		t.work.hashErr = &opError{"LY_EINT", "Missing destination run of a merged system-ordered run."}
