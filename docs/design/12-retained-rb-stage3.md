@@ -246,12 +246,41 @@ append a moved slot after the receiver's own.** Path check against it:
   publishes `[slot 0, carried…]` ahead of any receiver metadata. `rbAdoptionBound` reserves
   that extra slot with the link.
 - Sorted insertion (`rbPos`): frees slot 0 only — `detachedRB` when present, otherwise
-  `carriedRB[0]`; the rest is adopted in order.
+  `carriedRB[0]` — and only after its last reservation; the rest is adopted in order.
 - Whole-run moves (`takeTree`/`give`, `lyd_unlink_ignore_lyds`) and `lyds_merge_nodes1/2/3`
   carry slots in `metaGroups` order; they never produce `detachedRB`.
 - Duplication copies every slot (slot 0 included) as an empty slot in order; free releases all.
 - Rollback (`rbMetadataOrigin`, journal `captureNode`) restores `detachedRB`/`carriedRB` and the
   owners' `metaGroups` as one snapshot, so no partial order survives a failed move.
+
+**Ordering rule: charge before work, reserve before mutation.** Every allocation, copy or
+scan sized by input is charged before it runs, and input or published state changes only after
+the last fallible reservation of its path, unless a journal or restorer covers that path (a
+single-node Insert of a detached node has neither). `TestStage3DetachedDuplicateInsertBudget`
+sweeps every hash-work boundary of such an insertion; `TestStage3AdoptionBoundChargesBeforeScan`
+checks that an exhausted adoption bound neither copies nor scans a 33-slot queue.
+
+### Mutation inventory against both invariants
+
+| Public entry | Failure contract | Detached inputs |
+|---|---|---|
+| `Insert` of one node (`insertChild`, `insertSibling`, `insertAfter`) | no journal of its own (a source journal is lent); `linkOrigin` restorer, armed after every preflight: topology, metadata, registrations and both endpoints of every reciprocal leafref link; `arm` rechecks the removal's reindex after its recovery charge; a refused `insert` returns the input's work binding | node; node under a detached parent (its counter gets the operation scope, and is restored with that parent's binding) |
+| `Insert` of a whole top level (`moveNodes`), `Merge`, `Dup`/`DupSiblings`, `ApplyDiff`, `MergeDiff`, `Validate*`, `ValidateOp` | journal on every tree involved; a detached destination parent (Dup) or operation source (ValidateOp) has its parent chain captured explicitly | copied or operation subtrees, detached destination parents |
+| `Remove`/`Unlink`, `TrimXPath` | preflight only (single), batch-local journal (bulk; a D-0121 refusal publishes the prefix) | root rebound to a fresh counter |
+| `New*`, `NewPath` | through `insert`; `NewPath` journals large or limited inputs | detached parent |
+| `SetValue` | relocation through `linkOrigin`, values restored by hand | target bound to a fresh tree |
+| `ParseOp` with a parent | owner journal, or the parser tree's journal plus the detached parent chain | detached parent |
+
+Every row orders its work as the rule above requires. The stabilization tests check refusal at
+every boundary followed by another mutation: `TestStage3FailureThenMutation` (move, remove, dup,
+merge, detached insert; both trees, hash records, metadata and reciprocal links, then retry plus
+a further insertion and removal equal to the unrefused history), `TestStage3DetachedOriginMoveBudget`,
+`TestStage3DetachedParentFailureThenMutation`, `TestStage3DupIntoDetachedParentBudget`,
+`TestStage3SetValueRelocationReindexBudget`, and
+`TestStage3RefusalCostIndependentOfInput`, which measures bytes and visits of refusals at the
+first unit for 8 versus 2,048 instances (a sweep over existing charge points cannot find a scan
+with none). Dup and Merge still walk the source once in main's read-only bound preflight before
+their first charge; that predates stage 3 and is measured but not asserted there.
 
 `TestStage3SingletonMetadataRoundTrip` and the native `singleton` probe check unlink → link into
 an empty tree → unlink → sorted reinsertion of a singleton with a populated slot 0 and 32 empty

@@ -754,9 +754,17 @@ func (t *Tree) dupPublic(n, parent *Node, o DupOptions, siblings bool, fn string
 		}
 	}
 	journal := beginHashTransaction(t)
-	t.dupLog = lg
-	d, err := t.dupNodes(n, parent, o.opts(), siblings)
-	t.dupLog = nil
+	var d *Node
+	var err error
+	if parent != nil && parent.treeOf() == nil {
+		// default flags of a detached parent's ancestors change through no journal of theirs
+		err = journal.captureDetachedParent(parent)
+	}
+	if err == nil {
+		t.dupLog = lg
+		d, err = t.dupNodes(n, parent, o.opts(), siblings)
+		t.dupLog = nil
+	}
 	if t.work.hashErr != nil {
 		err = t.work.hashErr
 	}

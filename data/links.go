@@ -9,6 +9,7 @@ package data
 import (
 	"context"
 	"errors"
+	"slices"
 
 	"github.com/vibe-ports/yang"
 	"github.com/vibe-ports/yang/internal/schema"
@@ -444,4 +445,56 @@ func (n *Node) LeafrefLinks() (leafrefs, targets []*Node) {
 		return nil, nil
 	}
 	return append([]*Node(nil), rec.leafrefs...), append([]*Node(nil), rec.targets...)
+}
+
+// linkOriginLinks saves the reciprocal leafref records that unlink's freeLinks(n) changes: n's
+// own and those of its direct counterparts (a counterpart left empty loses its record). The
+// copies are charged before they are made; the returned restore puts back every record pointer
+// and slice, in order, for a refused move.
+func linkOriginLinks(n *Node, w *workCounter) (func(), error) {
+	rec := n.links
+	if rec == nil {
+		return func() {}, nil
+	}
+	if err := w.chargeHash(2 + uint64(len(rec.leafrefs)+len(rec.targets))); err != nil {
+		return nil, err
+	}
+	var size uint64
+	for _, side := range [2][]*Node{rec.leafrefs, rec.targets} {
+		for _, c := range side {
+			if c.links != nil {
+				size = addHashBound(size, 1+uint64(len(c.links.leafrefs)+len(c.links.targets)))
+			}
+		}
+	}
+	if err := w.chargeHash(size); err != nil {
+		return nil, err
+	}
+	type saved struct {
+		node              *Node
+		rec               *leafrefLinks
+		leafrefs, targets []*Node
+	}
+	all := make([]saved, 0, 1+len(rec.leafrefs)+len(rec.targets))
+	save := func(c *Node) {
+		s := saved{node: c, rec: c.links}
+		if c.links != nil {
+			s.leafrefs, s.targets = slices.Clone(c.links.leafrefs), slices.Clone(c.links.targets)
+		}
+		all = append(all, s)
+	}
+	save(n)
+	for _, side := range [2][]*Node{rec.leafrefs, rec.targets} {
+		for _, c := range side {
+			save(c)
+		}
+	}
+	return func() {
+		for _, s := range all {
+			s.node.links = s.rec
+			if s.rec != nil {
+				s.rec.leafrefs, s.rec.targets = s.leafrefs, s.targets
+			}
+		}
+	}, nil
 }

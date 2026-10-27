@@ -100,6 +100,10 @@ func (t *Tree) Insert(parent, n *Node) error {
 	}
 	if source := n.treeOf(); source != nil && source != t {
 		defer source.work.beginHashWork()()
+	} else if s := n.siblingsOf(); source == nil && s != nil && s.work != nil && s.work != &t.work {
+		// a detached parent's counter is the origin's: this operation is its scope too, so a
+		// refusal there does not stay sticky for the next one
+		defer s.work.beginHashWork()()
 	}
 	if err := joinLinkJournal(t, n); err != nil {
 		return lg.done(err)
@@ -174,6 +178,9 @@ func (t *Tree) insertChild(parent, n *Node) error {
 		unlinkSource = unlinkRetainingHistory
 	}
 	if err := unlinkSource(n); err != nil {
+		if n.parent == nil && n.tree == nil {
+			restore() // a sticky error after the removal (unlink's contract): no journal here
+		}
 		return err
 	}
 	err = t.insert(parent, n, insertDefault)
@@ -342,6 +349,8 @@ func (t *Tree) linkOrigin(n *Node) (restore func(), arm func() error, err error)
 	}
 	owner, parent := n.treeOf(), n.parent
 	gen := sib.gen
+	detachedOrigin := owner == nil
+	originWork, subtreeWork := sib.work, childStorage(n).work
 	if owner == nil {
 		owner = t // a subtree under a detached parent
 	}
@@ -392,8 +401,9 @@ func (t *Tree) linkOrigin(n *Node) (restore func(), arm func() error, err error)
 	undo := func() {}
 	metaUndo := func() {}
 	recordUndo := func() {}
+	linksUndo := func() {}
 	var recovery uint64
-	arm = func() error {
+	armOrigin := func() error {
 		plan, err := prepareUnlink(n)
 		if err != nil {
 			return err
@@ -413,6 +423,9 @@ func (t *Tree) linkOrigin(n *Node) (restore func(), arm func() error, err error)
 		}
 		metaUndo, err = rbMetadataOrigin(sib, n, next, &t.work)
 		if err != nil {
+			return err
+		}
+		if linksUndo, err = linkOriginLinks(n, &t.work); err != nil {
 			return err
 		}
 		cost, err := owner.linkBound(parent, sib, n, at)
@@ -495,6 +508,14 @@ func (t *Tree) linkOrigin(n *Node) (restore func(), arm func() error, err error)
 		}
 		return nil
 	}
+	arm = func() error {
+		if err := armOrigin(); err != nil {
+			return err
+		}
+		// The recovery reservation spends the same quota: recheck the removal's parent-list
+		// reindex (preflightUnlink, its plan cached) so unlink cannot fail after the removal.
+		return preflightUnlink(n)
+	}
 	restore = func() {
 		if n.siblingsOf() == nil {
 			if err := n.touch(); err != nil {
@@ -503,6 +524,13 @@ func (t *Tree) linkOrigin(n *Node) (restore func(), arm func() error, err error)
 			n.inRB = inRB
 			n.rbGroup = group
 			owner.restoreLink(parent, n, at, recovery)
+			if detachedOrigin && t.work.journal == nil {
+				// restoreLink bound the detached origin to t; give it its own counter back
+				unbindSubtreeWork(n, &t.work, subtreeWork)
+				if sib.work == &t.work {
+					sib.setWork(originWork)
+				}
+			}
 			sib.gen = gen
 			undo()
 			metaUndo()
@@ -517,6 +545,7 @@ func (t *Tree) linkOrigin(n *Node) (restore func(), arm func() error, err error)
 				delete(sib.unsorted, leader)
 			}
 			recordUndo()
+			linksUndo() // unlink's freeLinks: both endpoints of every reciprocal link
 		}
 	}
 	return restore, arm, nil

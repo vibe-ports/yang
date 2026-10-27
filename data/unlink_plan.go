@@ -74,6 +74,9 @@ func prepareUnlink(n *Node) (*unlinkPlan, error) {
 			amount = addHashBound(amount, order.removalBound())
 		}
 		amount = addHashBound(amount, sib.transferCost(leader, next))
+		if leader != n {
+			amount = addHashBound(amount, 4*(uint64(len(sib.rbMore[leader]))+1)) // compactMeta(leader)
+		}
 	}
 	if err := w.chargeHash(amount); err != nil {
 		return nil, err

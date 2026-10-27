@@ -42,10 +42,11 @@ func (t *Tree) preflightChangedReinsert(term, target *Node, value types.Value) e
 		if lo < 0 {
 			return t.work.hashErr
 		}
-		hi := t.retainedRunEnd(sib, lo)
-		if err := t.work.chargeHash(uint64(hi-lo) + 1); err != nil { //nolint:gosec // bounded slice length
+		// the run scan and its rbAdd slots, charged before the scan
+		if err := t.work.chargeHash(uint64(sib.SchemaLen()-lo) + 1); err != nil { //nolint:gosec // bounded slice length
 			return err
 		}
+		hi := t.retainedRunEnd(sib, lo)
 		d = &dirtyOrder{}
 		for _, member := range sib.schemaSpan().Slice(lo, hi).All() {
 			if member == target {

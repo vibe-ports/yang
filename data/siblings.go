@@ -469,6 +469,9 @@ func (s *siblings) removeRBNode(n, prev, next, tail *Node, around func(*Node) (*
 			if order.nodes[n] != nil {
 				cost = addHashBound(cost, order.removalBound())
 			}
+			if leader != n {
+				cost = addHashBound(cost, 4*(uint64(len(s.rbMore[leader]))+1)) // compactMeta(leader)
+			}
 			if err := s.work.chargeHash(cost); err != nil {
 				return err
 			}

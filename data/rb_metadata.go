@@ -9,12 +9,12 @@ import "slices"
 // rbAdoptionBound includes the empty metadata that unlink will leave on a linked source.
 // It is reserved with the link, before physical publication can make adoption fail late.
 func rbAdoptionBound(s *siblings, n *Node, w *workCounter) (uint64, error) {
-	carried := n.carriedRB
-	if n.detachedRB != nil && len(carried) > 0 {
-		// link hands slot 0 to adoptCarried ahead of the carried secondary slots
-		carried = append([]rbCarry{{n.detachedGroup, n.detachedRB}}, carried...)
+	carried := uint64(len(n.carriedRB))
+	head := n.detachedRB != nil && carried > 0 // link hands slot 0 to adoptCarried first
+	slots := carried
+	if head {
+		slots++
 	}
-	slots := uint64(len(carried))
 	if from := n.siblingsOf(); from != nil && from.rbGroups[n] != nil {
 		slots += 1 + uint64(len(from.rbMore[n]))
 		if from.rbTree[n] {
@@ -25,16 +25,34 @@ func rbAdoptionBound(s *siblings, n *Node, w *workCounter) (uint64, error) {
 		return 0, nil
 	}
 	bound := 3*slots + 4*uint64(len(s.rbMore[n])) + 8
-	for _, c := range carried {
-		if w.forestMove {
-			continue
+	if w.forestMove || carried == 0 {
+		return bound, nil
+	}
+	// The carried queue is scanned below: charge that traversal before reading it.
+	if err := w.chargeHash(carried + 1); err != nil {
+		return 0, err
+	}
+	add := func(order *dirtyOrder) error {
+		if w.visits {
+			w.Add(1)
 		}
-		if err := w.chargeHash(uint64(len(c.order.nodes))); err != nil {
+		if err := w.chargeHash(uint64(len(order.nodes))); err != nil {
+			return err
+		}
+		bound = addHashBound(bound, 2*uint64(len(order.nodes)))
+		for member := range order.nodes {
+			bound = addHashBound(bound, uint64(len(s.rbDual[member]))+1)
+		}
+		return nil
+	}
+	if head {
+		if err := add(n.detachedRB); err != nil {
 			return 0, err
 		}
-		bound = addHashBound(bound, 2*uint64(len(c.order.nodes)))
-		for member := range c.order.nodes {
-			bound = addHashBound(bound, uint64(len(s.rbDual[member]))+1)
+	}
+	for _, c := range n.carriedRB {
+		if err := add(c.order); err != nil {
+			return 0, err
 		}
 	}
 	return bound, nil

@@ -1263,24 +1263,26 @@ func TestStage3DetachedReplyBudgetCleanup(t *testing.T) {
 	}
 }
 
-// stage3SingletonRoundTrip mirrors the native "singleton" probe: a copy of a many-slot owner
-// becomes a singleton whose first metadata slot is populated and whose secondary slots are
-// empty; it is unlinked, linked into an empty tree, unlinked again and reinserted sorted.
-// It returns the probe's output lines.
-func stage3SingletonRoundTrip(t *testing.T, set *schema.Set) string {
+// stage3AddList adds the stage3-extra list instance key at the top of tr.
+func stage3AddList(t *testing.T, tr *Tree, key string) *Node {
 	t.Helper()
-	add := func(tr *Tree, key string) *Node {
-		t.Helper()
-		n, err := tr.NewList(nil, "stage3-extra:l", []string{key}, NewOptions{})
-		if err != nil {
-			t.Fatal(err)
-		}
-		return n
+	n, err := tr.NewList(nil, "stage3-extra:l", []string{key}, NewOptions{})
+	if err != nil {
+		t.Fatal(err)
 	}
+	return n
+}
+
+// stage3DetachedSingleton returns a NoSort copy of a sorted-run leader that has gone through
+// rounds whole-run duplications (rounds+1 metadata slots), linked alone at the top of its own
+// tree: its first slot is the populated singleton tree, the others are empty.
+func stage3DetachedSingleton(t *testing.T, set *schema.Set, rounds int) *Node {
+	t.Helper()
+	add := func(tr *Tree, key string) *Node { return stage3AddList(t, tr, key) }
 	src := newTree(set)
 	add(src, "3")
 	add(src, "11")
-	for range 32 {
+	for range rounds {
 		dst := newTree(set)
 		if _, _, err := dst.Dup(src.top.first(), nil, DupOptions{Recursive: true, NoSort: true}); err != nil {
 			t.Fatal(err)
@@ -1299,7 +1301,18 @@ func stage3SingletonRoundTrip(t *testing.T, set *schema.Set) string {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := add(holder, "20").Remove(); err != nil {
+	return d
+}
+
+// stage3SingletonRoundTrip mirrors the native "singleton" probe: a copy of a many-slot owner
+// becomes a singleton whose first metadata slot is populated and whose secondary slots are
+// empty; it is unlinked, linked into an empty tree, unlinked again and reinserted sorted.
+// It returns the probe's output lines.
+func stage3SingletonRoundTrip(t *testing.T, set *schema.Set) string {
+	t.Helper()
+	add := func(tr *Tree, key string) *Node { return stage3AddList(t, tr, key) }
+	d := stage3DetachedSingleton(t, set, 32)
+	if err := add(d.tree, "20").Remove(); err != nil {
 		t.Fatal(err)
 	}
 	var got strings.Builder
@@ -1344,9 +1357,7 @@ func stage3SingletonRoundTrip(t *testing.T, set *schema.Set) string {
 // secondary slots through an unlink/link/unlink round trip, and a sorted reinsertion frees only
 // the first slot (lyds_insert). Expected output is the native probe's (TestStage3NativeMetadataMoves/singleton).
 func TestStage3SingletonMetadataRoundTrip(t *testing.T) {
-	set := reviewDiffSet(t, `module stage3-extra {yang-version 1.1;namespace "urn:stage3-extra";prefix s;
- list l {key k;leaf k {type uint32;}leaf p {type string;}action act {input {leaf x {type string;}}}}
- container c {list l {key k;leaf k {type uint32;}}}}`)
+	set := reviewDiffSet(t, stage3ExtraModule)
 	want := `unlinked-slots=33
 unlinked-slots=33
 slots=32
@@ -1376,7 +1387,7 @@ func TestStage3DetachedReplyHashBudgetCleanup(t *testing.T) {
 	} {
 		_, op := opIndexParseRPC(t, set, `{"m:r":{"i":"x"}}`)
 		mustLink(t, unlink(op))
-		before := op.kids.Len()
+		before, flags := op.kids.Len(), op.flags
 		_, _, _, _, err := parseOpWith(context.Background(), strings.NewReader(tc.reply), set, tc.f, opReply, op, Reject, Budget{})
 		if !errors.Is(err, yang.ErrBudget) || !strings.Contains(err.Error(), "stored-hash") {
 			t.Fatalf("format %v: %v", tc.f, err)
@@ -1384,5 +1395,122 @@ func TestStage3DetachedReplyHashBudgetCleanup(t *testing.T) {
 		if got := op.kids.Len(); got != before {
 			t.Fatalf("format %v: failed reply left %d children under the detached request, want %d", tc.f, got, before)
 		}
+		if op.flags != flags {
+			t.Fatalf("format %v: failed reply changed the detached request's flags %#x -> %#x", tc.f, flags, op.flags)
+		}
+	}
+}
+
+const stage3ExtraModule = `module stage3-extra {yang-version 1.1;namespace "urn:stage3-extra";prefix s;
+ list l {key k;leaf k {type uint32;}leaf p {type string;}action act {input {leaf x {type string;}}}}
+ container c {list l {key k;leaf k {type uint32;}}}}`
+
+// TestStage3DetachedDuplicateInsertBudget sweeps every hash-work boundary of a sorted insertion
+// of an already-detached NoSort duplicate (carried empty slots only, and a populated detached
+// slot 0 ahead of them). A refused Insert opens no journal and has no restorer for a detached
+// node, so it must leave the node's metadata and work binding untouched; a retry then frees
+// exactly slot 0.
+func TestStage3DetachedDuplicateInsertBudget(t *testing.T) {
+	set := reviewDiffSet(t, stage3ExtraModule)
+	for _, populated := range []bool{false, true} {
+		build := func() (*Tree, *Node) {
+			d := stage3DetachedSingleton(t, set, 1)
+			if populated {
+				if err := stage3AddList(t, d.tree, "20").Remove(); err != nil {
+					t.Fatal(err)
+				}
+			}
+			if err := d.Unlink(); err != nil {
+				t.Fatal(err)
+			}
+			dst := newTree(set)
+			for _, key := range []string{"1", "2", "5"} {
+				stage3AddList(t, dst, key)
+			}
+			return dst, d
+		}
+		slots := func(d *Node) int {
+			if d.detachedRB != nil {
+				return len(d.carriedRB) + 1
+			}
+			return len(d.carriedRB)
+		}
+		full, d := build()
+		want := slots(d) - 1
+		if want < 1 || populated != (d.detachedRB != nil) {
+			t.Fatalf("populated=%v: setup has %d slots, detached %v", populated, slots(d), d.detachedRB != nil)
+		}
+		if err := full.Insert(nil, d); err != nil {
+			t.Fatal(err)
+		}
+		need := full.work.hashUsed
+		if got := len(full.top.metaGroups(d)); got != want {
+			t.Fatalf("populated=%v: unlimited insertion kept %d slots, want %d", populated, got, want)
+		}
+		for limit := uint64(1); limit < need; limit++ {
+			dst, d := build()
+			carried, detached, bound := slices.Clone(d.carriedRB), d.detachedRB, d.kids.work
+			dst.work.hashLimit = limit
+			if err := dst.Insert(nil, d); !errors.Is(err, yang.ErrBudget) {
+				t.Fatalf("populated=%v limit %d/%d: %v, want ErrBudget", populated, limit, need, err)
+			}
+			if d.parent != nil || d.tree != nil || !slices.Equal(d.carriedRB, carried) || d.detachedRB != detached {
+				t.Fatalf("populated=%v limit %d/%d: refused insertion changed the detached node's metadata", populated, limit, need)
+			}
+			if d.kids.work != bound {
+				t.Fatalf("populated=%v limit %d/%d: refused insertion kept the input bound to the destination", populated, limit, need)
+			}
+			checkTreeRetainedRB(t, dst)
+			dst.work.hashLimit = 0
+			if err := dst.Insert(nil, d); err != nil {
+				t.Fatalf("populated=%v limit %d: retry: %v", populated, limit, err)
+			}
+			if got := len(dst.top.metaGroups(d)); got != want {
+				t.Fatalf("populated=%v limit %d: retry kept %d slots, want %d", populated, limit, got, want)
+			}
+			checkTreeRetainedRB(t, dst)
+		}
+	}
+}
+
+// TestStage3AdoptionBoundChargesBeforeScan: refused by a low quota, the adoption bound of a
+// detached singleton with a long metadata queue visits none of its slots (counted visits, with
+// an unlimited control visiting all of them); with the quota already exhausted it allocates
+// nothing.
+func TestStage3AdoptionBoundChargesBeforeScan(t *testing.T) {
+	set := reviewDiffSet(t, stage3ExtraModule)
+	d := stage3DetachedSingleton(t, set, 32)
+	if err := stage3AddList(t, d.tree, "20").Remove(); err != nil {
+		t.Fatal(err)
+	}
+	if err := d.Unlink(); err != nil {
+		t.Fatal(err)
+	}
+	if d.detachedRB == nil || len(d.carriedRB) < 32 {
+		t.Fatalf("setup: detached %v, %d carried slots", d.detachedRB != nil, len(d.carriedRB))
+	}
+	dst := newTree(set)
+	stage3AddList(t, dst, "1")
+	// control: an unlimited bound visits every slot of the queue
+	control := &workCounter{visits: true}
+	if _, err := rbAdoptionBound(&dst.top, d, control); err != nil || control.Load() != int64(len(d.carriedRB)+1) {
+		t.Fatalf("control: %v, %d slot visits for %d slots", err, control.Load(), len(d.carriedRB)+1)
+	}
+	w := &workCounter{hashLimit: 1, visits: true}
+	if _, err := rbAdoptionBound(&dst.top, d, w); !errors.Is(err, yang.ErrBudget) {
+		t.Fatalf("low quota: %v, want ErrBudget", err)
+	}
+	if w.hashUsed > 1 || w.Load() != 0 {
+		t.Fatalf("refused bound spent %d units after %d slot visits", w.hashUsed, w.Load())
+	}
+	exhausted := w.hashErr
+	allocs := testing.AllocsPerRun(100, func() {
+		w.hashUsed, w.hashErr = 0, exhausted
+		if _, err := rbAdoptionBound(&dst.top, d, w); err == nil {
+			t.Fatal("exhausted quota accepted")
+		}
+	})
+	if allocs != 0 {
+		t.Fatalf("exhausted adoption bound allocated %v times", allocs)
 	}
 }

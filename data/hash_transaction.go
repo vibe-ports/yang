@@ -250,6 +250,23 @@ func (s *siblings) rebind(work *workCounter) error {
 	return nil
 }
 
+// captureDetachedParent journals the children of a detached parent and its ancestor chain, which
+// changes under it (default flags, key slots) reach through no journal: their counter has none.
+func (j *hashTransaction) captureDetachedParent(parent *Node) error {
+	if j == nil || parent == nil {
+		return nil
+	}
+	if err := j.captureSiblings(childStorage(parent)); err != nil {
+		return err
+	}
+	for p := parent; p != nil; p = p.parent {
+		if err := j.captureNode(p); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // captureNode journals n itself, not its children: its sibling set is journaled on its own.
 func (j *hashTransaction) captureNode(n *Node) error {
 	if _, exists := j.nodes[n]; exists {

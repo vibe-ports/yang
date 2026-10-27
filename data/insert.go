@@ -669,17 +669,12 @@ func (t *Tree) rbAdd(d *dirtyOrder, n *Node, compare func(*Node, *Node) (int, bo
 // reserved before the run is reordered or the topology changes. It returns where link puts n;
 // false means a refused comparison (t.work.hashErr is set when the quota refused it).
 func (t *Tree) rbPos(sib *siblings, n *Node, lo, hi int, compare func(*Node, *Node) (int, bool)) (int, bool) {
-	// lyds_insert frees only the incoming first metadata slot: detachedRB when present
-	// (cleared below), otherwise the first carried one.
-	if n.detachedRB == nil && len(n.carriedRB) > 0 {
-		if len(n.carriedRB[0].order.nodes) > 1 {
-			t.work.hashErr = rbUnlinkError(n)
-			return lo, false
-		}
-		if err := n.touch(); err != nil {
-			return lo, false
-		}
-		n.carriedRB = n.carriedRB[1:]
+	// lyds_insert frees only the incoming first metadata slot: detachedRB when present,
+	// otherwise the first carried one. Both are dropped below, after every reservation, so a
+	// refused insertion leaves the (possibly detached, unjournaled) node unchanged.
+	if n.detachedRB == nil && len(n.carriedRB) > 0 && len(n.carriedRB[0].order.nodes) > 1 {
+		t.work.hashErr = rbUnlinkError(n)
+		return lo, false
 	}
 	l := sib.schemaSpan()
 	leader := l.At(lo)
@@ -814,7 +809,11 @@ func (t *Tree) rbPos(sib *siblings, n *Node, lo, hi int, compare func(*Node, *No
 	if err := n.touch(); err != nil {
 		return lo, false
 	}
-	n.detachedRB, n.detachedGroup = nil, nil // lyds_insert frees the incoming singleton metadata
+	// lyds_insert frees the incoming first metadata slot (design 12, metadata slot order)
+	if n.detachedRB == nil && len(n.carriedRB) > 0 {
+		n.carriedRB = n.carriedRB[1:]
+	}
+	n.detachedRB, n.detachedGroup = nil, nil
 	if err := sib.promoteRB(n, group, &t.work); err != nil {
 		return lo, false
 	}
@@ -1468,7 +1467,7 @@ func markUnsorted(sib *siblings, leader *Node) {
 
 // insert is lyd_insert_node: link the unlinked node n under parent (nil: the top level of t).
 // A list instance must have all its keys (libyang links it into its parent only then).
-func (t *Tree) insert(parent, n *Node, order insertOrder) error {
+func (t *Tree) insert(parent, n *Node, order insertOrder) (err error) {
 	if n.parent != nil || n.tree != nil {
 		panic("data: inserting a linked node") // native insertion requires an alone node
 	}
@@ -1481,9 +1480,16 @@ func (t *Tree) insert(parent, n *Node, order insertOrder) error {
 	if err := t.reserveHash(bound); err != nil {
 		return err
 	}
+	old := childStorage(n).work
 	if err := bindSubtreeWork(n, &t.work); err != nil {
 		return err
 	}
+	defer func() {
+		// A refused insertion without a journal gives the still-detached input its binding back.
+		if err != nil && old != &t.work && t.work.journal == nil && n.parent == nil && n.tree == nil {
+			unbindSubtreeWork(n, &t.work, old)
+		}
+	}()
 	sib := t.childrenOf(parent)
 	if err := t.preflightInsertPosition(sib, n, order); err != nil {
 		return err
@@ -1993,6 +1999,23 @@ func bindSubtreeWork(root *Node, work *workCounter) error {
 		stack = sib.opaqueSpan().AppendTo(stack)
 	}
 	return nil
+}
+
+// unbindSubtreeWork undoes bindSubtreeWork(root, from) for a refused insertion with no journal.
+// It revisits only the sets that binding charged for.
+func unbindSubtreeWork(root *Node, from, to *workCounter) {
+	stack := []*Node{root}
+	for len(stack) != 0 {
+		n := stack[len(stack)-1]
+		stack = stack[:len(stack)-1]
+		sib := childStorage(n)
+		if sib.work != from {
+			continue
+		}
+		sib.setWork(to)
+		stack = sib.schemaSpan().AppendTo(stack)
+		stack = sib.opaqueSpan().AppendTo(stack)
+	}
 }
 
 func childStorage(n *Node) *siblings {
