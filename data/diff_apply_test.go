@@ -6,6 +6,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"slices"
 	"testing"
 
 	"github.com/vibe-ports/yang/internal/compile"
@@ -450,3 +451,37 @@ func TestMergeDiffTreeDetachedParent(t *testing.T) {
 }
 
 func topOf(t *Tree) *Node { return t.top.first() }
+
+// TestApplyDiffRepeatedRoots ensures that an apply index stays live when later
+// diff roots revisit siblings after deletes and creates, including duplicate singleton data.
+func TestApplyDiffRepeatedRoots(t *testing.T) {
+	set1 := corpusSet(t, []string{"../conformance/corpus/ut-diff/schemas"}, []string{"diff-cross-context"})
+	target := parseOnlyXML(t, set1, `<top xmlns="urn:vibe-ports:yang:diff-cross-context"><x><x><a>first</a><a>second</a></x></x></top>`)
+	wrap := func(children string) string {
+		return `<top xmlns="urn:vibe-ports:yang:diff-cross-context" xmlns:yang="urn:ietf:params:xml:ns:yang:1" yang:operation="none"><x><x>` + children + `</x></x></top>`
+	}
+	diff := parseOnlyXML(t, set1,
+		wrap(`<a yang:operation="delete">first</a><b yang:operation="create">created</b>`)+
+			wrap(`<a yang:operation="replace">updated</a><b yang:operation="replace">changed</b>`)+
+			wrap(`<a yang:operation="delete">updated</a><b yang:operation="delete">changed</b>`)+
+			wrap(`<a yang:operation="replace">missing</a>`))
+	var seen []string
+	err := target.ApplyDiff(diff, ApplyDiffOptions{Callback: func(_, n *Node) error {
+		if n.isTerm() {
+			seen = append(seen, n.Name()+"="+n.value.Canonical())
+		}
+		return nil
+	}})
+	var ve *ValidationError
+	// The diff and data share a context, so LOGERR_NOINST is visible (diff.c:1808).
+	if !errors.As(err, &ve) || ve.RC() != "LY_EINVAL" || len(ve.Diags) != 1 {
+		t.Fatalf("ApplyDiff: %#v", err)
+	}
+	if want := []string{"b=created", "a=updated", "b=changed"}; !slices.Equal(seen, want) {
+		t.Fatalf("applied terms = %v, want %v", seen, want)
+	}
+	want := parseOnlyXML(t, set1, `<top xmlns="urn:vibe-ports:yang:diff-cross-context"><x><x/></x></top>`)
+	if got, want := dumpTree(target), dumpTree(want); !slices.Equal(got, want) {
+		t.Fatalf("partial tree = %v, want %v", got, want)
+	}
+}
