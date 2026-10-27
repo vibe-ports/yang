@@ -108,6 +108,9 @@ func s4Check(t *testing.T, where string, trees []*Tree) {
 			}
 			for n := range s.all() {
 				stack = append(stack, &n.kids)
+				if n.any != nil {
+					stack = append(stack, &n.any.children) // payload sibling containers
+				}
 			}
 		}
 	}
@@ -118,6 +121,9 @@ type s4Scenario struct {
 	// build returns fresh trees, the operation, and the further mutation run after it.
 	build   func(t *testing.T) (trees []*Tree, op func() error, further func() error)
 	limited []int // trees whose budget refuses the operation: both owners of a move
+	// detached returns roots of the last build that belong to no returned tree (a detached
+	// source); a refusal must leave them unchanged too.
+	detached func() []*Node
 }
 
 // s4History runs one scenario's refusal histories against its two references.
@@ -172,6 +178,12 @@ func s4History(t *testing.T, sc s4Scenario, limited int) {
 			for i, tr := range trees {
 				before[i] = snapshotHashBudgetTree(tr)
 			}
+			var roots []*Node
+			if sc.detached != nil {
+				roots = sc.detached()
+			}
+			beforeDetached := hashBudgetSnapshot{index: map[*Node]string{}, sibs: map[*siblings]string{}}
+			snapshotHashBudgetRoots(&beforeDetached, roots)
 			trees[limited].work.hashLimit = limit
 			err := op()
 			trees[limited].work.hashLimit = 0
@@ -188,6 +200,11 @@ func s4History(t *testing.T, sc s4Scenario, limited int) {
 					if !reflect.DeepEqual(snapshotHashBudgetTree(tr), before[i]) {
 						t.Fatalf("limit %d/%d: refusal changed tree %d", limit, need, i)
 					}
+				}
+				afterDetached := hashBudgetSnapshot{index: map[*Node]string{}, sibs: map[*siblings]string{}}
+				snapshotHashBudgetRoots(&afterDetached, roots)
+				if !reflect.DeepEqual(afterDetached, beforeDetached) {
+					t.Fatalf("limit %d/%d: refusal changed a detached source", limit, need)
 				}
 				s4Check(t, fmt.Sprintf("limit %d: after refusal", limit), trees)
 				if retry {
@@ -259,6 +276,7 @@ func TestS4JournalRefusalHistories(t *testing.T) {
 			return nil
 		}
 	}
+	var lastDetached *Node
 	scenarios := []s4Scenario{
 		{name: "data/insert-list", limited: []int{0}, build: func(t *testing.T) ([]*Tree, func() error, func() error) {
 			tr := s4DataTree(t, set, keys...)
@@ -293,9 +311,10 @@ func TestS4JournalRefusalHistories(t *testing.T) {
 			}
 			return []*Tree{dst, src}, func() error { return dst.Insert(dst.top.first(), n) }, furtherData(dst, src)
 		}},
-		{name: "data/move-detached", limited: []int{0}, build: func(t *testing.T) ([]*Tree, func() error, func() error) {
+		{name: "data/move-detached", limited: []int{0}, detached: func() []*Node { return []*Node{lastDetached} }, build: func(t *testing.T) ([]*Tree, func() error, func() error) {
 			dst, src := s4DataTree(t, set, keys...), s4DataTree(t, set, "1", "5", "9", "13", "17")
 			n := s4Child(src.top.first(), "l", "13")
+			lastDetached = n
 			if err := n.Unlink(); err != nil {
 				t.Fatal(err)
 			}
