@@ -1007,7 +1007,8 @@ type fzGen struct {
 	t         *testing.T
 	rng       *rand.Rand
 	set, set2 *schema.Set
-	pad       int // extra instances in every wide sibling set (refusal cost checks)
+	mixed     *schema.Set // fzModule with a system-ordered ull (an equivalent schema, other ordering)
+	pad       int         // extra instances in every wide sibling set (refusal cost checks)
 }
 
 // fzPadded reports a padding instance, which no scenario picks.
@@ -1452,6 +1453,25 @@ func (g *fzGen) scenario(entry string) *fzScenario {
 	case "remove", "unlink":
 		dst := linked(1 + g.rng.IntN(2))
 		n := nonKey(dst, false)
+		if g.rng.IntN(2) == 0 {
+			// A system-ordered ull of the mixed set builds a retained tree over the user-ordered
+			// run; native unlink of a member skips RB removal and is refused (D-0121).
+			top := dst.top.first()
+			sn := retainedRBTopNamed(g.t, g.mixed, "top").Children
+			i := slices.IndexFunc(sn, func(c *schema.Node) bool { return c.Name == "ull" })
+			if err := dst.insert(top, retainedRBTerm(g.t, sn[i], "m"), insertDefault); err != nil {
+				g.t.Fatal(err)
+			}
+			var members []*Node
+			for c := range top.Children() {
+				if c.schema.Name == "ull" && c.schema.UserOrdered && !fzPadded(c) {
+					members = append(members, c)
+				}
+			}
+			if len(members) > 0 {
+				n = fzPick(g, members)
+			}
+		}
 		if n == nil {
 			return nil
 		}
@@ -1965,6 +1985,7 @@ func fzCost(t *testing.T, fail func(string, ...any), entry string, phase int, bu
 
 func TestStage3RefusalIsNoOpFuzz(t *testing.T) {
 	set, set2 := reviewDiffSet(t, fzModule), reviewDiffSet(t, fzModule)
+	mixed := reviewDiffSet(t, strings.Replace(fzModule, "leaf-list ull {type string; ordered-by user;}", "leaf-list ull {type string;}", 1))
 	iters := 200
 	if raceEnabled {
 		iters = 4
@@ -1992,7 +2013,7 @@ func TestStage3RefusalIsNoOpFuzz(t *testing.T) {
 			entry = only // every seed builds this entry's scenario
 		}
 		build := func(pad int) *fzScenario {
-			g := &fzGen{t: t, rng: rand.New(rand.NewPCG(0x301, seed)), set: set, set2: set2, pad: pad} //nolint:gosec // deterministic scenario
+			g := &fzGen{t: t, rng: rand.New(rand.NewPCG(0x301, seed)), set: set, set2: set2, mixed: mixed, pad: pad} //nolint:gosec // deterministic scenario
 			return g.scenario(entry)
 		}
 		n, wantErr := fzCheck(t, seed, build)

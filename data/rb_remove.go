@@ -126,17 +126,29 @@ func rbUnlinkError(n *Node) error {
 // removalOrder selects lyd_unlink's leader, rather than a cached membership group. prev is the
 // current physical predecessor (nil at the head). Bulk removals supply their intermediate links.
 func (s *siblings) removalOrder(n, prev, next, tail *Node, around func(*Node) (*Node, *Node)) (*dirtyOrder, *Node, error) {
+	w := s.work
+	if w == nil {
+		w = &workCounter{}
+	}
 	if !sortedSupported(n) {
-		if g := s.rbGroups[n]; g != nil {
+		// Native lyd_unlink skips lyds_unlink for this node (a user-ordered or keyless instance
+		// can still be a member of a tree built by an equivalent foreign system-ordered schema):
+		// any retained tree holding it or owned by it would keep a detached reference (D-0121).
+		if err := w.chargeHash(uint64(len(s.rbMore[n]))); err != nil {
+			return nil, nil, err
+		}
+		if len(s.rbDual[n]) != 0 || n.inRB && s.rbOrders[n.rbGroup] != nil {
+			return nil, nil, rbUnlinkError(n)
+		}
+		if d := s.rbOrders[s.rbGroups[n]]; d != nil && d.root != nil {
+			return nil, nil, rbUnlinkError(n)
+		}
+		for _, g := range s.rbMore[n] {
 			if d := s.rbOrders[g]; d != nil && d.root != nil {
 				return nil, nil, rbUnlinkError(n)
 			}
 		}
 		return nil, nil, nil
-	}
-	w := s.work
-	if w == nil {
-		w = &workCounter{}
 	}
 	leader := n
 	if prev != nil && prev.schema == n.schema {

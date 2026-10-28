@@ -1516,3 +1516,51 @@ func TestStage3AdoptionBoundChargesBeforeScan(t *testing.T) {
 		t.Fatalf("exhausted adoption bound allocated %v times", allocs)
 	}
 }
+
+// TestStage3UserOrderedMemberUnlinkRefusal: a system-ordered foreign instance inserted into a
+// user-ordered run of an equivalent schema builds a retained tree over the user-ordered nodes.
+// Native lyd_unlink skips RB removal for a user-ordered node, so unlinking a member would leave it
+// in the tree, where a later insertion can select it as its predecessor: refused (D-0121), and the
+// refusal is a no-op that a later insertion does not observe.
+func TestStage3UserOrderedMemberUnlinkRefusal(t *testing.T) {
+	user := reviewDiffSet(t, strings.Replace(retainedRBModule, "leaf-list top { type uint32; }",
+		"leaf-list top { type uint32; ordered-by user; }", 1))
+	_, sys := retainedRBSets(t)
+	for i, victim := range []string{"1", "3", "5", "3", "5"} {
+		tr := parseOnlyXML(t, user, retainedRBXML("top", 1, 3, 5))
+		if err := tr.insert(nil, retainedRBTerm(t, retainedRBTop(t, sys), "4"), insertDefault); err != nil {
+			t.Fatal(err)
+		}
+		var n *Node
+		for _, c := range tr.top.SchemaAll() {
+			if c.schema.UserOrdered && c.Value() == victim {
+				n = c
+			}
+		}
+		before := snapshotHashBudgetTree(tr)
+		var err error
+		switch i {
+		case 3:
+			err = n.Remove()
+		case 4: // bulk unlink, through its virtual links
+			err = tr.unlinkAll([]*Node{n})
+		default:
+			err = n.Unlink()
+		}
+		if err == nil || !strings.Contains(err.Error(), "D-0121") {
+			t.Fatalf("removal %d of %s: %v", i, victim, err)
+		}
+		after := snapshotHashBudgetTree(tr)
+		if i == 4 { // the bulk compaction publishes its (empty) completed prefix: generation only
+			before.sibs, after.sibs = nil, nil
+		}
+		if !reflect.DeepEqual(before, after) || n.siblingsOf() != &tr.top {
+			t.Fatalf("refused removal %d of %s changed graph", i, victim)
+		}
+		checkTreeRetainedRB(t, tr)
+		if err := tr.insert(nil, retainedRBTerm(t, retainedRBTop(t, sys), "2"), insertDefault); err != nil {
+			t.Fatal(err)
+		}
+		checkTreeRetainedRB(t, tr)
+	}
+}
