@@ -316,8 +316,8 @@ func parseOpWith(ctx context.Context, r io.Reader, s *schema.Set, f Format, t op
 }
 
 // freeParsed frees the nodes parsed under lc.parent again (lyd_parse_op's cleanup of its parsed
-// set), in one bulk unlink. lyd_free_tree refuses keys, logging once per key in the
-// cleanup order (tree_data.c:485-489 walks the parsed set backwards).
+// set), in one bulk unlink replaying the native order: tree_data.c:482-489 walks the parsed set
+// backwards. lyd_free_tree refuses keys, logging once per key in that order.
 func (lc *lydCtx) freeParsed() error {
 	for i := len(lc.parsed) - 1; i >= 0; i-- {
 		lc.tree.work.Add(1)
@@ -329,6 +329,7 @@ func (lc *lydCtx) freeParsed() error {
 		}
 	}
 	ns := slices.DeleteFunc(lc.parsed, func(n *Node) bool { return n.isKey() })
+	slices.Reverse(ns)
 	// Budget failures are restored by the enclosing journal. Ordinary parser cleanup spends
 	// the same enforced operation allowance; exhausting it also rolls back the operation.
 	err := lc.tree.unlinkAll(ns)
