@@ -55,7 +55,8 @@ type hashTransaction struct {
 	// primitive records each slot, field or struct it changes as an entry of undo instead of
 	// copying its sibling set whole; every other primitive still captures whole (touch).
 	narrow bool
-	undo   []func() // restored in reverse after the whole captures
+	fresh  map[*Node]bool // the nodes constructed under the narrow journal: never captured
+	undo   []func()       // restored in reverse after the whole captures
 	// placed are the topology nodes an RB insertion may change, the bulk of a narrow journal's
 	// entries: kept by value (restored in reverse, after undo) instead of one closure each
 	placed []placedNode
@@ -110,7 +111,7 @@ func beginNarrowTransaction(t *Tree) *hashTransaction {
 	}
 	t.work.spare = nil
 	*j = hashTransaction{tree: t, done: t.work.beginHashWork(), rank: t.rank, orders: t.orders, set: t.set,
-		narrow: true, undo: j.undo[:0], placed: j.placed[:0]}
+		narrow: true, undo: j.undo[:0], placed: j.placed[:0], fresh: j.fresh}
 	t.work.journal = j
 	return j
 }
@@ -118,13 +119,14 @@ func beginNarrowTransaction(t *Tree) *hashTransaction {
 // spare keeps a finished narrow journal that captured nothing whole, its entries cleared, for the
 // tree's next NewPath. ponytail: up to 1024 entries; a larger journal is left to the collector.
 func (j *hashTransaction) spare() {
-	if !j.narrow || j.nodes != nil || cap(j.undo) > 1024 || cap(j.placed) > 1024 {
+	if !j.narrow || j.nodes != nil || cap(j.undo) > 1024 || cap(j.placed) > 1024 || len(j.fresh) > 64 {
 		return
 	}
 	clear(j.undo)
 	clear(j.placed)
 	t := j.tree
-	*j = hashTransaction{undo: j.undo[:0], placed: j.placed[:0]}
+	clear(j.fresh)
+	*j = hashTransaction{undo: j.undo[:0], placed: j.placed[:0], fresh: j.fresh}
 	t.work.spare = j
 }
 
@@ -379,19 +381,23 @@ func (n *Node) touch() error {
 	if j == nil {
 		return nil
 	}
-	if j.narrow && unpublished(n) {
+	if j.fresh[n] {
 		return j.err // NewPath's own new nodes: a refusal leaves no reference to them
 	}
 	return j.captureNode(n)
 }
 
-// unpublished reports a node outside every tree: under NewPath's journal (which refuses a
-// detached parent) only a node the call created.
-func unpublished(n *Node) bool {
-	for n.parent != nil {
-		n = n.parent
+// created registers a node constructed under a narrow journal (newTerm, newInner): NewPath
+// created it, so its fields need no capture.
+func (w *workCounter) created(n *Node) {
+	if w == nil || w.journal == nil || !w.journal.narrow {
+		return
 	}
-	return n.tree == nil
+	j := w.journal
+	if j.fresh == nil {
+		j.fresh = map[*Node]bool{}
+	}
+	j.fresh[n] = true
 }
 
 // joinLinkJournal associates both sides before either a linked or detached source changes.

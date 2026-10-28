@@ -181,6 +181,7 @@ func newTerm(s *schema.Node, v types.Value, counters ...*workCounter) *Node {
 	}
 	n.refreshHash(work)
 	n.kids.work = work // new storage has no descendants to rebind
+	work.created(n)
 	return n
 }
 
@@ -195,6 +196,7 @@ func newInner(s *schema.Node, counters ...*workCounter) *Node {
 		n.refreshHash(work)
 	}
 	n.kids.work = work // subsequent child links bind their own subtrees
+	work.created(n)
 	return n
 }
 

@@ -551,3 +551,75 @@ func TestStage3NewPathUpdateParity(t *testing.T) {
 		t.Fatalf("no refusal in %d limits", need)
 	}
 }
+
+// TestStage3NewPathDeepDefaultChain: an explicit leaf created under 48 default NP containers
+// clears the default flag of every ancestor (npContDfltDel), each pre-existing ancestor captured
+// once; every refusal restores all of them, and the charged work grows linearly with the depth
+// (NewPath classifies its own new nodes without walking their ancestry).
+func TestStage3NewPathDeepDefaultChain(t *testing.T) {
+	build := func(depth int) (*schema.Set, string) {
+		var m, p strings.Builder
+		m.WriteString(`module stage3-deep {yang-version 1.1;namespace "urn:stage3-deep";prefix s;`)
+		for i := range depth {
+			fmt.Fprintf(&m, "container c%d {", i)
+			if i == 0 {
+				p.WriteString("/stage3-deep:c0")
+			} else {
+				fmt.Fprintf(&p, "/c%d", i)
+			}
+		}
+		m.WriteString(`leaf x {type uint8;} leaf d {type string; default "z";}`)
+		m.WriteString(strings.Repeat("}", depth) + "}")
+		return reviewDiffSet(t, m.String()), p.String()
+	}
+	used := map[int]uint64{}
+	for _, depth := range []int{12, 48} {
+		set, chain := build(depth)
+		fresh := func() *Tree {
+			tr := newTree(set)
+			if _, err := tr.NewPath(chain, "", NewPathOptions{}); err != nil {
+				t.Fatal(err)
+			}
+			if tr.top.At(0).flags&FlagDefault == 0 {
+				t.Fatal("setup: the chain is not default")
+			}
+			return tr
+		}
+		ctrl := fresh()
+		if _, err := ctrl.NewPath(chain+"/x", "1", NewPathOptions{}); err != nil {
+			t.Fatal(err)
+		}
+		used[depth] = ctrl.work.hashUsed
+		for n := range ctrl.top.At(0).All() {
+			if n.schema.Kind == schema.Container && n.flags&FlagDefault != 0 {
+				t.Fatalf("depth %d: %s stays default", depth, n.Path())
+			}
+		}
+		want := npjStructure(ctrl)
+		for limit := uint64(1); limit < used[depth]; limit++ {
+			tr := fresh()
+			before := snapshotHashBudgetTree(tr)
+			tr.work.hashLimit = limit
+			_, err := tr.NewPath(chain+"/x", "1", NewPathOptions{})
+			tr.work.hashLimit = 0
+			if err == nil {
+				continue
+			}
+			if !errors.Is(err, yang.ErrBudget) {
+				t.Fatalf("depth %d limit %d: %v", depth, limit, err)
+			}
+			if after := snapshotHashBudgetTree(tr); !reflect.DeepEqual(after, before) {
+				t.Fatalf("depth %d limit %d: refusal changed the tree:\n%s", depth, limit, fzSnapDiff(before, after))
+			}
+			if _, err := tr.NewPath(chain+"/x", "1", NewPathOptions{}); err != nil {
+				t.Fatalf("depth %d limit %d: retry: %v", depth, limit, err)
+			}
+			if got := npjStructure(tr); !reflect.DeepEqual(got, want) {
+				t.Fatalf("depth %d limit %d: history differs:\n%s", depth, limit, npjDiff(got, want))
+			}
+		}
+	}
+	if used[48] > 5*used[12] {
+		t.Errorf("charged work is not linear in the depth: %d at 12, %d at 48", used[12], used[48])
+	}
+}

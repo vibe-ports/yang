@@ -469,10 +469,11 @@ records what it changes, at the moment it changes it, and a refusal restores tho
 
   The entry point is `siblings.touchLazy`. Under a narrow journal it captures nothing; everywhere
   else it behaves like `touch`. Fields of pre-existing nodes stay per-node first-touch captures
-  (`captureNode`). A node outside every tree is not captured: under NewPath, which refuses a
-  detached parent, only a node the call created can be outside every tree (`unpublished`). The
-  whole-capture maps are allocated at the first whole capture, and a finished journal with no
-  whole capture is cleared and reused by the tree's next NewPath (`workCounter.spare`).
+  (`captureNode`). Nodes that the call constructs are never captured: `newTerm` and `newInner`
+  register them in the journal's `fresh` set (`workCounter.created`), so classifying a node is a
+  map lookup and needs no walk of its ancestry. The whole-capture maps are allocated at the first
+  whole capture. A finished journal with no whole capture is cleared and reused by the tree's next
+  NewPath (`workCounter.spare`).
 - **Bulk transitions keep the whole-set capture, taken before their first write.** They call
   `siblings.touchWhole`, which is a no-op outside narrow mode because `touchLazy` has already
   touched there. The bulk transitions are:
@@ -515,8 +516,12 @@ records what it changes, at the moment it changes it, and a refusal restores tho
   shifts that the forward insertion already makes. It never copies the destination. A set pays a
   whole capture only when a bulk transition (which is already linear forward work) or the failure
   cleanup reaches it. A single-segment creation, which `2282a912` did not journal, now pays its
-  entries. A multi-segment one no longer pays the allowance's linear scan. Timings are in the PR
-  description.
+  entries. A multi-segment one no longer pays the allowance's linear scan.
+- **Timings.** Measured on dell, median of 3 runs, `2282a912` → this change:
+  - `TestInsertScaling`: 0.61 s → 0.67 s.
+  - `TestKeyLookupWork`: 1.92 s → 1.13 s.
+
+  For comparison, a whole capture per multi-segment call took 21.7 s and 51.6 s locally.
 
 ## Evidence index
 
