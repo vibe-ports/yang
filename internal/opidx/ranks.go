@@ -5,15 +5,18 @@ package opidx
 // Ranks is a sparse AVL set of schema ranks. Use separate instances for input
 // and output; storage depends on populated ranks, not schema width.
 type Ranks struct {
-	root *rankNode
-	len  int
-	work func(uint64)
+	root  *rankNode
+	len   int
+	work  func(uint64)
+	hooks Hooks
+	stamp uint64
 }
 
 type rankNode struct {
 	key         int
 	left, right *rankNode
 	height      int
+	stamp       uint64
 }
 
 // SetWorkHook sets a synchronous counter for node visits and rotations.
@@ -22,11 +25,53 @@ func (r *Ranks) SetWorkHook(hook func(uint64)) { r.work = hook }
 // Len returns the number of populated ranks.
 func (r *Ranks) Len() int { return r.len }
 
+// SetHooks connects r to its owner's work counter and journal; they replace the work hook.
+func (r *Ranks) SetHooks(h Hooks) { r.hooks = h }
+
 func (r *Ranks) charge() {
-	if r.work != nil {
+	if r.hooks != nil {
+		r.hooks.Work(1)
+	} else if r.work != nil {
 		r.work(1)
 	}
 }
+
+func (r *Ranks) journal() *Journal {
+	if r.hooks == nil {
+		return nil
+	}
+	return r.hooks.Journal()
+}
+
+func (r *Ranks) touchHeader() {
+	if j := r.journal(); j != nil && j.first(&r.stamp) {
+		j.image(Entry{obj: r, ptr: [6]any{r.root}, num: [3]uint64{uint64(r.len)}}) //nolint:gosec // restored bit for bit
+	}
+}
+
+func (r *Ranks) undo(e *Entry) {
+	r.root, _ = e.ptr[0].(*rankNode)
+	r.len = int(e.num[0]) //nolint:gosec // the recorded int itself
+}
+
+func (r *Ranks) purge(*Entry) {}
+
+func (r *Ranks) touch(n *rankNode) {
+	if n == nil {
+		return
+	}
+	if j := r.journal(); j != nil && j.first(&n.stamp) {
+		j.image(Entry{obj: n, ptr: [6]any{n.left, n.right}, num: [3]uint64{uint64(n.key), uint64(n.height)}}) //nolint:gosec // restored bit for bit
+	}
+}
+
+func (n *rankNode) undo(e *Entry) {
+	n.left, _ = e.ptr[0].(*rankNode)
+	n.right, _ = e.ptr[1].(*rankNode)
+	n.key, n.height = int(e.num[0]), int(e.num[1]) //nolint:gosec // the recorded ints themselves
+}
+
+func (n *rankNode) purge(*Entry) {}
 
 func rankHeight(n *rankNode) int {
 	if n == nil {
@@ -40,6 +85,8 @@ func rankFix(n *rankNode) { n.height = 1 + max(rankHeight(n.left), rankHeight(n.
 func (r *Ranks) rankLeft(n *rankNode) *rankNode {
 	r.charge()
 	x := n.right
+	r.touch(n)
+	r.touch(x)
 	n.right, x.left = x.left, n
 	rankFix(n)
 	rankFix(x)
@@ -49,6 +96,8 @@ func (r *Ranks) rankLeft(n *rankNode) *rankNode {
 func (r *Ranks) rankRight(n *rankNode) *rankNode {
 	r.charge()
 	x := n.left
+	r.touch(n)
+	r.touch(x)
 	n.left, x.right = x.right, n
 	rankFix(n)
 	rankFix(x)
@@ -74,6 +123,7 @@ func (r *Ranks) rankBalance(n *rankNode) *rankNode {
 
 // Insert returns false when rank was already present.
 func (r *Ranks) Insert(rank int) bool {
+	r.touchHeader()
 	var added bool
 	r.root, added = r.insert(r.root, rank)
 	if added {
@@ -87,6 +137,7 @@ func (r *Ranks) insert(n *rankNode, key int) (*rankNode, bool) {
 		return &rankNode{key: key, height: 1}, true
 	}
 	r.charge()
+	r.touch(n)
 	var added bool
 	switch {
 	case key < n.key:
@@ -104,6 +155,7 @@ func (r *Ranks) insert(n *rankNode, key int) (*rankNode, bool) {
 
 // Remove returns false when rank was absent.
 func (r *Ranks) Remove(rank int) bool {
+	r.touchHeader()
 	var removed bool
 	r.root, removed = r.remove(r.root, rank)
 	if removed {
@@ -114,6 +166,7 @@ func (r *Ranks) Remove(rank int) bool {
 
 func (r *Ranks) popRankMin(n *rankNode) (*rankNode, *rankNode) {
 	r.charge()
+	r.touch(n)
 	if n.left == nil {
 		return n.right, n
 	}
@@ -127,6 +180,7 @@ func (r *Ranks) remove(n *rankNode, key int) (*rankNode, bool) {
 		return nil, false
 	}
 	r.charge()
+	r.touch(n)
 	var removed bool
 	switch {
 	case key < n.key:

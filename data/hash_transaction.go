@@ -8,6 +8,7 @@ import (
 	"slices"
 
 	"github.com/vibe-ports/yang"
+	"github.com/vibe-ports/yang/internal/opidx"
 	"github.com/vibe-ports/yang/internal/schema"
 )
 
@@ -60,6 +61,19 @@ type hashTransaction struct {
 	// placed are the topology nodes an RB insertion may change, the bulk of a narrow journal's
 	// entries: kept by value (restored in reverse, after undo) instead of one closure each
 	placed []placedNode
+	// index records every write of the ordered indexes (childOrder) of the sets captured
+	// whole, entry by entry (#240 step 4): restored last, in reverse; its tombstones are purged
+	// when the operation keeps its changes. bound are the index bindings that report to it.
+	index opidx.Journal
+	bound []*orderBinding
+}
+
+// ChargeEntries charges recorded index entries like any capture: a refusal is sticky, and the
+// journal, which has recorded the entry already, restores the operation.
+func (j *hashTransaction) ChargeEntries(units uint64) {
+	if err := j.charge(units); err != nil {
+		return // sticky: j.err and the counter's hashErr carry it to the operation's end
+	}
 }
 
 type placedNode struct {
@@ -76,6 +90,7 @@ func beginHashTransaction(t *Tree) *hashTransaction {
 		return nil
 	}
 	j := &hashTransaction{tree: t, done: t.work.beginHashWork(), rank: t.rank, orders: t.orders, set: t.set}
+	j.index.SetCharger(j)
 	j.maps()
 	t.work.journal = j
 	objects := uint64(len(t.rank)) + 1
@@ -111,7 +126,8 @@ func beginNarrowTransaction(t *Tree) *hashTransaction {
 	}
 	t.work.spare = nil
 	*j = hashTransaction{tree: t, done: t.work.beginHashWork(), rank: t.rank, orders: t.orders, set: t.set,
-		narrow: true, undo: j.undo[:0], placed: j.placed[:0], fresh: j.fresh}
+		narrow: true, undo: j.undo[:0], placed: j.placed[:0], fresh: j.fresh, index: j.index, bound: j.bound[:0]}
+	j.index.SetCharger(j)
 	t.work.journal = j
 	return j
 }
@@ -126,7 +142,8 @@ func (j *hashTransaction) spare() {
 	clear(j.placed)
 	t := j.tree
 	clear(j.fresh)
-	*j = hashTransaction{undo: j.undo[:0], placed: j.placed[:0], fresh: j.fresh}
+	clear(j.bound)
+	*j = hashTransaction{undo: j.undo[:0], placed: j.placed[:0], fresh: j.fresh, index: j.index, bound: j.bound[:0]}
 	t.work.spare = j
 }
 
@@ -314,6 +331,12 @@ func (j *hashTransaction) end(result *error) {
 		j.fail(result)
 		if errors.Is(*result, yang.ErrBudget) || j.rollback && *result != nil {
 			j.restore()
+		}
+	}
+	j.index.Commit() // after a restore the log is empty; otherwise its tombstones go
+	for _, b := range j.bound {
+		if b.state == j {
+			b.state = nil
 		}
 	}
 	j.done()
@@ -710,9 +733,6 @@ func (j *hashTransaction) captureSiblings(s *siblings) error {
 	for _, groups := range s.rbDual {
 		objects = addHashBound(objects, uint64(len(groups)))
 	}
-	if s.order != nil {
-		objects = addHashBound(objects, 6+6*uint64(len(s.order.byNode))+2*uint64(len(s.order.entries)))
-	}
 	if err := j.charge(objects); err != nil {
 		return err
 	}
@@ -733,7 +753,6 @@ func (j *hashTransaction) captureSiblings(s *siblings) error {
 	saved.pending = maps.Clone(s.pending)
 	saved.rbTree = maps.Clone(s.rbTree)
 	saved.rbGroups = maps.Clone(s.rbGroups)
-	saved.order = cloneChildOrder(s)
 	saved.rbDualCount = maps.Clone(s.rbDualCount)
 	if s.rbDual != nil {
 		saved.rbDual = make(map[*Node][]*rbGroup, len(s.rbDual))
@@ -750,6 +769,11 @@ func (j *hashTransaction) captureSiblings(s *siblings) error {
 	saved.rbOrders = maps.Clone(s.rbOrders)
 	saved.contexts = maps.Clone(s.contexts)
 	j.siblings[s] = saved
+	if s.order != nil && s.order.bind.state == nil {
+		// the index is not copied: from now on every write of it is an entry of j.index
+		s.order.bind.state = j
+		j.bound = append(j.bound, s.order.bind)
+	}
 	for _, order := range s.rbOrders {
 		if err := j.captureOrder(order); err != nil {
 			return err
@@ -826,9 +850,6 @@ func (j *hashTransaction) restore() {
 	for s, work := range j.works {
 		s.setWork(work)
 	}
-	for s := range j.siblings {
-		s.setOrderHooks()
-	}
 	for l, saved := range j.links {
 		*l = saved
 	}
@@ -844,4 +865,19 @@ func (j *hashTransaction) restore() {
 	for i := len(j.placed) - 1; i >= 0; i-- {
 		*j.placed[i].x = j.placed[i].old
 	}
+	j.index.Rollback(0)
+}
+
+// capturer returns the running state that has captured s whole (orderBuild's new index reports
+// to it), nil when none has.
+func capturer(t *Tree, s *siblings) *hashTransaction {
+	for _, j := range [2]*hashTransaction{s.journal(), t.work.journal} {
+		if j == nil {
+			continue
+		}
+		if _, whole := j.siblings[s]; whole {
+			return j
+		}
+	}
+	return nil
 }

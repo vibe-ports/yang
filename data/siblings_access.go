@@ -332,8 +332,16 @@ func (s *siblings) transferFrom(src *siblings) error {
 	if err := src.touch(); err != nil {
 		return err
 	}
+	if o := src.order; o != nil && o.bind.state != nil {
+		// the binding moves with the index: one entry restores its owner
+		if err := recordField(o.bind.state, &o.bind.owner); err != nil {
+			return err
+		}
+	}
 	*s, *src = *src, siblings{}
-	s.setOrderHooks() // the index work hooks were bound to src, which no longer counts anything
+	if s.order != nil {
+		s.order.bind.owner = s // a pointer write: the hooks stay installed
+	}
 	return nil
 }
 func (s *siblings) reset() error {

@@ -26,6 +26,7 @@ type Handle[T any] struct {
 	height      int
 	size        int
 	tag         uint64
+	stamp       uint64 // the journal epoch of its last recorded image
 }
 
 type seqHeader[T any] struct {
@@ -58,6 +59,8 @@ type Seq[T any] struct {
 	length            int
 	scale             int
 	work              func(uint64)
+	hooks             Hooks
+	stamp             uint64 // the journal epoch of the last recorded header
 	checkpointID      uint64
 	checkpoints       []*seqCheckpoint[T]
 }
@@ -67,9 +70,63 @@ type Seq[T any] struct {
 // Nil disables counting.
 func (s *Seq[T]) SetWorkHook(hook func(uint64)) { s.work = hook }
 
+// SetHooks connects s to its owner's work counter and journal; they replace the work hook.
+func (s *Seq[T]) SetHooks(h Hooks) { s.hooks = h }
+
 func (s *Seq[T]) charge() {
-	if s.work != nil {
+	if s.hooks != nil {
+		s.hooks.Work(1)
+	} else if s.work != nil {
 		s.work(1)
+	}
+}
+
+func (s *Seq[T]) journal() *Journal {
+	if s.hooks == nil {
+		return nil
+	}
+	return s.hooks.Journal()
+}
+
+// touchHeader records the header before a mutation that may change it.
+func (s *Seq[T]) touchHeader() {
+	if j := s.journal(); j != nil && j.first(&s.stamp) {
+		j.image(Entry{obj: s, ptr: [6]any{s.root, s.first, s.last}, num: [3]uint64{uint64(s.length), uint64(s.scale)}}) //nolint:gosec // restored bit for bit
+	}
+}
+
+func (s *Seq[T]) undo(e *Entry) {
+	s.root, _ = e.ptr[0].(*Handle[T])
+	s.first, _ = e.ptr[1].(*Handle[T])
+	s.last, _ = e.ptr[2].(*Handle[T])
+	s.length, s.scale = int(e.num[0]), int(e.num[1]) //nolint:gosec // the recorded ints themselves
+}
+
+func (s *Seq[T]) purge(*Entry) {}
+
+func (h *Handle[T]) undo(e *Entry) {
+	h.left, _ = e.ptr[0].(*Handle[T])
+	h.right, _ = e.ptr[1].(*Handle[T])
+	h.parent, _ = e.ptr[2].(*Handle[T])
+	h.prev, _ = e.ptr[3].(*Handle[T])
+	h.next, _ = e.ptr[4].(*Handle[T])
+	h.owner, _ = e.ptr[5].(*Seq[T])
+	h.height, h.size, h.tag = int(e.num[0]), int(e.num[1]), e.num[2] //nolint:gosec // the recorded ints themselves
+}
+
+func (h *Handle[T]) purge(*Entry) {}
+
+func handleImage[T any](h *Handle[T]) Entry {
+	return Entry{obj: h, ptr: [6]any{h.left, h.right, h.parent, h.prev, h.next, h.owner},
+		num: [3]uint64{uint64(h.height), uint64(h.size), h.tag}} //nolint:gosec // restored bit for bit
+}
+
+// created records a handle allocated under a journal as detached: rollback leaves it as a
+// removed handle, so a reference that survives the rollback cannot reach the sequence.
+func (s *Seq[T]) created(h *Handle[T]) {
+	if j := s.journal(); j != nil && j.first(&h.stamp) {
+		j.image(Entry{obj: h, ptr: [6]any{(*Handle[T])(nil), (*Handle[T])(nil), (*Handle[T])(nil),
+			(*Handle[T])(nil), (*Handle[T])(nil), (*Seq[T])(nil)}})
 	}
 }
 
@@ -85,6 +142,9 @@ func (s *Seq[T]) restoreHeader(h seqHeader[T]) {
 func (s *Seq[T]) touch(h *Handle[T]) {
 	if h == nil {
 		return
+	}
+	if j := s.journal(); j != nil && j.first(&h.stamp) {
+		j.image(handleImage(h))
 	}
 	for _, checkpoint := range s.checkpoints {
 		if _, ok := checkpoint.before[h]; ok {
@@ -315,6 +375,8 @@ func (s *Seq[T]) InsertAfter(anchor *Handle[T], value T) *Handle[T] {
 func (s *Seq[T]) insert(rank int, prev, next *Handle[T], value T) *Handle[T] {
 	h := &Handle[T]{Value: value, owner: s, height: 1, size: 1, prev: prev, next: next}
 	s.trackCreated(h)
+	s.created(h)
+	s.touchHeader()
 	if prev == nil {
 		s.first = h
 	} else {
@@ -348,6 +410,7 @@ func (s *Seq[T]) Remove(h *Handle[T]) bool {
 	if !ok {
 		return false
 	}
+	s.touchHeader()
 	s.root = s.removeAt(s.root, rank)
 	s.setParent(s.root, nil)
 	s.unlink(h)
@@ -388,7 +451,9 @@ func (s *Seq[T]) Splice(lo, deleteCount int, values []T) ([]*Handle[T], bool) {
 	for i, value := range values {
 		inserted[i] = &Handle[T]{Value: value, owner: s, height: 1, size: 1}
 		s.trackCreated(inserted[i])
+		s.created(inserted[i])
 	}
+	s.touchHeader()
 	s.spliceHandles(lo, deleteCount, inserted)
 	return inserted, true
 }
@@ -437,6 +502,7 @@ func (s *Seq[T]) ReplaceHandles(lo, hi int, handles []*Handle[T]) bool {
 	if hi < s.length {
 		next = s.Select(hi)
 	}
+	s.touchHeader()
 	left, tail := s.split(s.root, lo)
 	_, right := s.split(tail, hi-lo)
 	middle := s.build(handles, 0, len(handles), nil)
@@ -514,6 +580,7 @@ func (s *Seq[T]) MoveRange(lo, hi, before int) bool {
 		return true
 	}
 	count := hi - lo
+	s.touchHeader()
 	left, tail := s.split(s.root, lo)
 	run, right := s.split(tail, count)
 	runFirst, runLast := s.minimum(run), s.maximum(run)
