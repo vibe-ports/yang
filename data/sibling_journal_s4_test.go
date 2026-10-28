@@ -28,6 +28,7 @@ const s4JournalModule = `module s4j {yang-version 1.1;namespace "urn:s4j";prefix
   leaf-list u {type string;ordered-by user;}
   leaf-list v {type string;}
  }
+ leaf t {type string;}
  rpc op {input {leaf-list w {type uint32;} list e {key k;leaf k {type uint32;}} leaf z {type string;} leaf d {type string;default "v";}}
   output {leaf-list o {type uint32;} list f {key k;leaf k {type uint32;}}}}}`
 
@@ -85,6 +86,11 @@ func s4Observe(t *testing.T, tr *Tree) []string {
 		for k := range 20 {
 			n, err := tr.Find(fmt.Sprintf("%s[k='%d']", prefix, k))
 			out = append(out, fmt.Sprintf("find %s %d: %v %v", prefix, k, n != nil && n.Parent() == top, err))
+			if prefix == "/s4j:op/e" {
+				// exact-value lookups of the operation leaf-list (byExact under childOrder)
+				n, err := tr.Find(fmt.Sprintf("/s4j:op/w[.='%d']", k))
+				out = append(out, fmt.Sprintf("find w %d: %v %v", k, n != nil && n.Parent() == top, err))
+			}
 		}
 	}
 	return out
@@ -405,10 +411,21 @@ func TestS4JournalRefusalHistories(t *testing.T) {
 				return err
 			}
 		}},
-		// refreshExact: a value change re-keys the exact-value index of an operation child.
-		{name: "op/set-value", limited: []int{0}, build: func(t *testing.T) ([]*Tree, func() error, func() error) {
+		// A sorted value change with same-schema neighbours relocates the node (unlink + reinsert);
+		// it returns before refreshExact.
+		{name: "op/set-value-relocate", limited: []int{0}, build: func(t *testing.T) ([]*Tree, func() error, func() error) {
 			tr, op := s4OpTree(t, set, "5", "1", "9")
 			n := s4Child(op, "w", "9")
+			return []*Tree{tr}, func() error {
+				_, err := n.SetValue("4")
+				return err
+			}, furtherOp(tr, op)
+		}},
+		// refreshExact: a singleton leaf-list instance has no same-schema neighbour, so its value
+		// changes in place and the exact-value index is re-keyed (edit.go changeNodeValue).
+		{name: "op/set-value-in-place", limited: []int{0}, build: func(t *testing.T) ([]*Tree, func() error, func() error) {
+			tr, op := s4OpTree(t, set, "5")
+			n := s4Child(op, "w", "5")
 			return []*Tree{tr}, func() error {
 				_, err := n.SetValue("4")
 				return err
@@ -454,5 +471,135 @@ func TestS4JournalRefusalHistories(t *testing.T) {
 				s4History(t, sc, limited)
 			})
 		}
+	}
+}
+
+// TestS4BulkPrefixPublicationRefusal: a bulk removal whose native search refuses one member
+// (D-0121) publishes the completed prefix; a budget refusal anywhere, including in that
+// publication and cleanup after the D-0121 decision, restores the whole batch. Either outcome is
+// followed by a further mutation and compared with its reference history. Step 4 must keep the
+// batch level open through publication and cleanup and commit only afterwards.
+func TestS4BulkPrefixPublicationRefusal(t *testing.T) {
+	a, b := retainedRBSets(t)
+	build := func() (*Tree, func() error, func() []string) {
+		tr := parseOnlyXML(t, a, retainedRBXML("top", 1, 3, 5))
+		foreign := retainedRBTerm(t, retainedRBTop(t, b), "4")
+		mustLink(t, tr.insert(nil, foreign, insertDefault))
+		first := tr.top.first()
+		op := func() error {
+			defer tr.work.beginHashWork()()
+			return tr.unlinkAll([]*Node{first, foreign})
+		}
+		further := func() []string {
+			fresh := retainedRBTerm(t, retainedRBTop(t, a), "2")
+			out := []string{fmt.Sprint(tr.Insert(nil, fresh))}
+			for n := range tr.Top() {
+				if n.Value() == "5" {
+					out = append(out, fmt.Sprint(n.Remove()))
+					break
+				}
+			}
+			checkTreeRetainedRB(t, tr)
+			return append(out, typedDump(tr)...)
+		}
+		return tr, op, further
+	}
+	tr, _, further := build()
+	wantSkip := further()
+	tr, op, further := build()
+	var points []uint64
+	tr.work.hashTrace = &points
+	err := op()
+	tr.work.hashTrace = nil
+	if err == nil || !strings.Contains(err.Error(), "D-0121") {
+		t.Fatalf("unlimited bulk removal: %v, want a D-0121 refusal", err)
+	}
+	need := tr.work.hashUsed
+	wantPrefix := further()
+	if len(points) == 0 || need < 2 {
+		t.Fatalf("bulk removal charged %d units at %d points", need, len(points))
+	}
+	limits := map[uint64]bool{}
+	for limit := uint64(1); limit < need; limit++ {
+		limits[limit] = true
+	}
+	for _, at := range points {
+		if at > 1 {
+			limits[at-1] = true
+		}
+	}
+	// the last charge point is in the deferred publication/cleanup after the D-0121 decision
+	last := points[len(points)-1]
+	budgetAtLast := false
+	for limit := range limits {
+		tr, op, further := build()
+		before := snapshotHashBudgetTree(tr)
+		tr.work.hashLimit = limit
+		err := op()
+		tr.work.hashLimit = 0
+		want := wantPrefix
+		switch {
+		case errors.Is(err, yang.ErrBudget):
+			if !reflect.DeepEqual(snapshotHashBudgetTree(tr), before) {
+				t.Fatalf("limit %d/%d: budget refusal did not restore the batch", limit, need)
+			}
+			checkTreeRetainedRB(t, tr)
+			want = wantSkip
+			if limit == last-1 {
+				budgetAtLast = true
+			}
+		case err != nil && strings.Contains(err.Error(), "D-0121"):
+		default:
+			t.Fatalf("limit %d/%d: %v, want ErrBudget or D-0121", limit, need, err)
+		}
+		if got := further(); !reflect.DeepEqual(got, want) {
+			t.Fatalf("limit %d/%d: history differs:\n%v\nwant\n%v", limit, need, got, want)
+		}
+	}
+	if last > 1 && !budgetAtLast {
+		t.Fatalf("no budget refusal at the last charge point %d (publication/cleanup)", last)
+	}
+}
+
+// TestS4CrossStateReachableFromCallback documents that two independently opened recovery states
+// can share objects through a public path today: an ApplyDiff callback (documented as "must not
+// modify the tree being changed") moves the changed tree's whole top level into another tree,
+// whose own transaction (moveNodes) then journals sibling sets the ApplyDiff transaction also
+// journals. Step 4 forbids this: the move must be refused with a logged LY_EINVAL before any
+// write. When the guard lands, flip the final assertion to expect that refusal.
+func TestS4CrossStateReachableFromCallback(t *testing.T) {
+	set := reviewDiffSet(t, s4JournalModule)
+	before := s4DataTree(t, set, "3", "7", "11", "15", "19")
+	after := s4DataTree(t, set, "3", "9", "15", "19", "23")
+	diff, err := Diff(before, after, DiffOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	tr := s4DataTree(t, set, "3", "7", "11", "15", "19")
+	if _, err := tr.NewTerm(nil, "s4j:t", "x", NewOptions{}); err != nil {
+		t.Fatal(err)
+	}
+	if tr.top.len() < 2 {
+		t.Fatal("setup: the changed tree needs a whole top level of two nodes")
+	}
+	other := newTree(set)
+	called, open := false, false
+	var moveErr error
+	_ = tr.ApplyDiff(diff, ApplyDiffOptions{Callback: func(_, _ *Node) error {
+		if called {
+			return nil
+		}
+		called = true
+		open = tr.work.journal != nil
+		moveErr = other.Insert(nil, tr.top.first()) // moveNodes: a second transaction on other
+		return errors.New("stop")
+	}})
+	if !called || !open {
+		t.Fatalf("callback called=%t, ApplyDiff transaction open=%t", called, open)
+	}
+	// Today: accepted, so two open states shared tr's top-level sibling set.
+	if moveErr != nil || other.top.len() < 2 {
+		t.Fatalf("cross-state move: %v (moved %d nodes); if refused, the step-4 guard landed: update this test",
+			moveErr, other.top.len())
 	}
 }
