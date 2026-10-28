@@ -517,7 +517,7 @@ records what it changes, at the moment it changes it, and a refusal restores tho
   whole capture only when a bulk transition (which is already linear forward work) or the failure
   cleanup reaches it. A single-segment creation, which `2282a912` did not journal, now pays its
   entries. A multi-segment one no longer pays the allowance's linear scan.
-- **Timings.** Measured on dell, median of 3 runs, `2282a912` → this change:
+- **Timings.** Median of 3 runs, `2282a912` → this change:
   - `TestInsertScaling`: 0.61 s → 0.67 s.
   - `TestKeyLookupWork`: 1.92 s → 1.13 s.
 
