@@ -168,6 +168,9 @@ func checkTreeRetainedRB(t *testing.T, tr *Tree) {
 	var checkSiblings func(*siblings)
 	checkSiblings = func(sib *siblings) {
 		for group, order := range sib.rbOrders {
+			if order.undo != nil {
+				t.Fatalf("retained RB group %p keeps a removal undo armed after its operation", group)
+			}
 			hasLeader := false
 			for leader := range sib.rbGroups {
 				if sib.ownsGroup(leader, group) {

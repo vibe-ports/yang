@@ -97,7 +97,9 @@ func TestFindMetaForeignFirstMetadata(t *testing.T) {
 	if m, err := n.FindMeta("annotations:note"); err != nil || m == nil || m.m.mod != ma {
 		t.Fatalf("first metadata context: %v, %v", m, err)
 	}
-	removeMeta(n, n.meta[0])
+	if err := removeMeta(n, n.meta[0]); err != nil {
+		t.Fatal(err)
+	}
 	if err := n.Unlink(); err != nil {
 		t.Fatal(err)
 	}

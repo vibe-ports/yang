@@ -617,10 +617,7 @@ func (t *Tree) metaDiffers(first, second *Node) bool {
 func (t *Tree) metaAdd(n *Node, name string, m *meta) error {
 	lg := &logger{set: ctxOf(n)}
 	if _, err := lg.newMeta(n, nil, "yang:"+name, m.mod.Name+":"+m.name+"="+m.value.Canonical(), false); err != nil {
-		if len(lg.diags) > 0 {
-			return &opError{lg.diags[0].Err, lg.diags[0].Msg}
-		}
-		return err
+		return diagErr(lg, err)
 	}
 	return nil
 }

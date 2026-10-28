@@ -154,9 +154,11 @@ func validateOpNode(ctx context.Context, set *schema.Set, opNode *Node, dep *Tre
 	if err := preflightUnlink(sub); err != nil {
 		return nil, err
 	}
-	if err := arm(); err != nil {
+	disarm, err := arm()
+	if err != nil {
 		return nil, err
 	}
+	defer disarm()
 	if sourceSib != nil && sub.treeOf() == nil {
 		// A detached source has no journal of its own: the dependency's journal restores it.
 		if err := t.work.journal.captureDetachedParent(sourceParent); err != nil {

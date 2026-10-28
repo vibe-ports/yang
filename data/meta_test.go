@@ -388,9 +388,15 @@ func TestRemoveMetaCopies(t *testing.T) {
 		t.Fatalf("findMetaNamed: %p, want latest revision %p", got, latest)
 	}
 	old := n.meta
-	delYangMeta(n, "key")
-	removeMeta(n, c)
-	removeMeta(n, c)
+	if err := delYangMeta(n, "key"); err != nil {
+		t.Fatal(err)
+	}
+	if err := removeMeta(n, c); err != nil {
+		t.Fatal(err)
+	}
+	if err := removeMeta(n, c); err != nil {
+		t.Fatal(err)
+	}
 	if !slices.Equal(old, []*meta{b, a, latest, c}) || !slices.Equal(n.meta, []*meta{b, latest}) {
 		t.Fatalf("old %v, now %v", old, n.meta)
 	}

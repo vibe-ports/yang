@@ -33,21 +33,22 @@ func (m *Meta) Value() string { return m.m.value.Canonical() }
 
 // Remove is lyd_free_meta_single: the instance leaves its node. Removing it again does nothing.
 // It mutates the tree and, like Node.Remove, must not run concurrently with any other call on it.
-func (m *Meta) Remove() { removeMeta(m.node, m.m) }
+func (m *Meta) Remove() { _ = removeMeta(m.node, m.m) } // a refused capture leaves it in place
 
 // removeMeta is lyd_free_meta_single: m leaves the metadata of n; nothing when it is not there.
 // It builds a new slice instead of shifting n.meta in place, so a range over the old n.meta (the
 // Node.Meta iterator, the diff code removing while it walks) keeps seeing it unchanged.
-func removeMeta(n *Node, m *meta) {
+func removeMeta(n *Node, m *meta) error {
 	if n == nil {
-		return
+		return nil
 	}
 	if i := slices.Index(n.meta, m); i >= 0 {
 		if err := n.touch(); err != nil {
-			return
+			return err
 		}
 		n.meta = append(n.meta[:i:i], n.meta[i+1:]...)
 	}
+	return nil
 }
 
 // metasNamedModule is every metadata instance of exactly mod named name, in order, with its

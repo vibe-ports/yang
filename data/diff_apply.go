@@ -370,9 +370,11 @@ func (t *Tree) diffInsert(parent, n, source *Node, anchor string) error {
 			if err != nil {
 				return err
 			}
-			if err := arm(); err != nil {
+			disarm, err := arm()
+			if err != nil {
 				return err
 			}
+			defer disarm()
 			if err := unlink(n); err != nil {
 				return err
 			}
@@ -653,7 +655,9 @@ func (t *Tree) applyMetadata(n, dn *Node, op diffOp) error {
 			if m2 == nil {
 				return &opError{"LY_EINT", "Internal error."}
 			}
-			removeMeta(n, m2)
+			if err := removeMeta(n, m2); err != nil {
+				return err
+			}
 		case "meta-replace":
 			repl = append(repl, m)
 		case "meta-orig":

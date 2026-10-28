@@ -175,9 +175,11 @@ func (t *Tree) insertChild(parent, n *Node) error {
 	if err := unlinkCheck(n); err != nil {
 		return err
 	}
-	if err := arm(); err != nil {
+	disarm, err := arm()
+	if err != nil {
 		return err
 	}
+	defer disarm()
 	unlinkSource := unlink
 	if n.siblingsOf() == t.childrenOf(parent) {
 		unlinkSource = unlinkRetainingHistory
@@ -249,9 +251,11 @@ func (t *Tree) insertSibling(sibling, n *Node) error {
 	if err := unlinkCheck(n); err != nil {
 		return err
 	}
-	if err := arm(); err != nil {
+	disarm, err := arm()
+	if err != nil {
 		return err
 	}
+	defer disarm()
 	unlinkSource := unlink
 	if n.siblingsOf() == dt.childrenOf(parent) {
 		unlinkSource = unlinkRetainingHistory
@@ -315,9 +319,11 @@ func (t *Tree) insertAfter(sibling, n *Node) error {
 		return err
 	}
 	destinationGen := sib.gen
-	if err := arm(); err != nil {
+	disarm, err := arm()
+	if err != nil {
 		return err
 	}
+	defer disarm()
 	unlinkSource := unlink
 	if n.siblingsOf() == sib {
 		unlinkSource = unlinkRetainingHistory
@@ -344,13 +350,17 @@ func (t *Tree) insertAfter(sibling, n *Node) error {
 
 // linkOrigin records a linked node's position before an insertion may unlink it.
 // A failed hash lookup or preflight must not strand that node detached.
-func (t *Tree) linkOrigin(n *Node) (restore func(), arm func() error, err error) {
+//
+// arm, called right before the unlink, returns disarm: the caller defers it so no removal undo
+// outlives the operation (a refused capture before the removal, or a transfer that never calls
+// dirtyOrder.remove, would otherwise leave it armed and retaining the destination).
+func (t *Tree) linkOrigin(n *Node) (restore func(), arm func() (disarm func(), err error), err error) {
 	if err := joinLinkJournal(t, n); err != nil {
 		return nil, nil, err
 	}
 	sib := n.siblingsOf()
 	if sib == nil {
-		return func() {}, func() error { return nil }, nil
+		return func() {}, func() (func(), error) { return func() {}, nil }, nil
 	}
 	owner, parent := n.treeOf(), n.parent
 	gen := sib.gen
@@ -485,14 +495,16 @@ func (t *Tree) linkOrigin(n *Node) (restore func(), arm func() error, err error)
 		if current != nil {
 			armed = append([]*dirtyOrder{current}, orders...)
 		}
-		previous := make([]*removalUndo, len(armed))
+		mine := make([]*removalUndo, len(armed))
 		for i, d := range armed {
-			previous[i] = d.undo
 			restores = append(restores, d.armRemovalUndo(n, &t.work))
+			mine[i] = d.undo
 		}
 		disarm = func() {
 			for i, d := range armed {
-				d.undo = previous[i]
+				if d.undo == mine[i] { // its own arm, not consumed by the removal (which clears it)
+					d.undo = nil
+				}
 			}
 		}
 		undo = func() {
@@ -527,17 +539,17 @@ func (t *Tree) linkOrigin(n *Node) (restore func(), arm func() error, err error)
 		}
 		return nil
 	}
-	arm = func() error {
+	arm = func() (func(), error) {
 		if err := armOrigin(); err != nil {
-			return err
+			return nil, err
 		}
 		// The recovery reservation spends the same quota: recheck the removal's parent-list
 		// reindex (preflightUnlink, its plan cached) so unlink cannot fail after the removal.
 		if err := preflightUnlink(n); err != nil {
 			disarm() // nothing was removed: no undo stays armed (or keeps the destination alive)
-			return err
+			return nil, err
 		}
-		return nil
+		return disarm, nil
 	}
 	restore = func() {
 		if n.siblingsOf() == nil {

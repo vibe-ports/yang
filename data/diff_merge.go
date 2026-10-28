@@ -170,17 +170,17 @@ func anchorNames(sn *schema.Node) (name, orig string) {
 }
 
 // copyYangMeta is lyd_dup_meta_single of the metadata name of the module yang of src onto n.
-func copyYangMeta(src, n *Node, name string, mod *schema.Module) bool {
+func copyYangMeta(src, n *Node, name string, mod *schema.Module) (bool, error) {
 	i := findYangModule(src, mod, name)
 	if i < 0 {
-		return false
+		return false, nil
 	}
 	m := *src.meta[i]
 	if err := n.touch(); err != nil {
-		return false
+		return false, err
 	}
 	n.meta = append(n.meta, &m)
-	return true
+	return true, nil
 }
 
 // diffMergeReplace is lyd_diff_merge_replace: the source operation replace merged into dm.
@@ -200,9 +200,14 @@ func (t *Tree) diffMergeReplace(dm *Node, cur diffOp, src *Node) error {
 			if err := t.propagateMeta(dm, name, mod); err != nil {
 				return err
 			}
-			delYangMeta(dm, name)
+			if err := delYangMeta(dm, name); err != nil {
+				return err
+			}
 			if i := t.checkedYangModule(src, mod, name); i >= 0 {
 				m := *src.meta[i]
+				if err := dm.touch(); err != nil { // delYangMeta captured dm only if it had an anchor
+					return err
+				}
 				dm.meta = append(dm.meta, &m)
 			} else {
 				return t.metaErr(name, src)
@@ -227,10 +232,12 @@ func (t *Tree) diffMergeReplace(dm *Node, cur diffOp, src *Node) error {
 				lg := &logger{set: ctxOf(dm)}
 				eq, err := lg.valueCompare(dm, dm.meta[oi].value.Canonical())
 				if err != nil {
-					return &opError{lg.diags[0].Err, lg.diags[0].Msg}
+					return diagErr(lg, err)
 				}
 				if eq {
-					delYangMeta(dm, "orig-value")
+					if err := delYangMeta(dm, "orig-value"); err != nil {
+						return err
+					}
 					if err := t.diffChangeOp(dm, diffNone); err != nil {
 						return err
 					}
@@ -257,11 +264,15 @@ func (t *Tree) diffMergeReplace(dm *Node, cur diffOp, src *Node) error {
 				name, orig = "position", "orig-position"
 			}
 			_ = t.checkedYangModule(src, mod, orig)
-			if !copyYangMeta(src, dm, orig, mod) {
+			if ok, err := copyYangMeta(src, dm, orig, mod); err != nil {
+				return err
+			} else if !ok {
 				return t.metaErr(orig, src)
 			}
 			_ = t.checkedYangModule(src, mod, name)
-			if !copyYangMeta(src, dm, name, mod) {
+			if ok, err := copyYangMeta(src, dm, name, mod); err != nil {
+				return err
+			} else if !ok {
 				return t.metaErr(name, src)
 			}
 		case schema.Leaf: // only the default flag changed, now the value too
@@ -290,9 +301,13 @@ func (t *Tree) propagateMeta(dm *Node, name string, mod *schema.Module) error {
 		}
 		if dm.schema.Kind == schema.LeafList {
 			if it.meta[i].value.Canonical() == dm.value.Canonical() {
-				delYangMeta(it, name)
+				if err := delYangMeta(it, name); err != nil {
+					return err
+				}
 				_ = t.checkedYangModule(dm, mod, name)
-				if !copyYangMeta(dm, it, name, mod) {
+				if ok, err := copyYangMeta(dm, it, name, mod); err != nil {
+					return err
+				} else if !ok {
 					// lyd_dup_meta_single(NULL, ...) is LY_EINVAL (diff.c:2192); its LOGARG has
 					// no context, so nothing reaches the diff context's log
 					return &diffError{rc: "LY_EINVAL"}
@@ -309,7 +324,7 @@ func (t *Tree) propagateMeta(dm *Node, name string, mod *schema.Module) error {
 				val = dm.meta[j].value.Canonical()
 			}
 			if _, err := lg.changeMeta(it, it.meta[i], val); err != nil {
-				return &opError{lg.diags[0].Err, lg.diags[0].Msg}
+				return diagErr(lg, err)
 			}
 		}
 	}
@@ -327,8 +342,12 @@ func (t *Tree) isRedundantUserordMove(dm, child *Node) (bool, error) {
 		return false, nil // libyang asserts them
 	}
 	if compareMeta(dm.meta[oi], dm.meta[vi]) {
-		delYangMeta(dm, orig)
-		delYangMeta(dm, name)
+		if err := delYangMeta(dm, orig); err != nil {
+			return false, err
+		}
+		if err := delYangMeta(dm, name); err != nil {
+			return false, err
+		}
 		if child != nil {
 			if err := t.diffChangeOp(dm, diffNone); err != nil {
 				return false, err
@@ -405,7 +424,9 @@ func (t *Tree) diffMergeMetadata(src, trg *Node) error {
 			i := slices.IndexFunc(trgOrig, func(o *meta) bool { return o.value.Canonical() == val })
 			switch {
 			case m1 != nil: // create + delete: no change
-				removeMeta(trg, m1)
+				if err := removeMeta(trg, m1); err != nil {
+					return err
+				}
 			case i >= 0: // create + replace: a create of the new value
 				// lyd_new_meta(NULL, trg_diff, mod, ...) uses the source's
 				// implemented yang module, which must share the target context.
@@ -415,8 +436,12 @@ func (t *Tree) diffMergeMetadata(src, trg *Node) error {
 				if err := t.metaNew(trg, "meta-create", trgRepl[i].value.Canonical()); err != nil {
 					return err
 				}
-				removeMeta(trg, trgRepl[i])
-				removeMeta(trg, trgOrig[i])
+				if err := removeMeta(trg, trgRepl[i]); err != nil {
+					return err
+				}
+				if err := removeMeta(trg, trgOrig[i]); err != nil {
+					return err
+				}
 				trgRepl = slices.Delete(trgRepl, i, i+1)
 				trgOrig = slices.Delete(trgOrig, i, i+1)
 			default:
@@ -428,7 +453,9 @@ func (t *Tree) diffMergeMetadata(src, trg *Node) error {
 			}
 		case "meta-delete":
 			if m1 := findMetaVal(trg, "meta-create", val); m1 != nil { // delete + create: no change
-				removeMeta(trg, m1)
+				if err := removeMeta(trg, m1); err != nil {
+					return err
+				}
 			} else {
 				c := *m
 				if err := trg.touch(); err != nil {

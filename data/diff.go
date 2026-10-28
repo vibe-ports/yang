@@ -227,19 +227,23 @@ func findYangImplemented(n *Node, name string) int {
 
 // delYangMeta is lyd_diff_del_meta: the first metadata name of the module yang of n removed
 // (removeMeta).
-func delYangMeta(n *Node, name string) {
+func delYangMeta(n *Node, name string) error {
 	if n.schema == nil {
 		for i, a := range n.opaq.Attrs {
 			if yangDiffAttr(a, name) {
+				if err := n.touch(); err != nil {
+					return err
+				}
 				n.opaq.Attrs = slices.Delete(n.opaq.Attrs, i, i+1)
-				return
+				return nil
 			}
 		}
-		return
+		return nil
 	}
 	if i := findYangMeta(n, name); i >= 0 {
-		removeMeta(n, n.meta[i])
+		return removeMeta(n, n.meta[i])
 	}
+	return nil
 }
 
 func yangDiffAttr(a attr, name string) bool {
@@ -341,11 +345,16 @@ func diffDone(lg *logger, err error) error {
 
 // diffChangeOp is lyd_diff_change_op.
 func (t *Tree) diffChangeOp(n *Node, op diffOp) error {
-	delYangMeta(n, "operation")
+	if err := delYangMeta(n, "operation"); err != nil {
+		return err
+	}
 	if n.schema == nil {
 		// lyd_diff_change_op uses lyd_new_attr, which stores a JSON-format attribute even
 		// when the opaque node was parsed from XML. XML prints it without a namespace.
 		a := attr{Name: "operation", ModuleNS: "yang", Value: op.String(), Format: types.FormatJSON, Hints: types.HintData}
+		if err := n.touch(); err != nil {
+			return err
+		}
 		n.opaq.Attrs = append(n.opaq.Attrs, a)
 		return nil
 	}
@@ -452,7 +461,9 @@ func (t *Tree) diffAdd(n *Node, op diffOp, a diffAttrs) (*Node, error) {
 				}
 			}
 		}
-		delYangMeta(diffParent, "operation")
+		if err := delYangMeta(diffParent, "operation"); err != nil {
+			return nil, err
+		}
 		for _, c := range diffParent.kids.nodes() {
 			if c.isKey() || hasOwnYangOp(c) {
 				continue
@@ -729,7 +740,9 @@ func (t *Tree) diffMergeCreate(dm *Node, cur diffOp, src *Node, defaults bool) (
 			if err := t.diffChangeOp(dm, diffNone); err != nil {
 				return nil, err
 			}
-			delYangMeta(dm, orig)
+			if err := delYangMeta(dm, orig); err != nil {
+				return nil, err
+			}
 		}
 	case src.schema.Kind == schema.Leaf:
 		equal, err := compareSingleErr(t, dm, src, false)
@@ -854,9 +867,13 @@ func (t *Tree) diffMergeDelete(dm *Node, cur diffOp, src *Node) error {
 			if dm.meta[di].value.Bool() {
 				dm.flags |= FlagDefault
 			}
-			delYangMeta(dm, "orig-default")
+			if err := delYangMeta(dm, "orig-default"); err != nil {
+				return err
+			}
 		}
-		delYangMeta(dm, name)
+		if err := delYangMeta(dm, name); err != nil {
+			return err
+		}
 		if err := t.diffChangeOp(dm, diffDelete); err != nil {
 			return err
 		}

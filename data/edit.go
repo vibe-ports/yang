@@ -953,9 +953,11 @@ func (t *Tree) changeNodeValue(n *Node, v types.Value, hashAmount uint64) {
 			t.work.hashErr = err
 			return
 		}
-		if err := arm(); err != nil {
+		disarm, err := arm()
+		if err != nil {
 			return
 		}
+		defer disarm()
 		if err := unlinkRetainingHistory(target); err != nil {
 			return
 		}

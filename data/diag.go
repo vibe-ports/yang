@@ -288,3 +288,12 @@ func (l *logger) result() error {
 	}
 	return nil
 }
+
+// diagErr is the error of a libyang call that logs into lg: its first diagnostic, or err itself
+// when it is a budget refusal or the call refused before logging (a journal capture error).
+func diagErr(lg *logger, err error) error {
+	if len(lg.diags) > 0 && !errors.Is(err, yang.ErrBudget) {
+		return &opError{lg.diags[0].Err, lg.diags[0].Msg}
+	}
+	return err
+}

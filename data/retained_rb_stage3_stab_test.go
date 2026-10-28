@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
 	"math/rand/v2"
 	"os"
 	"reflect"
@@ -90,7 +91,7 @@ func stage3FailThenRetry(t *testing.T, name string, build func() (trees []*Tree,
 			limits[at-1] = true
 		}
 	}
-	for limit := range limits {
+	for _, limit := range slices.Sorted(maps.Keys(limits)) { // deterministic: the first refusal first
 		trees, op := build()
 		before := make([]hashBudgetSnapshot, len(trees))
 		for i, tr := range trees {
@@ -906,6 +907,11 @@ func (s *fzScenario) armedUndo() string {
 			}
 			if n.detachedRB != nil && n.detachedRB.undo != nil {
 				return n.Path() + " (detached)"
+			}
+			for _, c := range n.carriedRB {
+				if c.order != nil && c.order.undo != nil {
+					return n.Path() + " (carried)"
+				}
 			}
 		}
 		return ""
@@ -2524,5 +2530,105 @@ func TestStage3SnapshotSeesDetachedGraphs(t *testing.T) {
 	d.carriedRB[0].order.work = &workCounter{}
 	if reflect.DeepEqual(snap(), before) {
 		t.Fatal("a carried graph's work binding is not visible")
+	}
+}
+
+// TestStage3MergeDiffAnchorRefusal: merging a move of a created or moved user-ordered instance
+// replaces its anchor (diffMergeReplace) and repoints the siblings anchored to it
+// (propagateMeta). A refused capture there is ErrBudget (not a panic on an empty log) and
+// leaves both diffs unchanged, including an instance whose anchor was never captured before.
+func TestStage3MergeDiffAnchorRefusal(t *testing.T) {
+	set := reviewDiffSet(t, `module stage3-uo {yang-version 1.1;namespace "urn:stage3-uo";prefix u;
+ container a {
+  leaf-list v {type string;ordered-by user;}
+  list l {key k;ordered-by user;leaf k {type string;}}}}`)
+	doc := func(order string) string {
+		var b strings.Builder
+		b.WriteString(`<a xmlns="urn:stage3-uo">`)
+		for _, c := range order {
+			b.WriteString("<v>" + string(c) + "</v>")
+		}
+		for _, c := range order {
+			b.WriteString("<l><k>" + string(c) + "</k></l>")
+		}
+		b.WriteString("</a>")
+		return b.String()
+	}
+	diff := func(a, b string) *Tree {
+		d, err := Diff(parseOnlyXML(t, set, doc(a)), parseOnlyXML(t, set, doc(b)), DiffOptions{})
+		if err != nil || d == nil {
+			t.Fatalf("diff %s→%s: %v", a, b, err)
+		}
+		return d
+	}
+	for _, c := range [][3]string{{"", "xyz", "zxy"}, {"", "xyz", "yzx"}, {"xyz", "yzx", "zxy"}, {"xyz", "zxy", "yxz"}} {
+		name := "merge-diff " + c[0] + "→" + c[1] + "→" + c[2]
+		// every limit, each on fresh diffs: a refusal of propagateMeta's changeMeta capture is
+		// returned unlogged and must not index an empty log
+		for limit := uint64(1); limit < 256; limit++ {
+			func() {
+				defer func() {
+					if r := recover(); r != nil {
+						t.Fatalf("%s: limit %d: panic: %v", name, limit, r)
+					}
+				}()
+				dst, src := diff(c[0], c[1]), diff(c[1], c[2])
+				dst.work.hashLimit = limit
+				if err := dst.MergeDiff(src, MergeDiffOptions{}); err != nil && !errors.Is(err, yang.ErrBudget) {
+					t.Fatalf("%s: limit %d: %v, want ErrBudget", name, limit, err)
+				}
+			}()
+		}
+		t.Run(name, func(t *testing.T) {
+			stage3FailThenRetry(t, name, func() ([]*Tree, func() error) {
+				dst, src := diff(c[0], c[1]), diff(c[1], c[2])
+				return []*Tree{dst, src}, func() error { return dst.MergeDiff(src, MergeDiffOptions{}) }
+			}, 0, func(*testing.T, []*Tree) {})
+			// MergeDiffTree: each source instance merged on its own under the destination root
+			for i := range diff(c[1], c[2]).top.first().kids.Len() {
+				stage3FailThenRetry(t, fmt.Sprintf("%s (tree %d)", name, i), func() ([]*Tree, func() error) {
+					dst, src := diff(c[0], c[1]), diff(c[1], c[2])
+					k := src.top.first().kids.At(i)
+					return []*Tree{dst, src}, func() error { return dst.MergeDiffTree(dst.top.first(), k, MergeDiffOptions{}) }
+				}, 0, func(*testing.T, []*Tree) {})
+			}
+		})
+	}
+}
+
+// TestStage3MoveLeavesNoRemovalUndoArmed: linkOrigin's removal undo lives only for its
+// operation. A singleton transfer carries its retained order away without dirtyOrder.remove,
+// and a refusal can stop between arming and the removal; neither may leave the order armed
+// (retaining the destination's counter). checkTreeRetainedRB asserts it after every refusal.
+func TestStage3MoveLeavesNoRemovalUndoArmed(t *testing.T) {
+	set := reviewDiffSet(t, `module stage3-detached {yang-version 1.1;namespace "urn:stage3-detached";prefix s;
+ container c {list l {key k;leaf k {type uint32;}leaf p {type string;}}}}`)
+	build := func() (*Tree, *Tree, *Node, *dirtyOrder) {
+		src := parseOnlyXML(t, set, `<c xmlns="urn:stage3-detached"><l><k>5</k><p>carry</p></l><l><k>7</k><p>other</p></l></c>`)
+		c := src.top.first()
+		n := c.kids.first()
+		if err := c.kids.At(1).Remove(); err != nil {
+			t.Fatal(err)
+		}
+		order := c.kids.rbOrders[n.rbGroup]
+		if order == nil || len(order.nodes) != 1 {
+			t.Fatal("setup: no retained singleton order")
+		}
+		return src, parseOnlyXML(t, set, `<c xmlns="urn:stage3-detached"/>`), n, order
+	}
+	src, dst, n, order := build()
+	if err := dst.Insert(dst.top.first(), n); err != nil {
+		t.Fatal(err)
+	}
+	if order.undo != nil {
+		t.Fatal("singleton transfer left its removal undo armed")
+	}
+	checkTreeRetainedRB(t, src)
+	checkTreeRetainedRB(t, dst)
+	for limited := range 2 {
+		stage3FailThenRetry(t, "singleton move", func() ([]*Tree, func() error) {
+			src, dst, n, _ := build()
+			return []*Tree{dst, src}, func() error { return dst.Insert(dst.top.first(), n) }
+		}, limited, func(*testing.T, []*Tree) {})
 	}
 }

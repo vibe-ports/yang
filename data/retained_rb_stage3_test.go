@@ -984,10 +984,12 @@ func TestStage3RollbackDisarmsRemovalUndo(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := arm(); err != nil {
+	disarm, err := arm()
+	if err != nil {
 		t.Fatal(err)
 	}
 	_ = unlink(n)
+	disarm()
 	err = yang.ErrBudget
 	j.end(&err)
 	if !reflect.DeepEqual(before, snapshotHashBudgetTree(tr)) {
