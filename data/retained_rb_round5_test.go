@@ -300,7 +300,7 @@ func TestRetainedRBRandomMixedContextMutations(t *testing.T) {
 	rng := rand.New(rand.NewPCG(0x301, 5)) //nolint:gosec // deterministic mutation sequence
 	steps := 4096
 	if raceEnabled {
-		steps = 1024 // fewer random mutations under the race detector
+		steps = 512 // fewer random mutations under the race detector
 	}
 	for step := range steps {
 		// Internal primitives below represent distinct public operations.

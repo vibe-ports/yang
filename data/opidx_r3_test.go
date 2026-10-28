@@ -214,7 +214,7 @@ func TestOpIndexBulkUnlinkManyActions(t *testing.T) {
 		t.Fatal("bulk-unlink schema not compiled")
 	}
 
-	opIndexScaling(t, []int{128, 256, 512, 1024}, func(n int) int64 {
+	opIndexScaling(t, scaleSizes([]int{128, 256, 512, 1024}, 3), func(n int) int64 {
 		tr := newTree(set)
 		actions := make([]*Node, 0, n)
 		remove := make([]*Node, 0, 3*n)

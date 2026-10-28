@@ -14,7 +14,7 @@ import (
 	"github.com/vibe-ports/yang/internal/schema"
 )
 
-var opidxR10Sizes = []int{512, 1024, 2048, 4096}
+var opidxR10Sizes = scaleSizes([]int{512, 1024, 2048, 4096}, 3)
 
 func opidxR10MetaInput(values []int) (string, map[int][]string) {
 	var input strings.Builder

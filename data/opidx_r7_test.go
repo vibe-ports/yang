@@ -9,7 +9,7 @@ import (
 )
 
 func TestOpIndexMetaArrayManyLists(t *testing.T) {
-	sizes := []int{256, 512, 1024, 2048}
+	sizes := scaleSizes([]int{256, 512, 1024, 2048}, 3)
 	opIndexScaling(t, sizes, func(n int) int64 {
 		var yang, input strings.Builder
 		yang.WriteString(`module m {

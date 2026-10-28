@@ -287,7 +287,7 @@ func TestDuplicateWork(t *testing.T) {
 			mustLink(t, tr.insert(nil, parent, insertDefault))
 			sn.Type = &schema.Type{Base: schema.Uint32}
 		}
-		const n = 20000
+		n := raceScale(20000, 4)
 		for i := range n {
 			v, _ := types.Store(sn.Type, fmt.Sprint(i), types.FormatJSON, types.JSONHints("number"), nil, sn)
 			x := newTerm(sn, v)
@@ -345,7 +345,7 @@ func TestAutodelWork(t *testing.T) {
 	top := newInner(f.top)
 	mustLink(t, tr.insert(nil, top, insertDefault))
 	f.ll.Type = &schema.Type{Base: schema.Uint32}
-	const n = 20000
+	n := raceScale(20000, 4)
 	for i := range n {
 		d := f.term(t, f.ll, fmt.Sprint(i), FlagDefault)
 		mustLink(t, tr.insert(top, d, insertDefault))

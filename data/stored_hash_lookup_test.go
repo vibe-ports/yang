@@ -125,7 +125,7 @@ func TestStoredHashXPathScanWork(t *testing.T) {
 	}
 	for _, order := range []string{"sorted", "reverse", "shuffled", "duplicates"} {
 		t.Run(order, func(t *testing.T) {
-			opIndexScaling(t, []int{64, 128, 256, 512}, func(n int) int64 {
+			opIndexScaling(t, scaleSizes([]int{64, 128, 256, 512}, 3), func(n int) int64 {
 				keys := make([]string, n)
 				for i := range keys {
 					keys[i] = fmt.Sprintf("%04d", i)

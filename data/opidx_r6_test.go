@@ -311,7 +311,7 @@ func TestOpIndexRecordRandomized(t *testing.T) {
 			add(op, set1, mod1, "sep", fresh(), true)
 			checkAll()
 
-			for step := range 320 {
+			for step := range raceScale(320, 3) {
 				kind := rng.IntN(9)
 				if step < 9 {
 					kind = step

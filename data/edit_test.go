@@ -624,7 +624,7 @@ func TestMergeWork(t *testing.T) {
 		}
 		return tr
 	}
-	const n = 4000
+	n := raceScale(4000, 4)
 	tr, src := build(n), build(n)
 	tr.work.Store(0)
 	tr.work.visits = true
@@ -745,8 +745,9 @@ func TestInsertScaling(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			if w1, w4 := tc.work(1000), tc.work(4000); w4 > 6*w1 {
-				t.Fatalf("work %d for 1000 values, %d for 4000: not linear", w1, w4)
+			n := raceScale(1000, 4)
+			if w1, w4 := tc.work(n), tc.work(4*n); w4 > 6*w1 {
+				t.Fatalf("work %d for %d values, %d for %d: not linear", w1, n, w4, 4*n)
 			}
 		})
 	}
@@ -834,10 +835,10 @@ func TestKeyLookupWork(t *testing.T) {
 		}
 		return tr.work.Load()
 	}
-	const n = 1500
+	n := raceScale(1500, 6)
 	for _, order := range []string{"sorted", "reverse", "shuffled", "duplicates"} {
 		w1, w4 := work(n, order), work(4*n, order)
-		if w1 < n || w4 > 6*w1 { // each lookup counts at least one sibling visit
+		if w1 < int64(n) || w4 > 6*w1 { // each lookup counts at least one sibling visit
 			t.Errorf("%s: work(%d) = %d, work(%d) = %d: more than 6x", order, n, w1, 4*n, w4)
 		}
 	}

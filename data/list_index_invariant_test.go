@@ -225,11 +225,12 @@ func TestListIndexMutationInvariant(t *testing.T) {
 			rng := rand.New(rand.NewPCG(257, 5)) //nolint:gosec // reproducible bounded mutation sequences
 			const operations = 16
 			var covered [operations]int
-			// 28 shuffled rounds cover each operation, with at most eight list
+			rounds := raceScale(28, 2)
+			// 28 shuffled rounds (14 under the race detector) cover each operation, with at most eight list
 			// instances and six children each. The work counter bounds tree work
 			// independently of machine speed; the reference scans are bounded too.
 			tr.work.visits, tr.work.shifts = true, true
-			for round := range 28 {
+			for round := range rounds {
 				for _, op := range rng.Perm(operations) {
 					t.Run(fmt.Sprintf("%d/%d", round, op), func(t *testing.T) {
 						tr.work.hashUsed, tr.work.hashErr = 0, nil
@@ -450,7 +451,7 @@ func TestListIndexMutationInvariant(t *testing.T) {
 				}
 			}
 			for op, count := range covered {
-				if count != 28 {
+				if count != rounds {
 					t.Fatalf("operation %d covered %d times", op, count)
 				}
 			}

@@ -291,7 +291,7 @@ func TestXPathBudget(t *testing.T) {
 // leaf-list (`../t[.='v']`) scans, as libyang does: a leaf-list predicate is never hashed.
 func TestWhenQueueWork(t *testing.T) {
 	f, l, k, _, _, _, _ := listFixture(t)
-	const n = 2000
+	n := raceScale(2000, 4)
 	w := &schema.Node{Kind: schema.LeafList, Name: "w", Module: f.m, Parent: f.c, Type: &schema.Type{Base: schema.Uint16}, Config: true}
 	e, _ := xpath.Compile("true()", testNS("u"))
 	w.Whens = []*schema.When{{Src: "true()", ContextNode: w, Compiled: e}}
@@ -304,7 +304,7 @@ func TestWhenQueueWork(t *testing.T) {
 	if err := vc.unres(); err != nil {
 		t.Fatal(err)
 	}
-	if vc.budget.steps > 20*n {
+	if vc.budget.steps > int64(20*n) {
 		t.Fatalf("when queue: %d steps for %d nodes", vc.budget.steps, n)
 	}
 	str := &schema.Type{Base: schema.String}
@@ -489,7 +489,7 @@ func TestWhenFalseSubtree(t *testing.T) {
 //     linearly (the map was dropped and rebuilt per removal).
 func TestUnresWork(t *testing.T) {
 	f := newUnresFixture(t)
-	const n = 5000
+	n := raceScale(5000, 4)
 	tl := &schema.Node{Kind: schema.LeafList, Name: "tl", Module: f.m, Type: &schema.Type{Base: schema.Uint16}, Config: true}
 	e, _ := xpath.Compile("true()", testNS("u"))
 	tl.Musts = []*schema.Must{{Src: "true()", Compiled: e}}

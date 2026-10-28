@@ -175,7 +175,7 @@ func TestOpIndexParseLeaderTransitionsWork(t *testing.T) {
 		t.Fatal("target s schema not compiled")
 	}
 
-	opIndexScaling(t, []int{512, 1024, 2048, 4096}, func(n int) int64 {
+	opIndexScaling(t, scaleSizes([]int{512, 1024, 2048, 4096}, 3), func(n int) int64 {
 		_, src, diags, err := parseOp(context.Background(), strings.NewReader(fmt.Sprintf(
 			`{"opidxu:l":{"a":"1","a2":"2","a3":"3","s":[%d]}}`, n+2)),
 			set1, FormatJSON, opRPC, nil, Reject)

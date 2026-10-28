@@ -83,7 +83,7 @@ func TestDupCrossSchemaInsertWork(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	opIndexScaling(t, []int{512, 1024, 2048, 4096}, func(count int) int64 {
+	opIndexScaling(t, scaleSizes([]int{512, 1024, 2048, 4096}, 3), func(count int) int64 {
 		tr := newTree(dstSet)
 		root, _, err := tr.Dup(src.top.first(), nil, DupOptions{Recursive: true})
 		if err != nil {

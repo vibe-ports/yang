@@ -635,7 +635,7 @@ func TestStage3MixedMultikeyHistory(t *testing.T) {
 	a, b := reviewDiffSet(t, module), reviewDiffSet(t, module)
 	tr := newTree(a)
 	rng := rand.New(rand.NewPCG(0x301, 33)) //nolint:gosec // persisted mutation seed
-	for step := range 2048 {
+	for step := range raceScale(2048, 4) {
 		tr.work.hashUsed, tr.work.hashErr = 0, nil
 		switch rng.IntN(7) {
 		case 0, 1:

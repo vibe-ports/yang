@@ -77,7 +77,7 @@ func TestParseRepeatedKeyScaling(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			for _, n := range scaleSizes([]int{500, 2000, 8000}, 2) {
+			for _, n := range scaleSizes([]int{500, 2000, 8000}, 1) {
 				one := measure(t, tc.set, tc.input(n), tc.wantValid)
 				four := measure(t, tc.set, tc.input(4*n), tc.wantValid)
 				minWork := uint64(n) //nolint:gosec // the measured sizes above are all positive
@@ -253,7 +253,7 @@ func TestKeyConcatCollisionScaling(t *testing.T) {
 	}
 	for _, parseOnly := range []bool{true, false} {
 		t.Run(fmt.Sprintf("parse-only=%v", parseOnly), func(t *testing.T) {
-			for _, n := range scaleSizes([]int{500, 2000, 8000}, 2) {
+			for _, n := range scaleSizes([]int{500, 2000, 8000}, 1) {
 				w1, b1 := measure(t, input(n), parseOnly)
 				w4, b4 := measure(t, input(4*n), parseOnly)
 				if w4 > 6*w1 || b4 > 6*b1 {

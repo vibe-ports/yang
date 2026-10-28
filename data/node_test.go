@@ -159,7 +159,7 @@ func TestInsertOrder(t *testing.T) {
 func TestInsertWork(t *testing.T) {
 	f := newFixture()
 	f.ll.Type = &schema.Type{Base: schema.Uint16}
-	const n = 20000
+	n := raceScale(20000, 4)
 	for _, reversed := range []bool{true, false} {
 		tr := newTree(f.set)
 		c := newInner(f.c)
@@ -179,7 +179,7 @@ func TestInsertWork(t *testing.T) {
 			}
 		}
 		// rb_insert_node descends the retained tree (height up to 2*log2 n), then recolours
-		if limit := n * (5*bits.Len(n) + 4); int(tr.work.Load()) > limit {
+		if limit := n * (5*bits.Len(uint(n)) + 4); int(tr.work.Load()) > limit {
 			t.Fatalf("reversed %v: %d comparisons, limit %d", reversed, int(tr.work.Load()), limit)
 		}
 	}

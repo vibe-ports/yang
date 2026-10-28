@@ -18,7 +18,7 @@ func TestAstra305Round13CountedWork(t *testing.T) {
 		t.Run(operation, func(t *testing.T) {
 			var prevWork int64
 			var prevBytes uint64
-			for _, n := range []int{128, 512, 2048} {
+			for _, n := range scaleSizes([]int{128, 512, 2048}, 2) {
 				values := make([]string, n)
 				for i := range values {
 					value := "b"

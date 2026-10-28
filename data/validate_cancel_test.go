@@ -38,9 +38,9 @@ func TestValidationCancelDuringTraversal(t *testing.T) {
 	set := opIndexSet(t, cancelValidationModel)
 	for _, nested := range []bool{false, true} {
 		for _, api := range []string{"final", "all", "diff", "module", "module-diff"} {
-			for _, at := range []int{32, 2048} {
+			for _, at := range []int{32, raceScale(2048, 4)} {
 				t.Run(fmt.Sprintf("nested=%t/%s/at=%d", nested, api, at), func(t *testing.T) {
-					tr := cancelValidationTree(t, set, 4096, nested)
+					tr := cancelValidationTree(t, set, raceScale(4096, 4), nested)
 					ctx := &cancelAtContext{Context: context.Background(), at: at}
 					o := ValidateOptions{NotFinal: true, MultiError: true}
 					var ds []yang.Diagnostic

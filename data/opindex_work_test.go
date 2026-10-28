@@ -16,7 +16,14 @@ import (
 	"github.com/vibe-ports/yang/internal/types"
 )
 
-var opIndexSizes = scaleSizes([]int{2048, 4096, 8192, 16384}, 3)
+// opIndexSizes starts three doublings lower under the race detector, which keeps every per-doubling
+// and two-doubling comparison of opIndexScaling at an eighth of the instrumented work.
+var opIndexSizes = func() []int {
+	if raceEnabled {
+		return []int{256, 512, 1024}
+	}
+	return []int{2048, 4096, 8192, 16384}
+}()
 
 // scaleSizes keeps the first keep of the ascending sizes of a scaling test under the race
 // detector. The tests compare counted work (and allocations) between sizes, which the detector's
@@ -27,6 +34,15 @@ func scaleSizes(sizes []int, keep int) []int {
 		return sizes[:keep]
 	}
 	return sizes
+}
+
+// raceScale divides a fixed test size by div under the race detector, for tests whose bounds
+// are derived from that size; see scaleSizes.
+func raceScale(n, div int) int {
+	if raceEnabled {
+		return n / div
+	}
+	return n
 }
 
 func opIndexSet(t *testing.T, yang string) *schema.Set {
@@ -171,7 +187,7 @@ func TestOpIndexDescendingInput(t *testing.T) {
 }
 
 func TestOpIndexAbsentSiblings(t *testing.T) {
-	sizes := []int{256, 512, 1024, 2048}
+	sizes := scaleSizes([]int{256, 512, 1024, 2048}, 3)
 	opIndexScaling(t, sizes, func(n int) int64 {
 		var y strings.Builder
 		y.WriteString(`module m { yang-version 1.1; namespace "urn:m"; prefix m; rpc r { output { leaf-list v { type uint32; }`)
@@ -198,7 +214,7 @@ func TestOpIndexAbsentSiblings(t *testing.T) {
 }
 
 func TestOpIndexManySortedRuns(t *testing.T) {
-	sizes := []int{256, 512, 1024, 2048}
+	sizes := scaleSizes([]int{256, 512, 1024, 2048}, 3)
 	opIndexScaling(t, sizes, func(n int) int64 {
 		var y, input strings.Builder
 		y.WriteString(`module m { yang-version 1.1; namespace "urn:m"; prefix m; rpc r { input {`)

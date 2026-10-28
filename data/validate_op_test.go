@@ -464,7 +464,7 @@ func TestValidateOpLinear(t *testing.T) {
 			}
 			return dep.work.Load()
 		}
-		sizes := []int{250, 1000, 4000}
+		sizes := scaleSizes([]int{250, 1000, 4000}, 2)
 		works := make([]int64, len(sizes))
 		for i, n := range sizes {
 			works[i] = work(n)

@@ -1158,8 +1158,9 @@ func TestParseOpRollback(t *testing.T) {
 		}
 		return work
 	}
-	small, large := run(2000), run(32000)
+	n := raceScale(2000, 4)
+	small, large := run(n), run(16*n)
 	if small <= 0 || large > 28*small { // 16x input plus the balanced-index log factor
-		t.Fatalf("rollback work for 2000 nodes %d, for 32000 nodes %d: exceeds n log n", small, large)
+		t.Fatalf("rollback work for %d nodes %d, for %d nodes %d: exceeds n log n", n, small, 16*n, large)
 	}
 }

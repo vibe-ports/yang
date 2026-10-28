@@ -376,8 +376,9 @@ func TestParseXMLLinear(t *testing.T) {
 				}
 				return int(lc.tree.work.Load())
 			}
-			if w1, w4 := work(1000), work(4000); w4 > 5*w1 {
-				t.Fatalf("work %d for 1000 values, %d for 4000: not linear", w1, w4)
+			n := raceScale(1000, 2)
+			if w1, w4 := work(n), work(4*n); w4 > 5*w1 {
+				t.Fatalf("work %d for %d values, %d for %d: not linear", w1, n, w4, 4*n)
 			}
 		})
 	}

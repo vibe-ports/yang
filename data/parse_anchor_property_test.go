@@ -25,7 +25,7 @@ func TestParseDeferredRunAnchors(t *testing.T) {
 		name string
 		val  int
 	}
-	for i := range 3000 {
+	for i := range raceScale(3000, 3) {
 		var items []item
 		if rng.IntN(2) == 0 {
 			items = append(items, item{"pre", 0})

@@ -118,7 +118,7 @@ func TestOpIndexXMLDistinctOpaqueNamesScaling(t *testing.T) {
 func TestOpIndexXMLOpaqueAnchorIgnoresSchemaPrefix(t *testing.T) {
 	set := opIndexSet(t, `module m { yang-version 1.1; namespace "urn:m"; prefix m;
  container c { leaf-list v { type uint32; ordered-by user; } } }`)
-	opIndexScaling(t, []int{256, 512, 1024, 2048}, func(n int) int64 {
+	opIndexScaling(t, scaleSizes([]int{256, 512, 1024, 2048}, 3), func(n int) int64 {
 		var input strings.Builder
 		input.WriteString(`<c xmlns="urn:m"><v>`)
 		input.WriteString(strings.Repeat(`1</v><v>`, n-1))

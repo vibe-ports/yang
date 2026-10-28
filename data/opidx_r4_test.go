@@ -44,7 +44,7 @@ func TestOpIndexBulkUnlinkScrambledRecords(t *testing.T) {
 		{name: "TrimXPath", kind: trimToOutput},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			opIndexScaling(t, []int{512, 1024, 2048, 4096}, func(n int) int64 {
+			opIndexScaling(t, scaleSizes([]int{512, 1024, 2048, 4096}, 3), func(n int) int64 {
 				tr, op, diags, err := parseOp(context.Background(), strings.NewReader(
 					`{"m:r":{}}`), set, FormatJSON, opRPC, nil, Reject)
 				if err != nil {

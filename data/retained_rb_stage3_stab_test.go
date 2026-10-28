@@ -84,7 +84,9 @@ func stage3FailThenRetry(t *testing.T, name string, build func() (trees []*Tree,
 	// every limit below the work used, and every reservation check above it
 	limits := map[uint64]bool{}
 	for limit := uint64(1); limit < need; limit++ {
-		limits[limit] = true
+		if raceSweep(limit, need) {
+			limits[limit] = true
+		}
 	}
 	for _, at := range points {
 		if at > 1 {
@@ -307,14 +309,15 @@ func TestStage3RefusalCostIndependentOfInput(t *testing.T) {
 		}
 		return after.TotalAlloc - before.TotalAlloc, limited.work.Load()
 	}
+	large := raceScale(2048, 4)
 	for _, o := range ops {
 		smallBytes, smallVisits := measure(8, o)
-		largeBytes, largeVisits := measure(2048, o)
-		t.Logf("%s refused at one unit: 8 -> %d bytes %d visits; 2048 -> %d bytes %d visits",
-			o.name, smallBytes, smallVisits, largeBytes, largeVisits)
+		largeBytes, largeVisits := measure(large, o)
+		t.Logf("%s refused at one unit: 8 -> %d bytes %d visits; %d -> %d bytes %d visits",
+			o.name, smallBytes, smallVisits, large, largeBytes, largeVisits)
 		if !o.linear && largeBytes > 2*smallBytes+16<<10 || largeVisits > 2*smallVisits+16 {
-			t.Errorf("%s: refused work grows with the input (8 -> %d B/%d visits, 2048 -> %d B/%d visits)",
-				o.name, smallBytes, smallVisits, largeBytes, largeVisits)
+			t.Errorf("%s: refused work grows with the input (8 -> %d B/%d visits, %d -> %d B/%d visits)",
+				o.name, smallBytes, smallVisits, large, largeBytes, largeVisits)
 		}
 	}
 }
@@ -464,6 +467,9 @@ func TestStage3DetachedOriginMoveBudget(t *testing.T) {
 			t.Fatalf("origin=%v: %d units", origin, need)
 		}
 		for limit := uint64(1); limit < need; limit++ {
+			if !raceSweep(limit, need) {
+				continue
+			}
 			dst, a, x := build()
 			parentWork, childWork, children := a.kids.work, x.kids.work, a.kids.Len()
 			before := snapshotHashBudgetTree(dst)
@@ -523,6 +529,9 @@ func TestStage3DupIntoDetachedParentBudget(t *testing.T) {
 	}
 	need := full.work.hashUsed
 	for limit := uint64(1); limit < need; limit++ {
+		if !raceSweep(limit, need) {
+			continue
+		}
 		dst, n1, n2 := build()
 		f1, f2, children := n1.flags, n2.flags, n2.kids.Len()
 		dst.work.hashLimit = limit
@@ -753,7 +762,9 @@ func TestStage3DetachedDestinationChainBudget(t *testing.T) {
 			}
 			limits := map[uint64]bool{}
 			for limit := uint64(1); limit < need; limit++ {
-				limits[limit] = true
+				if raceSweep(limit, need) {
+					limits[limit] = true
+				}
 			}
 			for _, at := range points {
 				if at > 1 && at <= need {
@@ -849,6 +860,13 @@ const fzModule = `module fz {yang-version 1.1;namespace "urn:fz";prefix f;
 const fzSample = 24
 
 var fzFull = os.Getenv("YANG_STAGE3_FUZZ_FULL") == "1"
+
+// raceSweep reports whether a budget sweep below need probes limit. Every limit is probed
+// normally and with fzFull; under the race detector a sweep keeps its first and last 8 limits
+// and every 9th (the reservation points a sweep adds on its own are always kept).
+func raceSweep(limit, need uint64) bool {
+	return !raceEnabled || fzFull || limit <= 8 || need-limit <= 8 || limit%9 == 0
+}
 
 type fzKnob struct {
 	name string
@@ -1949,7 +1967,7 @@ func TestStage3RefusalIsNoOpFuzz(t *testing.T) {
 	set, set2 := reviewDiffSet(t, fzModule), reviewDiffSet(t, fzModule)
 	iters := 200
 	if raceEnabled {
-		iters = 40
+		iters = 4
 	}
 	if v := os.Getenv("YANG_STAGE3_FUZZ_ITERS"); v != "" {
 		n, err := strconv.Atoi(v)
@@ -2143,6 +2161,9 @@ func TestStage3DetachedFirstRBCreationBudget(t *testing.T) {
 		}
 		need := dst.work.hashUsed
 		for limit := uint64(1); limit < need; limit++ {
+			if !raceSweep(limit, need) {
+				continue
+			}
 			dst, snap, run := build()
 			before := snap()
 			dst.work.hashLimit = limit
@@ -2322,6 +2343,9 @@ func TestStage3ReservationHistoryBudget(t *testing.T) {
 				}
 				need := dst.work.hashUsed
 				for limit := uint64(1); limit < need; limit++ {
+					if !raceSweep(limit, need) {
+						continue
+					}
 					dst, b, snap := build(i)
 					before := snap()
 					dst.work.hashLimit = limit
@@ -2586,6 +2610,9 @@ func TestStage3MergeDiffAnchorRefusal(t *testing.T) {
 		// every limit, each on fresh diffs: a refusal of propagateMeta's changeMeta capture is
 		// returned unlogged and must not index an empty log
 		for limit := uint64(1); limit < 256; limit++ {
+			if !raceSweep(limit, 256) {
+				continue
+			}
 			func() {
 				defer func() {
 					if r := recover(); r != nil {

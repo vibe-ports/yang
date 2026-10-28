@@ -152,7 +152,7 @@ func opidxR9AssertSorted(t *testing.T, parent *Node, sn *schema.Node, count int)
 
 func TestOpIndexSortRelocationDuplicateHeavy(t *testing.T) {
 	_, source, target := opidxR8Sets(t)
-	opIndexScaling(t, []int{512, 1024, 2048, 4096}, func(n int) int64 {
+	opIndexScaling(t, scaleSizes([]int{512, 1024, 2048, 4096}, 3), func(n int) int64 {
 		values := make([]int, 0, 2*n+1)
 		for range n {
 			values = append(values, 1)
@@ -259,7 +259,7 @@ func TestOpIndexBucketRemoveScrambled(t *testing.T) {
     output { leaf-list dup { type uint32; } }
   }
 }`)
-	opIndexScaling(t, []int{512, 1024, 2048, 4096}, func(n int) int64 {
+	opIndexScaling(t, scaleSizes([]int{512, 1024, 2048, 4096}, 3), func(n int) int64 {
 		tr, op, sn := opidxRemovalTree(t, set, "duplicates", n)
 		if sn == nil {
 			t.Fatal("duplicate leaf-list schema not compiled")

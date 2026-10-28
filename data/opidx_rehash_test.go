@@ -83,7 +83,7 @@ func TestOpIndexRehashKeepsRecord(t *testing.T) {
 // TestOpIndexDirtyFlushManyRuns covers parser bookkeeping when many system-ordered list runs are
 // pending for the operation's sibling set while each keyed list instance closes its own inner set.
 func TestOpIndexDirtyFlushManyRuns(t *testing.T) {
-	sizes := []int{128, 256, 512, 1024}
+	sizes := scaleSizes([]int{128, 256, 512, 1024}, 3)
 	opIndexScaling(t, sizes, func(n int) int64 {
 		var yang, input strings.Builder
 		yang.WriteString(`module m { yang-version 1.1; namespace "urn:m"; prefix m; rpc r { input {`)

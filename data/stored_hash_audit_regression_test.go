@@ -80,7 +80,7 @@ func TestBatchRemovalComparedPrefixLinear(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	const count = 10_000
+	count := raceScale(10_000, 4)
 	removed := make([]*Node, 0, count)
 	for i := range count {
 		n, err := tr.NewTerm(list, "x", fmt.Sprintf("%05d", i), NewOptions{})
@@ -99,7 +99,7 @@ func TestBatchRemovalComparedPrefixLinear(t *testing.T) {
 	if err := tr.unlinkAll(removed); err != nil {
 		t.Fatal(err)
 	}
-	if got := tr.work.Load(); got > 2_000_000 {
+	if got := tr.work.Load(); got > 200*int64(count) {
 		t.Fatalf("batch removal inspected %d positions for %d children", got, count)
 	}
 	if list.kids.SchemaLen() != 2 || list.kids.At(1).Name() != "c" {

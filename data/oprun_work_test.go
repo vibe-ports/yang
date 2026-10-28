@@ -19,7 +19,7 @@ func TestOpRunLookupWork(t *testing.T) {
 	for _, operation := range []string{"merge", "find", "instances"} {
 		for _, order := range []string{"sorted", "reverse", "shuffled", "duplicates"} {
 			t.Run(operation+"/"+order, func(t *testing.T) {
-				opIndexScaling(t, []int{64, 128, 256, 512}, func(n int) int64 {
+				opIndexScaling(t, scaleSizes([]int{64, 128, 256, 512}, 3), func(n int) int64 {
 					var y, reply strings.Builder
 					y.WriteString(`module m { yang-version 1.1; namespace "urn:m"; prefix m; rpc r { output {`)
 					reply.WriteByte('{')

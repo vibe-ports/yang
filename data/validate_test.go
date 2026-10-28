@@ -256,7 +256,7 @@ func TestUniqueWork(t *testing.T) {
 	u := b.add(m, l, schema.Leaf, "u", str)
 	l.Keys, l.Uniques = []*schema.Node{k}, [][]*schema.Node{{u}}
 	tr := newTree(b.set)
-	const n = 5000
+	n := raceScale(5000, 4)
 	for i := range n {
 		li := newInner(l)
 		mustLink(t, tr.insert(li, b.term(k, fmt.Sprint(i)), insertDefault))

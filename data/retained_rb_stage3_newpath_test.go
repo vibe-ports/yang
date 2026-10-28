@@ -337,10 +337,10 @@ func TestStage3NewPathJournalSweep(t *testing.T) {
 				t.Fatalf("traced history differs:\n%s", npjDiff(got, want))
 			}
 			// every unit; without YANG_STAGE3_FUZZ_FULL=1 a long sweep keeps its first and last 256
-			// units and every 53rd (64 and every 257th under the race detector)
+			// units and every 53rd (8 and every 1021st under the race detector)
 			edge, stride := uint64(256), uint64(53)
 			if raceEnabled {
-				edge, stride = 64, 257
+				edge, stride = 8, 1021
 			}
 			var limits []uint64
 			for limit := uint64(1); limit < need; limit++ {
@@ -446,7 +446,7 @@ func TestStage3NewPathJournalCapturesWrites(t *testing.T) {
 	defer func() { captureHook = nil }()
 	for _, mode := range []string{"ordinary", "traced", "limited"} {
 		for _, path := range []string{"/stage3-npj:c/s[k='s01001']/v", "/stage3-npj:c/w[.='w01001']", "/stage3-npj:c/m/x"} {
-			tr := build(2000)
+			tr := build(raceScale(2000, 2))
 			dest := &tr.top.At(0).kids
 			whole := 0
 			captureHook = func(s *siblings) {
@@ -493,8 +493,9 @@ func TestStage3NewPathJournalCapturesWrites(t *testing.T) {
 		}
 		return tr.work.hashUsed - min(tr.work.hashUsed, ref.work.hashUsed)
 	}
-	if small, large := beyond(250), beyond(8000); large > small+128 {
-		t.Errorf("NewPath's work beyond the forward insertion grows with the destination: %d at 250 siblings, %d at 8000", small, large)
+	wide := raceScale(8000, 4)
+	if small, large := beyond(250), beyond(wide); large > small+128 {
+		t.Errorf("NewPath's work beyond the forward insertion grows with the destination: %d at 250 siblings, %d at %d", small, large, wide)
 	}
 }
 
@@ -515,6 +516,9 @@ func TestStage3NewPathUpdateParity(t *testing.T) {
 	want := npjStructure(ctrl)
 	need, refusals := ctrl.work.hashUsed, 0
 	for limit := uint64(1); limit < need; limit++ {
+		if !raceSweep(limit, need) {
+			continue
+		}
 		var outcome [2][]string
 		for i, traced := range []bool{false, true} {
 			tr := parseOnlyXML(t, set, data)

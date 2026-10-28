@@ -391,7 +391,11 @@ func runPrefixSequence(t *testing.T, input []byte) {
 }
 
 func TestStoredHashPrefixModel(t *testing.T) {
-	for _, seed := range []uint64{1, 257, 4096, 65537} {
+	seeds := []uint64{1, 257, 4096, 65537}
+	if raceEnabled {
+		seeds = seeds[:2]
+	}
+	for _, seed := range seeds {
 		rng := rand.New(rand.NewPCG(seed, 14)) //nolint:gosec // deterministic model sequence
 		input := make([]byte, 180)
 		for i := range input {
