@@ -134,7 +134,7 @@ func intoItself(dest, n *Node, fn string) error {
 
 // insertChild is lyd_insert_child: n becomes a child of parent, or every top-level node of n's
 // tree when n starts it (sibList).
-func (t *Tree) insertChild(parent, n *Node) error {
+func (t *Tree) insertChild(parent, n *Node) (err error) {
 	switch {
 	case parent == nil:
 		return argErr("parent", "lyd_insert_child")
@@ -170,38 +170,33 @@ func (t *Tree) insertChild(parent, n *Node) error {
 	if err := t.preflightMoveDestination(parent, n); err != nil {
 		return err
 	}
-	destination := t.childrenOf(parent)
-	destinationGen := destination.gen
 	if err := unlinkCheck(n); err != nil {
 		return err
 	}
-	disarm, err := arm()
+	disarm, err := arm(t.childrenOf(parent))
 	if err != nil {
 		return err
 	}
 	defer disarm()
+	finish, err := t.relocation(n, t.childrenOf(parent), restore)
+	if err != nil {
+		return err
+	}
+	defer finish(&err) // any failure after the unlink rolls back, reviving n's source handle
 	unlinkSource := unlink
 	if n.siblingsOf() == t.childrenOf(parent) {
 		unlinkSource = unlinkRetainingHistory
 	}
 	if err := unlinkSource(n); err != nil {
-		if n.parent == nil && n.tree == nil {
-			restore() // a sticky error after the removal (unlink's contract): no journal here
-		}
 		return err
 	}
-	err = t.insert(parent, n, insertDefault)
-	if err != nil {
-		restore()
-		destination.gen = destinationGen
-	}
-	return err
+	return t.insert(parent, n, insertDefault)
 }
 
 // insertSibling is lyd_insert_sibling: n, or every top-level node of n's tree when n starts it
 // (sibList), joins the siblings of sibling; with sibling nil, the top level of t. A parentless
 // sibling must be a top-level node of a tree (Go has no free sibling lists).
-func (t *Tree) insertSibling(sibling, n *Node) error {
+func (t *Tree) insertSibling(sibling, n *Node) (err error) {
 	switch {
 	case n == nil:
 		return argErr("node", "lyd_insert_sibling")
@@ -246,16 +241,19 @@ func (t *Tree) insertSibling(sibling, n *Node) error {
 	if err := dt.preflightMoveDestination(parent, n); err != nil {
 		return err
 	}
-	destination := dt.childrenOf(parent)
-	destinationGen := destination.gen
 	if err := unlinkCheck(n); err != nil {
 		return err
 	}
-	disarm, err := arm()
+	disarm, err := arm(dt.childrenOf(parent))
 	if err != nil {
 		return err
 	}
 	defer disarm()
+	finish, err := dt.relocation(n, dt.childrenOf(parent), restore)
+	if err != nil {
+		return err
+	}
+	defer finish(&err)
 	unlinkSource := unlink
 	if n.siblingsOf() == dt.childrenOf(parent) {
 		unlinkSource = unlinkRetainingHistory
@@ -263,12 +261,7 @@ func (t *Tree) insertSibling(sibling, n *Node) error {
 	if err := unlinkSource(n); err != nil {
 		return err
 	}
-	err = dt.insert(parent, n, insertDefault)
-	if err != nil {
-		restore()
-		destination.gen = destinationGen
-	}
-	return err
+	return dt.insert(parent, n, insertDefault)
 }
 
 // insertAfter is lyd_insert_after: the user-ordered instance n goes right after sibling, an
@@ -276,7 +269,7 @@ func (t *Tree) insertSibling(sibling, n *Node) error {
 // ones, so a schema node after an opaque sibling goes after the last instance of its own run
 // (insertLastBySchema) and an opaque node after a schema sibling becomes the first opaque one
 // (libyang links them where asked; D-0058).
-func (t *Tree) insertAfter(sibling, n *Node) error {
+func (t *Tree) insertAfter(sibling, n *Node) (err error) {
 	switch {
 	case sibling == nil:
 		return argErr("sibling", "lyd_insert_after")
@@ -318,12 +311,16 @@ func (t *Tree) insertAfter(sibling, n *Node) error {
 	if err := dt.preflightMoveDestination(sibling.parent, n); err != nil {
 		return err
 	}
-	destinationGen := sib.gen
-	disarm, err := arm()
+	disarm, err := arm(sib)
 	if err != nil {
 		return err
 	}
 	defer disarm()
+	finish, err := dt.relocation(n, sib, restore)
+	if err != nil {
+		return err
+	}
+	defer finish(&err)
 	unlinkSource := unlink
 	if n.siblingsOf() == sib {
 		unlinkSource = unlinkRetainingHistory
@@ -340,12 +337,60 @@ func (t *Tree) insertAfter(sibling, n *Node) error {
 	case sibling.schema == nil:
 		at = sib.opaqueSpan().Index(sibling) + 1
 	}
-	err = dt.link(sibling.parent, sib, n, at)
-	if err != nil {
-		restore()
-		sib.gen = destinationGen
+	return dt.link(sibling.parent, sib, n, at)
+}
+
+// journaledRelocation reports whether a relocation from src into dst rolls back through a
+// journal (relocation): inside a running state, or when a set keeps an ordered index.
+func (t *Tree) journaledRelocation(src, dst *siblings) bool {
+	return t.work.journal != nil || src.order != nil || dst.order != nil
+}
+
+// relocation opens the recovery scope of a one-node relocation of n into dst, right before the
+// unlink (design 13 §2.1, §3.4): a level of the running state, or, when no owner has one and a
+// set involved keeps an ordered index (the only place a node has a handle), an
+// operation-local transaction that first captures both sets whole (charged, before any write).
+// finish rolls the scope back on any failure, which revives n's source handle and position, and
+// commits it otherwise. Without a state or an index, restore (linkOrigin's forward recovery)
+// relinks n as before: no handle identity exists to keep, and capturing the sets would make
+// repeated relocations in one set quadratic. ValidateOp's deliberate move back keeps
+// restoreLink too.
+func (t *Tree) relocation(n *Node, dst *siblings, restore func()) (finish func(*error), err error) {
+	src := n.siblingsOf()
+	if src == nil {
+		return func(*error) {}, nil // nothing is unlinked
 	}
-	return err
+	if !t.journaledRelocation(src, dst) {
+		gen := dst.gen
+		return func(result *error) {
+			if *result != nil {
+				restore() // relinks n only if it was removed
+				dst.gen = gen
+			}
+		}, nil
+	}
+	if j := t.work.journal; j != nil {
+		sp, err := j.savepoint()
+		if err != nil {
+			return nil, err
+		}
+		return func(result *error) { j.endLevel(sp, *result) }, nil
+	}
+	j := beginHashTransaction(t)
+	j.rollback = true
+	finish = func(result *error) { j.end(result) }
+	err = joinLinkJournal(t, n)
+	if err == nil {
+		err = src.touch()
+	}
+	if err == nil {
+		err = t.touch(dst)
+	}
+	if err != nil {
+		finish(&err)
+		return nil, err
+	}
+	return finish, nil
 }
 
 // linkOrigin records a linked node's position before an insertion may unlink it.
@@ -354,13 +399,13 @@ func (t *Tree) insertAfter(sibling, n *Node) error {
 // arm, called right before the unlink, returns disarm: the caller defers it so no removal undo
 // outlives the operation (a refused capture before the removal, or a transfer that never calls
 // dirtyOrder.remove, would otherwise leave it armed and retaining the destination).
-func (t *Tree) linkOrigin(n *Node) (restore func(), arm func() (disarm func(), err error), err error) {
+func (t *Tree) linkOrigin(n *Node) (restore func(), arm func(dst *siblings) (disarm func(), err error), err error) {
 	if err := joinLinkJournal(t, n); err != nil {
 		return nil, nil, err
 	}
 	sib := n.siblingsOf()
 	if sib == nil {
-		return func() {}, func() (func(), error) { return func() {}, nil }, nil
+		return func() {}, func(*siblings) (func(), error) { return func() {}, nil }, nil
 	}
 	owner, parent := n.treeOf(), n.parent
 	gen := sib.gen
@@ -424,6 +469,7 @@ func (t *Tree) linkOrigin(n *Node) (restore func(), arm func() (disarm func(), e
 	linksUndo := func() {}
 	var recovery uint64
 	disarm := func() {} // a refusal after arming drops the armed removal undos, restoring nothing
+	var journaled bool
 	armOrigin := func() error {
 		plan, err := prepareUnlink(n)
 		if err != nil {
@@ -449,19 +495,21 @@ func (t *Tree) linkOrigin(n *Node) (restore func(), arm func() (disarm func(), e
 		if linksUndo, err = linkOriginLinks(n, &t.work); err != nil {
 			return err
 		}
-		cost, err := owner.linkBound(parent, sib, n, at)
-		if err != nil {
-			return err
-		}
-		binding, err := subtreeBindingBound(n, &owner.work, true)
-		if err != nil {
-			return err
-		}
-		cost = addHashBound(cost, binding)
-		recovery = addHashBound(addHashBound(4*cost+64, 2*linkSlots(sib, n, at)), sib.transferCost(next, n))
-		recovery = addHashBound(recovery, recordRecovery)
-		if err := t.work.chargeHash(recovery); err != nil {
-			return err
+		if !journaled { // a journaled relocation rolls back instead (relocation): nothing to reserve
+			cost, err := owner.linkBound(parent, sib, n, at)
+			if err != nil {
+				return err
+			}
+			binding, err := subtreeBindingBound(n, &owner.work, true)
+			if err != nil {
+				return err
+			}
+			cost = addHashBound(cost, binding)
+			recovery = addHashBound(addHashBound(4*cost+64, 2*linkSlots(sib, n, at)), sib.transferCost(next, n))
+			recovery = addHashBound(recovery, recordRecovery)
+			if err := t.work.chargeHash(recovery); err != nil {
+				return err
+			}
 		}
 		current := sib.rbOrders[group]
 		if !inRB || group == nil {
@@ -539,7 +587,8 @@ func (t *Tree) linkOrigin(n *Node) (restore func(), arm func() (disarm func(), e
 		}
 		return nil
 	}
-	arm = func() (func(), error) {
+	arm = func(dst *siblings) (func(), error) {
+		journaled = dst != nil && t.journaledRelocation(sib, dst)
 		if err := armOrigin(); err != nil {
 			return nil, err
 		}
@@ -717,6 +766,13 @@ func (t *Tree) moveNodes(parent *Node, src *Tree) (result error) {
 		src.work.journal = j
 		j.lent = append(j.lent, &src.work)
 	}
+	// A refused whole-run move restores both forests, including hash registrations and work
+	// ownership: its own level rolls back (an enclosing operation keeps its earlier changes).
+	sp, err := j.savepoint()
+	if err != nil {
+		return err
+	}
+	defer func() { j.endLevel(sp, result) }()
 	dst := t.childrenOf(parent)
 	oldForestMove := t.work.forestMove
 	t.work.forestMove = true
@@ -730,13 +786,6 @@ func (t *Tree) moveNodes(parent *Node, src *Tree) (result error) {
 	if err := j.captureDetachedParent(parent); err != nil {
 		return err
 	}
-	// A refused whole-run move restores both forests, including hash registrations and work
-	// ownership. One journal replaces the topology-only snapshots and recovery relinking.
-	defer func() {
-		if result != nil {
-			j.restore()
-		}
-	}()
 	if err := t.work.chargeHash(8*(uint64(src.top.SchemaLen())+uint64(src.top.OpaqueLen())) + 1); err != nil { //nolint:gosec // sibling counts are nonnegative
 		return err
 	}

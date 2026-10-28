@@ -154,7 +154,7 @@ func validateOpNode(ctx context.Context, set *schema.Set, opNode *Node, dep *Tre
 	if err := preflightUnlink(sub); err != nil {
 		return nil, err
 	}
-	disarm, err := arm()
+	disarm, err := arm(nil)
 	if err != nil {
 		return nil, err
 	}

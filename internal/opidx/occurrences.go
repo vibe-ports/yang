@@ -402,3 +402,19 @@ func (o *Occurrences[T, S, K]) previous(n *occNode[T], tag uint64) *Handle[T] {
 	}
 	return prev
 }
+
+// Tombstones counts the nil cells of the index maps (tests: none survives a journal's commit).
+func (o *Occurrences[T, S, K]) Tombstones() int {
+	n := 0
+	for _, t := range o.trees {
+		if t == nil {
+			n++
+		}
+	}
+	for _, k := range o.by {
+		if k == nil {
+			n++
+		}
+	}
+	return n
+}

@@ -984,7 +984,7 @@ func TestStage3RollbackDisarmsRemovalUndo(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	disarm, err := arm()
+	disarm, err := arm(nil)
 	if err != nil {
 		t.Fatal(err)
 	}

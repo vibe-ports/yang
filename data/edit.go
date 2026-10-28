@@ -948,12 +948,18 @@ func (t *Tree) changeNodeValue(n *Node, v types.Value, hashAmount uint64) {
 			t.work.hashErr = err
 			return
 		}
-		disarm, err := arm()
+		disarm, err := arm(sib)
 		if err != nil {
 			return
 		}
 		defer disarm()
+		finish, err := t.relocation(target, sib, restore)
+		if err != nil {
+			t.work.hashErr = err
+			return
+		}
 		if err := unlinkRetainingHistory(target); err != nil {
+			finish(&err)
 			return
 		}
 		if err := n.touch(); err != nil {
@@ -977,11 +983,16 @@ func (t *Tree) changeNodeValue(n *Node, v types.Value, hashAmount uint64) {
 				}
 				s.key.keySlot = s.old
 			}
-			restore()
+			finish(&linkErr) // rolls back: the source handle and position revive
 			// the refused reinsertion is the change's result (SetValue, diff, Merge)
 			if t.work.hashErr == nil {
 				t.work.hashErr = linkErr
 			}
+			return
+		}
+		finish(&linkErr)
+		if linkErr != nil && t.work.hashErr == nil {
+			t.work.hashErr = linkErr // a refused commit (a charge of the local transaction)
 		}
 		return
 	}

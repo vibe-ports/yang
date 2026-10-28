@@ -428,7 +428,7 @@ func TestRelocationRefusesDualTrees(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := arm(); err == nil || !strings.Contains(err.Error(), "D-0121") {
+	if _, err := arm(nil); err == nil || !strings.Contains(err.Error(), "D-0121") {
 		t.Fatalf("dual-member unlink preflight: %v, want D-0121", err)
 	}
 	restore() // no unlink occurred; recovery must leave the original history alone

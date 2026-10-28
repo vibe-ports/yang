@@ -371,18 +371,19 @@ func (t *Tree) diffInsert(parent, n, source *Node, anchor string) error {
 			if err != nil {
 				return err
 			}
-			disarm, err := arm()
+			disarm, err := arm(sib)
 			if err != nil {
 				return err
 			}
 			defer disarm()
-			if err := unlink(n); err != nil {
+			finish, err := t.relocation(n, sib, restore)
+			if err != nil {
 				return err
 			}
-			err = t.insertBefore(first, n)
-			if err != nil {
-				restore()
+			if err = unlink(n); err == nil {
+				err = t.insertBefore(first, n)
 			}
+			finish(&err)
 			return err
 		}
 		if err := diffSourceInsertCheck(nil, sib.first(), source); err != nil {

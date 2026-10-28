@@ -29,29 +29,40 @@ type hashTransaction struct {
 	rank     map[*schema.Node]int
 	set      *schema.Set // the tree's snapshot: a diff create may retain another context's root
 	// orders are an operation's input or output children (opOrder), schema-sized
-	orders   map[orderKey][]*schema.Node
-	nodes    map[*Node]Node
-	siblings map[*siblings]siblings
-	chains   map[*recordChain]recordChain
-	records  map[*record]record
-	pending  map[*dirtyOrder]dirtyOrder
-	dirty    map[*dirtyOrderNode]dirtyOrderNode
-	links    map[*leafrefLinks]leafrefLinks
+	orders map[orderKey][]*schema.Node
+	// The whole captures (#240 step 4, design 13 §2.2): each map holds, per object, the serial
+	// of the level that made its newest live capture (wholeAt); the images live in img, in
+	// capture order, and whole lists their kinds in that order. A level captures an object iff
+	// its serial is below the level's own: a descendant's committed capture stays valid, a
+	// rolled-back one restores the previous serial (prevAt).
+	nodes    map[*Node]uint32
+	siblings map[*siblings]uint32
+	chains   map[*recordChain]uint32
+	records  map[*record]uint32
+	pending  map[*dirtyOrder]uint32
+	dirty    map[*dirtyOrderNode]uint32
+	links    map[*leafrefLinks]uint32
 	// owners are the link-record pointers of the counterparts of journaled nodes; a
 	// counterpart may be in another tree (a moved subtree keeps its links), and freeLinks
 	// drops an emptied record.
-	owners map[*Node]*leafrefLinks
-	metas  map[*meta]meta // lyd_change_meta edits a metadata instance in place
-	opaq   map[*opaque]opaque
+	owners map[*Node]uint32
+	metas  map[*meta]uint32 // lyd_change_meta edits a metadata instance in place
+	opaq   map[*opaque]uint32
 	// works are the work counters of the sibling sets of subtrees rebound to another tree
 	// (bindSubtreeWork) and not journaled otherwise
-	works map[*siblings]*workCounter
+	works map[*siblings]uint32
+	img   wholeImages
+	whole []wholeKind
+	// serial is the innermost open level's (1: the transaction itself); levels are the open
+	// savepoints, innermost last (design 13 §2.1)
+	serial, issued uint32
+	levels         []level
 	// lent are the work counters of trees without a transaction of their own that a subtree of
 	// this tree moved into (validateOp's temporary tree): changes there are journaled here
 	lent []*workCounter
 	// detached are the detached roots captureDetachedParent journaled whole: a later boundary of
-	// the same operation (Insert, then linkOrigin) does not walk them again
-	detached map[*Node]bool
+	// the same level (Insert, then linkOrigin) does not walk them again
+	detached map[*Node]uint32
 	// narrow is NewPath's journal (design 12, "NewPath mutation journal"): a narrow-aware
 	// primitive records each slot, field or struct it changes as an entry of undo instead of
 	// copying its sibling set whole; every other primitive still captures whole (touch).
@@ -81,6 +92,121 @@ type placedNode struct {
 	old dirtyOrderNode
 }
 
+type wholeKind uint8
+
+const (
+	wholeNode wholeKind = iota
+	wholeSiblings
+	wholeChain
+	wholeRecord
+	wholePending
+	wholeDirty
+	wholeLinks
+	wholeOwner
+	wholeMeta
+	wholeOpaque
+	wholeWorks
+	wholeDetached
+)
+
+// wholeImg is one whole capture: the object, its image and the serial it replaced.
+type wholeImg[K comparable, V any] struct {
+	k    K
+	v    V
+	prev uint32
+}
+
+type wholeImages struct {
+	nodes    []wholeImg[*Node, Node]
+	siblings []wholeImg[*siblings, siblings]
+	chains   []wholeImg[*recordChain, recordChain]
+	records  []wholeImg[*record, record]
+	pending  []wholeImg[*dirtyOrder, dirtyOrder]
+	dirty    []wholeImg[*dirtyOrderNode, dirtyOrderNode]
+	links    []wholeImg[*leafrefLinks, leafrefLinks]
+	owners   []wholeImg[*Node, *leafrefLinks]
+	metas    []wholeImg[*meta, meta]
+	opaq     []wholeImg[*opaque, opaque]
+	works    []wholeImg[*siblings, *workCounter]
+	detached []wholeImg[*Node, struct{}]
+}
+
+// level is an open savepoint: the serial to return to and the log lengths at its opening.
+type level struct {
+	parent                     uint32
+	whole, undo, placed, index int
+}
+
+// addWhole appends a whole capture of k at the current level.
+func addWhole[K comparable, V any](j *hashTransaction, at map[K]uint32, imgs *[]wholeImg[K, V], kind wholeKind, k K, v V) {
+	*imgs = append(*imgs, wholeImg[K, V]{k, v, at[k]})
+	at[k] = j.serial
+	j.whole = append(j.whole, kind)
+}
+
+// popWhole drops the newest capture of its kind and returns it; the object's serial returns to
+// the one it replaced. A first capture inserted the key, and its replay deletes it: no image of
+// the object remains in any tail, and an assignment (even of a present key) to a full small Go
+// map grows it. Any other capture assigned a present key on the forward path, which grew such
+// a map then, so its replay assignment allocates nothing.
+func popWhole[K comparable, V any](at map[K]uint32, imgs *[]wholeImg[K, V]) (K, V) {
+	l := *imgs
+	e := l[len(l)-1]
+	if e.prev == 0 {
+		delete(at, e.k)
+	} else {
+		at[e.k] = e.prev
+	}
+	l[len(l)-1] = wholeImg[K, V]{}
+	*imgs = l[:len(l)-1]
+	return e.k, e.v
+}
+
+// captured reports whether the current level holds a capture of k.
+func captured[K comparable](j *hashTransaction, at map[K]uint32, k K) bool { return at[k] >= j.serial }
+
+// savepoint opens a level (design 13 §2.1): a later rollbackLevel restores exactly what the
+// level changed, commitLevel keeps it in the enclosing level. O(1), charged one unit.
+func (j *hashTransaction) savepoint() (int, error) {
+	if err := j.charge(1); err != nil {
+		return 0, err
+	}
+	j.levels = append(j.levels, level{parent: j.serial, whole: len(j.whole), undo: len(j.undo),
+		placed: len(j.placed), index: j.index.Mark()})
+	j.issued++
+	j.serial = j.issued
+	return len(j.levels), nil
+}
+
+func (j *hashTransaction) closeLevel(sp int) level {
+	if sp != len(j.levels) || sp == 0 {
+		panic("data: savepoints complete innermost first")
+	}
+	l := j.levels[sp-1]
+	j.levels = j.levels[:sp-1]
+	j.serial = l.parent
+	return l
+}
+
+// commitLevel keeps the level's changes: its tail becomes part of the enclosing level's.
+func (j *hashTransaction) commitLevel(sp int) { j.closeLevel(sp) }
+
+// rollbackLevel restores what the level changed and drops its entries.
+func (j *hashTransaction) rollbackLevel(sp int) {
+	l := j.levels[sp-1]
+	j.rollbackTo(l)
+	j.closeLevel(sp)
+}
+
+// endLevel commits the level on success and rolls it back on any failure.
+func (j *hashTransaction) endLevel(sp int, result error) {
+	if result != nil {
+		j.rollbackLevel(sp)
+	} else {
+		j.commitLevel(sp)
+	}
+}
+
 // beginHashTransaction starts journaling t for an operation that may change any part of it. It
 // returns nil (whose methods do nothing) inside an operation that already journals t: the
 // enclosing transaction records the changes and restores them, a budget error being sticky for
@@ -89,7 +215,8 @@ func beginHashTransaction(t *Tree) *hashTransaction {
 	if t.work.journal != nil {
 		return nil
 	}
-	j := &hashTransaction{tree: t, done: t.work.beginHashWork(), rank: t.rank, orders: t.orders, set: t.set}
+	j := &hashTransaction{tree: t, done: t.work.beginHashWork(), rank: t.rank, orders: t.orders, set: t.set,
+		serial: 1, issued: 1}
 	j.index.SetCharger(j)
 	j.maps()
 	t.work.journal = j
@@ -126,7 +253,8 @@ func beginNarrowTransaction(t *Tree) *hashTransaction {
 	}
 	t.work.spare = nil
 	*j = hashTransaction{tree: t, done: t.work.beginHashWork(), rank: t.rank, orders: t.orders, set: t.set,
-		narrow: true, undo: j.undo[:0], placed: j.placed[:0], fresh: j.fresh, index: j.index, bound: j.bound[:0]}
+		narrow: true, undo: j.undo[:0], placed: j.placed[:0], fresh: j.fresh, index: j.index, bound: j.bound[:0],
+		serial: 1, issued: 1}
 	j.index.SetCharger(j)
 	t.work.journal = j
 	return j
@@ -153,15 +281,16 @@ func (j *hashTransaction) maps() {
 	if j.nodes != nil {
 		return
 	}
-	j.nodes, j.siblings, j.chains, j.records = map[*Node]Node{}, map[*siblings]siblings{}, map[*recordChain]recordChain{}, map[*record]record{}
-	j.pending, j.dirty = map[*dirtyOrder]dirtyOrder{}, map[*dirtyOrderNode]dirtyOrderNode{}
-	j.links, j.owners = map[*leafrefLinks]leafrefLinks{}, map[*Node]*leafrefLinks{}
-	j.metas, j.opaq, j.works = map[*meta]meta{}, map[*opaque]opaque{}, map[*siblings]*workCounter{}
+	j.nodes, j.siblings, j.chains, j.records = map[*Node]uint32{}, map[*siblings]uint32{}, map[*recordChain]uint32{}, map[*record]uint32{}
+	j.pending, j.dirty = map[*dirtyOrder]uint32{}, map[*dirtyOrderNode]uint32{}
+	j.links, j.owners = map[*leafrefLinks]uint32{}, map[*Node]uint32{}
+	j.metas, j.opaq, j.works = map[*meta]uint32{}, map[*opaque]uint32{}, map[*siblings]uint32{}
 }
 
 // narrow returns the narrow journal that records the changes of s entry by entry: nil without
-// a journal, in a whole-set journal, or once s is captured whole (an entry after a whole capture
-// would restore over it; see restore).
+// a journal, in a whole-set journal, or while s has a whole capture in some tail (an entry after
+// a whole capture would restore over it; see rollbackTo). A rolled-back first capture leaves no
+// image of s, so s gets entries again.
 func (s *siblings) narrow() *hashTransaction {
 	j := s.journal()
 	if j == nil || !j.narrow {
@@ -490,14 +619,14 @@ func (s *siblings) rebind(work *workCounter) error {
 			continue
 		}
 		j.maps()
-		if _, exists := j.siblings[s]; exists {
+		if captured(j, j.siblings, s) {
 			continue
 		}
-		if _, exists := j.works[s]; !exists {
+		if !captured(j, j.works, s) {
 			if err := j.charge(1); err != nil {
 				return err
 			}
-			j.works[s] = s.work
+			addWhole(j, j.works, &j.img.works, wholeWorks, s, s.work)
 		}
 	}
 	return nil
@@ -528,7 +657,7 @@ func (j *hashTransaction) captureDetachedParent(parent *Node) error {
 		}
 		root = root.parent
 	}
-	if root.tree != nil || j.detached[root] {
+	if root.tree != nil || captured(j, j.detached, root) {
 		return nil
 	}
 	if err := j.charge(1); err != nil { // the record below
@@ -542,7 +671,7 @@ func (j *hashTransaction) captureDetachedParent(parent *Node) error {
 		n := stack[len(stack)-1]
 		stack = stack[:len(stack)-1]
 		s := childStorage(n)
-		if _, captured := j.siblings[s]; captured {
+		if captured(j, j.siblings, s) {
 			// journaled already (a lazy touch): its children are still walked, so charge them
 			if err := j.charge(1 + uint64(s.SchemaLen()+s.OpaqueLen())); err != nil { //nolint:gosec // sibling counts are nonnegative
 				return err
@@ -554,16 +683,16 @@ func (j *hashTransaction) captureDetachedParent(parent *Node) error {
 		stack = s.opaqueSpan().AppendTo(stack)
 	}
 	if j.detached == nil {
-		j.detached = map[*Node]bool{}
+		j.detached = map[*Node]uint32{}
 	}
-	j.detached[root] = true
+	addWhole(j, j.detached, &j.img.detached, wholeDetached, root, struct{}{})
 	return nil
 }
 
 // captureNode journals n itself, not its children: its sibling set is journaled on its own.
 func (j *hashTransaction) captureNode(n *Node) error {
 	j.maps()
-	if _, exists := j.nodes[n]; exists {
+	if captured(j, j.nodes, n) {
 		return j.err
 	}
 	objects := 1 + uint64(2*len(n.meta)+len(n.lkeyFrozen)+len(n.carriedRB))
@@ -577,14 +706,14 @@ func (j *hashTransaction) captureNode(n *Node) error {
 	saved.meta = slices.Clone(n.meta)
 	saved.lkeyFrozen = slices.Clone(n.lkeyFrozen)
 	saved.carriedRB = slices.Clone(n.carriedRB)
-	j.nodes[n] = saved
+	addWhole(j, j.nodes, &j.img.nodes, wholeNode, n, saved)
 	for _, m := range n.meta {
-		j.metas[m] = *m
+		addWhole(j, j.metas, &j.img.metas, wholeMeta, m, *m)
 	}
 	if n.opaq != nil {
 		op := *n.opaq
 		op.Attrs = slices.Clone(op.Attrs)
-		j.opaq[n.opaq] = op
+		addWhole(j, j.opaq, &j.img.opaq, wholeOpaque, n.opaq, op)
 	}
 	for _, c := range n.carriedRB {
 		if err := j.captureOrder(c.order); err != nil {
@@ -611,26 +740,26 @@ func (j *hashTransaction) captureNode(n *Node) error {
 
 func (j *hashTransaction) captureLinks(l *leafrefLinks) error {
 	j.maps()
-	if _, exists := j.links[l]; exists {
+	if captured(j, j.links, l) {
 		return nil
 	}
 	if err := j.charge(1 + uint64(len(l.leafrefs)+len(l.targets))); err != nil {
 		return err
 	}
-	j.links[l] = leafrefLinks{leafrefs: slices.Clone(l.leafrefs), targets: slices.Clone(l.targets)}
+	addWhole(j, j.links, &j.img.links, wholeLinks, l, leafrefLinks{leafrefs: slices.Clone(l.leafrefs), targets: slices.Clone(l.targets)})
 	return nil
 }
 
 // captureOwner includes counterparts in another tree: freeLinks can empty their record.
 func (j *hashTransaction) captureOwner(c *Node) error {
 	j.maps()
-	if _, exists := j.owners[c]; exists {
+	if captured(j, j.owners, c) {
 		return nil
 	}
 	if err := j.charge(1); err != nil {
 		return err
 	}
-	j.owners[c] = c.links
+	addWhole(j, j.owners, &j.img.owners, wholeOwner, c, c.links)
 	if c.links != nil {
 		return j.captureLinks(c.links)
 	}
@@ -648,7 +777,7 @@ func (j *hashTransaction) captureRecords(r *record) error {
 		if r == nil {
 			continue
 		}
-		if _, exists := j.records[r]; exists {
+		if captured(j, j.records, r) {
 			continue
 		}
 		if err := j.charge(5 + uint64(len(r.more))); err != nil {
@@ -656,7 +785,7 @@ func (j *hashTransaction) captureRecords(r *record) error {
 		}
 		saved := *r
 		saved.more = slices.Clone(r.more)
-		j.records[r] = saved
+		addWhole(j, j.records, &j.img.records, wholeRecord, r, saved)
 		stack = append(stack, r.prev, r.next, r.left, r.right)
 	}
 	return nil
@@ -667,13 +796,13 @@ func (j *hashTransaction) captureChain(c *recordChain) error {
 	if c == nil {
 		return nil
 	}
-	if _, exists := j.chains[c]; exists {
+	if captured(j, j.chains, c) {
 		return nil
 	}
 	if err := j.charge(1); err != nil {
 		return err
 	}
-	j.chains[c] = *c
+	addWhole(j, j.chains, &j.img.chains, wholeChain, c, *c)
 	if err := j.captureRecords(c.first); err != nil {
 		return err
 	}
@@ -684,7 +813,7 @@ func (j *hashTransaction) captureChain(c *recordChain) error {
 // retained metadata keep their identity across rollback; there is no independently cloned tree.
 func (j *hashTransaction) captureOrder(d *dirtyOrder) error {
 	j.maps()
-	if _, exists := j.pending[d]; exists {
+	if captured(j, j.pending, d) {
 		return nil
 	}
 	if err := j.charge(1 + 2*uint64(len(d.nodes)) + uint64(len(d.leaders))); err != nil {
@@ -694,9 +823,9 @@ func (j *hashTransaction) captureOrder(d *dirtyOrder) error {
 	saved.undo = nil // an armed move undo belongs to this operation, never the retained graph
 	saved.nodes = maps.Clone(d.nodes)
 	saved.leaders = slices.Clone(d.leaders)
-	j.pending[d] = saved
+	addWhole(j, j.pending, &j.img.pending, wholePending, d, saved)
 	for _, n := range d.nodes {
-		j.dirty[n] = *n
+		addWhole(j, j.dirty, &j.img.dirty, wholeDirty, n, *n)
 	}
 	return nil
 }
@@ -710,7 +839,7 @@ var captureHook func(*siblings)
 
 func (j *hashTransaction) captureSiblings(s *siblings) error {
 	j.maps()
-	if _, exists := j.siblings[s]; exists {
+	if captured(j, j.siblings, s) {
 		return j.err
 	}
 	if captureHook != nil {
@@ -768,7 +897,7 @@ func (j *hashTransaction) captureSiblings(s *siblings) error {
 	}
 	saved.rbOrders = maps.Clone(s.rbOrders)
 	saved.contexts = maps.Clone(s.contexts)
-	j.siblings[s] = saved
+	addWhole(j, j.siblings, &j.img.siblings, wholeSiblings, s, saved)
 	if s.order != nil && s.order.bind.state == nil {
 		// the index is not copied: from now on every write of it is an entry of j.index
 		s.order.bind.state = j
@@ -819,53 +948,74 @@ func (j *hashTransaction) captureSiblings(s *siblings) error {
 	return nil
 }
 
+// restore returns the tree to its state when the transaction began: every level rolls back.
 func (j *hashTransaction) restore() {
-	for n, saved := range j.nodes {
-		// a journaled sibling set is restored below; the others are as they were (the operation
-		// did not change them)
-		n.restoreFields(saved)
-	}
-	for c, l := range j.owners {
-		c.links = l
-	}
-	for m, saved := range j.metas {
-		*m = saved
-	}
-	for s, saved := range j.siblings {
-		s.restoreStorage(saved)
-	}
-	for c, saved := range j.chains {
-		*c = saved
-	}
-	for r, saved := range j.records {
-		*r = saved
-	}
-	for p, saved := range j.pending {
-		*p = saved
-	}
-	for n, saved := range j.dirty {
-		*n = saved
-	}
-	// After graph fields too: a topology captured after rebinding saved the temporary counter.
-	for s, work := range j.works {
-		s.setWork(work)
-	}
-	for l, saved := range j.links {
-		*l = saved
-	}
-	for op, saved := range j.opaq {
-		*op = saved
-	}
+	j.rollbackTo(level{})
+	j.levels = j.levels[:0]
+	j.serial = 1
 	j.tree.rank, j.tree.orders, j.tree.set = j.rank, j.orders, j.set
-	// Entries last, newest first: an object captured whole after its first entries returns to
-	// that capture above, and its entries undo the rest. None follows its own whole capture.
-	for i := len(j.undo) - 1; i >= 0; i-- {
+}
+
+// rollbackTo replays every capture and entry made since l opened, newest first: the whole
+// captures, then #318's entries, then the index entries. An object captured whole after its
+// first entries returns to that capture first, and its entries undo the rest; no entry follows
+// its own object's whole capture in any tail (siblings.narrow).
+func (j *hashTransaction) rollbackTo(l level) {
+	for i := len(j.whole) - 1; i >= l.whole; i-- {
+		switch j.whole[i] {
+		case wholeNode:
+			n, saved := popWhole(j.nodes, &j.img.nodes)
+			// a journaled sibling set is restored on its own
+			n.restoreFields(saved)
+		case wholeSiblings:
+			s, saved := popWhole(j.siblings, &j.img.siblings)
+			s.restoreStorage(saved)
+		case wholeChain:
+			c, saved := popWhole(j.chains, &j.img.chains)
+			*c = saved
+		case wholeRecord:
+			r, saved := popWhole(j.records, &j.img.records)
+			*r = saved
+		case wholePending:
+			p, saved := popWhole(j.pending, &j.img.pending)
+			*p = saved
+		case wholeDirty:
+			n, saved := popWhole(j.dirty, &j.img.dirty)
+			*n = saved
+		case wholeLinks:
+			l, saved := popWhole(j.links, &j.img.links)
+			*l = saved
+		case wholeOwner:
+			c, saved := popWhole(j.owners, &j.img.owners)
+			c.links = saved
+		case wholeMeta:
+			m, saved := popWhole(j.metas, &j.img.metas)
+			*m = saved
+		case wholeOpaque:
+			op, saved := popWhole(j.opaq, &j.img.opaq)
+			*op = saved
+		case wholeWorks:
+			// newest first: a topology captured after rebinding saved the temporary counter,
+			// and this older entry gives the set and its topologies their counter back
+			s, work := popWhole(j.works, &j.img.works)
+			s.setWork(work)
+		case wholeDetached:
+			popWhole(j.detached, &j.img.detached)
+		}
+	}
+	clear(j.whole[l.whole:])
+	j.whole = j.whole[:l.whole]
+	for i := len(j.undo) - 1; i >= l.undo; i-- {
 		j.undo[i]()
 	}
-	for i := len(j.placed) - 1; i >= 0; i-- {
+	clear(j.undo[l.undo:])
+	j.undo = j.undo[:l.undo]
+	for i := len(j.placed) - 1; i >= l.placed; i-- {
 		*j.placed[i].x = j.placed[i].old
 	}
-	j.index.Rollback(0)
+	clear(j.placed[l.placed:])
+	j.placed = j.placed[:l.placed]
+	j.index.Rollback(l.index)
 }
 
 // capturer returns the running state that has captured s whole (orderBuild's new index reports
