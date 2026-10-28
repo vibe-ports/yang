@@ -496,12 +496,18 @@ func sortCallback(t *schema.Type) string {
 // check the second realtype before passing its storage to that callback
 // (libyang v5.8.6 src/tree_data_sorted.c:195-199,212-222). Leafrefs have already selected their
 // stored realtype. false: the pair is outside the profile (SortCompatible), or the time-period
-// callback would index before an empty canonical value (time_period.c:52), also for one realtype.
+// callback would index before an empty canonical value (time_period.c:52), also for one realtype
+// and through a union whose values both select it.
 // Inside the profile, R1-R3 reproduce the canonical linux/amd64 ABI byte reinterpretation, not a
 // numeric or textual conversion.
 func CompareCompatible(a, b Value) (order int, compatible bool) {
 	if !SortCompatible(a, b) {
 		return 0, false
+	}
+	if a.union != nil && b.union != nil && a.typ == b.typ && a.union.member.typ == b.union.member.typ {
+		// lyplg_type_sort_union calls the selected realtype's callback (union.c): its refusals
+		// apply, nested unions included. Different members order by position (compareUnion).
+		return CompareCompatible(a.union.member, b.union.member)
 	}
 	p := a.sortPlugin
 	if p != nil && p.id == "time-period" && (a.canon == "" || b.canon == "") {

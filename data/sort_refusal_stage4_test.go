@@ -648,3 +648,49 @@ func TestStage4UserordP2BeforeCompare(t *testing.T) {
 		t.Fatalf("refusal changed the array: %+v", u)
 	}
 }
+
+// TestStage4TimePeriodEmptyUnionMember: a union whose values both select time-period calls the
+// time-period callback (lyplg_type_sort_union, union.c), so an empty member is refused like a
+// plain time-period, for leaf-list values and list keys alike. Values selecting different
+// members order by member position and never reach that callback.
+func TestStage4TimePeriodEmptyUnionMember(t *testing.T) {
+	const module = `module refusal-union-period { yang-version 1.1; namespace "urn:rup"; prefix r;
+ import libnetconf2-netconf-server { prefix ln2; }
+ typedef u { type union { type uint8; type ln2:time-period; } }
+ container c { leaf-list v { type u; } list l { key k; leaf k { type u; } } } }`
+	c, _, err := compile.NewContext(compile.Options{NoYangLibrary: true}, fstest.MapFS{
+		"refusal-union-period.yang": {Data: []byte(module)}, "libnetconf2-netconf-server.yang": {Data: []byte(timePeriodTypedefModule)},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, diags, err := c.Load("refusal-union-period", "", nil); err != nil {
+		t.Fatal(err, diags)
+	}
+	set := c.Snapshot()
+	tree := func(xml string) *Tree { return parseOnlyXML(t, set, `<c xmlns="urn:rup">`+xml+`</c>`) }
+	// insertion descent into a leaf-list of union values is refused without a change
+	tr := tree(`<v>1h</v><v>2h</v>`)
+	ct := topOf(tr)
+	before := snapshotHashBudgetTree(tr)
+	err = (&logger{}).done(tr.insert(ct, retainedRBTerm(t, ct.kids.At(0).schema, ""), insertDefault))
+	assertStage4Refusal(t, err, "v", "lyd_insert_node")
+	if !reflect.DeepEqual(before, snapshotHashBudgetTree(tr)) {
+		t.Fatal("refused insertion changed the graph")
+	}
+	for _, pair := range [][2]string{{`<v>1h</v>`, `<v/>`}, {`<l><k>1h</k></l>`, `<l><k/></l>`}} {
+		for _, p := range [][2]string{pair, {pair[1], pair[0]}} {
+			d, err := Diff(tree(p[0]), tree(p[1]), DiffOptions{})
+			if d != nil {
+				t.Fatalf("%s/%s: refused Diff returned a result", p[0], p[1])
+			}
+			assertStage4Refusal(t, err, p[0][1:2], "D-0121")
+		}
+	}
+	// different members: member order, no time-period callback
+	for _, pair := range [][2]string{{`<v>5</v>`, `<v/>`}, {`<l><k>5</k></l>`, `<l><k/></l>`}} {
+		if d, err := Diff(tree(pair[0]), tree(pair[1]), DiffOptions{}); err != nil || d == nil {
+			t.Fatalf("%s/%s: Diff = (%v, %v)", pair[0], pair[1], d, err)
+		}
+	}
+}

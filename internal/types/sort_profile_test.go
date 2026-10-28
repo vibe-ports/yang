@@ -228,3 +228,28 @@ func TestCompareCompatibleClosedNeighbours(t *testing.T) {
 		t.Error("time-period refused")
 	}
 }
+
+// TestCompareCompatibleUnionMember: lyplg_type_sort_union calls the selected members' realtype
+// callback when both select one realtype (union.c), so that callback's refusal applies through
+// the union, nested unions included. Different members order by member position, which invokes
+// no member callback and is compatible.
+func TestCompareCompatibleUnionMember(t *testing.T) {
+	ln2 := &schema.Module{Name: "libnetconf2-netconf-server"}
+	period := &schema.Type{Base: schema.String, Typedef: "time-period", TypedefModule: ln2}
+	u8 := &schema.Type{Base: schema.Uint8}
+	inner := &schema.Type{Base: schema.Union, Union: []*schema.Type{u8, period}} // "5" selects uint8
+	nested := &schema.Type{Base: schema.Union, Union: []*schema.Type{inner, {Base: schema.String}}}
+	for _, ut := range []*schema.Type{inner, nested} {
+		e, h, n := storeProfileValue(t, ut, ""), storeProfileValue(t, ut, "1h"), storeProfileValue(t, ut, "5")
+		for _, pair := range [][2]Value{{e, h}, {h, e}, {e, e}} {
+			if _, ok := CompareCompatible(pair[0], pair[1]); ok {
+				t.Errorf("union %q/%q: empty time-period member sorted", pair[0].Canonical(), pair[1].Canonical())
+			}
+		}
+		for _, pair := range [][2]Value{{h, h}, {e, n}, {n, e}, {h, n}, {n, n}} {
+			if got, ok := CompareCompatible(pair[0], pair[1]); !ok || got != Compare(pair[0], pair[1]) {
+				t.Errorf("union %q/%q = (%d, %t), want (%d, true)", pair[0].Canonical(), pair[1].Canonical(), got, ok, Compare(pair[0], pair[1]))
+			}
+		}
+	}
+}
