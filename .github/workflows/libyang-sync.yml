@@ -112,7 +112,7 @@ jobs:
           sed -i "s/^ARG LIBYANG_REF=.*/ARG LIBYANG_REF=$LIBYANG_TAG/; s/^ARG LIBYANG_COMMIT=.*/ARG LIBYANG_COMMIT=$LIBYANG_SHA/" Dockerfile
           # Only the oracle pin moves. Provenance headers/docs keep the version code was ported from.
           sed -i "s/^  libyang: .*/  libyang: $LIBYANG_TAG/; s/^  libyang_commit: .*/  libyang_commit: $LIBYANG_SHA/" conformance/corpus/manifest.yaml
-      - uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+      - uses: docker/login-action@81c6f93d4bc991e510b342a00b419b3bb4efc5c6 # v4.7.0
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
