@@ -387,9 +387,14 @@ func TestCountedRelabelAcrossHalfUniverse(t *testing.T) {
 	for i := range initial {
 		handles = append(handles, seq.InsertBefore(nil, i))
 	}
-	left, right := handles[initial/2-1], handles[initial/2]
 	const boundary = tagUniverse / 2
-	if left.prev.tag >= boundary-1 || right.next.tag <= boundary {
+	// the pair that brackets the boundary, wherever the labelling put it
+	at := 1
+	for at < initial-1 && handles[at].tag < boundary {
+		at++
+	}
+	left, right := handles[at-1], handles[at]
+	if at < 2 || at >= initial-1 || left.prev.tag >= boundary-1 || right.next.tag <= boundary {
 		t.Fatal("setup does not bracket the half-universe boundary")
 	}
 	left.tag, right.tag = boundary-1, boundary
@@ -404,7 +409,7 @@ func TestCountedRelabelAcrossHalfUniverse(t *testing.T) {
 		t.Fatalf("half-universe insertion cost %d counted operations", work)
 	}
 	seq.SetWorkHook(nil)
-	checkSequence(t, &seq, slices.Insert(handles, initial/2, h))
+	checkSequence(t, &seq, slices.Insert(handles, at, h))
 }
 
 func TestCountedAdversarialInsertionGaps(t *testing.T) {

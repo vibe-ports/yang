@@ -163,9 +163,32 @@ type orderBinding struct {
 	state *hashTransaction
 }
 
+// Work counts index work, and inside a prepaid scope of the owner's counter draws it from the
+// credit (design 13 §4.4, class B; outside a scope it is counted only, class C).
 func (b *orderBinding) Work(units uint64) {
+	if b.owner == nil {
+		return
+	}
+	b.owner.orderWork(units)
+	if w := b.owner.work; w != nil && w.prepaid {
+		w.draw(units)
+	}
+}
+
+// Entries pays for recorded index entries: from the owner's open credit, else as a capture of
+// the recording state (a refusal is sticky, and the journal, which has recorded the entry
+// already, restores the operation).
+func (b *orderBinding) Entries(units uint64) {
 	if b.owner != nil {
-		b.owner.orderWork(units)
+		if w := b.owner.work; w != nil && w.prepaid {
+			w.draw(units)
+			return
+		}
+	}
+	if b.state != nil {
+		if err := b.state.charge(units); err != nil {
+			return // sticky: j.err and the counter's hashErr carry it to the operation's end
+		}
 	}
 }
 
@@ -216,7 +239,7 @@ func (s *siblings) orderRegister(n *Node, h *opidx.Handle[*Node]) {
 }
 
 func (o *childOrder) register(n *Node, h *opidx.Handle[*Node]) {
-	opidx.SetCell(o.journal(), o.byNode, n, h)
+	opidx.SetCell(o.bind, o.byNode, n, h)
 	if n.schema == nil {
 		o.byOpaqName.Insert(n.Name(), 0, h)
 		o.byOpaqExact.Insert(opaqExactKey(n), 0, h)
@@ -251,7 +274,7 @@ func (s *siblings) orderUnregister(n *Node) *opidx.Handle[*Node] {
 		// membership whose node flags have just been changed.
 		s.order.byRB.Remove(h)
 	}
-	opidx.DeleteCell(s.order.journal(), s.order.byNode, n)
+	opidx.DeleteCell(s.order.bind, s.order.byNode, n)
 	return h
 }
 
@@ -316,7 +339,7 @@ func (s *siblings) orderAddSchema(t *Tree, n *Node, at int) {
 		return
 	}
 	o := s.order
-	j := o.journal()
+	j := o.bind
 	anchor := o.seq.Select(at)
 	h := o.seq.InsertBefore(anchor, n)
 	s.orderRegister(n, h)
@@ -390,7 +413,7 @@ func (s *siblings) orderRemove(n *Node) (survives, survivesRB bool) {
 	if h == nil {
 		return false, false
 	}
-	j := o.journal()
+	j := o.bind
 	left, right := o.seq.Prev(h), o.seq.Next(h)
 	d := o.entries[n.schema]
 	if left != nil && right != nil && left.Value.schema != nil && left.Value.schema == right.Value.schema && left.Value.schema != n.schema {
@@ -637,9 +660,9 @@ func (s *siblings) refreshRB(n *Node) {
 	}
 	if d := s.order.entries[n.schema]; d != nil && was != now {
 		if now {
-			opidx.AddInt(s.order.journal(), &d.rb, 1)
+			opidx.AddInt(s.order.bind, &d.rb, 1)
 		} else {
-			opidx.AddInt(s.order.journal(), &d.rb, -1)
+			opidx.AddInt(s.order.bind, &d.rb, -1)
 		}
 	}
 }
@@ -667,4 +690,109 @@ func (s *siblings) refreshExact(n *Node, change func()) {
 	if key, ok := opExactValue(n); ok {
 		s.order.byExact.Insert(n.schema, key, h)
 	}
+}
+
+// Prepaid bounds of the index edits (design 13 §4.2, §7): the hook units (work and entries)
+// each edit reports, from the opidx point bounds for the actual heights. A missing index is
+// built unbound, so its build reports nothing.
+
+// orderCells bounds the data-side cells and counters of one add or removal: the byNode and
+// entries cells and the opEntry counters, recorded under a journal.
+func orderCells(journaled bool) uint64 {
+	if !journaled {
+		return 0
+	}
+	return 3 + 3 + 4*2
+}
+
+// indexJournaled reports whether s's index edits are recorded: s is captured, or will be at the
+// edit's touch, by a running state (w's, or the one its own counter has).
+func (s *siblings) indexJournaled(w *workCounter) bool {
+	return w != nil && w.journal != nil || s.journal() != nil || s.order != nil && s.order.bind.state != nil
+}
+
+// orderAddBound bounds placing n at position at of its partition (an opaque n: of the opaque
+// nodes, appended when at is out of range), as link does.
+func (s *siblings) orderAddBound(n *Node, at int, journaled bool) uint64 {
+	o := s.order
+	if o == nil {
+		return 0
+	}
+	if n.schema == nil {
+		if at < 0 || at >= s.OpaqueLen() {
+			at = s.OpaqueLen()
+		}
+		at += s.SchemaLen()
+	}
+	bound := addHashBound(o.seq.SelectBound(), o.seq.InsertBound(o.seq.Peek(at), journaled))
+	bound = addHashBound(bound, orderCells(journaled))
+	if n.schema == nil {
+		bound = addHashBound(bound, o.byOpaqName.InsertBound(n.Name(), 0, journaled))
+		return addHashBound(bound, o.byOpaqExact.InsertBound(opaqExactKey(n), 0, journaled))
+	}
+	bound = addHashBound(bound, o.bySchema.InsertBound(n.schema, 0, journaled))
+	if key, ok := opExactValue(n); ok {
+		bound = addHashBound(bound, o.byExact.InsertBound(n.schema, key, journaled))
+	}
+	// RB membership is reserved whether or not n has it yet: a sorted insertion promotes n
+	// between its reservation (linkCost) and link
+	bound = addHashBound(bound, o.byRB.InsertBoundAny(journaled))
+	if o.entries[n.schema] == nil && opChild(n.schema) {
+		bound = addHashBound(bound, o.ranks[0].UpdateBound(journaled)+o.ranks[1].UpdateBound(journaled))
+	}
+	return bound - min(bound, prepaySkew)
+}
+
+// orderAddBoundAny bounds placing the schema node n anywhere in s, before an insertion's run
+// is reordered or its index built (insertPositionBound): position-free and size-based.
+func (s *siblings) orderAddBoundAny(n *Node, journaled bool) uint64 {
+	if s.order == nil && !opChild(n.schema) && !s.schemaUnordered {
+		return 0 // no index: link builds none for an ordinary schema-ordered set
+	}
+	length := s.Len()
+	occ := opidx.UpdateBoundAny(length, journaled)                      // an occurrence class or a rank set of at most length
+	bound := addHashBound(opidx.InsertBoundAny(length, journaled), occ) // the anchor select
+	return addHashBound(bound, 5*occ+orderCells(journaled))             // three classes, two rank sets
+}
+
+// orderRemoveBound bounds removing n (orderRemove, orderRemoveOpaque).
+func (s *siblings) orderRemoveBound(n *Node, journaled bool) uint64 {
+	o := s.order
+	if o == nil {
+		return 0
+	}
+	h := o.byNode[n]
+	if h == nil {
+		return 0
+	}
+	bound := addHashBound(o.seq.RemoveBound(journaled), orderCells(journaled))
+	if n.schema == nil {
+		bound = addHashBound(bound, o.byOpaqName.RemoveBound(h, journaled))
+		return addHashBound(bound, o.byOpaqExact.RemoveBound(h, journaled))
+	}
+	bound = addHashBound(bound, o.bySchema.RemoveBound(h, journaled))
+	bound = addHashBound(bound, o.byExact.RemoveBound(h, journaled))
+	bound = addHashBound(bound, o.byRB.RemoveBound(h, journaled))
+	if d := o.entries[n.schema]; d != nil && d.count == 1 { // the last instance leaves its rank set
+		bound = addHashBound(bound, o.ranks[d.direction].UpdateBound(journaled))
+	}
+	return bound
+}
+
+// refreshExactBound bounds refreshExact: the exact-value registration leaves and returns.
+func (s *siblings) refreshExactBound(n *Node, journaled bool) uint64 {
+	o := s.order
+	if o == nil || o.byNode[n] == nil {
+		return 0
+	}
+	return addHashBound(o.byExact.RemoveBound(o.byNode[n], journaled), o.byExact.InsertBoundAny(journaled))
+}
+
+// refreshRBBound bounds refreshRB.
+func (s *siblings) refreshRBBound(n *Node, journaled bool) uint64 {
+	o := s.order
+	if o == nil || o.byNode[n] == nil {
+		return 0
+	}
+	return addHashBound(addHashBound(o.byRB.RemoveBound(o.byNode[n], journaled), o.byRB.InsertBoundAny(journaled)), orderCells(journaled))
 }

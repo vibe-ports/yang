@@ -1859,8 +1859,7 @@ func (t *Tree) sortedStorageRefusalMode(sib *siblings, n *Node, order insertOrde
 // insertPositionBound returns the native-record bound when insertPos replays
 // registrations. Otherwise it also covers the following link (linkBound
 // without a key, plus a displaced captured prefix), so a link that follows
-// insertPos's visible changes cannot fail. Ordered-index maintenance is counted
-// by its work hooks; it is not stored-hash work.
+// insertPos's visible changes cannot fail, its ordered-index edit included.
 func (t *Tree) insertPositionBound(sib *siblings, n *Node, order insertOrder) (uint64, error) {
 	if order != insertDefault || !sortedSupported(n) || sib.SchemaLen() == 0 {
 		return 0, t.work.hashErr
@@ -1888,6 +1887,9 @@ func (t *Tree) insertPositionBound(sib *siblings, n *Node, order insertOrder) (u
 			}
 		}
 	}
+	// link prepays its ordered-index edit (design 13 §4.2): at any position, and after the sort
+	// may have built the index
+	amount = addHashBound(amount, sib.orderAddBoundAny(n, sib.indexJournaled(&t.work)))
 	parent := sib.At(0).parent
 	if parent != nil && parent.schema != nil && (sib.ht != nil || sib.SchemaLen()+1 >= htMinItems) {
 		amount = addHashBound(amount, indexWorkBound(n, nil, nil, &t.work))
@@ -1981,9 +1983,15 @@ func (t *Tree) link(parent *Node, sib *siblings, n *Node, at int) error {
 	if n.detachedRB != nil {
 		amount = addHashBound(amount, 3)
 	}
-	if err := t.reserveHash(amount); err != nil {
+	// The prepaid scope (design 13 §4.1-4.2): from here to the end of link no charge refuses.
+	// It debits every charge of the suffix (linkApplyBound) and the index edit's point bound
+	// now; journal captures stay fallible, and only exist where a journal restores them.
+	amount = addHashBound(amount, sib.orderAddBound(n, at, sib.indexJournaled(&t.work)))
+	nested, err := t.work.prepay(amount, false)
+	if err != nil {
 		return err
 	}
+	defer t.work.closeCredit(nested)
 	if sib.work != &t.work || n.schema == nil || sib.narrow() == nil {
 		if err := t.touch(sib); err != nil {
 			return err
@@ -2095,7 +2103,9 @@ func (t *Tree) link(parent *Node, sib *siblings, n *Node, at int) error {
 func (t *Tree) linkBound(parent *Node, sib *siblings, n *Node, at int) (uint64, error) {
 	before := t.work.hashUsed
 	amount, err := t.linkApplyBound(parent, sib, n, at)
-	// link repeats this charged probe before applying its reserved work.
+	// link repeats this charged probe before applying its reserved work, and prepays the index
+	// edit's point bound with it.
+	amount = addHashBound(amount, sib.orderAddBound(n, at, sib.indexJournaled(&t.work)))
 	return addHashBound(amount, t.work.hashUsed-before), err
 }
 
@@ -2132,8 +2142,17 @@ func (t *Tree) linkApplyBound(parent *Node, sib *siblings, n *Node, at int) (uin
 		}
 		amount = addHashBound(amount, a)
 	}
+	if n.schema != nil && !n.schema.IsKey() && parent != nil && parent.schema != nil &&
+		parent.schema.Kind == schema.List && (parent.keyN < len(parent.schema.Keys) || at < len(parent.schema.Keys)) {
+		// keyLinked → reindexComparedParent: a non-key can enter the compared prefix (incomplete,
+		// or made so by its position among the keys) and reindex the list in its own siblings
+		// (a term the prepaid scope exposed)
+		if ps := parent.siblingsOf(); ps != nil && ps.ht != nil {
+			amount = addHashBound(amount, indexAnyOrderBound(parent, n, &t.work))
+		}
+	}
 	amount = addHashBound(amount, t.linkIndexBound(parent, sib, n, at))
-	return amount, t.work.hashErr
+	return amount - min(amount, prepaySkew), t.work.hashErr
 }
 
 // linkIndexBound bounds the destination discriminators of n at position at;
@@ -2715,6 +2734,14 @@ func unlink(n *Node) error {
 		return err
 	}
 	defer func() { sib.work.unlinkPlan = nil }()
+	// The prepaid scope of the removal (design 13 §4.1-4.2): the plan paid the sibling and RB
+	// work above; the index removal and the parent list's reindex are paid here, and from here
+	// to the end no charge refuses. Journal captures stay fallible.
+	nested, err := sib.work.prepay(unlinkSuffixBound(sib, n), false)
+	if err != nil {
+		return err
+	}
+	defer sib.work.closeCredit(nested)
 	if err := sib.touch(); err != nil {
 		return err
 	}
@@ -2862,11 +2889,34 @@ func freeTree(n *Node) error {
 	return work.hashErr
 }
 
+// unlinkSuffixBound is what unlink's suffix charges beyond its plan: the ordered-index removal
+// and the parent list's reindex after its compared prefix changes (preflightUnlink's check).
+func unlinkSuffixBound(sib *siblings, n *Node) uint64 {
+	amount := sib.orderRemoveBound(n, sib.indexJournaled(sib.work))
+	parent := n.parent
+	if parent == nil || parent.schema == nil || parent.schema.Kind != schema.List ||
+		!n.isKey() && parent.keyN >= len(parent.schema.Keys) {
+		return amount
+	}
+	if ps := parent.siblingsOf(); ps != nil && ps.ht != nil && ps.work != nil {
+		amount = addHashBound(amount, indexRemovedBound(parent, n, ps.work))
+	}
+	return amount
+}
+
 // preflightUnlink reserves the only hash work a single detach can cause:
 // reindexing the retained parent list after its compared prefix changes.
 func preflightUnlink(n *Node) error {
 	if err := chargeRBRemoval(n.siblingsOf(), n); err != nil {
 		return err
+	}
+	if sib := n.siblingsOf(); sib != nil && sib.order != nil {
+		// unlink prepays the index removal with the reindex below
+		if err := sib.work.checkHashWork(unlinkSuffixBound(sib, n)); err != nil {
+			sib.work.hashErr = err
+			return err
+		}
+		return nil
 	}
 	parent := n.parent
 	if parent == nil || parent.schema == nil || parent.schema.Kind != schema.List {

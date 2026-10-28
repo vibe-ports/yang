@@ -17,7 +17,6 @@ import "sync/atomic"
 // never allocates.
 type Journal struct {
 	entries []Entry
-	charger Charger
 	epoch   uint64
 }
 
@@ -37,15 +36,14 @@ func (j *Journal) first(stamp *uint64) bool {
 	return true
 }
 
-// Charger pays for recorded entries: two units for an object image (its capture and its
-// restoration), three for a map cell (and its purge visit).
-type Charger interface{ ChargeEntries(units uint64) }
-
 // Hooks connect an index structure to its owner: Work counts index work (visits, rotations,
-// relabels), Journal returns the journal its writes are recorded in (nil: not recorded).
+// relabels), Journal returns the journal its writes are recorded in (nil: not recorded), and
+// Entries pays for recorded entries: two units for an object image (its capture and its
+// restoration), three for a map cell (and its purge visit).
 type Hooks interface {
 	Work(units uint64)
 	Journal() *Journal
+	Entries(units uint64)
 }
 
 // Entry is one recorded value. Its fields are interpreted by the object that recorded it.
@@ -62,9 +60,6 @@ type journaled interface {
 	purge(e *Entry)
 }
 
-// SetCharger sets who pays for recorded entries (nil: nobody).
-func (j *Journal) SetCharger(c Charger) { j.charger = c }
-
 // Mark returns the current log position for Rollback, and starts an epoch.
 func (j *Journal) Mark() int {
 	j.newEpoch()
@@ -74,15 +69,22 @@ func (j *Journal) Mark() int {
 // Len is the number of entries.
 func (j *Journal) Len() int { return len(j.entries) }
 
-func (j *Journal) add(e Entry, units uint64) {
+func (j *Journal) add(e Entry, units uint64, h Hooks) {
 	j.entries = append(j.entries, e)
-	if j.charger != nil {
-		j.charger.ChargeEntries(units)
+	if h != nil {
+		h.Entries(units)
 	}
 }
 
-func (j *Journal) image(e Entry) { j.add(e, 2) }
-func (j *Journal) cell(e Entry)  { j.add(e, 3) }
+func (j *Journal) image(e Entry, h Hooks) { j.add(e, 2, h) }
+func (j *Journal) cell(e Entry, h Hooks)  { j.add(e, 3, h) }
+
+func journalOf(h Hooks) *Journal {
+	if h == nil {
+		return nil
+	}
+	return h.Journal()
+}
 
 // Rollback restores every object written since mark and drops those entries.
 func (j *Journal) Rollback(mark int) {
@@ -124,21 +126,22 @@ func (m cellMap[K, V]) purge(e *Entry) {
 	}
 }
 
-func recordCell[K comparable, V any](j *Journal, m map[K]*V, k K) {
+func recordCell[K comparable, V any](j *Journal, h Hooks, m map[K]*V, k K) {
 	old, had := m[k]
-	j.cell(Entry{obj: cellMap[K, V](m), key: k, had: had, ptr: [6]any{old}})
+	j.cell(Entry{obj: cellMap[K, V](m), key: k, had: had, ptr: [6]any{old}}, h)
 }
 
-// SetCell stores m[k] = v, journaled. Without a journal it is the plain assignment.
-func SetCell[K comparable, V any](j *Journal, m map[K]*V, k K, v *V) {
-	if j != nil {
-		recordCell(j, m, k)
+// SetCell stores m[k] = v, journaled in h's journal. Without one it is the plain assignment.
+func SetCell[K comparable, V any](h Hooks, m map[K]*V, k K, v *V) {
+	if j := journalOf(h); j != nil {
+		recordCell(j, h, m, k)
 	}
 	m[k] = v
 }
 
 // DeleteCell removes m[k]: under a journal it records the cell and stores the nil tombstone.
-func DeleteCell[K comparable, V any](j *Journal, m map[K]*V, k K) {
+func DeleteCell[K comparable, V any](h Hooks, m map[K]*V, k K) {
+	j := journalOf(h)
 	if j == nil {
 		delete(m, k)
 		return
@@ -146,7 +149,7 @@ func DeleteCell[K comparable, V any](j *Journal, m map[K]*V, k K) {
 	if _, ok := m[k]; !ok {
 		return
 	}
-	recordCell(j, m, k)
+	recordCell(j, h, m, k)
 	m[k] = nil
 }
 
@@ -154,14 +157,14 @@ type intField int
 
 func (p *intField) undo(e *Entry) { *p = intField(e.num[0]) } //nolint:gosec // the recorded int itself
 func (p *intField) purge(*Entry)  {}
-func (p *intField) record(j *Journal) {
-	j.image(Entry{obj: p, num: [3]uint64{uint64(*p)}}) //nolint:gosec // restored bit for bit
+func (p *intField) record(j *Journal, h Hooks) {
+	j.image(Entry{obj: p, num: [3]uint64{uint64(*p)}}, h) //nolint:gosec // restored bit for bit
 }
 
-// AddInt adds delta to *p, journaled.
-func AddInt(j *Journal, p *int, delta int) {
-	if j != nil {
-		(*intField)(p).record(j)
+// AddInt adds delta to *p, journaled in h's journal.
+func AddInt(h Hooks, p *int, delta int) {
+	if j := journalOf(h); j != nil {
+		(*intField)(p).record(j, h)
 	}
 	*p += delta
 }

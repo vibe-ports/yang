@@ -997,11 +997,19 @@ func (t *Tree) changeNodeValue(n *Node, v types.Value, hashAmount uint64) {
 		return
 	}
 	// Position and registration preparation above can spend the last unit of
-	// this operation's allowance even for a singleton that stays in place.
-	if err := t.work.checkChangedIndex(target, n, &v, hashAmount); err != nil {
+	// this operation's allowance even for a singleton that stays in place. The change is a
+	// prepaid scope (design 13 §4.1-4.2): the whole value-change amount and the exact-value
+	// index update are debited here, and nothing after refuses.
+	amount, err := t.work.changedIndexAmount(target, n, &v, hashAmount)
+	if err != nil {
 		t.work.hashErr = err
 		return
 	}
+	nested, err := t.work.prepay(addHashBound(amount, sib.refreshExactBound(target, sib.indexJournaled(&t.work))), false)
+	if err != nil {
+		return
+	}
+	defer t.work.closeCredit(nested)
 	at := -1
 	var prev, next *Node
 	indexed := false

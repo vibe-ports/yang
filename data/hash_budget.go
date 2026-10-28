@@ -28,7 +28,75 @@ func (w *workCounter) beginHashWork() func() {
 	}
 }
 
+// overdraftPanics makes an overdrawn prepaid credit, and a fallible check inside a prepaid
+// scope, a panic: tests set it, so every sweep checks every bound (design 13 §4.3).
+var overdraftPanics bool
+
+// prepaySkew under-reserves link's apply bound and its index term by that many units each, and overdraftHook observes the
+// production overdraft path (tests of design 13 §4.3; zero and nil otherwise).
+var (
+	prepaySkew    uint64
+	overdraftHook func(*workCounter)
+)
+
+// prepay opens a prepaid scope (design 13 §4.1): it debits amount now, refusing like any charge,
+// and until closeCredit every chargeHash of w draws from the credit and cannot refuse. A write
+// credit refunds what is left at closeCredit; a read credit (read) is not refunded: its bound is
+// the charge. Inside an open scope it opens nothing and draws amount (nested reports it).
+func (w *workCounter) prepay(amount uint64, read bool) (nested bool, err error) {
+	if w.prepaid {
+		w.draw(amount)
+		return true, nil
+	}
+	if err := w.chargeHash(amount); err != nil {
+		return false, err
+	}
+	w.prepaid, w.credit, w.readCredit = true, amount, read
+	return false, nil
+}
+
+// closeCredit ends the scope prepay opened (nested: nothing to end).
+func (w *workCounter) closeCredit(nested bool) {
+	if nested || !w.prepaid {
+		return
+	}
+	if !w.readCredit {
+		w.hashUsed -= w.credit
+	}
+	w.prepaid, w.credit, w.readCredit = false, 0, false
+}
+
+// draw takes amount from the open credit. An overdraft means a bound is wrong: tests panic;
+// production debits the excess without a limit check, so nothing after a storage write fails on
+// budget, and the over-limit counter refuses at the next fallible check outside the scope.
+func (w *workCounter) draw(amount uint64) {
+	if amount <= w.credit {
+		w.credit -= amount
+		return
+	}
+	if overdraftPanics {
+		panic(fmt.Sprintf("data: prepaid credit overdrawn by %d units", amount-w.credit))
+	}
+	w.hashUsed = addHashBound(w.hashUsed, amount-w.credit)
+	w.credit = 0
+	if overdraftHook != nil {
+		overdraftHook(w)
+	}
+}
+
 func (w *workCounter) checkHashWork(amount uint64) error {
+	if w.prepaid {
+		if overdraftPanics && amount != 0 {
+			panic("data: a fallible budget check inside a prepaid scope")
+		}
+		return w.hashErr
+	}
+	return w.checkLimit(amount)
+}
+
+// checkLimit tests amount against the limit, ignoring any prepaid scope: journal captures are
+// checked against hashUsed, which already includes the whole prepaid amount.
+func (w *workCounter) checkLimit(amount uint64) error {
 	if w.hashErr != nil {
 		return w.hashErr
 	}
@@ -46,7 +114,17 @@ func (w *workCounter) checkHashWork(amount uint64) error {
 }
 
 func (w *workCounter) chargeHash(amount uint64) error {
-	if err := w.checkHashWork(amount); err != nil {
+	if w.prepaid {
+		w.draw(amount)
+		return nil
+	}
+	return w.chargeLimited(amount)
+}
+
+// chargeLimited charges amount outside any credit: a journal capture never consumes units the
+// prepaid suffix needs.
+func (w *workCounter) chargeLimited(amount uint64) error {
+	if err := w.checkLimit(amount); err != nil {
 		w.hashErr = err
 		return err
 	}
@@ -207,8 +285,19 @@ func (w *workCounter) checkChangedHash(n *Node, value types.Value) (uint64, erro
 }
 
 func (w *workCounter) checkChangedIndex(target, changed *Node, value *types.Value, native uint64) error {
+	amount, err := w.changedIndexAmount(target, changed, value, native)
+	if err != nil {
+		return err
+	}
+	return w.checkHashWork(amount)
+}
+
+// changedIndexAmount is the work of a value change checkChangedIndex checks: the native hash
+// event, the target's discriminator and, for ancestor reindexing, the compared parent's. The
+// in-place change prepays it (design 13 §4.2).
+func (w *workCounter) changedIndexAmount(target, changed *Node, value *types.Value, native uint64) (uint64, error) {
 	if target == nil {
-		return w.checkHashWork(native)
+		return native, w.hashErr
 	}
 	amount := native
 	sib := target.siblingsOf()
@@ -225,10 +314,7 @@ func (w *workCounter) checkChangedIndex(target, changed *Node, value *types.Valu
 			}
 		}
 	}
-	if w.hashErr != nil {
-		return w.hashErr
-	}
-	return w.checkHashWork(amount)
+	return amount, w.hashErr
 }
 
 func (w *workCounter) checkRefreshHash(n *Node) error {

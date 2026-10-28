@@ -45,7 +45,7 @@ func (r *Ranks) journal() *Journal {
 
 func (r *Ranks) touchHeader() {
 	if j := r.journal(); j != nil && j.first(&r.stamp) {
-		j.image(Entry{obj: r, ptr: [6]any{r.root}, num: [3]uint64{uint64(r.len)}}) //nolint:gosec // restored bit for bit
+		j.image(Entry{obj: r, ptr: [6]any{r.root}, num: [3]uint64{uint64(r.len)}}, r.hooks) //nolint:gosec // restored bit for bit
 	}
 }
 
@@ -61,7 +61,7 @@ func (r *Ranks) touch(n *rankNode) {
 		return
 	}
 	if j := r.journal(); j != nil && j.first(&n.stamp) {
-		j.image(Entry{obj: n, ptr: [6]any{n.left, n.right}, num: [3]uint64{uint64(n.key), uint64(n.height)}}) //nolint:gosec // restored bit for bit
+		j.image(Entry{obj: n, ptr: [6]any{n.left, n.right}, num: [3]uint64{uint64(n.key), uint64(n.height)}}, r.hooks) //nolint:gosec // restored bit for bit
 	}
 }
 

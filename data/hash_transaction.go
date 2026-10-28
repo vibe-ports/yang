@@ -79,14 +79,6 @@ type hashTransaction struct {
 	bound []*orderBinding
 }
 
-// ChargeEntries charges recorded index entries like any capture: a refusal is sticky, and the
-// journal, which has recorded the entry already, restores the operation.
-func (j *hashTransaction) ChargeEntries(units uint64) {
-	if err := j.charge(units); err != nil {
-		return // sticky: j.err and the counter's hashErr carry it to the operation's end
-	}
-}
-
 type placedNode struct {
 	x   *dirtyOrderNode
 	old dirtyOrderNode
@@ -217,7 +209,6 @@ func beginHashTransaction(t *Tree) *hashTransaction {
 	}
 	j := &hashTransaction{tree: t, done: t.work.beginHashWork(), rank: t.rank, orders: t.orders, set: t.set,
 		serial: 1, issued: 1}
-	j.index.SetCharger(j)
 	j.maps()
 	t.work.journal = j
 	objects := uint64(len(t.rank)) + 1
@@ -255,7 +246,6 @@ func beginNarrowTransaction(t *Tree) *hashTransaction {
 	*j = hashTransaction{tree: t, done: t.work.beginHashWork(), rank: t.rank, orders: t.orders, set: t.set,
 		narrow: true, undo: j.undo[:0], placed: j.placed[:0], fresh: j.fresh, index: j.index, bound: j.bound[:0],
 		serial: 1, issued: 1}
-	j.index.SetCharger(j)
 	t.work.journal = j
 	return j
 }
@@ -488,7 +478,7 @@ func (j *hashTransaction) fail(result *error) {
 // to them, like the hashing it protects. Reserve before copying; touch refuses the mutation
 // when reservation fails. Earlier completed captures remain available for rollback.
 func (j *hashTransaction) charge(objects uint64) error {
-	if err := j.tree.work.chargeHash(objects); err != nil {
+	if err := j.tree.work.chargeLimited(objects); err != nil {
 		if j.err == nil {
 			j.err = err
 		}

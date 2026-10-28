@@ -406,7 +406,9 @@ func TestStoredHashValueRelinkBudgetKeepsOldValue(t *testing.T) {
 	if x.Value() != "a" || x.hash != oldHash || x.parent != op || op.kids.At(0) != x {
 		t.Fatal("failed value change left the old instance detached or rehashed")
 	}
-	tr.work.hashLimit = 128 // removal updates the ordered operation index and charges its RB work
+	// removal updates the ordered operation index and charges its RB work; the index removal's
+	// point bound is prepaid before it (design 13 §4.2)
+	tr.work.hashLimit = 192
 	if err := op.kids.At(1).Remove(); err != nil {
 		t.Fatal(err)
 	}

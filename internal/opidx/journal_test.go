@@ -14,12 +14,9 @@ type testHooks struct {
 	units uint64
 }
 
-func (h *testHooks) Work(uint64)       {}
-func (h *testHooks) Journal() *Journal { return h.j }
-
-type unitCounter struct{ units uint64 }
-
-func (c *unitCounter) ChargeEntries(units uint64) { c.units += units }
+func (h *testHooks) Work(uint64)          {}
+func (h *testHooks) Journal() *Journal    { return h.j }
+func (h *testHooks) Entries(units uint64) { h.units += units }
 
 // journalModel is one sequence with an occurrence index and a rank set, all journaled.
 type journalModel struct {
@@ -29,6 +26,7 @@ type journalModel struct {
 	all   []*Handle[int] // every handle ever created
 	next  int
 	cells map[int]*int
+	hooks *testHooks
 }
 
 type handleState struct {
@@ -165,9 +163,9 @@ func (m *journalModel) step(r *rand.Rand, j *Journal) {
 		k := r.IntN(6)
 		if r.IntN(2) == 0 {
 			v := r.IntN(100)
-			SetCell(j, m.cells, k, &v)
+			SetCell(m.hooks, m.cells, k, &v)
 		} else {
-			DeleteCell(j, m.cells, k)
+			DeleteCell(m.hooks, m.cells, k)
 		}
 	default:
 		lo := r.IntN(len(live))
@@ -183,8 +181,8 @@ func (m *journalModel) step(r *rand.Rand, j *Journal) {
 }
 
 func newJournalModel(j *Journal) *journalModel {
-	m := &journalModel{cells: map[int]*int{}}
 	h := &testHooks{j: j}
+	m := &journalModel{cells: map[int]*int{}, hooks: h}
 	m.seq.SetHooks(h)
 	m.occ = NewOccurrences[int, int, int](&m.seq)
 	m.occ.SetHooks(h)
@@ -206,9 +204,8 @@ func TestJournalNestedModel(t *testing.T) {
 	for seed := range uint64(40) {
 		r := rand.New(rand.NewPCG(seed, 7))
 		var j Journal
-		units := &unitCounter{}
-		j.SetCharger(units)
 		m := newJournalModel(&j)
+		units := m.hooks
 		for range 20 { // a populated start, committed
 			m.step(r, &j)
 		}
@@ -286,9 +283,10 @@ func TestJournalCellHistories(t *testing.T) {
 	v1, v2 := 1, 2
 	t.Run("insert absent, remove, commit", func(t *testing.T) {
 		var j Journal
+		h := &testHooks{j: &j}
 		m := map[int]*int{}
-		SetCell(&j, m, 1, &v1)
-		DeleteCell(&j, m, 1)
+		SetCell(h, m, 1, &v1)
+		DeleteCell(h, m, 1)
 		if v, ok := m[1]; !ok || v != nil {
 			t.Fatal("removal under a journal must leave a tombstone")
 		}
@@ -299,10 +297,11 @@ func TestJournalCellHistories(t *testing.T) {
 	})
 	t.Run("outer remove, inner recreate, inner rollback, outer rollback", func(t *testing.T) {
 		var j Journal
+		h := &testHooks{j: &j}
 		m := map[int]*int{1: &v1}
-		DeleteCell(&j, m, 1)
+		DeleteCell(h, m, 1)
 		inner := j.Mark()
-		SetCell(&j, m, 1, &v2)
+		SetCell(h, m, 1, &v2)
 		j.Rollback(inner)
 		if v, ok := m[1]; !ok || v != nil {
 			t.Fatal("inner rollback must restore the present nil cell")
@@ -314,10 +313,11 @@ func TestJournalCellHistories(t *testing.T) {
 	})
 	t.Run("duplicate inner writes, inner commit, outer rollback", func(t *testing.T) {
 		var j Journal
+		h := &testHooks{j: &j}
 		m := map[int]*int{1: &v1}
-		SetCell(&j, m, 1, &v2)
-		SetCell(&j, m, 1, &v1)
-		SetCell(&j, m, 1, &v2)
+		SetCell(h, m, 1, &v2)
+		SetCell(h, m, 1, &v1)
+		SetCell(h, m, 1, &v2)
 		j.Rollback(0)
 		if m[1] != &v1 {
 			t.Fatal("the oldest entry must win")
@@ -325,12 +325,102 @@ func TestJournalCellHistories(t *testing.T) {
 	})
 	t.Run("remove, recreate, commit keeps the live key", func(t *testing.T) {
 		var j Journal
+		h := &testHooks{j: &j}
 		m := map[int]*int{1: &v1}
-		DeleteCell(&j, m, 1)
-		SetCell(&j, m, 1, &v2)
+		DeleteCell(h, m, 1)
+		SetCell(h, m, 1, &v2)
 		j.Commit()
 		if m[1] != &v2 {
 			t.Fatal("purge deleted a live key")
 		}
 	})
+}
+
+type meterHooks struct {
+	j     *Journal
+	units uint64
+}
+
+func (h *meterHooks) Work(units uint64)    { h.units += units }
+func (h *meterHooks) Journal() *Journal    { return h.j }
+func (h *meterHooks) Entries(units uint64) { h.units += units }
+
+// TestPointBoundsCoverJournaledEdits checks every point bound against the units its edit
+// actually reports (work plus entries) under a journal, over random sequences that relabel,
+// rebuild and rotate, including dense prepends and appends.
+func TestPointBoundsCoverJournaledEdits(t *testing.T) {
+	for _, journaled := range []bool{false, true} {
+		for seed := range uint64(30) {
+			r := rand.New(rand.NewPCG(seed, 11))
+			var j Journal
+			h := &meterHooks{}
+			if journaled {
+				h.j = &j
+			}
+			var seq Seq[int]
+			seq.SetHooks(h)
+			occ := NewOccurrences[int, int, int](&seq)
+			occ.SetHooks(h)
+			var ranks Ranks
+			ranks.SetHooks(h)
+			var live []*Handle[int]
+			check := func(op string, bound uint64, edit func()) {
+				t.Helper()
+				h.units = 0
+				edit()
+				if h.units > bound {
+					t.Fatalf("seed %d: %s used %d units, bound %d (len %d)", seed, op, h.units, bound, seq.Len())
+				}
+			}
+			for i := range 600 {
+				if r.IntN(50) == 0 {
+					j.Commit() // a new epoch: every object is recorded again
+				}
+				switch c := r.IntN(10); {
+				case c < 5 || len(live) == 0:
+					var anchor *Handle[int]
+					switch r.IntN(3) {
+					case 0:
+						anchor = seq.First() // dense prepends
+					case 1:
+					default:
+						if len(live) != 0 {
+							anchor = live[r.IntN(len(live))]
+						}
+					}
+					var nh *Handle[int]
+					if b, any := seq.InsertBound(anchor, journaled), InsertBoundAny(seq.Len(), journaled); b > any {
+						t.Fatalf("seed %d: point bound %d above the position-free bound %d", seed, b, any)
+					}
+					check("insert", seq.InsertBound(anchor, journaled), func() { nh = seq.InsertBefore(anchor, i) })
+					live = append(live, nh)
+					check("occ insert", occ.InsertBound(i%4, 0, journaled), func() { occ.Insert(i%4, 0, nh) })
+				case c < 7:
+					k := r.IntN(len(live))
+					x := live[k]
+					check("occ remove", occ.RemoveBound(x, journaled), func() { occ.Remove(x) })
+					check("remove", seq.RemoveBound(true), func() { seq.Remove(x) })
+					live = append(live[:k], live[k+1:]...)
+				case c < 9:
+					x, a := live[r.IntN(len(live))], live[r.IntN(len(live))]
+					if r.IntN(4) == 0 {
+						a = nil
+					}
+					check("occ remove", occ.RemoveBound(x, journaled), func() { occ.Remove(x) })
+					check("move", seq.MoveBound(x, a, journaled), func() { seq.MoveBefore(x, a) })
+					check("occ insert", occ.InsertBound(x.Value%4, 0, journaled), func() { occ.Insert(x.Value%4, 0, x) })
+				default:
+					k := r.IntN(64)
+					check("ranks", ranks.UpdateBound(true), func() {
+						if !ranks.Insert(k) {
+							ranks.Remove(k)
+						}
+					})
+				}
+			}
+			if err := seq.CheckInvariants(); err != nil {
+				t.Fatal(err)
+			}
+		}
+	}
 }

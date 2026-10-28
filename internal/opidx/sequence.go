@@ -91,7 +91,7 @@ func (s *Seq[T]) journal() *Journal {
 // touchHeader records the header before a mutation that may change it.
 func (s *Seq[T]) touchHeader() {
 	if j := s.journal(); j != nil && j.first(&s.stamp) {
-		j.image(Entry{obj: s, ptr: [6]any{s.root, s.first, s.last}, num: [3]uint64{uint64(s.length), uint64(s.scale)}}) //nolint:gosec // restored bit for bit
+		j.image(Entry{obj: s, ptr: [6]any{s.root, s.first, s.last}, num: [3]uint64{uint64(s.length), uint64(s.scale)}}, s.hooks) //nolint:gosec // restored bit for bit
 	}
 }
 
@@ -126,7 +126,7 @@ func handleImage[T any](h *Handle[T]) Entry {
 func (s *Seq[T]) created(h *Handle[T]) {
 	if j := s.journal(); j != nil && j.first(&h.stamp) {
 		j.image(Entry{obj: h, ptr: [6]any{(*Handle[T])(nil), (*Handle[T])(nil), (*Handle[T])(nil),
-			(*Handle[T])(nil), (*Handle[T])(nil), (*Seq[T])(nil)}})
+			(*Handle[T])(nil), (*Handle[T])(nil), (*Seq[T])(nil)}}, s.hooks)
 	}
 }
 
@@ -144,7 +144,7 @@ func (s *Seq[T]) touch(h *Handle[T]) {
 		return
 	}
 	if j := s.journal(); j != nil && j.first(&h.stamp) {
-		j.image(handleImage(h))
+		j.image(handleImage(h), s.hooks)
 	}
 	for _, checkpoint := range s.checkpoints {
 		if _, ok := checkpoint.before[h]; ok {
@@ -898,8 +898,11 @@ func (s *Seq[T]) adjustScale() {
 }
 
 // The tag-range relabeling rule follows Bender et al., section 3.
+// rebuildTags spreads the labels over the first three quarters of the universe: the last quarter
+// takes up to 2*scale appends at endStride before the next relabel, instead of halving one
+// step's gap at every append (#240 step 4: the relabel is now charged work).
 func (s *Seq[T]) rebuildTags() {
-	step := tagUniverse / uint64(s.length+1) //nolint:gosec
+	step := tagUniverse / 4 * 3 / uint64(s.length+1) //nolint:gosec
 	i := uint64(1)
 	for h := s.first; h != nil; h = h.next {
 		s.charge()
@@ -908,6 +911,9 @@ func (s *Seq[T]) rebuildTags() {
 		i++
 	}
 }
+
+// endStride is the label distance of an append.
+func (s *Seq[T]) endStride() uint64 { return tagUniverse / 4 / uint64(2*s.scale+2) } //nolint:gosec // a scale is nonnegative
 
 func (s *Seq[T]) labelRange(first, last *Handle[T], count int) {
 	lo, hi := uint64(0), tagUniverse
@@ -919,6 +925,10 @@ func (s *Seq[T]) labelRange(first, last *Handle[T], count int) {
 	}
 	if hi > lo && hi-lo > uint64(count) { //nolint:gosec
 		step := (hi - lo) / uint64(count+1) //nolint:gosec
+		if last.next == nil && first.prev != nil {
+			// an append keeps the rest of the end gap for the next ones
+			step = max(min(step, s.endStride()), 1)
+		}
 		i := uint64(1)
 		for h := first; ; h = h.next {
 			s.charge()
@@ -939,18 +949,26 @@ func (s *Seq[T]) labelRange(first, last *Handle[T], count int) {
 		anchor = last.next
 	}
 	t := math.Pow(float64(tagUniverse)/float64(2*s.scale), 1.0/tagBits)
+	scanned := 0
 	for widthBits := uint(1); widthBits <= tagBits; widthBits++ {
 		width := uint64(1) << widthBits
 		base := anchor.tag & ^(width - 1)
 		start := first
+		back, fwd := 0, 0
 		for start.prev != nil && start.prev.tag >= base {
-			s.charge()
+			back++
 			start = start.prev
 		}
 		end := last
 		for end.next != nil && end.next.tag < base+width {
-			s.charge()
+			fwd++
 			end = end.next
+		}
+		if scanned += 2*(back+fwd) + count; scanned > scanCap(s.length) {
+			break // a search that costs more than relabelling everything does that instead
+		}
+		for range back + fwd {
+			s.charge()
 		}
 		items := 0
 		for h := start; ; h = h.next {
@@ -980,6 +998,9 @@ func (s *Seq[T]) labelRange(first, last *Handle[T], count int) {
 	}
 	s.rebuildTags()
 }
+
+// scanCap bounds labelRange's window search: past it, rebuildTags (length more) is cheaper.
+func scanCap(length int) int { return 32*length + 64 }
 
 func (s *Seq[T]) label(h *Handle[T]) {
 	s.labelRange(h, h, 1)

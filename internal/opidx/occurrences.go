@@ -117,7 +117,7 @@ func (o *Occurrences[T, S, K]) setTree(j *Journal, t, v *occTree[T, S, K]) {
 		return
 	}
 	old, had := o.trees[t.key]
-	j.cell(Entry{obj: o, key: t, had: had, ptr: [6]any{old}, num: [3]uint64{occTreesCell}})
+	j.cell(Entry{obj: o, key: t, had: had, ptr: [6]any{old}, num: [3]uint64{occTreesCell}}, o.hooks)
 	o.trees[t.key] = v
 }
 
@@ -131,7 +131,7 @@ func (o *Occurrences[T, S, K]) setBy(j *Journal, h *Handle[T], k *occKey[S, K]) 
 		return
 	}
 	old, had := o.by[h]
-	j.cell(Entry{obj: o, key: h, had: had, ptr: [6]any{old}, num: [3]uint64{occByCell}})
+	j.cell(Entry{obj: o, key: h, had: had, ptr: [6]any{old}, num: [3]uint64{occByCell}}, o.hooks)
 	o.by[h] = k
 }
 
@@ -144,9 +144,9 @@ func (t *occTree[T, S, K]) undo(e *Entry) {
 
 func (t *occTree[T, S, K]) purge(*Entry) {}
 
-func (t *occTree[T, S, K]) record(j *Journal) {
+func (t *occTree[T, S, K]) record(j *Journal, h Hooks) {
 	if j != nil && j.first(&t.stamp) {
-		j.image(Entry{obj: t, ptr: [6]any{t.root, t.first, t.last}, num: [3]uint64{uint64(t.len)}}) //nolint:gosec // restored bit for bit
+		j.image(Entry{obj: t, ptr: [6]any{t.root, t.first, t.last}, num: [3]uint64{uint64(t.len)}}, h) //nolint:gosec // restored bit for bit
 	}
 }
 
@@ -164,7 +164,7 @@ func (o *Occurrences[T, S, K]) touch(n *occNode[T]) {
 		return
 	}
 	if j := o.journal(); j != nil && j.first(&n.stamp) {
-		j.image(Entry{obj: n, ptr: [6]any{n.handle, n.left, n.right}, num: [3]uint64{uint64(n.height)}}) //nolint:gosec // restored bit for bit
+		j.image(Entry{obj: n, ptr: [6]any{n.handle, n.left, n.right}, num: [3]uint64{uint64(n.height)}}, o.hooks) //nolint:gosec // restored bit for bit
 	}
 }
 
@@ -184,7 +184,7 @@ func (o *Occurrences[T, S, K]) Insert(schema S, key K, h *Handle[T]) bool {
 		t = &occTree[T, S, K]{key: k}
 		o.setTree(j, t, t)
 	} else {
-		t.record(j)
+		t.record(j, o.hooks)
 	}
 	t.root = o.insert(t.root, h)
 	t.len++
@@ -207,7 +207,7 @@ func (o *Occurrences[T, S, K]) Remove(h *Handle[T]) bool {
 	k := *kp
 	t := o.trees[k]
 	j := o.journal()
-	t.record(j)
+	t.record(j, o.hooks)
 	if t.first == h {
 		t.first = o.Next(k.schema, k.key, h)
 	}
