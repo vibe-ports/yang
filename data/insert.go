@@ -1102,26 +1102,40 @@ func (t *Tree) sortedLeaderIndex(sib *siblings, n *Node) int {
 		}
 		return t.schemaIndex(sib, n.schema)
 	}
-	// Every lookup below (the linear foreign-name scan of schemaIndex, or the record lookup and
-	// the position search) reads up to every record and sibling: reserve that first.
-	if err := t.work.chargeHash(uint64(len(sib.leaders)+sib.SchemaLen()) + 1); err != nil { //nolint:gosec // collection sizes are nonnegative
-		return -1
-	}
 	// In the lookup mode insertPos switches to first (markMixed). The lookup is read-only: a
 	// preflight probes that mode rather than entering it, so a refusal leaves sib as it was.
 	if sib.ht == nil || !sib.schemaUnordered && !t.mixedSwitch(sib, sib.At(0).parent, n) {
+		if sib.foreignFor(n.schema) && (t.work.lookupDepth == 0 || !t.foreignSchemaInput[sib]) {
+			// schemaIndex's linear foreign-name scan, charged step by step: it stops at the
+			// first match, so reserving every sibling per insertion made a run quadratic
+			return t.foreignScan(sib, n.schema, true)
+		}
+		// the other lookups read up to every sibling: reserve that first
+		if err := t.work.chargeHash(uint64(sib.SchemaLen()) + 1); err != nil { //nolint:gosec // a sibling count is nonnegative
+			return -1
+		}
 		return t.schemaIndex(sib, n.schema)
+	}
+	// The record lookup reads every first-instance record: reserve it first. The position search
+	// is charged step by step (chargedIndex), not reserved for every sibling: a reservation of the
+	// whole set per insertion made a run of insertions quadratic.
+	if err := t.work.chargeHash(uint64(len(sib.leaders)) + 1); err != nil {
+		return -1
 	}
 	var leader *Node
 	if sib.schemaUnordered {
 		leader = sib.leaderFirstMixed(n.schema)
 	} else {
-		leader = sib.mixedLeaderProbe(n.schema, &t.work)
+		leader = sib.mixedLeaderProbe(n.schema, &t.work) // reserves its own sibling scan
 	}
-	if leader != nil {
-		return sib.schemaSpan().indexFromEnd(&t.work, leader)
+	if leader == nil {
+		return -1
 	}
-	return -1
+	i, err := t.chargedIndex(sib, leader)
+	if err != nil {
+		return -1
+	}
+	return i
 }
 
 // switchMixed enters the lookup mode sortedLeaderIndex probes for n, as insertPos does first.

@@ -357,8 +357,11 @@ A second exhaustive review of that candidate found five more, fixed the same way
 - **Repeated captures walked again.** A journal records the detached roots it holds whole and
   does not walk them again (Insert's boundary, then `linkOrigin`'s); a set captured lazily
   before is charged for its children when walked (`TestStage3DetachedCaptureOncePerRoot`).
-- **The leader lookup.** `sortedLeaderIndex` reserves the first-instance record lookup and the
-  position search before either runs, the fast path included.
+- **The leader lookup.** `sortedLeaderIndex` reserves the first-instance record lookup before
+  it runs, the fast path included. Its mixed-context name scan and position search charge each
+  step before reading it (`foreignScan`, `chargedIndex`): both stop at the leader, and reserving
+  the whole sibling set on every insertion made a run of insertions quadratic
+  (`TestStage4SortWork`, `TestStage4KeySortWork`).
 - **`detachedRoot` is charged.** Each ancestor step is charged before it is taken (opaque
   nesting is not schema-bounded); `linkApplyBound` reserves the walk `bindDestination` repeats,
   and `linkOrigin` charges the origin's walk before any change.
@@ -372,7 +375,7 @@ missed the costs of union and plugin comparisons. The cleanup unlink now runs un
 quota, and a refused cleanup restores the journal (`TestStage3NewPathCleanupWithoutJournal`: a
 container created between 1,000 siblings on each side, and a list instance among 4 KiB keys).
 A refused move disarms the removal undos it armed (`linkOrigin`), so none stays behind to keep
-the destination alive; the fuzzer checks that no refusal leaves one. Every `sortedLeaderIndex` branch reserves its lookup first, a foreign-context name scan of
+the destination alive; the fuzzer checks that no refusal leaves one. Every `sortedLeaderIndex` branch reserves or charges its lookup before reading, a foreign-context name scan of
 operation children included (`TestStage3ForeignOperationLeaderCharged`); `chargedIndex` charges the rank walk or each step of its scan before
 it, and the completed-prefix link cleanup after a D-0121 bulk refusal reserves its owned
 traversal and reciprocal cleanup (`ownedNodes`, `reserveFreeLinks`) first (a refused reservation

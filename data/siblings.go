@@ -1698,13 +1698,7 @@ func (t *Tree) schemaIndex(s *siblings, sn *schema.Node) int {
 		if t.work.lookupDepth != 0 && t.foreignSchemaInput[s] {
 			return t.foreignSchemaIndex(s, sn, s.ht != nil)
 		}
-		for i, n := range s.SchemaAll() {
-			s.visit()
-			if schemaLookupMatch(n.schema, sn, s.ht != nil) {
-				return i
-			}
-		}
-		return -1
+		return t.foreignScan(s, sn, false)
 	}
 	if opChild(sn) || s.schemaUnordered {
 		if leader := physicalStart(s, sn, t.schemaLookupOperation(s, sn)); leader != nil {
@@ -1716,6 +1710,22 @@ func (t *Tree) schemaIndex(s *siblings, sn *schema.Node) int {
 	i := s.LowerBound(0, s.SchemaLen(), func(a *Node) bool { return t.sameOrAfter(a, probe) })
 	if i < s.SchemaLen() && s.At(i).schema == sn {
 		return i
+	}
+	return -1
+}
+
+// foreignScan is schemaIndex's linear foreign-name scan; charge charges each step to the
+// enforced quota before it reads the sibling. -1: no match, or a refused step (sticky in
+// t.work.hashErr, which callers check first).
+func (t *Tree) foreignScan(s *siblings, sn *schema.Node, charge bool) int {
+	for i, n := range s.SchemaAll() {
+		if charge && t.work.chargeHash(1) != nil {
+			return -1
+		}
+		s.visit()
+		if schemaLookupMatch(n.schema, sn, s.ht != nil) {
+			return i
+		}
 	}
 	return -1
 }
