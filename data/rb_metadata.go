@@ -218,6 +218,9 @@ func (s *siblings) promoteRB(n *Node, group *rbGroup, w *workCounter) error {
 			if err := w.chargeHash(4); err != nil {
 				return err
 			}
+			if err := s.touchWhole(); err != nil { // a dual membership: not narrow-aware
+				return err
+			}
 			if s.rbDual == nil {
 				s.rbDual = map[*Node][]*rbGroup{}
 			}

@@ -45,7 +45,7 @@ and deletion reference; structural validity alone is insufficient.
 | P: `nodeInsert`, `appendSorted`, `applyLeaders`, `flushDirtyRun`, `buildRBOrder` | `lyd_parser_node_insert`, `lyds_insert`, additional-tree creation | One authoritative retained graph. No parser reconstruction on resume. `buildRBOrder` remains charged test setup; production parser creation is `rbPos`. Publication has no topology mutation. Parser identity/resume/rollback tests, existing repeated-key scaling and dirty-publication tests; live parser resume and cleanup. |
 | V: `changeTermVal`, `changeNodeValue`; repeated keys / value resolution | `lyd_change_term_val`, `lyd_change_node_value`, parser/store callbacks | Native physical-neighbor predicate decides unlink/change/reinsert; in-place stores retain topology. Value failure recovery preserves old graph. `TestSortedSetValueRetainedRBTopologyBounded`, `TestStage3MixedMultikeyHistory`, native-search refusal, exhaustive singleton/compared-parent hash-budget tests; live multikey value changes and repeated-key corpus. |
 | A: `takeAnyChildren`, `clearAny`, `copyAnyValue` | `lyd_create_any`, `lyd_any_copy_value` | Move an entire owned forest intact, or perform independent suffix removals; never invoke schema-mount split. New copies do not inherit source trees. Adoption/discard/rollback tests and payload-link cleanup; live payload case. |
-| J: `hashTransaction.restore`, `linkOrigin`, `restoreLink`, move-error recovery | Go rollback machinery | Restore authoritative graph, storage, indexes, generations, ownership and work pointers. Capture once per sibling set; reserve before allocation; reserve finite recovery work before mutation. Whole-run and alias rollback tests and all charge-point tests; native success sequences only for the Go-only failure contract. |
+| J: `hashTransaction.restore`, `linkOrigin`, `restoreLink`, move-error recovery | Go rollback machinery | Restore authoritative graph, storage, indexes, generations, ownership and work pointers. Capture once per sibling set, or (NewPath's narrow journal) record each changed slot, field and struct with its restoration prepaid; reserve before allocation; reserve finite recovery work before mutation (`linkOrigin`). Whole-run and alias rollback tests and all charge-point tests; native success sequences only for the Go-only failure contract. |
 | I: insertion primitives and callers | `lyd_insert_node`, `lyds_insert`, `lyds_link_data_node`, `lyds_move_meta` | Retain stage-2 charged insertion history and explicit DEFAULT versus LAST membership. Stage 3 separates hash leadership from metadata movement. `TestRetainedRBShapeFollowsInsertionHistory`, `TestLastBySchemaTailOutsideTree`, singleton test; existing stage-2 live histories plus new insertion-after-removal cases. |
 | M: whole-run transfer and merges | `lyd_move_nodes*`, `lyds_merge_nodes1/2/3`, `lyd_merge_sibling_r` | Keep stage-2 encounter/post-order replay and whole-run topology transfer. Recovery now snapshots both forests once through the journal. Selected and secondary metadata are transferred by identity and in native list order; nodes1/3 retain their passed tree throughout the batch. `TestWholeRunTransferThenForeignInsert`, `TestMergeNodes3RBIterOrder`, `TestMergeNodes2HashOrder`, `TestStage3WholeRunBudgetRestoresBothForests`, `TestStage3WholeMoveKeepsAdditionalMetadata` (including first-item promotion); direct native `TestStage3NativeMetadataMoves` and existing/new merge histories. |
 
@@ -61,7 +61,7 @@ sweep the actual charge thresholds, rather than guessing a few limits.
 
 | Caller | Native counterpart | Transition / invariant and oracle evidence |
 |---|---|---|
-| `Tree.newPath` failure cleanup | `lyd_new_path_create` → `lyd_free_tree` / `lyd_unlink` | R/F; existing NewPath cleanup tests and sequence-edits corpus; no independent tree manipulation in this caller. |
+| `Tree.newPath` failure cleanup | `lyd_new_path_create` → `lyd_free_tree` / `lyd_unlink` | R/F under the forward quota inside NewPath's journal (a refused cleanup rolls the call back); `TestStage3NewPathJournalSweep`, `TestStage3NewPathCleanupWithoutJournal`, live `stage3/newpath-journal-*` and sequence-edits corpus; no independent tree manipulation in this caller. |
 | `Tree.newPathUpdate` | `lyd_new_path_update` → `_lyd_change_term` | V; `TestStage3DefaultsDummyWhenAndPathUpdate`, mixed multikey history; live defaults/dummy/path sequence. |
 | `newBuilder.changeTerm`, `Node.SetValue` | `lyd_change_term` → `_lyd_change_term` | V/R/J; sorted value-change, dual-membership refusal and charge-point tests; live value-change sequence. |
 | `valCtx.dummyWhen` insert/unlink | `lyd_validate_dummy_when` | I/R with opaque stand-in (no RB membership); `TestStage3DefaultsDummyWhenAndPathUpdate`, `TestDummyWhen`; live defaults/dummy/path sequence. |
@@ -267,7 +267,7 @@ checks that an exhausted adoption bound neither copies nor scans a 33-slot queue
 | `Insert` of one node (`insertChild`, `insertSibling`, `insertAfter`) | no journal of its own (a source journal is lent); `linkOrigin` restorer, armed after every preflight: topology, metadata, registrations and both endpoints of every reciprocal leafref link; `arm` rechecks the removal's reindex after its recovery charge; a refused `insert` returns the input's work binding | node; node under a detached parent (its counter gets the operation scope, and is restored with that parent's binding). The chain's flags and hashes change only in `attach`, after the last fallible step |
 | `Insert` of a whole top level (`moveNodes`), `Merge`, `Dup`/`DupSiblings`, `ApplyDiff`, `MergeDiff`, `MergeDiffTree`, `Validate*`, `ValidateOp` | journal on every tree involved; a detached destination parent (`moveNodes`, Dup, `MergeDiffTree`) or operation source (ValidateOp) is captured by `captureDetachedParent` before the first mutation | copied or operation subtrees, detached destination parents |
 | `Remove`/`Unlink`, `TrimXPath` | preflight only (single), batch-local journal (bulk; a D-0121 refusal publishes the prefix) | root rebound to a fresh counter, which has no quota: no budget refusal |
-| `New*`, `NewPath` | through `insert`; `NewPath` journals large or limited inputs | detached parent (`New*`, as one-node `Insert`); `NewPath` refuses one |
+| `New*`, `NewPath` | through `insert`; `NewPath` journals every creation in one narrow journal (entries at the primitives; whole-set capture before bulk transitions), with or without a trace or limit; its update branch journals nothing, as `SetValue` | detached parent (`New*`, as one-node `Insert`); `NewPath` refuses one |
 | `SetValue` | relocation through `linkOrigin`, values restored by hand | target bound to a fresh tree without a quota |
 | `ParseOp` with a parent | owner journal, or the parser tree's journal plus `captureDetachedParent` | detached parent |
 
@@ -365,13 +365,11 @@ A second exhaustive review of that candidate found five more, fixed the same way
   (`rbFind`, `chargedCompare`, `checkInsertCompatible`), so a refused quota stops a long
   repeated-key prefix scan at once (`TestStage3CompareCostChargedPerKey`).
 
-Later reviews added: `NewPath` reserves a finite recovery allowance before its first insertion
-when the path creates more than one node, and its cleanup unlink of what the call created runs
-within it outside the forward quota (as `restoreLink` does), so an exhausted quota cannot strand
-a created ancestor; the allowance covers the cleanup's linear scans of the destination and
-its retained-tree comparisons (each against a distinct member: the new keys' share per
-comparison plus all members' key text, read once and charged) (`TestStage3NewPathCleanupWithoutJournal`:
-a container created between 1,000 siblings on each side, a list instance among 4 KiB keys).
+Later reviews added: `NewPath` journals its creations (see "NewPath mutation journal" below).
+The earlier finite recovery allowance is gone. Its estimate of the cleanup's scans and comparisons
+missed the costs of union and plugin comparisons. The cleanup unlink now runs under the forward
+quota, and a refused cleanup restores the journal (`TestStage3NewPathCleanupWithoutJournal`: a
+container created between 1,000 siblings on each side, and a list instance among 4 KiB keys).
 A refused move disarms the removal undos it armed (`linkOrigin`), so none stays behind to keep
 the destination alive; the fuzzer checks that no refusal leaves one. Every `sortedLeaderIndex` branch reserves its lookup first, a foreign-context name scan of
 operation children included (`TestStage3ForeignOperationLeaderCharged`); `chargedIndex` charges the rank walk or each step of its scan before
@@ -420,6 +418,106 @@ their first charge; that predates stage 3 and is measured but not asserted there
 an empty tree → unlink → sorted reinsertion of a singleton with a populated slot 0 and 32 empty
 secondary slots (33/33/32 slots, identical JSON).
 
+## NewPath mutation journal
+
+The maintainer chose option (b) of the c318 consult. `NewPath` no longer reserves a finite
+`newPathRecovery` allowance for a cleanup that runs outside the forward quota. Instead it
+records what it changes, at the moment it changes it, and a refusal restores those records.
+
+- **Scope.** `NewPath` opens one journal (`beginNarrowTransaction`) when the lookup is done.
+  - The update branch is excluded: it keeps `SetValue`'s `_lyd_change_term` contract and journals
+    nothing.
+  - The journal opens before the first destination change, including the `markMixed` inside
+    `insertPositionBound` (r13 #4).
+  - It covers every segment and the cleanup.
+  - It is opened whether or not `hashTrace` or a limit is set, so instrumentation never selects a
+    different path.
+- **Entries, not copies.** In narrow mode, a narrow-aware primitive records its own writes
+  instead of copying its sibling set on first touch. It charges two units per entry (the capture
+  and the restoration) before reading the old value, and it records before it writes. An entry is
+  one of:
+  - a map slot of the set (`firstRun`, `contexts`, `history`, `exactByNode`, `ht`,
+    `rbGroups`/`rbTree`/`rbMore`/`unsorted`, a graph's `nodes`);
+  - a scalar field (`gen`, `exactOrder`, a graph's `root`/`work`/`undo`, or a map field that was
+    nil);
+  - a struct (a record chain, a record, an RB topology node);
+  - the deque slot an insertion opened. This entry also prepays the shifts its `deleteAt` makes.
+
+  Restoration replays the entries in reverse, using plain assignment, deletion and `deleteAt` of
+  the recorded slot. It does no search, comparison, rehash or reservation, and it cannot fail. New
+  nodes, records and topology nodes are not copied, because restoration removes every published
+  reference to them.
+- **Narrow-aware primitives.** These cover the common insertion into an ordered, single-context
+  set that is bound to the tree and has no operation index:
+  - `insertPos`/`rbPos` into an existing retained graph. `recordPlace` records the graph's header
+    and prepays a bound: 4 entries per ancestor of the leaf position, plus 12. `place` then keeps
+    (`dirtyOrder.keep`, armed by `dirtyOrder.narrow`) each topology node right before it changes
+    it: every ancestor's size, the parent, grandparent and uncle that `rb_insert_color` recolours,
+    and the nodes its rotations move. These entries are typed values (`placed`), not closures;
+  - `link` (`firstRun`, the deque slot) and `attach` (`gen`);
+  - `promoteRB`;
+  - `transferRBGroup` and `markUnsorted` (the metadata slots of both nodes);
+  - `addContext`;
+  - `hashAdd` → `hashPut` → `hashPutKey` → `activateRecord`, which records:
+    - the node's `hkey`/`hashed`;
+    - its `history` and `exactByNode` slots;
+    - `exactOrder`;
+    - the chain and its previous last record;
+    - for an indexed chain, the AVL insertion path, with both children of each record on it.
+
+    `unindexRecord` and `leaderInsert` touch nothing on their no-op branches.
+
+  The entry point is `siblings.touchLazy`. Under a narrow journal it captures nothing; everywhere
+  else it behaves like `touch`. Fields of pre-existing nodes stay per-node first-touch captures
+  (`captureNode`). A node outside every tree is not captured: under NewPath, which refuses a
+  detached parent, only a node the call created can be outside every tree (`unpublished`). The
+  whole-capture maps are allocated at the first whole capture, and a finished journal with no
+  whole capture is cleared and reused by the tree's next NewPath (`workCounter.spare`).
+- **Bulk transitions keep the whole-set capture, taken before their first write.** They call
+  `siblings.touchWhole`, which is a no-op outside narrow mode because `touchLazy` has already
+  touched there. The bulk transitions are:
+  - `markMixed`/`markUnordered` (leader materialization);
+  - the first RB build in `rbPos`;
+  - child-table creation in `hashAdd`;
+  - operation-index builds and updates;
+  - unordered, mixed-context, `mixedDiff` and operation-child positioning;
+  - detached or carried metadata publication and dual memberships;
+  - re-registration of a node that has history, and a registration older than its chain's last;
+  - first-instance records;
+  - an unbound destination (`bindDestination` writes `siblings.work`: `link` captures it with
+    `t.touch`);
+  - every primitive that is not narrow-aware.
+- **Mixing rule.** An object gets entries only while no whole capture of it exists:
+  - `j.siblings` for a set and its maps;
+  - `j.pending` for a graph;
+  - `j.dirty` for topology nodes;
+  - `j.records` for records;
+  - `j.chains` for chains.
+
+  `restore` applies the whole captures first, then the entries in reverse. An object that was
+  captured whole after it got entries returns to its state at that capture, and its earlier entries
+  undo the rest. Entries address the live owner (`s.firstRun`, never a saved map), so a later whole
+  capture that replaces a map or deque does not detach them.
+- **Errors.**
+  - A budget failure in the forward work restores the tree and skips the cleanup.
+  - After a creation, an ordinary failure runs native cleanup (`unlink` of the first created node)
+    under the normal forward quota, with no allowance and no quota reset. When cleanup succeeds,
+    the native history stays as `lyd_free_tree` leaves it: generation, registrations and RB shape.
+  - If cleanup itself is refused (budget, D-0121), the journal is set to roll back and the call
+    returns that refusal.
+  - Cleanup's removal primitives are not narrow-aware, so a rejected value pays one whole capture
+    of its destination.
+  - A D-0121 refusal is not reachable in this cleanup. Its target is a fresh node whose only
+    metadata slot is the one a new leader receives.
+- **Tree caches.** `t.rank`/`t.orders` are derived from the schema. Narrow mode keeps their
+  identity and does not clone them.
+- **Cost.** An ordinary insertion records O(RB height + AVL height + 1) entries, plus the deque
+  shifts that the forward insertion already makes. It never copies the destination. A set pays a
+  whole capture only when a bulk transition (which is already linear forward work) or the failure
+  cleanup reaches it. A single-segment creation, which `2282a912` did not journal, now pays its
+  entries. A multi-segment one no longer pays the allowance's linear scan. Timings are in the PR
+  description.
+
 ## Evidence index
 
 Removal failures propagate: `unlink`, `unlinkRetainingHistory` and `bindSubtreeWork` return
@@ -439,11 +537,43 @@ budget failure, including a sticky stored-hash error that would refuse cleanup u
 the parent's children (`TestStage3DetachedReplyBudgetCleanup`,
 `TestStage3DetachedReplyHashBudgetCleanup`).
 
+Evidence for NewPath's journal:
+
+- `TestStage3NewPathJournalSweep` refuses NewPath at every hash-work unit. The default run samples
+  the units; `YANG_STAGE3_FUZZ_FULL=1` sweeps all of them. Its cases cover:
+  - creations keyed by a 1,024-member union, an inet address and 4 KiB of text;
+  - a run's first tree, a new run leader, a root rotation, and insertions in the middle and at the
+    end;
+  - mixed marking into indexed and unindexed destinations;
+  - a container between indexed siblings;
+  - empty destinations and empty trees;
+  - children-table creation;
+  - chains with and without an ordered index.
+
+  Each case also runs with neither a trace nor a limit. After each refusal the test retries, runs a
+  further NewPath, and compares the result exactly with the unrefused history.
+- Two tests fail on `2282a912`: `TestStage3NewPathMixedDefaultQuota` (r13 #4: 20,000 siblings, a
+  4 KiB key, the default quota) and the union case run without a trace or limit (r13 #3).
+- `TestStage3NewPathJournalCapturesWrites` asserts that an ordinary insertion into a 4,000-child
+  destination never captures that destination whole. It also asserts that NewPath's work beyond
+  the forward insertion does not grow with the destination.
+- `TestStage3NewPathUpdateParity` covers the update branch.
+- The `new-path-multi` entry of `TestStage3RefusalIsNoOpFuzz` adds random multi-segment creations,
+  then a further NewPath. They include an unsupported action whose failure triggers native
+  cleanup.
+- The refusal snapshot now also covers `contexts` and `leaderSeq`, and it checks that each exact
+  chain's ordered index is valid. Whether that index has been built is derived state: a reindex
+  during recovery can build it.
+
 Live request ids in `conformance/retained_rb_stage3_oracle_test.go`:
 `stage3/removals`, `stage3/parser-resume`, `stage3/multikey`, `stage3/payload`,
 `stage3/defaults-dummy-path`, `stage3/netconf-cleanup`, `stage3/restconf-cleanup`, `stage3/merge-remove`,
 `stage3/detached-singleton`, `stage3/temporary-operation`, and
-`stage3/seed-301-3-0` through `stage3/seed-301-3-7`.
+`stage3/seed-301-3-0` through `stage3/seed-301-3-7`. Live request ids in
+`conformance/retained_rb_stage3_newpath_oracle_test.go` are
+`stage3/newpath-journal-{union,plugin,long,first-tree,new-leader,mixed-indexed,mixed-unindexed}`.
+Each runs a value rejected after the first creation, then a further creation, then the accepted
+value.
 The direct metadata probe is `TestStage3NativeMetadataMoves/{empty-selection,empty-unlink,singleton,retain,promote,many,unrebuilt}` in
 `data/retained_rb_stage3_oracle_test.go`, using `conformance/oracle/retained_rb_stage3.c`.
 

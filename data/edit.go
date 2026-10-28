@@ -80,14 +80,11 @@ func (l *logger) done(err error) error {
 func (t *Tree) NewPath(path, value string, o NewPathOptions) (*Node, error) {
 	defer t.work.beginHashWork()()
 	lg := &logger{set: t.context()}
-	// The ordinary path preflight handles small edits without a journal. A caller-specified
-	// boundary or large input can still fail after several insertions, so journal those.
+	// newPath opens the creation's journal (design 12, "NewPath mutation journal"), with or
+	// without a trace or limit.
 	var journal *hashTransaction
-	if t.work.hashLimit != 0 || t.work.hashTrace != nil || len(value) >= 1<<20 || len(path) >= 1<<20 {
-		journal = beginHashTransaction(t)
-	}
 	t.updateCtx = nil
-	n, err := t.newPath(lg, path, value, o)
+	n, err := t.newPath(lg, path, value, o, &journal)
 	if t.work.hashErr != nil {
 		err = t.work.hashErr
 	}
@@ -467,7 +464,7 @@ func (t *Tree) lookupList(seg types.PathSegment) (*Node, *types.Diag, *schema.No
 
 // newPath is lyd_new_path_ with lyd_new_path_create. Relative paths start at the parent's
 // children; absolute paths start at the tree root even when a parent is supplied.
-func (t *Tree) newPath(lg *logger, path, value string, o NewPathOptions) (*Node, error) {
+func (t *Tree) newPath(lg *logger, path, value string, o NewPathOptions, journal **hashTransaction) (*Node, error) {
 	if o.Parent != nil {
 		if c := ctxOf(o.Parent); c != nil && c != t.context() {
 			return nil, lg.logErr("LY_EINVAL", "Different contexts mixed in a \"lyd_new_path\" function call.")
@@ -546,6 +543,9 @@ func (t *Tree) newPath(lg *logger, path, value string, o NewPathOptions) (*Node,
 			return nil, err
 		}
 	}
+	// Every change from here on is journaled, insertPositionBound's markMixed included: a
+	// refusal restores the entries; an ordinary failure keeps native cleanup's history.
+	*journal = beginNarrowTransaction(t)
 	var position uint64
 	if idx < len(p) {
 		var err error
@@ -553,8 +553,7 @@ func (t *Tree) newPath(lg *logger, path, value string, o NewPathOptions) (*Node,
 			return nil, err
 		}
 	}
-	recovery, err := t.newPathRecovery(p[idx:], node, value, position)
-	if err != nil {
+	if err := t.preflightNewPathHash(p[idx:], node, value, position); err != nil {
 		return nil, err
 	}
 	first, last, created := (*Node)(nil), (*Node)(nil), false
@@ -604,21 +603,16 @@ func (t *Tree) newPath(lg *logger, path, value string, o NewPathOptions) (*Node,
 			}
 			err = fmt.Errorf("data: creating %s %q is not supported%s: %w", nodetypeStr(seg.Node.Kind), seg.Node.Name, limit, errors.ErrUnsupported)
 		}
-		if err != nil {
-			if created {
-				if uerr := t.newPathCleanup(first, recovery); uerr != nil {
-					return nil, uerr // the sticky budget/journal failure outranks err
-				}
-			}
-			return nil, err
+		if err == nil {
+			err = t.insert(parent, node, insertDefault)
 		}
-		if err := t.insert(parent, node, insertDefault); err != nil {
-			if created {
-				if uerr := t.newPathCleanup(first, recovery); uerr != nil {
-					return nil, uerr // the sticky budget/journal failure outranks err
+		if err != nil {
+			if created && t.work.hashErr == nil && !errors.Is(err, yang.ErrBudget) {
+				if uerr := t.newPathCleanup(first); uerr != nil {
+					return nil, uerr // a refused cleanup rolls the call back
 				}
 			}
-			return nil, err
+			return nil, err // a budget failure: the journal restores what the call changed
 		}
 		if first == nil {
 			first, created = node, true
@@ -2014,58 +2008,14 @@ func (t *Tree) dup(n *Node) (*Node, error) {
 	return t.dupWork(n, nil, false, insertDefault, dupRecursive|dupWithFlags, ctxOf(n), newAnyWork(context.Background(), Budget{}))
 }
 
-// newPathRecovery runs preflightNewPathHash and, when the path creates more than its first
-// node, reserves the finite allowance newPathCleanup may spend removing that node again after a
-// later failure: four times the first insertion's position bound, linear scans of the
-// destination and a retained-tree search of it, charged before anything is created (as
-// linkOrigin reserves a relink).
-func (t *Tree) newPathRecovery(segments types.Path, parent *Node, value string, position uint64) (uint64, error) {
-	if err := t.preflightNewPathHash(segments, parent, value, position); err != nil {
-		return 0, err
-	}
-	if len(segments) < 2 {
-		return 0, nil // one creation: an insertion that fails leaves nothing to clean up
-	}
-	// the cleanup's own scans of the destination (prepareUnlink's position scan and shift,
-	// reindexing) are linear in it, its retained-tree search logarithmic
-	dest := t.childrenOf(parent)
-	n := dest.Len() + 1
-	size := uint64(n) //nolint:gosec // a sibling count is nonnegative
-	recovery := addHashBound(addHashBound(mulHashBound(4, position), mulHashBound(8, size)), 64+16*rbHeight(n))
-	if sn := segments[0].Node; sn.Kind == schema.List && len(sn.Keys) != 0 {
-		// rbFind's comparisons: each compares the new instance's keys with a distinct member's
-		// (rbCompareCost: a unit per pair plus both texts), so their sum is bounded by every
-		// comparison's own share and all members' key text, which is read here once, charged
-		keys := uint64(len(sn.Keys))
-		if err := t.work.chargeHash(mulHashBound(size, keys+1)); err != nil {
-			return 0, err
-		}
-		var own, members uint64
-		for _, pred := range segments[0].Preds {
-			own += uint64(len(pred.Value.Canonical()))
-		}
-		for _, m := range dest.SchemaAll() {
-			if m.schema == nil || m.schema.Name != sn.Name {
-				continue
-			}
-			for i := range min(m.kids.SchemaLen(), len(sn.Keys)) {
-				members += uint64(len(m.kids.At(i).value.Canonical()))
-			}
-		}
-		recovery = addHashBound(recovery, addHashBound(mulHashBound(size, 1+2*keys+own), members))
-	}
-	return recovery, t.work.chargeHash(recovery)
-}
-
 // newPathCleanup unlinks first, the root of what this NewPath call created, after a later
-// failure (lyd_new_path frees it), within the allowance newPathRecovery reserved: like
-// restoreLink, it runs outside the forward quota, which the failure may have exhausted (a
-// sticky error included), and the forward state is restored after it. ponytail: a removal
-// beyond the allowance (a long duplicate state run) still fails and returns its error.
-func (t *Tree) newPathCleanup(first *Node, allowance uint64) error {
-	used, limit, sticky := t.work.hashUsed, t.work.hashLimit, t.work.hashErr
-	t.work.hashUsed, t.work.hashLimit, t.work.hashErr = 0, max(allowance, 1), nil
+// ordinary failure (lyd_new_path frees it), under the forward quota: the native history of that
+// removal stays. A refused cleanup (a budget or a D-0121 refusal) rolls the journal back, and
+// the call fails with that refusal as if it had not run.
+func (t *Tree) newPathCleanup(first *Node) error {
 	err := unlink(first)
-	t.work.hashUsed, t.work.hashLimit, t.work.hashErr = used, limit, sticky
+	if err != nil && t.work.journal != nil {
+		t.work.journal.rollback = true
+	}
 	return err
 }

@@ -296,7 +296,7 @@ func (t *Tree) upper(l siblingSpan, lo int, after func(*Node) bool) int {
 // anchors follow lyd_insert_get_next_anchor and their runs are found by schema identity.
 // insertLast still constrains LYD_PARSE_ORDERED input to schema order (D-0058).
 func (t *Tree) insertPos(sib *siblings, n *Node, order insertOrder) int {
-	if err := sib.touch(); err != nil {
+	if err := sib.touchLazy(); err != nil {
 		return 0
 	}
 	l := sib.schemaSpan()
@@ -304,6 +304,15 @@ func (t *Tree) insertPos(sib *siblings, n *Node, order insertOrder) int {
 		return 0
 	}
 	t.markMixed(sib, l.At(0).parent, n)
+	// A narrow journal records only rbPos's sorted insertion into an ordered set of one context;
+	// every other position search (and its caches) runs under a whole capture.
+	narrow := order == insertDefault && !opChild(n.schema) && !sib.schemaUnordered && sib.order == nil &&
+		len(sib.contexts) <= 1 && sameSet(ctxOf(l.At(0)), ctxOf(n)) && !t.mixedDiff
+	if !narrow {
+		if err := sib.touchWhole(); err != nil {
+			return 0
+		}
+	}
 	if order != insertLast {
 		newCtx, firstCtx := ctxOf(n), ctxOf(l.At(0))
 		mixedHere := firstCtx != nil && firstCtx != newCtx || len(sib.contexts) > 1
@@ -725,6 +734,11 @@ func (t *Tree) rbPos(sib *siblings, n *Node, lo, hi int, compare func(*Node, *No
 		t.work.hashErr = rbUnlinkError(n)
 		return lo, false
 	}
+	if j := sib.narrow(); j != nil && !create && order.work != &t.work {
+		if _, whole := j.pending[order]; !whole && recordField(j, &order.work) != nil {
+			return lo, false
+		}
+	}
 	order.work = &t.work
 	parent, left, pred, ok := order.search(n, t.chargedCompare(compare))
 	if !ok || t.work.chargeHash(1+rbStructBound(len(order.nodes))) != nil {
@@ -759,6 +773,9 @@ func (t *Tree) rbPos(sib *siblings, n *Node, lo, hi int, compare func(*Node, *No
 		}
 		if t.reserveHash(amount) != nil {
 			return lo, true
+		}
+		if err := sib.touchWhole(); err != nil { // the first tree reorders the run
+			return lo, false
 		}
 		if sib.rbGroups == nil {
 			sib.rbGroups = map[*Node]*rbGroup{}
@@ -825,10 +842,14 @@ func (t *Tree) rbPos(sib *siblings, n *Node, lo, hi int, compare func(*Node, *No
 			return lo, true
 		}
 	}
-	if err := sib.touch(); err != nil {
+	if err := sib.touchLazy(); err != nil {
 		return lo, false
 	}
 	if err := n.touch(); err != nil {
+		return lo, false
+	}
+	j := sib.narrow()
+	if j != nil && j.recordPlace(order, n, parent) != nil {
 		return lo, false
 	}
 	// lyds_insert frees the incoming first metadata slot (design 12, metadata slot order)
@@ -839,7 +860,9 @@ func (t *Tree) rbPos(sib *siblings, n *Node, lo, hi int, compare func(*Node, *No
 	if err := sib.promoteRB(n, group, &t.work); err != nil {
 		return lo, false
 	}
+	order.narrow = j // keep records what place changes
 	order.place(n, parent, left)
+	order.narrow = nil
 	return at, true
 }
 
@@ -1546,7 +1569,11 @@ func markRB(sib *siblings, leader *Node) {
 // markUnsorted records that the run of s has instances outside its RB tree (appended by
 // insertLast/insertLastBySchema after the tree was made).
 func markUnsorted(sib *siblings, leader *Node) {
-	if err := sib.touch(); err != nil {
+	if j := sib.narrow(); j != nil {
+		if recordSlot(j, &sib.unsorted, leader) != nil {
+			return
+		}
+	} else if err := sib.touch(); err != nil {
 		return
 	}
 	if sib.unsorted == nil {
@@ -1857,7 +1884,11 @@ func (t *Tree) link(parent *Node, sib *siblings, n *Node, at int) error {
 	if err := t.reserveHash(amount); err != nil {
 		return err
 	}
-	if err := t.touch(sib); err != nil {
+	if sib.work != &t.work || n.schema == nil || sib.narrow() == nil {
+		if err := t.touch(sib); err != nil {
+			return err
+		}
+	} else if err := sib.touchLazy(); err != nil {
 		return err
 	}
 	if err := t.bindDestination(parent, sib); err != nil {
@@ -1865,6 +1896,9 @@ func (t *Tree) link(parent *Node, sib *siblings, n *Node, at int) error {
 	}
 	if n.detachedRB != nil {
 		if err := t.work.chargeHash(3); err != nil {
+			return err
+		}
+		if err := sib.touchWhole(); err != nil { // publication of a detached graph
 			return err
 		}
 		if j := t.work.journal; j != nil {
@@ -1910,10 +1944,16 @@ func (t *Tree) link(parent *Node, sib *siblings, n *Node, at int) error {
 		}
 		sib.orderAddOpaque(t, parent, n, at)
 	default:
+		first := sib.firstRun[n.schema] == nil || at < sib.SchemaLen() && sib.At(at) == sib.firstRun[n.schema]
+		if j := sib.narrow(); j != nil && (sib.firstRun == nil || first) {
+			if err := recordSlot(j, &sib.firstRun, n.schema); err != nil {
+				return err
+			}
+		}
 		if sib.firstRun == nil {
 			sib.firstRun = make(map[*schema.Node]*Node)
 		}
-		if sib.firstRun[n.schema] == nil || at < sib.SchemaLen() && sib.At(at) == sib.firstRun[n.schema] {
+		if first {
 			sib.firstRun[n.schema] = n
 		}
 		if at < sib.SchemaLen() && n.inRB && n.rbGroup != nil && sib.ownsGroup(sib.At(at), n.rbGroup) {
@@ -2117,6 +2157,11 @@ func (t *Tree) attach(parent *Node, sib *siblings, n *Node) {
 		return
 	}
 	sib.addContext(n)
+	if j := sib.narrow(); j != nil {
+		if err := recordField(j, &sib.gen); err != nil {
+			return
+		}
+	}
 	sib.gen++
 	sib.hashAdd(parent, n)
 	if n.flags&FlagDefault == 0 {

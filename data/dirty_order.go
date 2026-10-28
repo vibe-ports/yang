@@ -72,6 +72,9 @@ type dirtyOrder struct {
 	// undo records, while armed for one removal (armRemovalUndo), every topology node before
 	// remove changes it.
 	undo *removalUndo
+	// narrow is NewPath's journal while rbPos places one node: keep records every topology node
+	// place changes into it, within the bound recordPlace prepaid.
+	narrow *hashTransaction
 }
 
 type removalUndo struct {
@@ -81,8 +84,14 @@ type removalUndo struct {
 	work   *workCounter
 }
 
-// keep records x before remove changes it, each saved node charged within the armed reservation.
+// keep records x before remove changes it, each saved node charged within the armed reservation,
+// or before place changes it into a narrow journal.
 func (d *dirtyOrder) keep(x *dirtyOrderNode) {
+	if j := d.narrow; j != nil && x != nil {
+		if _, whole := j.dirty[x]; !whole {
+			j.placed = append(j.placed, placedNode{x, *x})
+		}
+	}
 	u := d.undo
 	if u == nil || !u.active || x == nil {
 		return
@@ -212,6 +221,9 @@ func (d *dirtyOrder) insertColor(x *dirtyOrderNode) {
 		g := p.parent
 		if p == g.left {
 			if u := g.right; u != nil && u.red {
+				d.keep(u)
+				d.keep(p)
+				d.keep(g)
 				u.red, p.red, g.red = false, false, true
 				x = g
 				continue
@@ -220,10 +232,15 @@ func (d *dirtyOrder) insertColor(x *dirtyOrderNode) {
 				d.rotateLeft(p)
 				p, x = x, p
 			}
+			d.keep(p)
+			d.keep(g)
 			p.red, g.red = false, true
 			d.rotateRight(g)
 		} else {
 			if u := g.left; u != nil && u.red {
+				d.keep(u)
+				d.keep(p)
+				d.keep(g)
 				u.red, p.red, g.red = false, false, true
 				x = g
 				continue
@@ -232,10 +249,13 @@ func (d *dirtyOrder) insertColor(x *dirtyOrderNode) {
 				d.rotateRight(p)
 				p, x = x, p
 			}
+			d.keep(p)
+			d.keep(g)
 			p.red, g.red = false, true
 			d.rotateLeft(g)
 		}
 	}
+	d.keep(d.root)
 	d.root.red = false
 }
 
@@ -317,6 +337,7 @@ func (d *dirtyOrder) search(n *Node, compare func(*Node, *Node) (int, bool)) (pa
 func (d *dirtyOrder) place(n *Node, parent *dirtyOrderNode, left bool) {
 	d.undo = nil // a removal journal armed by a move that stopped before its removal is stale
 	for cur := parent; cur != nil; cur = cur.parent {
+		d.keep(cur)
 		cur.size++
 	}
 	x := &dirtyOrderNode{node: n, size: 1, red: true, active: true, parent: parent}

@@ -145,6 +145,7 @@ type workCounter struct {
 	hashNames   map[*schema.Node]uint32   // immutable module/name prefix, once per schema node in this tree
 	indexNames  map[*schema.Node][32]byte // immutable positional-index name digest for hand-built schemas
 	journal     *hashTransaction          // the running operation's undo journal (beginHashTransaction)
+	spare       *hashTransaction          // a finished narrow journal, its entries cleared, reused by NewPath
 	lookupUsed  uint64                    // cross-context schema-index work in the current diff
 	lookupLimit uint64                    // zero takes the internal default; tests may lower it
 	lookupErr   error                     // first lookup budget error, propagated at the diff boundary

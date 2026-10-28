@@ -242,7 +242,17 @@ func (s *siblings) appendNode(n *Node) error {
 	return nil
 }
 func (s *siblings) InsertAt(at int, n *Node) (int, error) {
-	if err := s.touch(); err != nil {
+	if j := s.narrow(); j != nil && n.schema != nil {
+		// the entry removes the slot again, without a search; its shifts (the shorter side of
+		// the grown list, as deleteAt moves) are prepaid with it
+		if err := j.record(1); err != nil {
+			return 0, err
+		}
+		if err := j.charge(uint64(min(at, len(s.list)-at))); err != nil { //nolint:gosec // positions are nonnegative
+			return 0, err
+		}
+		j.undo = append(j.undo, func() { s.deleteAt(at) })
+	} else if err := s.touch(); err != nil {
 		return 0, err
 	}
 	if n.schema != nil {

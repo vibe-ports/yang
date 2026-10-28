@@ -94,7 +94,11 @@ func snapshotHashBudgetSiblings(s *siblings) string {
 		for r, count := chain.first, 0; r != nil && count <= chain.count; r, count = r.next, count+1 {
 			records = append(records, fmt.Sprintf("%p:%d:%v", r.node, r.order, r.more))
 		}
-		entries = append(entries, fmt.Sprintf("%p:%x:%d=%v", key.s, key.key, key.hash, records))
+		// The ordered index is derived (built at a chain's first canonical-only move, keyed by
+		// the unique registration order): its links and heights must be a valid index of the
+		// chain, whether or not it has been built.
+		entries = append(entries, fmt.Sprintf("%p:%x:%d=%d:%v:%s", key.s, key.key, key.hash, chain.count, records,
+			checkRecordIndex(chain)))
 	}
 	sort.Strings(entries)
 	var leaders []string
@@ -156,14 +160,61 @@ func snapshotHashBudgetSiblings(s *siblings) string {
 	for group, order := range s.rbOrders {
 		rb = append(rb, fmt.Sprintf("work:%p=%p", group, order.work))
 	}
+	var contexts []string
+	for set, count := range s.contexts {
+		contexts = append(contexts, fmt.Sprintf("%p=%d", set, count))
+	}
+	sort.Strings(contexts)
 	sort.Strings(first)
 	sort.Strings(rb)
 	sort.Strings(rbOrders)
 	sort.Strings(unsorted)
 	sort.Strings(occurrence)
 	sort.Strings(pending)
-	return fmt.Sprintf("order=%d gen=%d work=%p schemaUnordered=%t list=%v opq=%v ht=%v leaders=%v first=%v rb=%v rbOrders=%v unsorted=%v occurrences=%v pending=%v",
-		s.exactOrder, s.gen, s.work, s.schemaUnordered, s.schemaSpan().Collect(), s.opaqueSpan().Collect(), entries, leaders, first, rb, rbOrders, unsorted, occurrence, pending)
+	return fmt.Sprintf("order=%d gen=%d seq=%d work=%p schemaUnordered=%t contexts=%v list=%v opq=%v ht=%v leaders=%v first=%v rb=%v rbOrders=%v unsorted=%v occurrences=%v pending=%v",
+		s.exactOrder, s.gen, s.leaderSeq, s.work, s.schemaUnordered, contexts, s.schemaSpan().Collect(), s.opaqueSpan().Collect(), entries, leaders, first, rb, rbOrders, unsorted, occurrence, pending)
+}
+
+// checkRecordIndex reports a chain's ordered index (AVL) that is not a balanced search tree of
+// exactly its records in chain order with correct heights ("" when valid or unbuilt).
+func checkRecordIndex(c *recordChain) string {
+	if c.root == nil {
+		return ""
+	}
+	var inOrder []*record
+	var walk func(r *record) (int, string)
+	walk = func(r *record) (int, string) {
+		if r == nil {
+			return 0, ""
+		}
+		lh, bad := walk(r.left)
+		if bad != "" {
+			return 0, bad
+		}
+		inOrder = append(inOrder, r)
+		rh, bad := walk(r.right)
+		if bad != "" {
+			return 0, bad
+		}
+		if h := 1 + max(lh, rh); r.height != h || lh-rh > 1 || rh-lh > 1 {
+			return 0, fmt.Sprintf("record %d: height %d, children %d/%d", r.order, r.height, lh, rh)
+		}
+		return r.height, ""
+	}
+	if _, bad := walk(c.root); bad != "" {
+		return "bad index: " + bad
+	}
+	i := 0
+	for r := c.first; r != nil; r = r.next {
+		if i >= len(inOrder) || inOrder[i] != r {
+			return fmt.Sprintf("bad index: slot %d differs from the chain", i)
+		}
+		i++
+	}
+	if i != len(inOrder) {
+		return fmt.Sprintf("bad index: %d indexed, %d chained", len(inOrder), i)
+	}
+	return ""
 }
 
 // snapshotOrder is a retained graph's root, topology and work binding.

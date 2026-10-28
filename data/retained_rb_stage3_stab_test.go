@@ -1197,7 +1197,8 @@ func (g *fzGen) diff(a, b *Tree) *Tree {
 
 var fzEntries = []string{"insert", "insert-forest", "insert-top", "dup", "merge", "merge-diff",
 	"merge-diff-tree", "apply-diff", "new", "new-path", "set-value", "trim", "remove", "unlink",
-	"validate", "validate-op", "parse-op", "insert-bound-root", "move-detached-switch", "merge-runs"}
+	"validate", "validate-op", "parse-op", "insert-bound-root", "move-detached-switch", "merge-runs",
+	"new-path-multi"}
 
 func (g *fzGen) scenario(entry string) *fzScenario {
 	s := &fzScenario{entry: entry, set: g.set}
@@ -1391,6 +1392,26 @@ func (g *fzGen) scenario(entry string) *fzScenario {
 			_, err := dst.NewPath(path, v, NewPathOptions{Update: update})
 			return err
 		}
+	case "new-path-multi":
+		// several created segments in one call under NewPath's journal (design 12): a list
+		// instance with descendants, nested containers, a user-ordered instance, and an action
+		// whose unsupported creation fails after its list was created (native cleanup); then a
+		// further NewPath of the same destination
+		dst := linked(1 + g.rng.IntN(2))
+		vs := g.vals(3)
+		path := fmt.Sprintf(fzPick(g, []string{"/fz:top/kl[k='%s']/c/d3", "/fz:top/kl[k='%s']/q", "/fz:top/kl[k='%s']/c/r",
+			"/fz:top/ul[k='%s']/p", "/fz:top/al[k='%s']/go", "/fz:top/kl[k='%s']/p"}), vs[0])
+		if g.rng.IntN(4) == 0 {
+			path = "/fz:top/np/np2/" + fzPick(g, []string{"v", "ll2"})
+		}
+		s.op = func() error {
+			_, err := dst.NewPath(path, vs[1], NewPathOptions{})
+			return err
+		}
+		s.then, s.thenKind = func() error {
+			_, err := dst.NewPath("/fz:top/kl[k='"+vs[2]+"']/c/d3", vs[1], NewPathOptions{})
+			return err
+		}, "new-path"
 	case "set-value":
 		dst := linked(1 + g.rng.IntN(2))
 		n := nonKey(dst, true)
@@ -2326,8 +2347,8 @@ func TestStage3ReservationHistoryBudget(t *testing.T) {
 }
 
 // TestStage3NewPathCleanupWithoutJournal: in the production configuration (default quota, no
-// trace: no journal) a NewPath whose later segment fails removes what it created within the
-// allowance reserved before the first insertion, leaving the tree as it was.
+// trace) a NewPath whose later segment fails removes what it created by native cleanup under the
+// forward quota, leaving the nodes and values as they were and its journal closed.
 func TestStage3NewPathCleanupWithoutJournal(t *testing.T) {
 	set := reviewDiffSet(t, `module stage3-np {yang-version 1.1;namespace "urn:stage3-np";prefix s;
  container c {list l {key k; leaf k {type string;} leaf v {type uint8;}} leaf-list w {type string;}}}`)
@@ -2355,7 +2376,7 @@ func TestStage3NewPathCleanupWithoutJournal(t *testing.T) {
 		t.Fatal(err)
 	}
 	// a created container between 1,000 siblings on each side: the cleanup's position scan is
-	// linear in the destination, and the allowance covers it
+	// linear in the destination
 	wide := reviewDiffSet(t, `module stage3-wide {yang-version 1.1;namespace "urn:stage3-wide";prefix s;
  container c {leaf-list a {type string; ordered-by user;} container m {leaf x {type uint8;}}
   leaf-list z {type string; ordered-by user;}}}`)
@@ -2376,8 +2397,7 @@ func TestStage3NewPathCleanupWithoutJournal(t *testing.T) {
 	if after := snapshotHashBudgetTree(tr); !reflect.DeepEqual(after.dump, before.dump) || !reflect.DeepEqual(after.index, before.index) {
 		t.Fatalf("wide: failed NewPath changed the tree:\n%s", fzSnapDiff(before, after))
 	}
-	// long keys at the top level: the cleanup's retained-tree search compares 4 KiB key texts,
-	// and the allowance covers those comparisons too
+	// long keys at the top level: the cleanup's retained-tree search compares 4 KiB key texts
 	top := reviewDiffSet(t, `module stage3-top {yang-version 1.1;namespace "urn:stage3-top";prefix s;
  list l {key k; leaf k {type string;} leaf v {type uint8;}}}`)
 	tr = parseOnlyXML(t, top, `<l xmlns="urn:stage3-top"><k>`+strings.Repeat("a", 4096)+`</k></l><l xmlns="urn:stage3-top"><k>`+

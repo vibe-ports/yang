@@ -51,6 +51,19 @@ type hashTransaction struct {
 	// detached are the detached roots captureDetachedParent journaled whole: a later boundary of
 	// the same operation (Insert, then linkOrigin) does not walk them again
 	detached map[*Node]bool
+	// narrow is NewPath's journal (design 12, "NewPath mutation journal"): a narrow-aware
+	// primitive records each slot, field or struct it changes as an entry of undo instead of
+	// copying its sibling set whole; every other primitive still captures whole (touch).
+	narrow bool
+	undo   []func() // restored in reverse after the whole captures
+	// placed are the topology nodes an RB insertion may change, the bulk of a narrow journal's
+	// entries: kept by value (restored in reverse, after undo) instead of one closure each
+	placed []placedNode
+}
+
+type placedNode struct {
+	x   *dirtyOrderNode
+	old dirtyOrderNode
 }
 
 // beginHashTransaction starts journaling t for an operation that may change any part of it. It
@@ -61,12 +74,8 @@ func beginHashTransaction(t *Tree) *hashTransaction {
 	if t.work.journal != nil {
 		return nil
 	}
-	j := &hashTransaction{tree: t, done: t.work.beginHashWork(), rank: t.rank, orders: t.orders, set: t.set,
-		nodes: map[*Node]Node{}, siblings: map[*siblings]siblings{}, chains: map[*recordChain]recordChain{},
-		records: map[*record]record{},
-		pending: map[*dirtyOrder]dirtyOrder{}, dirty: map[*dirtyOrderNode]dirtyOrderNode{},
-		links: map[*leafrefLinks]leafrefLinks{}, owners: map[*Node]*leafrefLinks{},
-		metas: map[*meta]meta{}, opaq: map[*opaque]opaque{}, works: map[*siblings]*workCounter{}}
+	j := &hashTransaction{tree: t, done: t.work.beginHashWork(), rank: t.rank, orders: t.orders, set: t.set}
+	j.maps()
 	t.work.journal = j
 	objects := uint64(len(t.rank)) + 1
 	if j.charge(uint64(len(t.orders))) != nil {
@@ -86,6 +95,204 @@ func beginHashTransaction(t *Tree) *hashTransaction {
 		}
 	}
 	return j
+}
+
+// beginNarrowTransaction starts NewPath's journal (nil inside an enclosing transaction, as
+// beginHashTransaction). The schema-derived caches t.rank and t.orders keep their identity: an
+// entry they gain is the same for any later call, so nothing is copied up front.
+func beginNarrowTransaction(t *Tree) *hashTransaction {
+	if t.work.journal != nil {
+		return nil
+	}
+	j := t.work.spare
+	if j == nil {
+		j = &hashTransaction{}
+	}
+	t.work.spare = nil
+	*j = hashTransaction{tree: t, done: t.work.beginHashWork(), rank: t.rank, orders: t.orders, set: t.set,
+		narrow: true, undo: j.undo[:0], placed: j.placed[:0]}
+	t.work.journal = j
+	return j
+}
+
+// spare keeps a finished narrow journal that captured nothing whole, its entries cleared, for the
+// tree's next NewPath. ponytail: up to 1024 entries; a larger journal is left to the collector.
+func (j *hashTransaction) spare() {
+	if !j.narrow || j.nodes != nil || cap(j.undo) > 1024 || cap(j.placed) > 1024 {
+		return
+	}
+	clear(j.undo)
+	clear(j.placed)
+	t := j.tree
+	*j = hashTransaction{undo: j.undo[:0], placed: j.placed[:0]}
+	t.work.spare = j
+}
+
+// maps allocates the whole-capture maps, which a narrow journal leaves nil (reads of a nil map
+// see no capture) until its first whole capture.
+func (j *hashTransaction) maps() {
+	if j.nodes != nil {
+		return
+	}
+	j.nodes, j.siblings, j.chains, j.records = map[*Node]Node{}, map[*siblings]siblings{}, map[*recordChain]recordChain{}, map[*record]record{}
+	j.pending, j.dirty = map[*dirtyOrder]dirtyOrder{}, map[*dirtyOrderNode]dirtyOrderNode{}
+	j.links, j.owners = map[*leafrefLinks]leafrefLinks{}, map[*Node]*leafrefLinks{}
+	j.metas, j.opaq, j.works = map[*meta]meta{}, map[*opaque]opaque{}, map[*siblings]*workCounter{}
+}
+
+// narrow returns the narrow journal that records the changes of s entry by entry: nil without
+// a journal, in a whole-set journal, or once s is captured whole (an entry after a whole capture
+// would restore over it; see restore).
+func (s *siblings) narrow() *hashTransaction {
+	j := s.journal()
+	if j == nil || !j.narrow {
+		return nil
+	}
+	if _, whole := j.siblings[s]; whole {
+		return nil
+	}
+	return j
+}
+
+// touchLazy is touch for a narrow-aware primitive: under a narrow journal it captures nothing,
+// and the primitive records its own writes (or calls touch before a branch it does not record).
+func (s *siblings) touchLazy() error {
+	if j := s.narrow(); j != nil {
+		return j.err
+	}
+	return s.touch()
+}
+
+// touchWhole captures s whole before a write a narrow-aware primitive does not record. Outside
+// a narrow journal the primitive's touchLazy has already captured s, as before.
+func (s *siblings) touchWhole() error {
+	if s.narrow() != nil {
+		return s.touch()
+	}
+	return nil
+}
+
+// record prepays an entry, its capture and its restoration, before the old state is read.
+func (j *hashTransaction) record(units uint64) error {
+	if j.err != nil {
+		return j.err
+	}
+	return j.charge(2 * units)
+}
+
+// recordField journals *p. The entry addresses the live field, so a later whole capture of its
+// owner, restored first, does not detach it.
+func recordField[T any](j *hashTransaction, p *T) error {
+	if err := j.record(1); err != nil {
+		return err
+	}
+	old := *p
+	j.undo = append(j.undo, func() { *p = old })
+	return nil
+}
+
+// recordSlot journals the slot k of the map field *p (or the field itself while it is nil).
+func recordSlot[K comparable, V any](j *hashTransaction, p *map[K]V, k K) error {
+	if err := j.record(1); err != nil {
+		return err
+	}
+	if *p == nil {
+		j.undo = append(j.undo, func() { *p = nil })
+		return nil
+	}
+	old, had := (*p)[k]
+	j.undo = append(j.undo, func() {
+		switch {
+		case had:
+			(*p)[k] = old
+		case *p != nil:
+			delete(*p, k)
+		}
+	})
+	return nil
+}
+
+// recordChainEntry journals the fields of chain c (nil: new or none).
+func (j *hashTransaction) recordChainEntry(c *recordChain) error {
+	if c == nil {
+		return nil
+	}
+	if _, whole := j.chains[c]; whole {
+		return j.err
+	}
+	if err := j.record(1); err != nil {
+		return err
+	}
+	old := *c
+	j.undo = append(j.undo, func() { *c = old })
+	return nil
+}
+
+// recordRecord journals one record, its later registrations included.
+func (j *hashTransaction) recordRecord(r *record) error {
+	if r == nil {
+		return nil
+	}
+	if _, whole := j.records[r]; whole {
+		return j.err
+	}
+	if err := j.record(1 + uint64(len(r.more))); err != nil {
+		return err
+	}
+	old := *r
+	old.more = slices.Clone(r.more)
+	j.undo = append(j.undo, func() { *r = old })
+	return nil
+}
+
+// recordRecordPath journals the records an AVL insertion of order into root can change: those on
+// its search path, which balance and its rotations rewrite, and both children of each.
+func (j *hashTransaction) recordRecordPath(root *record, order uint64) error {
+	for r := root; r != nil; {
+		for _, x := range [3]*record{r, r.left, r.right} {
+			if err := j.recordRecord(x); err != nil {
+				return err
+			}
+		}
+		if order < r.order {
+			r = r.left
+		} else {
+			r = r.right
+		}
+	}
+	return nil
+}
+
+// recordPlace journals d's root, nodes slot and armed undo before d.place(n, parent, …), and
+// prepays the topology nodes place then records itself (dirtyOrder.keep, d.narrow set by the
+// caller around place): each ancestor of the leaf position (its size), and the nodes
+// rb_insert_color recolours (at most three per step up) and its two rotations move (at most four
+// each). A graph captured whole needs nothing.
+func (j *hashTransaction) recordPlace(d *dirtyOrder, n *Node, parent *dirtyOrderNode) error {
+	if _, whole := j.pending[d]; whole {
+		return j.err
+	}
+	if err := recordField(j, &d.root); err != nil {
+		return err
+	}
+	if d.undo != nil { // place drops an armed removal undo
+		if err := recordField(j, &d.undo); err != nil {
+			return err
+		}
+	}
+	if err := recordSlot(j, &d.nodes, n); err != nil {
+		return err
+	}
+	depth := 0
+	for a := parent; a != nil; a = a.parent {
+		depth++
+	}
+	bound := 4*depth + 12
+	if err := j.record(uint64(bound)); err != nil {
+		return err
+	}
+	j.placed = slices.Grow(j.placed, depth+8) // the usual count: a size per ancestor, one recolouring
+	return nil
 }
 
 // end detaches the transaction from its tree. A failed journal charge becomes the operation's
@@ -108,6 +315,7 @@ func (j *hashTransaction) end(result *error) {
 		}
 	}
 	j.done()
+	j.spare()
 }
 
 // fail makes a failed journal charge the operation's result.
@@ -171,7 +379,19 @@ func (n *Node) touch() error {
 	if j == nil {
 		return nil
 	}
+	if j.narrow && unpublished(n) {
+		return j.err // NewPath's own new nodes: a refusal leaves no reference to them
+	}
 	return j.captureNode(n)
+}
+
+// unpublished reports a node outside every tree: under NewPath's journal (which refuses a
+// detached parent) only a node the call created.
+func unpublished(n *Node) bool {
+	for n.parent != nil {
+		n = n.parent
+	}
+	return n.tree == nil
 }
 
 // joinLinkJournal associates both sides before either a linked or detached source changes.
@@ -240,6 +460,7 @@ func (s *siblings) rebind(work *workCounter) error {
 		if j == nil {
 			continue
 		}
+		j.maps()
 		if _, exists := j.siblings[s]; exists {
 			continue
 		}
@@ -312,6 +533,7 @@ func (j *hashTransaction) captureDetachedParent(parent *Node) error {
 
 // captureNode journals n itself, not its children: its sibling set is journaled on its own.
 func (j *hashTransaction) captureNode(n *Node) error {
+	j.maps()
 	if _, exists := j.nodes[n]; exists {
 		return j.err
 	}
@@ -359,6 +581,7 @@ func (j *hashTransaction) captureNode(n *Node) error {
 }
 
 func (j *hashTransaction) captureLinks(l *leafrefLinks) error {
+	j.maps()
 	if _, exists := j.links[l]; exists {
 		return nil
 	}
@@ -371,6 +594,7 @@ func (j *hashTransaction) captureLinks(l *leafrefLinks) error {
 
 // captureOwner includes counterparts in another tree: freeLinks can empty their record.
 func (j *hashTransaction) captureOwner(c *Node) error {
+	j.maps()
 	if _, exists := j.owners[c]; exists {
 		return nil
 	}
@@ -387,6 +611,7 @@ func (j *hashTransaction) captureOwner(c *Node) error {
 // captureRecords walks each record once. Reserve each record and its outgoing stack slots
 // before allocating; a duplicate-heavy chain cannot allocate beyond the remaining quota.
 func (j *hashTransaction) captureRecords(r *record) error {
+	j.maps()
 	stack := []*record{r}
 	for len(stack) != 0 {
 		r := stack[len(stack)-1]
@@ -409,6 +634,7 @@ func (j *hashTransaction) captureRecords(r *record) error {
 }
 
 func (j *hashTransaction) captureChain(c *recordChain) error {
+	j.maps()
 	if c == nil {
 		return nil
 	}
@@ -428,6 +654,7 @@ func (j *hashTransaction) captureChain(c *recordChain) error {
 // captureOrder saves the authoritative graph in place. Both parser pending references and
 // retained metadata keep their identity across rollback; there is no independently cloned tree.
 func (j *hashTransaction) captureOrder(d *dirtyOrder) error {
+	j.maps()
 	if _, exists := j.pending[d]; exists {
 		return nil
 	}
@@ -449,9 +676,16 @@ func (j *hashTransaction) captureOrder(d *dirtyOrder) error {
 // changes update their positions, hashes and RB-tree state), not their children.
 // ponytail: a sibling set is copied whole, O(its size) on the first change; a per-record journal
 // would make a change in a huge sibling set O(1) if that ever matters.
+// captureHook observes every whole sibling-set capture (tests only; nil otherwise).
+var captureHook func(*siblings)
+
 func (j *hashTransaction) captureSiblings(s *siblings) error {
+	j.maps()
 	if _, exists := j.siblings[s]; exists {
 		return j.err
+	}
+	if captureHook != nil {
+		captureHook(s)
 	}
 	// Counting nested map/slice sizes is itself work; reserve that scan before it starts.
 	if err := j.charge(uint64(len(s.history) + len(s.rbDual) + len(s.rbMore))); err != nil {
@@ -596,4 +830,12 @@ func (j *hashTransaction) restore() {
 		*op = saved
 	}
 	j.tree.rank, j.tree.orders, j.tree.set = j.rank, j.orders, j.set
+	// Entries last, newest first: an object captured whole after its first entries returns to
+	// that capture above, and its entries undo the rest. None follows its own whole capture.
+	for i := len(j.undo) - 1; i >= 0; i-- {
+		j.undo[i]()
+	}
+	for i := len(j.placed) - 1; i >= 0; i-- {
+		*j.placed[i].x = j.placed[i].old
+	}
 }

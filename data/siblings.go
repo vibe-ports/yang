@@ -288,7 +288,11 @@ func (s *siblings) addContext(n *Node) {
 	if n.schema == nil {
 		return
 	}
-	if err := s.touch(); err != nil {
+	if j := s.narrow(); j != nil {
+		if err := recordSlot(j, &s.contexts, ctxOf(n)); err != nil {
+			return
+		}
+	} else if err := s.touch(); err != nil {
 		return
 	}
 	s.visit()
@@ -370,7 +374,7 @@ func (s *siblings) hasUnsorted(sn *schema.Node) bool { return s.unsorted[s.runLe
 func (s *siblings) transferRun(old, next *Node) { s.transferRBGroup(old, next, s.rbGroups[old]) }
 
 func (s *siblings) transferRBGroup(old, next *Node, group *rbGroup) {
-	if err := s.touch(); err != nil {
+	if err := s.touchLazy(); err != nil {
 		return
 	}
 	if group == nil || old == nil || next == nil || old == next {
@@ -382,6 +386,15 @@ func (s *siblings) transferRBGroup(old, next *Node, group *rbGroup) {
 	}
 	nextGroups := s.metaGroups(next)
 	wasUnsorted := s.unsorted[old]
+	if j := s.narrow(); j != nil {
+		// both nodes' metadata slots (setMetaGroups, markUnsorted)
+		for _, n := range [2]*Node{old, next} {
+			if recordSlot(j, &s.rbGroups, n) != nil || recordSlot(j, &s.rbTree, n) != nil ||
+				recordSlot(j, &s.rbMore, n) != nil || recordSlot(j, &s.unsorted, n) != nil {
+				return
+			}
+		}
+	}
 	oldGroups = slices.DeleteFunc(oldGroups, func(g *rbGroup) bool { return g == group })
 	s.setMetaGroups(old, oldGroups)
 	if !slices.Contains(nextGroups, group) {
@@ -861,7 +874,7 @@ func indexNameDigest(sn *schema.Node, work *workCounter) [32]byte {
 // Fixtures ops/ht-* (create, none, shrink, grow after shrink, dup of a shrunk, of a small and
 // non-recursive copy, each followed by an output insertion) pin it.
 func (s *siblings) hashAdd(parent, n *Node) {
-	if err := s.touch(); err != nil {
+	if err := s.touchLazy(); err != nil {
 		return
 	}
 	if parent == nil || parent.schema == nil || isAny(parent.schema) || n.schema == nil {
@@ -874,6 +887,9 @@ func (s *siblings) hashAdd(parent, n *Node) {
 		return
 	}
 	if s.SchemaLen() < htMinItems {
+		return
+	}
+	if err := s.touchWhole(); err != nil { // the table is built from every sibling
 		return
 	}
 	s.ht = map[idxKey]*recordChain{}
@@ -924,7 +940,7 @@ func (s *siblings) logical() siblingSpan {
 // hashPut is the unchecked exact insertion in tree_data_hash.c:134. Repeated
 // key insertion must retain even registrations whose recorded hash is now stale.
 func (s *siblings) hashPut(n *Node) {
-	if err := s.touch(); err != nil {
+	if err := s.touchLazy(); err != nil {
 		return
 	}
 	k, ok := hashOfWork(n, s.work)
@@ -936,7 +952,12 @@ func (s *siblings) hashPut(n *Node) {
 
 // hashPutKey reuses a live discriminator across a registration-only reorder.
 func (s *siblings) hashPutKey(n *Node, k idxKey) {
-	if err := s.touch(); err != nil {
+	if j := s.narrow(); j == nil || s.history[n] != nil || n.hashed {
+		// a node with registrations (a rehash) is not narrow-aware
+		if err := s.touch(); err != nil {
+			return
+		}
+	} else if recordSlot(j, &s.history, n) != nil || recordField(j, &s.exactOrder) != nil {
 		return
 	}
 	if s.work != nil {
@@ -965,8 +986,12 @@ func (s *siblings) hashPutKey(n *Node, k idxKey) {
 // identical registrations avoids revisiting an ever-growing history on each key
 // insertion while preserving the order revealed by successive native removals.
 func (s *siblings) activateRecord(n *Node, k idxKey, r *record) {
-	if err := s.touch(); err != nil {
-		return
+	j := s.narrow()
+	if j == nil || n.hashed {
+		if err := s.touch(); err != nil {
+			return
+		}
+		j = nil
 	}
 	if n.hashed && n.hkey == k && s.exactByNode[n] == r {
 		return
@@ -974,6 +999,24 @@ func (s *siblings) activateRecord(n *Node, k idxKey, r *record) {
 	s.unindexRecord(n)
 	if r == nil {
 		return
+	}
+	if c := s.ht[k]; j != nil && c != nil && c.last != nil && c.last.order >= r.order {
+		// an older registration goes inside the chain (its ordered index is built): not narrow-aware
+		if err := s.touchWhole(); err != nil {
+			return
+		}
+	} else if j != nil {
+		// a node without a live record appended to its chain: its index fields, its slots, the
+		// chain, its last record and the ordered index's insertion path
+		if _, whole := j.nodes[n]; !whole && (recordField(j, &n.hkey) != nil || recordField(j, &n.hashed) != nil) {
+			return
+		}
+		if recordSlot(j, &s.exactByNode, n) != nil || recordSlot(j, &s.ht, k) != nil || j.recordChainEntry(c) != nil {
+			return
+		}
+		if c != nil && (j.recordRecord(c.last) != nil || j.recordRecordPath(c.root, r.order) != nil) {
+			return
+		}
 	}
 	if s.exactByNode == nil {
 		s.exactByNode = map[*Node]*record{}
@@ -1038,10 +1081,13 @@ func (s *siblings) hashReindex(n *Node) {
 
 // unindexRecord removes a secondary-index entry, preserving native history.
 func (s *siblings) unindexRecord(n *Node) {
-	if err := s.touch(); err != nil {
+	if err := s.touchLazy(); err != nil {
 		return
 	}
 	if !n.hashed || s.ht == nil {
+		return
+	}
+	if err := s.touchWhole(); err != nil {
 		return
 	}
 	if s.work != nil {
@@ -1423,11 +1469,14 @@ func (s *siblings) checkRecords() error {
 
 // leaderInsert applies lyd_insert_hash_add to n already at position at.
 func (s *siblings) leaderInsert(n *Node, at int) {
-	if err := s.touch(); err != nil {
+	if err := s.touchLazy(); err != nil {
 		return
 	}
 	if s.ht == nil || !s.firstRecordSchema(n.schema) || at < 0 || at >= s.SchemaLen() ||
 		at > 0 && s.At(at-1).schema == n.schema {
+		return
+	}
+	if err := s.touchWhole(); err != nil { // first-instance records are not narrow-aware
 		return
 	}
 	if at+1 < s.SchemaLen() && s.At(at+1).schema == n.schema {
