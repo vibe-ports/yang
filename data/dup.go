@@ -686,8 +686,9 @@ func (o DupOptions) opts() dupOpts {
 // *ValidationError or a resource error and changes nothing. Anydata/anyxml payloads
 // are always copied in full, retaining their source schema contexts; their copies
 // keep metadata and only the Default flag (plus New), independently of o.
-func (t *Tree) Dup(n, parent *Node, o DupOptions) (*Node, []yang.Diagnostic, error) {
-	if t.work.inProgress() { // an operation in progress governs t: refused before its counter is used
+func (t *Tree) Dup(n, parent *Node, o DupOptions) (_ *Node, d []yang.Diagnostic, err error) {
+	defer normalizeRefusal(t.context(), &err, &d) // the guard's refusal in its one public form, after the journal ended
+	if t.work.inProgress() {                      // an operation in progress governs t: refused before its counter is used
 		d, err := refusedEntryDiags(t.context())
 		return nil, d, err
 	}
@@ -697,8 +698,9 @@ func (t *Tree) Dup(n, parent *Node, o DupOptions) (*Node, []yang.Diagnostic, err
 // DupSiblings is lyd_dup_siblings: as Dup, n and the siblings that follow it (not those before).
 // Like Dup, it refuses a terminal parent (D-0123) or an ordinary schema parent that is not an
 // instance of n's schema parent (D-0124).
-func (t *Tree) DupSiblings(n, parent *Node, o DupOptions) (*Node, []yang.Diagnostic, error) {
-	if t.work.inProgress() { // an operation in progress governs t: refused before its counter is used
+func (t *Tree) DupSiblings(n, parent *Node, o DupOptions) (_ *Node, d []yang.Diagnostic, err error) {
+	defer normalizeRefusal(t.context(), &err, &d) // the guard's refusal in its one public form, after the journal ended
+	if t.work.inProgress() {                      // an operation in progress governs t: refused before its counter is used
 		d, err := refusedEntryDiags(t.context())
 		return nil, d, err
 	}

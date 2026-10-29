@@ -6,7 +6,6 @@ package data
 
 import (
 	"context"
-	"errors"
 	"io"
 
 	"github.com/vibe-ports/yang"
@@ -79,8 +78,9 @@ type OpResult struct {
 // frees its parsed set, which for JSON holds only the last instance of each member (earlier
 // instances of a leaf-list or list stay in Request's tree) and for XML each top-level element,
 // so Request's tree may stay modified after a failure.
-func ParseOp(ctx context.Context, r io.Reader, f Format, s *yang.Schema, typ OpType, o ParseOpOptions) (_ OpResult, _ []yang.Diagnostic, err error) {
-	defer func() { err = restoreUser(err) }() // a Reader's or context's own error, once, after every state ended
+func ParseOp(ctx context.Context, r io.Reader, f Format, s *yang.Schema, typ OpType, o ParseOpOptions) (_ OpResult, d []yang.Diagnostic, err error) {
+	defer normalizeRefusal(snap.Set(s), &err, &d) // the guard's refusal in its one public form, after the journal ended
+	defer func() { err = restoreUser(err) }()     // a Reader's or context's own error, once, after every state ended
 	fail := func(set *schema.Set, err error) (OpResult, []yang.Diagnostic, error) {
 		lg := &logger{set: set}
 		err = lg.done(err)
@@ -138,9 +138,6 @@ func ParseOp(ctx context.Context, r io.Reader, f Format, s *yang.Schema, typ OpT
 		return fail(set, errInProgress) // its operation waits on user code: refused before the read
 	}
 	tree, op, env, diags, err := parseOpWith(ctx, r, set, f, opType(typ), req, o.Unknown, o.Budget)
-	if oe := (*opError)(nil); errors.As(err, &oe) && oe == errInProgress {
-		return fail(set, err) // a raw guard refusal gets the public, logged form
-	}
 	if err != nil {
 		return OpResult{Envelope: env}, diags, err
 	}
@@ -168,8 +165,9 @@ type ValidateOpOptions struct {
 //
 // ValidateOp changes t and, while it runs, o.Operational (the operation is linked into it and
 // unlinked again): it needs exclusive access to both.
-func (t *Tree) ValidateOp(ctx context.Context, typ OpType, o ValidateOpOptions) (_ []yang.Diagnostic, err error) {
-	if t.work.inProgress() { // an operation in progress governs t: refused before its counter is used
+func (t *Tree) ValidateOp(ctx context.Context, typ OpType, o ValidateOpOptions) (d []yang.Diagnostic, err error) {
+	defer normalizeRefusal(t.context(), &err, &d) // the guard's refusal in its one public form, after the journal ended
+	if t.work.inProgress() {                      // an operation in progress governs t: refused before its counter is used
 		return refusedEntryDiags(t.context())
 	}
 	ctx = suspending(ctx, &t.work) // its polls run the user's context suspended (design 13 §2.4)

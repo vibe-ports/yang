@@ -37,8 +37,9 @@ type ApplyDiffOptions struct {
 // refused with LY_EINVAL before t is changed, including when diff is nil (D-0116). A diff tree
 // may itself have such a split because libyang inserts generated diff nodes by their schema
 // anchors; it is accepted and walked in its stored order.
-func (t *Tree) ApplyDiff(diff *Tree, o ApplyDiffOptions) error {
-	if t.work.inProgress() { // an operation in progress governs t: refused before its counter is used
+func (t *Tree) ApplyDiff(diff *Tree, o ApplyDiffOptions) (err error) {
+	defer normalizeRefusal(t.context(), &err, nil) // the guard's refusal in its one public form, after the journal ended
+	if t.work.inProgress() {                       // an operation in progress governs t: refused before its counter is used
 		return refusedEntry(t.context())
 	}
 	var mod *schema.Module

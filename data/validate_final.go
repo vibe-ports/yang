@@ -20,8 +20,9 @@ import (
 // without a diagnostic. Other errors and diagnostics follow Validate's contract,
 // including cancellation and resource budgets. Validation errors may leave partial
 // mutations. Like Validate, this method requires exclusive access to t.
-func (t *Tree) ValidateModuleFinal(ctx context.Context, module string, o ValidateOptions) (_ []yang.Diagnostic, err error) {
-	if t.work.inProgress() { // an operation in progress governs t: refused before its counter is used
+func (t *Tree) ValidateModuleFinal(ctx context.Context, module string, o ValidateOptions) (d []yang.Diagnostic, err error) {
+	defer normalizeRefusal(t.context(), &err, &d) // the guard's refusal in its one public form, after the journal ended
+	if t.work.inProgress() {                      // an operation in progress governs t: refused before its counter is used
 		return refusedEntryDiags(t.context())
 	}
 	ctx = suspending(ctx, &t.work) // its polls run the user's context suspended (design 13 §2.4)

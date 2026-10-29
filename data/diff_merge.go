@@ -93,8 +93,9 @@ type MergeDiffOptions struct {
 // intermediate diffs: Diff(first, last, DiffOptions{Defaults: true}), with Defaults for the reason
 // given at ReverseDiff. An operation's children in a diff tree may be split by schema-anchor
 // insertion; MergeDiff accepts that order, as libyang does.
-func (t *Tree) MergeDiff(src *Tree, o MergeDiffOptions) error {
-	if t.work.inProgress() { // an operation in progress governs t: refused before its counter is used
+func (t *Tree) MergeDiff(src *Tree, o MergeDiffOptions) (err error) {
+	defer normalizeRefusal(t.context(), &err, nil) // the guard's refusal in its one public form, after the journal ended
+	if t.work.inProgress() {                       // an operation in progress governs t: refused before its counter is used
 		return refusedEntry(t.context())
 	}
 	var mod *schema.Module
@@ -136,7 +137,8 @@ func (t *Tree) mergeDiffWithModule(src *Tree, o MergeDiffOptions, mod *schema.Mo
 // merges nothing. Operation-child runs in either diff may be split by schema-anchor insertion
 // and are accepted in that stored order, as in libyang.
 func (t *Tree) MergeDiffTree(parent, src *Node, o MergeDiffOptions) (result error) {
-	if t.work.inProgress() { // an operation in progress governs t: refused before its counter is used
+	defer normalizeRefusal(t.context(), &result, nil) // the guard's refusal in its one public form, after the journal ended
+	if t.work.inProgress() {                          // an operation in progress governs t: refused before its counter is used
 		return refusedEntry(t.context())
 	}
 	defer func() { result = restoreUser(result) }() // a callback's own error, after the state ended

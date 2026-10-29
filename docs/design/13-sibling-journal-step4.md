@@ -126,6 +126,18 @@ panic-safe finalization (`abandon`, `endPanicSafe`) before user code can run, so
 Reader, a context or an error method restores and detaches the state and closes its hash-work
 scope.
 
+**One refusal contract** (PR #327 review rounds 1–4). A state that meets the guard's refusal is
+marked `refused` (sticky): `refuse`, `refuseFor` and `refuseIn` mark it where the refused
+operation is known, and `end` marks it whenever its result or the sticky error of a counter it
+runs on carries the refusal in any form (`isGuardRefusal` recognises the refusal raw, copied into
+another `*opError` or a `*diffError`, or logged in a `*ValidationError`, walking only this
+module's and the standard library's wrappers). A refused state restores whatever error value
+reaches `end`/`endKeeping`. Every public boundary defers `normalizeRefusal` first, so after the
+journal has ended the caller always gets the one public form: a `*ValidationError` with RC
+LY_EINVAL whose diagnostics log the refusal, also in the call's returned diagnostics.
+TestS4GuardPublicFormEveryReachPath checks every guarded entry through its receiver, a
+dependency or source tree, and a leafref counterpart.
+
 ## Mutation inventory (step 4)
 
 Contracts: **P** refused in a preflight before any write; **S** prepaid scope, no budget
@@ -236,6 +248,9 @@ removal limit from 128 to 192: the index removal's point bound is prepaid before
   TestS4KeyRelocationRefusalsEndTheirScope, TestPlannerPaysBeforeEachVisit,
   TestS4ValidateOpPanickingContextError, TestS4CounterpartCaptureRefusalScaling, and the 40-instance
   run of TestHashBudgetCopiedRPCSortReservesOrderedLink.
+- The journal's logs grow by doubling (`opidx.AppendDoubling`): append's factor drops to about
+  1.25 past 256 elements, which made a long move's reallocated bytes grow faster than its log
+  (TestAstra305Round13CountedWork/move-whole).
 - Under the race detector the single-goroutine S4 budget histories and scaling sweeps are skipped
   (`s4SkipUnderRace`) and the S4 refusal histories keep three limits (`s4RaceLimit`); the normal
   suite sweeps every limit, and `YANG_STAGE3_FUZZ_FULL=1` restores them under race. The ./data

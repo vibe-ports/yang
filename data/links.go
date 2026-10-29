@@ -44,7 +44,7 @@ func linksOf(set *schema.Set, n *Node) (*leafrefLinks, error) {
 // when lref is already among target's leafref nodes.
 func linkLeafrefNode(target, lref *Node) error {
 	if governing(target).suspendedState() || governing(lref).suspendedState() {
-		return errInProgress // before either record changes (design 13 §2.4)
+		return refuseIn(governing(target), governing(lref)) // before either record changes (design 13 §2.4)
 	}
 	if err := target.touch(); err != nil {
 		return err
@@ -429,8 +429,9 @@ func (vc *valCtx) linkType(n *Node, v types.Value, t *schema.Type) error {
 // a non-empty tree (else an LY_EINVAL argument error, "tree"). The diagnostics are those logged
 // also on success: a leafref path whose evaluation fails (a dangling deref()) is logged at its
 // node and the link skipped. The XPath evaluations stop when ctx is done.
-func (t *Tree) LinkLeafrefs(ctx context.Context) (_ []yang.Diagnostic, err error) {
-	if t.work.inProgress() { // an operation in progress governs t: refused before its counter is used
+func (t *Tree) LinkLeafrefs(ctx context.Context) (d []yang.Diagnostic, err error) {
+	defer normalizeRefusal(t.context(), &err, &d) // the guard's refusal in its one public form, after the journal ended
+	if t.work.inProgress() {                      // an operation in progress governs t: refused before its counter is used
 		return refusedEntryDiags(t.context())
 	}
 	ctx = suspending(ctx, &t.work) // its polls run the user's context suspended (design 13 §2.4)

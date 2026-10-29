@@ -934,7 +934,7 @@ func (t *Tree) validateModuleFinal(ctx context.Context, mod *schema.Module, o Va
 		journal.endKeeping(&err) // native validation errors retain preceding default-flag changes
 	}
 	journal = nil
-	if t.work.hashErr != nil || errors.Is(err, errInProgress) {
+	if t.work.hashErr != nil || isGuardRefusal(err) {
 		return vc.log.diags, err
 	}
 	if err == nil || errors.Is(err, errLogged) {
@@ -973,7 +973,7 @@ func (t *Tree) validateWith(ctx context.Context, mod *schema.Module, o ValidateO
 		journal.endKeeping(&err) // not rolled back otherwise (MaxNodes, cancellation)
 	}
 	journal = nil
-	if t.work.hashErr != nil || errors.Is(err, errInProgress) {
+	if t.work.hashErr != nil || isGuardRefusal(err) {
 		return vc.log.diags, err
 	}
 	if err == nil || errors.Is(err, errLogged) {

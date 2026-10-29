@@ -77,8 +77,9 @@ func (l *logger) done(err error) error {
 // message "Parent node does not belong to this tree." A parent from another context uses
 // libyang's "Different contexts mixed in a \"lyd_new_path\" function call." diagnostic.
 // Other errors are a *ValidationError with libyang's diagnostics.
-func (t *Tree) NewPath(path, value string, o NewPathOptions) (*Node, error) {
-	if t.work.inProgress() { // an operation in progress governs t: refused before its counter is used
+func (t *Tree) NewPath(path, value string, o NewPathOptions) (_ *Node, err error) {
+	defer normalizeRefusal(t.context(), &err, nil) // the guard's refusal in its one public form, after the journal ended
+	if t.work.inProgress() {                       // an operation in progress governs t: refused before its counter is used
 		return nil, refusedEntry(t.context())
 	}
 	defer t.work.beginHashWork()()
@@ -117,7 +118,8 @@ func (t *Tree) Find(path string) (*Node, error) {
 
 // Remove is lyd_free_tree: n and its subtree leave the tree. A list key is refused (an
 // LY_EINVAL *ValidationError) and nothing is removed.
-func (n *Node) Remove() error {
+func (n *Node) Remove() (err error) {
+	defer normalizeRefusal(ctxOf(n), &err, nil) // the guard's refusal in its one public form, after the journal ended
 	if n == nil {
 		return nil
 	}
@@ -135,7 +137,8 @@ func (n *Node) Remove() error {
 // Unlink is lyd_unlink_tree: n and its subtree leave their siblings but remain usable. A list
 // key is refused (an LY_EINVAL *ValidationError) and nothing is unlinked. Unlike Remove, Unlink
 // preserves leafref links of descendants; the links of n itself are removed as by libyang.
-func (n *Node) Unlink() error {
+func (n *Node) Unlink() (err error) {
+	defer normalizeRefusal(ctxOf(n), &err, nil) // the guard's refusal in its one public form, after the journal ended
 	if n == nil {
 		return nil
 	}
@@ -188,7 +191,8 @@ func (n *Node) beginHashWork() (func(), error) {
 // nothing. Unequal anydata/anyxml payloads replace the whole destination payload,
 // copying the source flags plus New; equal payloads leave the destination unchanged.
 func (t *Tree) Merge(src *Tree) (result error) {
-	if t.work.inProgress() { // an operation in progress governs t: refused before its counter is used
+	defer normalizeRefusal(t.context(), &result, nil) // the guard's refusal in its one public form, after the journal ended
+	if t.work.inProgress() {                          // an operation in progress governs t: refused before its counter is used
 		return refusedEntry(t.context())
 	}
 	defer t.work.beginHashWork()()

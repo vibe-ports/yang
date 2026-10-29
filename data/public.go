@@ -84,8 +84,9 @@ func (n *Node) Schema() *yang.SchemaNode {
 // tree, implicit default nodes (added to t), must, mandatory, min/max-elements, unique and
 // duplicate instances. A node whose when is false is removed silently if it was created as
 // valid earlier (FlagWhenTrue), else it is an error. Diagnostics and err as for Parse.
-func (t *Tree) Validate(ctx context.Context, o ValidateOptions) (_ []yang.Diagnostic, err error) {
-	if t.work.inProgress() { // an operation in progress governs t: refused before its counter is used
+func (t *Tree) Validate(ctx context.Context, o ValidateOptions) (d []yang.Diagnostic, err error) {
+	defer normalizeRefusal(t.context(), &err, &d) // the guard's refusal in its one public form, after the journal ended
+	if t.work.inProgress() {                      // an operation in progress governs t: refused before its counter is used
 		return refusedEntryDiags(t.context())
 	}
 	ctx = suspending(ctx, &t.work) // its polls run the user's context suspended (design 13 §2.4)
@@ -100,8 +101,9 @@ func (t *Tree) Validate(ctx context.Context, o ValidateOptions) (_ []yang.Diagno
 // libyang's NULL-context argument check. An unknown or not implemented module also
 // returns LY_EINVAL without a diagnostic. Other diagnostics and err are as for Validate. See
 // ValidateModuleDiff for the diff-returning form and its mutation and error semantics.
-func (t *Tree) ValidateModule(ctx context.Context, module string, o ValidateOptions) (_ []yang.Diagnostic, err error) {
-	if t.work.inProgress() { // an operation in progress governs t: refused before its counter is used
+func (t *Tree) ValidateModule(ctx context.Context, module string, o ValidateOptions) (d []yang.Diagnostic, err error) {
+	defer normalizeRefusal(t.context(), &err, &d) // the guard's refusal in its one public form, after the journal ended
+	if t.work.inProgress() {                      // an operation in progress governs t: refused before its counter is used
 		return refusedEntryDiags(t.context())
 	}
 	ctx = suspending(ctx, &t.work) // its polls run the user's context suspended (design 13 §2.4)

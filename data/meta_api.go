@@ -136,8 +136,9 @@ func (n *Node) FindMeta(name string) (*Meta, error) {
 // a module is an error; an invalid name, an unknown module or annotation, a value the type rejects
 // or an opaque n is a *ValidationError with libyang's diagnostics and return code (RC). The Default
 // flags of n and its parents are kept.
-func (t *Tree) NewMeta(n *Node, name, value string) (*Meta, error) {
-	if t.work.inProgress() { // an operation in progress governs t: refused before its counter is used
+func (t *Tree) NewMeta(n *Node, name, value string) (_ *Meta, err error) {
+	defer normalizeRefusal(t.context(), &err, nil) // the guard's refusal in its one public form, after the journal ended
+	if t.work.inProgress() {                       // an operation in progress governs t: refused before its counter is used
 		return nil, refusedEntry(t.context())
 	}
 	set := t.context()

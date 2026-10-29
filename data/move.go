@@ -79,8 +79,9 @@ func sibList(n *Node) *Tree {
 // Oracle coverage of moves (between parents, from another tree, whole sibling lists, refusals):
 // the sequence step insert, seq/insert-*; Go tests TestTreeBuild, TestInsertChild,
 // TestInsertSibling and TestInsertIntoItself.
-func (t *Tree) Insert(parent, n *Node) error {
-	if t.work.inProgress() { // an operation in progress governs t: refused before its counter is used
+func (t *Tree) Insert(parent, n *Node) (err error) {
+	defer normalizeRefusal(t.context(), &err, nil) // the guard's refusal in its one public form, after the journal ended
+	if t.work.inProgress() {                       // an operation in progress governs t: refused before its counter is used
 		return refusedEntry(t.context())
 	}
 	defer t.work.beginHashWork()()
@@ -765,7 +766,7 @@ func (t *Tree) moveNodes(parent *Node, src *Tree) (result error) {
 	}
 	j := t.work.journal
 	if src.work.journal.suspendedState() {
-		return errInProgress
+		return refuseIn(j)
 	}
 	defer src.work.beginHashWork()()
 	if src.work.journal == nil {

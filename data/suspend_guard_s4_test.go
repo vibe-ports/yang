@@ -665,3 +665,166 @@ func s4PublicRefusal(t *testing.T, name string, diags []yang.Diagnostic, err err
 		t.Errorf("%s: the returned diagnostics %v miss the refusal", name, diags)
 	}
 }
+
+// TestS4GuardRefusedMergeDiffRestores: a MergeDiff into diff D whose first replacement succeeds
+// and whose later one changes a leaf linked into a tree whose operation waits on user code: the
+// refusal is logged by MergeDiff before its journal ends, but the journal's sticky refusal flag
+// still restores the earlier replacement, and the caller gets the public refusal (PR #327
+// review, round 4).
+func TestS4GuardRefusedMergeDiffRestores(t *testing.T) {
+	set := s4LinksSet(t)
+	at := func(r, nx string) *Tree {
+		return s4ParseLinks(t, set, `{"pv2-links:c":{"l":[{"k":"a"}],"r":"`+r+`","nx":"`+nx+`"}}`)
+	}
+	d, err := Diff(at("a", "a"), at("b", "b"), DiffOptions{})
+	if err != nil || d == nil {
+		t.Fatal(d, err)
+	}
+	src, err := Diff(at("b", "b"), at("c", "c"), DiffOptions{})
+	if err != nil || src == nil {
+		t.Fatal(src, err)
+	}
+	a, _, k, _ := s4LinkedPair(t, set)
+	nx := s4Child(d.top.first(), "nx", "b")
+	if nx == nil {
+		t.Fatal("setup: the diff has no nx replacement")
+	}
+	if err := linkLeafrefNode(k, nx); err != nil { // the later replacement is linked into A
+		t.Fatal(err)
+	}
+	before := snapshotHashBudgetTree(d)
+	var mergeErr error
+	called := false
+	if err := a.ApplyDiff(s4Diff(t, set, a, false), ApplyDiffOptions{Callback: func(_, _ *Node) error {
+		if !called {
+			called = true
+			mergeErr = d.MergeDiff(src, MergeDiffOptions{})
+		}
+		return nil
+	}}); err != nil || !called {
+		t.Fatalf("ApplyDiff: %v (called %t)", err, called)
+	}
+	s4PublicRefusal(t, "MergeDiff", nil, mergeErr, false)
+	if !reflect.DeepEqual(snapshotHashBudgetTree(d), before) {
+		t.Fatal("the refused MergeDiff kept its earlier replacement")
+	}
+	if d.work.journal != nil {
+		t.Fatal("the diff's journal stayed installed")
+	}
+}
+
+// TestS4GuardPublicFormEveryReachPath enforces the guard's one public form mechanically: every
+// guarded public entry, reaching a suspended state through its receiver, through a dependency
+// or source tree, or through a leafref counterpart, returns nil or an ordinary error, or the
+// refusal as a *ValidationError with RC LY_EINVAL and its diagnostic (in the returned
+// diagnostics too) - never a raw internal error - and a refused call leaves its receiver as it
+// was (PR #327 review, round 4).
+func TestS4GuardPublicFormEveryReachPath(t *testing.T) {
+	set := s4LinksSet(t)
+	type env struct {
+		recv, dep    *Tree
+		c, leaf, dln *Node
+	}
+	type entry struct {
+		diags bool
+		call  func(e env) ([]yang.Diagnostic, error)
+	}
+	e1 := func(f func(e env) error) entry {
+		return entry{call: func(e env) ([]yang.Diagnostic, error) { return nil, f(e) }}
+	}
+	ed := func(f func(e env) ([]yang.Diagnostic, error)) entry { return entry{diags: true, call: f} }
+	ctx := context.Background()
+	entries := map[string]entry{
+		"SetValue":          e1(func(e env) error { _, err := e.leaf.SetValue("zz"); return err }),
+		"SetValueCanonical": e1(func(e env) error { _, err := e.leaf.SetValueCanonical("zz"); return err }),
+		"Remove":            e1(func(e env) error { return e.leaf.Remove() }),
+		"Unlink":            e1(func(e env) error { return e.leaf.Unlink() }),
+		"NewTerm":           e1(func(e env) error { _, err := e.recv.NewTerm(e.c, "t", "n", NewOptions{}); return err }),
+		"NewInner":          e1(func(e env) error { _, err := e.recv.NewInner(nil, "pv2-links:c", NewOptions{}); return err }),
+		"NewList":           e1(func(e env) error { _, err := e.recv.NewList(e.c, "l", []string{"n"}, NewOptions{}); return err }),
+		"NewList2":          e1(func(e env) error { _, err := e.recv.NewList2(e.c, "l", "[k='n']", NewOptions{}); return err }),
+		"NewOpaque":         e1(func(e env) error { _, err := e.recv.NewOpaque(e.c, "o", "v", OpaqueOptions{}); return err }),
+		"NewPath": e1(func(e env) error {
+			_, err := e.recv.NewPath("/pv2-links:c/t[.='n']", "", NewPathOptions{})
+			return err
+		}),
+		"NewMeta":       e1(func(e env) error { _, err := e.recv.NewMeta(e.leaf, "x:y", "z"); return err }),
+		"Insert":        e1(func(e env) error { return e.recv.Insert(e.c, e.dln) }), // a node of the dependency moves in
+		"Merge":         e1(func(e env) error { return e.recv.Merge(e.dep) }),
+		"ApplyDiff":     e1(func(e env) error { return e.recv.ApplyDiff(e.dep, ApplyDiffOptions{}) }),
+		"MergeDiff":     e1(func(e env) error { return e.recv.MergeDiff(e.dep, MergeDiffOptions{}) }),
+		"MergeDiffTree": e1(func(e env) error { return e.recv.MergeDiffTree(nil, e.dep.top.first(), MergeDiffOptions{}) }),
+		"Dup": ed(func(e env) ([]yang.Diagnostic, error) {
+			_, d, err := e.recv.Dup(e.dln, e.c, DupOptions{})
+			return d, err
+		}),
+		"DupSiblings": ed(func(e env) ([]yang.Diagnostic, error) {
+			_, d, err := e.recv.DupSiblings(e.dln, e.c, DupOptions{})
+			return d, err
+		}),
+		"TrimXPath": ed(func(e env) ([]yang.Diagnostic, error) {
+			return e.recv.TrimXPath("/pv2-links:c/r", XPathOptions{})
+		}),
+		"Validate": ed(func(e env) ([]yang.Diagnostic, error) { return e.recv.Validate(ctx, ValidateOptions{}) }),
+		"ValidateModule": ed(func(e env) ([]yang.Diagnostic, error) {
+			return e.recv.ValidateModule(ctx, "pv2-links", ValidateOptions{})
+		}),
+		"ValidateModuleFinal": ed(func(e env) ([]yang.Diagnostic, error) {
+			return e.recv.ValidateModuleFinal(ctx, "pv2-links", ValidateOptions{})
+		}),
+		"ValidateDiff": ed(func(e env) ([]yang.Diagnostic, error) {
+			_, d, err := e.recv.ValidateDiff(ctx, ValidateOptions{})
+			return d, err
+		}),
+		"ValidateModuleDiff": ed(func(e env) ([]yang.Diagnostic, error) {
+			_, d, err := e.recv.ValidateModuleDiff(ctx, "pv2-links", ValidateOptions{})
+			return d, err
+		}),
+		"ValidateOp": ed(func(e env) ([]yang.Diagnostic, error) {
+			return e.recv.ValidateOp(ctx, OpRPC, ValidateOpOptions{Operational: e.dep})
+		}),
+		"LinkLeafrefs": ed(func(e env) ([]yang.Diagnostic, error) { return e.recv.LinkLeafrefs(ctx) }),
+	}
+	paths := []string{"receiver", "dependency", "linked"}
+	for _, path := range paths {
+		for name, en := range entries {
+			t.Run(path+"/"+name, func(t *testing.T) {
+				a, b, _, r := s4LinkedPair(t, set) // A runs the ApplyDiff; B's r is linked into A
+				var e env
+				switch path {
+				case "receiver":
+					e = env{recv: a, dep: b, c: a.top.first(), leaf: s4Child(a.top.first(), "t", "y"), dln: b.top.first().kids.first()}
+				case "dependency":
+					e = env{recv: b, dep: a, c: b.top.first(), leaf: s4Child(b.top.first(), "r", "a"), dln: s4Child(a.top.first(), "t", "y")}
+				default:
+					e = env{recv: b, dep: newTree(set), c: b.top.first(), leaf: r, dln: r}
+					if err := e.dep.top.Build(nil, nil); err != nil {
+						t.Fatal(err)
+					}
+				}
+				if e.dep.top.len() == 0 {
+					e.dep = s4ParseLinks(t, set, `{"pv2-links:c":{"t":["q"]}}`)
+				}
+				called := false
+				if err := a.ApplyDiff(s4Diff(t, set, a, false), ApplyDiffOptions{Callback: func(_, _ *Node) error {
+					if called {
+						return nil
+					}
+					called = true
+					before := snapshotHashBudgetTree(e.recv)
+					diags, err := en.call(e)
+					if !isGuardRefusal(err) {
+						return nil // allowed, or an ordinary failure of this call
+					}
+					s4PublicRefusal(t, path+"/"+name, diags, err, en.diags)
+					if !reflect.DeepEqual(snapshotHashBudgetTree(e.recv), before) {
+						t.Errorf("%s/%s: the refused call changed its receiver", path, name)
+					}
+					return nil
+				}}); err != nil || !called {
+					t.Fatalf("ApplyDiff: %v (called %t)", err, called)
+				}
+			})
+		}
+	}
+}

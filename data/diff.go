@@ -42,7 +42,8 @@ func (op diffOp) String() string { return [...]string{"create", "delete", "repla
 // validation to modules present in t. Validation observes ctx cancellation and fixed default
 // implicit-node and XPath budgets.
 func (t *Tree) ValidateDiff(ctx context.Context, o ValidateOptions) (diff *Tree, d []yang.Diagnostic, err error) {
-	if t.work.inProgress() { // an operation in progress governs t: refused before its counter is used
+	defer normalizeRefusal(t.context(), &err, &d) // the guard's refusal in its one public form, after the journal ended
+	if t.work.inProgress() {                      // an operation in progress governs t: refused before its counter is used
 		d, err := refusedEntryDiags(t.context())
 		return nil, d, err
 	}
@@ -63,7 +64,7 @@ func (t *Tree) ValidateDiff(ctx context.Context, o ValidateOptions) (diff *Tree,
 	}
 	journal.endKeeping(&err) // a guard refusal restores and fails; other failures keep
 	journal = nil
-	if errors.Is(err, errInProgress) {
+	if isGuardRefusal(err) {
 		return nil, d, err
 	}
 	if dt.top.len() == 0 {
@@ -90,7 +91,8 @@ func (t *Tree) ValidateDiff(ctx context.Context, o ValidateOptions) (diff *Tree,
 // run; finalize each relevant module separately with ValidateModuleFinal.
 func (t *Tree) ValidateModuleDiff(ctx context.Context, module string, o ValidateOptions) (diff *Tree,
 	d []yang.Diagnostic, err error) {
-	if t.work.inProgress() { // an operation in progress governs t: refused before its counter is used
+	defer normalizeRefusal(t.context(), &err, &d) // the guard's refusal in its one public form, after the journal ended
+	if t.work.inProgress() {                      // an operation in progress governs t: refused before its counter is used
 		d, err := refusedEntryDiags(t.context())
 		return nil, d, err
 	}
@@ -115,7 +117,7 @@ func (t *Tree) ValidateModuleDiff(ctx context.Context, module string, o Validate
 	}
 	journal.endKeeping(&err) // a guard refusal restores and fails; other failures keep
 	journal = nil
-	if errors.Is(err, errInProgress) {
+	if isGuardRefusal(err) {
 		return nil, d, err
 	}
 	if dt.top.len() == 0 {

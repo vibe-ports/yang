@@ -82,6 +82,9 @@ type hashTransaction struct {
 	// opens no hash-work scope, and its end only reports the refusal
 	suspendDepth int
 	refusing     bool
+	// refused is sticky: the operation met the guard's refusal (refuse, or detected at end), and
+	// end restores whatever error value reaches it
+	refused bool
 	// unbound is the counter enroll binds counterless detached sets to (unboundSets) until end
 	unbound     *workCounter
 	unboundSets []*siblings
@@ -145,9 +148,9 @@ type level struct {
 
 // addWhole appends a whole capture of k at the current level.
 func addWhole[K comparable, V any](j *hashTransaction, at map[K]uint32, imgs *[]wholeImg[K, V], kind wholeKind, k K, v V) {
-	*imgs = append(*imgs, wholeImg[K, V]{k, v, at[k]})
+	*imgs = opidx.AppendDoubling(*imgs, wholeImg[K, V]{k, v, at[k]}) // reallocations within twice the log
 	at[k] = j.serial
-	j.whole = append(j.whole, kind)
+	j.whole = opidx.AppendDoubling(j.whole, kind)
 }
 
 // popWhole drops the newest capture of its kind and returns it; the object's serial returns to
@@ -270,7 +273,7 @@ func beginJointTransaction(trees ...*Tree) (*hashTransaction, error) {
 		switch w := &t.work; {
 		case w.journal == running:
 		case w.journal.suspendedState():
-			return j, errInProgress
+			return j, refuseIn(running)
 		case w.journal == nil:
 			if err := running.charge(1); err != nil {
 				return j, err
@@ -495,7 +498,7 @@ func (j *hashTransaction) end(result *error) {
 		return
 	}
 	if j.refusing {
-		if result != nil && (*result == nil || errors.Is(*result, errInProgress)) {
+		if result != nil && (*result == nil || isGuardRefusal(*result)) {
 			*result = j.err
 		}
 		return
@@ -506,12 +509,20 @@ func (j *hashTransaction) end(result *error) {
 			w.journal = nil
 		}
 	}
+	// a guard refusal restores too: it may follow the operation's earlier writes, and whatever
+	// form its error took on the way here (converted, wrapped, logged, or nil), it is detected
+	refused := j.guardRefused(result)
 	if result != nil {
 		j.fail(result)
-		// a guard refusal restores too: it may follow the operation's earlier writes
-		if errors.Is(*result, yang.ErrBudget) || errors.Is(*result, errInProgress) || j.rollback && *result != nil {
-			j.restore()
+	}
+	switch {
+	case refused:
+		if result != nil && *result == nil {
+			*result = errInProgress
 		}
+		j.restore()
+	case result != nil && (errors.Is(*result, yang.ErrBudget) || j.rollback && *result != nil):
+		j.restore()
 	}
 	j.release()
 	j.index.Commit() // after a restore the log is empty; otherwise its tombstones go
@@ -529,11 +540,26 @@ func (j *hashTransaction) end(result *error) {
 // (refuse: rollback with its error) restores and becomes the result instead of being committed;
 // otherwise the changes stay (a hash-budget failure is the caller's end(&err)).
 func (j *hashTransaction) endKeeping(result *error) {
-	if j != nil && j.rollback && j.err != nil {
+	if j != nil && (j.rollback && j.err != nil || j.guardRefused(result)) {
 		j.end(result)
 		return
 	}
 	j.end(nil)
+}
+
+// guardRefused reports whether the operation met the guard's refusal: its sticky flag, or the
+// refusal in the result or in the sticky error of a counter it runs on (its tree's, a lent one),
+// in any form isGuardRefusal sees. It marks the flag.
+func (j *hashTransaction) guardRefused(result *error) bool {
+	if !j.refused && (isGuardRefusal(j.tree.work.hashErr) || result != nil && isGuardRefusal(*result)) {
+		j.refused = true
+	}
+	for _, w := range j.lent {
+		if !j.refused && isGuardRefusal(w.hashErr) {
+			j.refused = true
+		}
+	}
+	return j.refused
 }
 
 // abandonOnPanic is deferred right after a begin: a panic before the journal ends (user code in
@@ -681,7 +707,7 @@ func joinLinkJournal(t *Tree, n *Node) error {
 		from = source.work.journal
 	}
 	if from.suspendedState() || t.work.journal.suspendedState() {
-		return errInProgress // a lend into, or from, an operation waiting on user code
+		return refuseIn(from, t.work.journal) // a lend into, or from, an operation waiting on user code
 	}
 	lend := func(j *hashTransaction, w *workCounter) error {
 		if w.journal != nil {
@@ -734,7 +760,7 @@ func (s *siblings) rebind(work *workCounter) error {
 		return nil
 	}
 	if s.journal().suspendedState() || work.journal.suspendedState() {
-		return errInProgress
+		return refuseIn(s.journal(), work.journal)
 	}
 	if from := s.journal(); from != nil && work.journal == nil {
 		if err := from.charge(1); err != nil {
@@ -1191,7 +1217,30 @@ func (j *hashTransaction) refuse() error {
 	if j.err == nil {
 		j.err = errInProgress
 	}
-	j.rollback = true
+	j.rollback, j.refused = true, true
+	return errInProgress
+}
+
+// refuseIn marks every running, not suspended, state among js as refused: the operation that
+// reached a suspended one fails, and restores (a lend, a join).
+func refuseIn(js ...*hashTransaction) error {
+	for _, j := range js {
+		if j != nil && !j.suspendedState() && !j.refusing {
+			if j.err == nil {
+				j.err = errInProgress
+			}
+			j.rollback, j.refused = true, true
+		}
+	}
+	return errInProgress
+}
+
+// refuseFor marks the running, not suspended, state that governs n as refused: a guard refusal
+// met while editing n fails, and restores, the operation editing it.
+func refuseFor(n *Node) error {
+	if g := governing(n); g != nil && !g.suspendedState() {
+		return g.refuse()
+	}
 	return errInProgress
 }
 

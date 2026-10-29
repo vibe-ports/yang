@@ -70,7 +70,7 @@ func (j *Journal) Mark() int {
 func (j *Journal) Len() int { return len(j.entries) }
 
 func (j *Journal) add(e Entry, units uint64, h Hooks) {
-	j.entries = append(j.entries, e)
+	j.entries = AppendDoubling(j.entries, e)
 	if h != nil {
 		h.Entries(units)
 	}
@@ -167,4 +167,16 @@ func AddInt(h Hooks, p *int, delta int) {
 		(*intField)(p).record(j, h)
 	}
 	*p += delta
+}
+
+// AppendDoubling is append with capacity doubling at every growth: append's growth factor falls
+// to about 1.25 past 256 elements, which makes the bytes a long log reallocates grow faster
+// than the log itself; doubling keeps them within twice its final size.
+func AppendDoubling[T any](s []T, v T) []T {
+	if len(s) == cap(s) {
+		grown := make([]T, len(s), 2*cap(s)+8)
+		copy(grown, s)
+		s = grown
+	}
+	return append(s, v)
 }
