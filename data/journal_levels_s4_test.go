@@ -277,6 +277,7 @@ func TestS4LevelIndexRollbackAllocs(t *testing.T) {
 	}
 	rollback := func(t *testing.T, j *hashTransaction, sp int, s *siblings, want string) {
 		t.Helper()
+		runtime.GC() // no pending sweep allocates during the measurement
 		before := s4Mallocs()
 		j.rollbackLevel(sp)
 		if n := s4Mallocs() - before; n != 0 {
@@ -497,6 +498,7 @@ func TestS4TransferBindingCharges(t *testing.T) {
 	}
 	failed := errors.New("refused")
 	j.rollback = true
+	runtime.GC() // no pending sweep allocates during the measurement
 	before := s4Mallocs()
 	j.end(&failed)
 	if n := s4Mallocs() - before; n != 0 {
@@ -534,6 +536,7 @@ func TestS4CompleteRollbackAllocs(t *testing.T) {
 	}
 	failed := errors.New("refused")
 	j.rollback = true
+	runtime.GC()
 	allocs := s4Mallocs()
 	j.end(&failed)
 	if n := s4Mallocs() - allocs; n != 0 {

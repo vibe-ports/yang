@@ -45,10 +45,10 @@ var (
 // prepay opens a prepaid scope (design 13 §4.1): it debits amount now, refusing like any charge,
 // and until closeCredit every chargeHash of w draws from the credit and cannot refuse. A write
 // credit refunds what is left at closeCredit; a read credit (read) is not refunded: its bound is
-// the charge. Inside an open scope it opens nothing and draws amount (nested reports it).
+// the charge. Inside an open scope it opens nothing (nested reports it): the enclosing scope's
+// bound includes the nested edit, whose work draws from that credit.
 func (w *workCounter) prepay(amount uint64, read bool) (nested bool, err error) {
 	if w.prepaid {
-		w.draw(amount)
 		return true, nil
 	}
 	if err := w.chargeHash(amount); err != nil {

@@ -222,6 +222,7 @@ func TestJournalNestedModel(t *testing.T) {
 			case c == 2 && len(levels) > 0:
 				top := levels[len(levels)-1]
 				levels = levels[:len(levels)-1]
+				runtime.GC() // no pending sweep allocates during the measurement
 				before := mallocs()
 				j.Rollback(top.mark)
 				if n := mallocs() - before; n != 0 {
@@ -409,9 +410,28 @@ func TestPointBoundsCoverJournaledEdits(t *testing.T) {
 					check("occ remove", occ.RemoveBound(x, journaled), func() { occ.Remove(x) })
 					check("move", seq.MoveBound(x, a, journaled), func() { seq.MoveBefore(x, a) })
 					check("occ insert", occ.InsertBound(x.Value%4, 0, journaled), func() { occ.Insert(x.Value%4, 0, x) })
+				case c == 9 && len(live) > 2 && r.IntN(2) == 0:
+					lo := r.IntN(len(live) - 1)
+					var hs []*Handle[int]
+					for h := seq.Select(lo); h != nil && len(hs) < 2+r.IntN(min(16, len(live)-lo-1)); h = h.next {
+						hs = append(hs, h)
+					}
+					first, last := hs[0], hs[len(hs)-1]
+					r.Shuffle(len(hs), func(a, b int) { hs[a], hs[b] = hs[b], hs[a] })
+					for _, h := range hs {
+						occ.Remove(h) // their relative order changes: unregister first
+					}
+					check("replace", seq.ReplaceHandlesBound(first, last, len(hs), journaled), func() {
+						if !seq.ReplaceHandles(lo, lo+len(hs), hs) {
+							t.Fatal("ReplaceHandles refused a contiguous range")
+						}
+					})
+					for _, h := range hs {
+						occ.Insert(h.Value%4, 0, h)
+					}
 				default:
 					k := r.IntN(64)
-					check("ranks", ranks.UpdateBound(true), func() {
+					check("ranks", ranks.UpdateBound(journaled), func() {
 						if !ranks.Insert(k) {
 							ranks.Remove(k)
 						}

@@ -175,27 +175,8 @@ func (b *orderBinding) Work(units uint64) {
 	case w == nil:
 	case w.prepaid:
 		w.draw(units)
-	case unpaidReadPanics && w.hashDepth > 0 && w.unpaidOK == 0 && !w.journal.suspendedState():
+	case unpaidReadPanics && w.hashDepth > 0 && !w.journal.suspendedState():
 		panic("data: unpaid index read")
-	}
-}
-
-// unpaidIndexWrites lists the index writes outside the prepaid scopes: their work is counted, not
-// charged (their callers reserve the surrounding publication or validation as before), their
-// entries are charged as captures. The detector exempts exactly these.
-//   - orderReorder: a sorted or parser publication, reserved by reorderReplayCost and the
-//     publication's own charges;
-//   - refreshRB from rbPos: the run's new tree, reserved with the sorted insertion;
-//   - refreshExact from validateIncomplete: a completed value, reserved by its native rehash.
-func (w *workCounter) beginUnpaidWrites() {
-	if w != nil {
-		w.unpaidOK++
-	}
-}
-
-func (w *workCounter) endUnpaidWrites() {
-	if w != nil {
-		w.unpaidOK--
 	}
 }
 
@@ -208,6 +189,9 @@ func (b *orderBinding) Entries(units uint64) {
 			w.draw(units)
 			return
 		}
+	}
+	if unpaidReadPanics && b.state != nil {
+		panic("data: an unpaid index entry") // every journaled index write is prepaid
 	}
 	if b.state != nil {
 		if err := b.state.charge(units); err != nil {
@@ -403,32 +387,65 @@ func schemaOf(n *Node) *schema.Node {
 	return n.schema
 }
 
-func (s *siblings) orderReorder(run siblingSpan) {
+func (s *siblings) orderReorder(run siblingSpan) error {
 	if s.order == nil || run.Len() < 2 {
-		return
+		return nil
 	}
-	w := s.work
-	w.beginUnpaidWrites()
-	defer w.endUnpaidWrites()
-	start := s.order.seq.Len()
+	o := s.order
+	// The run's handles occupy one contiguous range of the sequence (only its own order changed):
+	// one ReplaceHandles republishes them in the run's new order, identities kept. Its point
+	// bound, planned before any write, is prepaid with the occurrence updates (design 13 §4).
+	handles := make([]*opidx.Handle[*Node], run.Len())
+	var first, last *opidx.Handle[*Node]
+	for i, n := range run.All() {
+		h := o.byNode[n]
+		if h == nil {
+			return &opError{"LY_EINT", "Unindexed instance in an ordered sibling run."}
+		}
+		handles[i] = h
+		if c, _ := o.seq.Compare(h, first); first == nil || c < 0 {
+			first = h
+		}
+		if c, _ := o.seq.Compare(h, last); last == nil || c > 0 {
+			last = h
+		}
+	}
+	journaled := s.indexJournaled(s.work)
+	bound := o.seq.ReplaceHandlesBound(first, last, len(handles), journaled)
 	for _, n := range run.All() {
-		if rank, ok := s.order.seq.Rank(s.order.byNode[n]); ok {
-			start = min(start, rank)
-		}
+		bound = addHashBound(bound, s.orderRegisterBound(n, journaled))
 	}
-	anchor := s.order.seq.Select(start + run.Len())
-	// Establish the desired suffix backwards. Moving one handle at a time avoids
-	// allocating a run-sized side table and leaves every other occurrence tree
-	// valid because their relative order never changes.
-	for i := run.Len() - 1; i >= 0; i-- {
-		n := run.At(i)
-		h := s.orderUnregister(n)
-		if h == nil || !s.order.seq.MoveBefore(h, anchor) {
-			continue
-		}
-		s.orderRegister(n, h)
-		anchor = h
+	nested, err := s.work.prepay(bound, false)
+	if err != nil {
+		return err
 	}
+	defer s.work.closeCredit(nested)
+	lo, _ := o.seq.Rank(first)
+	for _, n := range run.All() {
+		s.orderUnregister(n)
+	}
+	if !o.seq.ReplaceHandles(lo, lo+len(handles), handles) {
+		panic("data: an indexed run does not occupy one sequence range")
+	}
+	for i, n := range run.All() {
+		s.orderRegister(n, handles[i])
+	}
+	return nil
+}
+
+// orderRegisterBound bounds unregistering and registering n again (its occurrence classes and
+// its byNode cell).
+func (s *siblings) orderRegisterBound(n *Node, journaled bool) uint64 {
+	o := s.order
+	h := o.byNode[n]
+	bound := 2 * orderCells(journaled)
+	if n.schema == nil {
+		bound = addHashBound(bound, o.byOpaqName.RemoveBound(h, journaled)+o.byOpaqName.InsertBoundAny(journaled))
+		return addHashBound(bound, o.byOpaqExact.RemoveBound(h, journaled)+o.byOpaqExact.InsertBoundAny(journaled))
+	}
+	bound = addHashBound(bound, o.bySchema.RemoveBound(h, journaled)+o.bySchema.InsertBoundAny(journaled))
+	bound = addHashBound(bound, o.byExact.RemoveBound(h, journaled)+o.byExact.InsertBoundAny(journaled))
+	return addHashBound(bound, o.byRB.RemoveBound(h, journaled)+o.byRB.InsertBoundAny(journaled))
 }
 
 func (s *siblings) orderRemove(n *Node) (survives, survivesRB bool) {
@@ -690,9 +707,6 @@ func (s *siblings) refreshRB(n *Node) error {
 	if s.order == nil || n == nil || n.schema == nil {
 		return nil
 	}
-	w := s.work // paid inside link's scope; rbPos's tree is exempt
-	w.beginUnpaidWrites()
-	defer w.endUnpaidWrites()
 	if err := s.touchSticky(); err != nil {
 		return err
 	}
@@ -700,6 +714,12 @@ func (s *siblings) refreshRB(n *Node) error {
 	if h == nil {
 		return nil
 	}
+	// paid inside link's scope; on its own (rbPos's new tree) it prepays its point bound
+	nested, err := s.work.prepay(s.refreshRBBound(n, s.indexJournaled(s.work)), false)
+	if err != nil {
+		return s.touchSticky() // never nil here: the refusal is sticky
+	}
+	defer s.work.closeCredit(nested)
 	was := s.order.byRB.Remove(h)
 	now := n.inRB && n.rbGroup != nil
 	if now {
@@ -725,12 +745,15 @@ func (s *siblings) refreshExact(n *Node, change func()) {
 		change()
 		return
 	}
-	w := s.work // paid inside the value change's scope; validateIncomplete is exempt
-	w.beginUnpaidWrites()
-	defer w.endUnpaidWrites()
 	if err := s.touchSticky(); err != nil {
 		return // the change is skipped: its caller tests the sticky error
 	}
+	// paid inside the value change's scope; on its own (validateIncomplete) it prepays
+	nested, err := s.work.prepay(s.refreshExactBound(n, s.indexJournaled(s.work)), false)
+	if err != nil {
+		return // sticky (prepay's refusal): the change is skipped, its caller tests it
+	}
+	defer s.work.closeCredit(nested)
 	if _, ok := opExactValue(n); ok {
 		s.order.byExact.Remove(h)
 	}
@@ -825,6 +848,15 @@ func (s *siblings) orderRemoveBound(n *Node, journaled bool) uint64 {
 		bound = addHashBound(bound, o.ranks[d.direction].UpdateBound(journaled))
 	}
 	return bound
+}
+
+// refreshRBBound bounds refreshRB: the RB-class registration leaves and returns, and the count.
+func (s *siblings) refreshRBBound(n *Node, journaled bool) uint64 {
+	o := s.order
+	if o == nil || o.byNode[n] == nil {
+		return 0
+	}
+	return addHashBound(addHashBound(o.byRB.RemoveBound(o.byNode[n], journaled), o.byRB.InsertBoundAny(journaled)), orderCells(journaled))
 }
 
 // refreshExactBound bounds refreshExact: the exact-value registration leaves and returns.

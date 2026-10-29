@@ -144,7 +144,6 @@ type workCounter struct {
 	prepaid     bool                      // a prepaid scope is open (prepay): charges draw from credit
 	readCredit  bool                      // the open credit pays reads: it is not refunded
 	credit      uint64                    // what is left of the open credit
-	unpaidOK    int                       // inside an index write the detector exempts (unpaidReadPanics)
 	hashTrace   *[]uint64                 // optional charge/check thresholds for exhaustive budget tests
 	hashNames   map[*schema.Node]uint32   // immutable module/name prefix, once per schema node in this tree
 	indexNames  map[*schema.Node][32]byte // immutable positional-index name digest for hand-built schemas

@@ -233,3 +233,18 @@ func (r *Ranks) ReadBound() uint64 {
 	}
 	return uint64(r.root.height) + 2 //nolint:gosec // a height is nonnegative
 }
+
+// ReplaceHandlesBound bounds ReplaceHandles of the k live handles that occupy one contiguous range
+// of s, first and last its first and last in physical order: the ownership scans, the splits
+// and joins, the subtree build and the run's relabel, planned exactly (its images included when
+// journaled).
+func (s *Seq[T]) ReplaceHandlesBound(first, last *Handle[T], k int, journaled bool) uint64 {
+	if first == nil || last == nil || k < 2 {
+		return 0
+	}
+	charges, touched := s.planLabel(first.prev, last.next, nil, k, max(s.scale, 1), s.length)
+	kk := uint64(k) //nolint:gosec // a count is nonnegative
+	bound := saturatingAdd(moveUnits(nodeHeight(s.root), journaled), saturatingAdd(4*kk, images(kk+2, journaled)))
+	bound = saturatingAdd(bound, 3*s.SelectBound())
+	return saturatingAdd(bound, saturatingAdd(charges, images(touched, journaled)))
+}

@@ -897,7 +897,9 @@ func (t *Tree) rbPos(sib *siblings, n *Node, lo, hi int, compare func(*Node, *No
 		}
 		if sib.order != nil {
 			if d := sib.order.entries[leader.schema]; d != nil && d.gaps == 0 {
-				sib.opRebuild(l.Slice(lo, hi)) // only this run was reordered
+				if err := sib.opRebuild(l.Slice(lo, hi)); err != nil { // only this run was reordered
+					return lo, false
+				}
 			} else if err := sib.opBuild(t); err != nil { // retain other runs copied from a user-ordered schema
 				return lo, false
 			}
@@ -1014,9 +1016,9 @@ func linkSlots(sib *siblings, n *Node, at int) uint64 {
 
 // opRebuild moves the stable handles after one sibling run was sorted.
 // Reordering the run keeps its boundaries, so gaps is unchanged.
-func (s *siblings) opRebuild(run siblingSpan) {
+func (s *siblings) opRebuild(run siblingSpan) error {
 	s.gen++ // a physical reorder moves positions (lydCtx.position caches by gen)
-	s.orderReorder(run)
+	return s.orderReorder(run)
 }
 
 // runBounds is the run of n's schema node in sib.schemaSpan(), or the empty run where its first instance

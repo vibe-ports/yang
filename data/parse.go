@@ -1139,7 +1139,9 @@ func (lc *lydCtx) flushDirtyRun(k dirtyRun, lo int) {
 	lc.tree.work.Add(int64(run.Len()))
 	if k.sib.order != nil {
 		if d := k.sib.order.entries[k.sn]; d != nil {
-			k.sib.opRebuild(run)
+			if err := k.sib.opRebuild(run); err != nil && lc.tree.work.hashErr == nil {
+				lc.tree.work.hashErr = err // the publication is refused: the parse fails and restores
+			}
 		}
 	}
 	k.sib.gen++
