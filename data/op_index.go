@@ -187,12 +187,16 @@ func (b *orderBinding) Work(units uint64) {
 //     publication's own charges;
 //   - refreshRB from rbPos: the run's new tree, reserved with the sorted insertion;
 //   - refreshExact from validateIncomplete: a completed value, reserved by its native rehash.
-func (w *workCounter) unpaidIndexWrites() func() {
-	if w == nil {
-		return func() {}
+func (w *workCounter) beginUnpaidWrites() {
+	if w != nil {
+		w.unpaidOK++
 	}
-	w.unpaidOK++
-	return func() { w.unpaidOK-- }
+}
+
+func (w *workCounter) endUnpaidWrites() {
+	if w != nil {
+		w.unpaidOK--
+	}
 }
 
 // Entries pays for recorded index entries: from the owner's open credit, else as a capture of
@@ -405,7 +409,9 @@ func (s *siblings) orderReorder(run siblingSpan) {
 	if s.order == nil || run.Len() < 2 {
 		return
 	}
-	defer s.work.unpaidIndexWrites()()
+	w := s.work
+	w.beginUnpaidWrites()
+	defer w.endUnpaidWrites()
 	start := s.order.seq.Len()
 	for _, n := range run.All() {
 		if rank, ok := s.order.seq.Rank(s.order.byNode[n]); ok {
@@ -686,7 +692,9 @@ func (s *siblings) refreshRB(n *Node) error {
 	if s.order == nil || n == nil || n.schema == nil {
 		return nil
 	}
-	defer s.work.unpaidIndexWrites()() // paid inside link's scope; rbPos's tree is exempt
+	w := s.work // paid inside link's scope; rbPos's tree is exempt
+	w.beginUnpaidWrites()
+	defer w.endUnpaidWrites()
 	if err := s.touchSticky(); err != nil {
 		return err
 	}
@@ -719,7 +727,9 @@ func (s *siblings) refreshExact(n *Node, change func()) {
 		change()
 		return
 	}
-	defer s.work.unpaidIndexWrites()() // paid inside the value change's scope; validateIncomplete is exempt
+	w := s.work // paid inside the value change's scope; validateIncomplete is exempt
+	w.beginUnpaidWrites()
+	defer w.endUnpaidWrites()
 	if err := s.touchSticky(); err != nil {
 		return // the change is skipped: its caller tests the sticky error
 	}

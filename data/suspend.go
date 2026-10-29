@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"io"
+	"strings"
 	"time"
 
 	"github.com/vibe-ports/yang"
@@ -103,14 +104,29 @@ func classifyUser(err error) error {
 }
 
 // restoreUser gives the caller the original user error back; call it at the public return,
-// after the operation's state has ended.
+// after the operation's state has ended. A sealed error our own code wrapped keeps that wrapping:
+// the result unwraps to both, and its text names the original.
 func restoreUser(err error) error {
 	var u *userErr
 	if !errors.As(err, &u) {
 		return err
 	}
-	return u.err
+	if err == u { //nolint:errorlint // the sealed error itself, returned as is
+		return u.err
+	}
+	return &restoredErr{outer: err, user: u}
 }
+
+type restoredErr struct {
+	outer error
+	user  *userErr
+}
+
+func (e *restoredErr) Error() string {
+	return strings.Replace(e.outer.Error(), e.user.Error(), e.user.err.Error(), 1)
+}
+
+func (e *restoredErr) Unwrap() []error { return []error{e.outer, e.user.err} }
 
 // callUser runs user code f suspended, its error classified before the state resumes.
 func (w *workCounter) callUser(f func() error) error {

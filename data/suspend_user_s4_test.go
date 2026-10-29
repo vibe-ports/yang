@@ -342,3 +342,22 @@ func TestS4PollsGoThroughOneHelper(t *testing.T) {
 		}
 	}
 }
+
+// TestS4RestoreUserKeepsOurWrapping: a sealed user error that our own code wrapped comes back
+// with that wrapping, unwrapping to both, its text naming the original.
+func TestS4RestoreUserKeepsOurWrapping(t *testing.T) {
+	orig := errors.New("user failure")
+	sealed := classifyUser(orig)
+	if errors.Is(sealed, orig) {
+		t.Fatal("a sealed error must not reach the user's error before the state ends")
+	}
+	if got := restoreUser(sealed); got != orig { //nolint:errorlint // the original itself
+		t.Fatalf("restoreUser(sealed) = %v", got)
+	}
+	ve := &ValidationError{err: fmt.Errorf("validating: %w", sealed)}
+	got := restoreUser(ve)
+	var back *ValidationError
+	if !errors.Is(got, orig) || !errors.As(got, &back) || back != ve || !strings.Contains(got.Error(), "user failure") {
+		t.Fatalf("restoreUser(wrapped) = %v", got)
+	}
+}
