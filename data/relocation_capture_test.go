@@ -150,7 +150,8 @@ func TestApplyDiffRepeatedMoveFirstRollback(t *testing.T) {
 // relocation opens no level; a failure after its unlink rolls forward (the node returns to its
 // place, the moves before it stay), and the state's rollback still restores the tree exactly.
 // The fixtures: a plain set, an indexed one (an operation's children: the recovery relinks with
-// a fresh handle), and a separator between two runs whose removal marks the left run unsorted.
+// a fresh handle), a separator between two runs whose removal marks the left run unsorted, and a
+// list's non-key in front of its keys (it keeps its level: the unlink exposes the keys).
 func TestRelocationForwardRecoveryInState(t *testing.T) {
 	set := reviewDiffSet(t, relocationModule)
 	opSet := opIndexSet(t, `module m { yang-version 1.1; namespace "urn:m"; prefix m;
@@ -191,6 +192,14 @@ func TestRelocationForwardRecoveryInState(t *testing.T) {
 			}
 		}
 		forwardRecoveryInState(t, tr, capture, func() *Node { return sep }, commit)
+		// a list instance's child: removing the non-key exposes the keys, so it keeps a level
+		tr, list := exposedKeyList(t, 0)
+		capture = func(t *testing.T) {
+			if err := list.kids.touch(); err != nil {
+				t.Fatal(err)
+			}
+		}
+		forwardRecoveryInState(t, tr, capture, func() *Node { return list.kids.At(0) }, commit)
 	}
 }
 
@@ -219,8 +228,8 @@ func forwardRecoveryInState(t *testing.T, tr *Tree, prepare func(*testing.T), pi
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(j.levels) != 0 {
-		t.Fatal("a relocation in a held set opened a level")
+	if list := n.parent != nil && n.parent.schema != nil && n.parent.schema.Kind == schema.List; len(j.levels) != 0 != list {
+		t.Fatalf("a relocation in a held set opened %d levels (a list's child: %t)", len(j.levels), list)
 	}
 	if err := unlink(n); err != nil {
 		t.Fatal(err)

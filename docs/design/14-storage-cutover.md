@@ -204,9 +204,9 @@ be narrowed; this section is its plan.
    sibling set's compatibility records and node structs: an ApplyDiff of N moves before the
    first instance of a user-ordered leaf-list of N was Θ(N²) capture work and storage. Now a
    relocation within one set of the tree that the state's current level already holds whole
-   opens no level: it rolls forward on failure (linkOrigin's restore, its recovery reserved
-   before the unlink, as an unjournaled relocation does), and the state still restores a budget
-   or guard refusal. The first move of a set still opens a level and captures there; the level
+   opens no level (unless it is a child of a list instance, below): it rolls forward on failure
+   (linkOrigin's restore, its recovery reserved before the unlink, as an unjournaled relocation
+   does), and the state still restores a budget or guard refusal. The first move of a set still opens a level and captures there; the level
    commits into the enclosing one, so later moves find the set held. Savepoint semantics do not
    change (journal_levels_s4_test's "successive sibling levels capture afresh" stands: a level
    that captures is still exact); per-entry compat journaling of a level stays future work.
@@ -220,7 +220,11 @@ be narrowed; this section is its plan.
    and the state then commits that or restores the original exactly). The second snapshot review
    (`240s6-snap2`) found the forward recovery left the unsorted mark a removed separator puts on
    the left run (the level had restored it); linkOrigin now saves and restores that mark, which
-   also fixes the unjournaled forward recovery.
+   also fixes the unjournaled forward recovery. The third (`240s6-snap3`) found that removing a
+   list's non-key in front of its keys exposes them (`exposeListKeys` rewrites their key slots),
+   which relinking does not undo: a child of a list instance keeps its level (the repeated moves
+   the consult names are a leaf-list's or a list's instances, whose parent is not a list instance).
+   The unjournaled forward recovery has the same key-slot gap on main (a follow-up).
 3. **D-0149 wording.** Rank and index reads on a mutation path are charged (read credits);
    point reads by position (`At`) are O(log n) descents counted as sibling visits but not
    charged, as slice indexing was not. The Open note is narrowed to that.

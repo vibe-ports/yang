@@ -349,10 +349,13 @@ func (t *Tree) insertAfter(sibling, n *Node) (err error) {
 // within one set of t that the running state's current level holds whole already rolls forward
 // instead (design 14, step 6): a level of its own would capture the set afresh, so N moves in one
 // operation (an ApplyDiff of N moves) copied the set N times. Its forward recovery is reserved
-// like an unjournaled one, and the state still restores a budget or guard refusal.
-func (t *Tree) journaledRelocation(src, dst *siblings) bool {
+// like an unjournaled one, and the state still restores a budget or guard refusal. A child of a
+// list instance keeps its level: its unlink can expose the list's keys (exposeListKeys rewrites
+// their key slots), which relinking does not undo.
+func (t *Tree) journaledRelocation(n *Node, src, dst *siblings) bool {
 	if j := t.work.journal; j != nil {
-		return src != dst || src.work != &t.work || !captured(j, j.siblings, src)
+		return src != dst || src.work != &t.work || !captured(j, j.siblings, src) ||
+			n.parent != nil && n.parent.schema != nil && n.parent.schema.Kind == schema.List
 	}
 	return src.order != nil || dst.order != nil
 }
@@ -372,7 +375,7 @@ func (t *Tree) relocation(n *Node, dst *siblings, restore func()) (finish func(*
 	if src == nil {
 		return func(*error) {}, nil // nothing is unlinked
 	}
-	if !t.journaledRelocation(src, dst) {
+	if !t.journaledRelocation(n, src, dst) {
 		gen := dst.gen
 		return func(result *error) {
 			if *result != nil {
@@ -607,7 +610,7 @@ func (t *Tree) linkOrigin(n *Node) (restore func(), arm func(dst *siblings) (dis
 		return nil
 	}
 	arm = func(dst *siblings) (func(), error) {
-		journaled = dst != nil && t.journaledRelocation(sib, dst)
+		journaled = dst != nil && t.journaledRelocation(n, sib, dst)
 		if err := armOrigin(); err != nil {
 			return nil, err
 		}
