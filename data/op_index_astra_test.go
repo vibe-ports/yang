@@ -157,7 +157,9 @@ func TestOpIndexKeylessDuplicateSetUsesRegistrationOrder(t *testing.T) {
 			} else {
 				mustLink(t, op.kids.buildSchema([]*Node{lists[0], lists[3], lists[1], lists[2], separator}))
 			}
-			op.kids.orderBuild(tr)
+			if err := op.kids.orderBuild(tr); err != nil {
+				t.Fatal(err)
+			}
 			cache := &dupCache{}
 			var got []*Node
 			for range lists {

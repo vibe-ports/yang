@@ -420,13 +420,17 @@ func TestDiscardMixedLeafrefRecordsChargesLinearWork(t *testing.T) {
 		if target == nil || exemplar == nil {
 			t.Fatal("leafref fixture did not parse")
 		}
-		linkLeafrefNode(target, exemplar)
+		if err := linkLeafrefNode(target, exemplar); err != nil {
+			t.Fatal(err)
+		}
 		for i := 1; i < count; i++ {
 			leaf := &Node{schema: exemplar.schema, value: exemplar.value}
 			if err := tr.insert(root, leaf, insertLast); err != nil {
 				t.Fatal(err)
 			}
-			linkLeafrefNode(target, leaf)
+			if err := linkLeafrefNode(target, leaf); err != nil {
+				t.Fatal(err)
+			}
 		}
 		tr.work.Store(0)
 		tr.work.visits = true

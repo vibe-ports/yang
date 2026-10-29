@@ -419,7 +419,9 @@ func TestAnyTrimPayloadBudgetAtomic(t *testing.T) {
 			for range tc.links {
 				n := b.term(sn, "v")
 				outside = append(outside, n)
-				linkLeafrefNode(leaf, n)
+				if err := linkLeafrefNode(leaf, n); err != nil {
+					t.Fatal(err)
+				}
 			}
 			old := trimStepBudget
 			t.Cleanup(func() { trimStepBudget = old })

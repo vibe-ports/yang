@@ -151,7 +151,7 @@ func (e *trapErr) visit(m string) {
 	}
 }
 
-func (e *trapErr) Is(target error) bool {
+func (e *trapErr) Is(_ error) bool {
 	e.visit("Is")
 	return false
 }
@@ -326,7 +326,7 @@ func TestS4PollsGoThroughOneHelper(t *testing.T) {
 			if strings.HasSuffix(f, "_test.go") {
 				continue
 			}
-			src, err := os.ReadFile(f)
+			src, err := os.ReadFile(f) //nolint:gosec // the package's own source files
 			if err != nil {
 				t.Fatal(err)
 			}

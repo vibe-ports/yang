@@ -223,8 +223,6 @@ func (b *orderBinding) Journal() *opidx.Journal {
 	return &b.state.index
 }
 
-func (o *childOrder) journal() *opidx.Journal { return o.bind.Journal() }
-
 // newChildOrder returns an empty index whose hooks are installed once, on its binding. The
 // binding has no owner yet: a build fills it uncounted and unjournaled (it is unreachable until
 // published) and binds it at the end.
@@ -836,13 +834,4 @@ func (s *siblings) refreshExactBound(n *Node, journaled bool) uint64 {
 		return 0
 	}
 	return addHashBound(o.byExact.RemoveBound(o.byNode[n], journaled), o.byExact.InsertBoundAny(journaled))
-}
-
-// refreshRBBound bounds refreshRB.
-func (s *siblings) refreshRBBound(n *Node, journaled bool) uint64 {
-	o := s.order
-	if o == nil || o.byNode[n] == nil {
-		return 0
-	}
-	return addHashBound(addHashBound(o.byRB.RemoveBound(o.byNode[n], journaled), o.byRB.InsertBoundAny(journaled)), orderCells(journaled))
 }

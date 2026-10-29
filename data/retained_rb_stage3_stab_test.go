@@ -162,7 +162,9 @@ func TestStage3FailureThenMutation(t *testing.T) {
 			// reciprocal links on the moved node: unlink frees both endpoints' records
 			for _, c := range src.top.first().kids.SchemaAll() {
 				if c.schema.Name == "r" {
-					linkLeafrefNode(n, c)
+					if err := linkLeafrefNode(n, c); err != nil {
+						t.Fatal(err)
+					}
 				}
 			}
 			if n.links == nil {
@@ -1122,7 +1124,9 @@ func (g *fzGen) tree(set *schema.Set, fill int) *Tree {
 	for _, r := range refs {
 		for _, k := range keys {
 			if k.Value() == r.Value() {
-				linkLeafrefNode(k, r)
+				if err := linkLeafrefNode(k, r); err != nil {
+					panic(err) // a generator has no test to fail: a fresh tree has no running state
+				}
 			}
 		}
 	}
@@ -2275,7 +2279,9 @@ func TestStage3TransferMovesIndexWorkHooks(t *testing.T) {
 	set := reviewDiffSet(t, stage3StabModule)
 	tr := stage3StabTree(t, set, []string{"1", "2", "3"}, "")
 	src := &tr.top.first().kids
-	src.orderBuild(tr)
+	if err := src.orderBuild(tr); err != nil {
+		t.Fatal(err)
+	}
 	var dst siblings
 	mustLink(t, dst.transferFrom(src))
 	w := &workCounter{}

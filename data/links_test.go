@@ -244,14 +244,22 @@ func TestLeafrefLinks(t *testing.T) {
 func TestFreeLinksOrder(t *testing.T) {
 	a, b, c, target := &Node{}, &Node{}, &Node{}, &Node{}
 	for _, l := range []*Node{a, b, c} {
-		linkLeafrefNode(target, l)
+		if err := linkLeafrefNode(target, l); err != nil {
+			t.Fatal(err)
+		}
 	}
-	freeLinks(a)
+	if err := freeLinks(a); err != nil {
+		t.Fatal(err)
+	}
 	if target.links == nil || !reflect.DeepEqual(target.links.leafrefs, []*Node{c, b}) || a.links != nil {
 		t.Fatal("swap removal")
 	}
-	freeLinks(b)
-	freeLinks(c)
+	if err := freeLinks(b); err != nil {
+		t.Fatal(err)
+	}
+	if err := freeLinks(c); err != nil {
+		t.Fatal(err)
+	}
 	if target.links != nil {
 		t.Fatal("an emptied record must go")
 	}

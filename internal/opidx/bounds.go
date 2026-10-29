@@ -203,22 +203,22 @@ func (s *Seq[T]) Peek(rank int) *Handle[T] {
 
 // InsertBoundAny bounds one Insert into any class: an AVL over at most the sequence's handles.
 func (o *Occurrences[T, S, K]) InsertBoundAny(journaled bool) uint64 {
-	return avlUnits(2*bits.Len(uint(o.seq.length+1))+2, journaled) //nolint:gosec // a length is nonnegative
+	return avlUnits(2*bits.Len(uint(o.seq.length+1))+2, journaled)
 }
 
 // InsertBoundAny bounds InsertBefore at any position of a sequence of length handles, built or
 // not yet (a preflight before the run it inserts into is reordered): the structural walk for the
 // AVL height of length+1 and the capped relabel, scanCap plus a rebuild, with their images.
 func InsertBoundAny(length int, journaled bool) uint64 {
-	all := uint64(length + 1)                                                        //nolint:gosec // a length is nonnegative
-	relabel := saturatingAdd(uint64(scanCap(length+1))+all, images(all, journaled))  //nolint:gosec // a length is nonnegative
-	return saturatingAdd(avlUnits(2*bits.Len(uint(length+2))+2, journaled), relabel) //nolint:gosec // a length is nonnegative
+	all := uint64(length + 1)                                                       //nolint:gosec // a length is nonnegative
+	relabel := saturatingAdd(uint64(scanCap(length+1))+all, images(all, journaled)) //nolint:gosec // a length is nonnegative
+	return saturatingAdd(avlUnits(2*bits.Len(uint(length+2))+2, journaled), relabel)
 }
 
 // UpdateBoundAny bounds one Insert or Remove of an occurrence class or a rank set with at most
 // length members, or a Select in a sequence of length handles.
 func UpdateBoundAny(length int, journaled bool) uint64 {
-	return avlUnits(2*bits.Len(uint(length+2))+2, journaled) //nolint:gosec // a length is nonnegative
+	return avlUnits(2*bits.Len(uint(length+2))+2, journaled)
 }
 
 // ReadBound bounds one Next or LastWhere in the class (schema, key): its walk.

@@ -114,7 +114,7 @@ func (m *journalModel) live() []*Handle[int] {
 	return out
 }
 
-func (m *journalModel) step(r *rand.Rand, j *Journal) {
+func (m *journalModel) step(r *rand.Rand, _ *Journal) {
 	live := m.live()
 	pick := func() *Handle[int] {
 		if len(live) == 0 {
@@ -202,7 +202,7 @@ func mallocs() uint64 {
 func TestJournalNestedModel(t *testing.T) {
 	defer runtime.GOMAXPROCS(runtime.GOMAXPROCS(1)) // as AllocsPerRun: no other allocating goroutine
 	for seed := range uint64(40) {
-		r := rand.New(rand.NewPCG(seed, 7))
+		r := rand.New(rand.NewPCG(seed, 7)) //nolint:gosec // a deterministic test sequence
 		var j Journal
 		m := newJournalModel(&j)
 		units := m.hooks
@@ -351,7 +351,7 @@ func (h *meterHooks) Entries(units uint64) { h.units += units }
 func TestPointBoundsCoverJournaledEdits(t *testing.T) {
 	for _, journaled := range []bool{false, true} {
 		for seed := range uint64(30) {
-			r := rand.New(rand.NewPCG(seed, 11))
+			r := rand.New(rand.NewPCG(seed, 11)) //nolint:gosec // a deterministic test sequence
 			var j Journal
 			h := &meterHooks{}
 			if journaled {
@@ -389,8 +389,8 @@ func TestPointBoundsCoverJournaledEdits(t *testing.T) {
 						}
 					}
 					var nh *Handle[int]
-					if b, any := seq.InsertBound(anchor, journaled), InsertBoundAny(seq.Len(), journaled); b > any {
-						t.Fatalf("seed %d: point bound %d above the position-free bound %d", seed, b, any)
+					if b, free := seq.InsertBound(anchor, journaled), InsertBoundAny(seq.Len(), journaled); b > free {
+						t.Fatalf("seed %d: point bound %d above the position-free bound %d", seed, b, free)
 					}
 					check("insert", seq.InsertBound(anchor, journaled), func() { nh = seq.InsertBefore(anchor, i) })
 					live = append(live, nh)

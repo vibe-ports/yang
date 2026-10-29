@@ -1222,7 +1222,9 @@ func TestStage3TrimRefusalCleansPrefixLinks(t *testing.T) {
 	mustLink(t, tr.insert(nil, foreign, insertDefault))
 	ref := tr.top.first().kids.first() // c/v
 	target := tr.top.At(tr.top.SchemaLen() - 1)
-	linkLeafrefNode(target, ref)
+	if err := linkLeafrefNode(target, ref); err != nil {
+		t.Fatal(err)
+	}
 	if target.links == nil || ref.links == nil {
 		t.Fatal("fixture link missing")
 	}

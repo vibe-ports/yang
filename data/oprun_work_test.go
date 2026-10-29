@@ -136,7 +136,9 @@ func TestOpRunGaps(t *testing.T) {
 	check(0, 3)
 	mustLink(t, tr.insertBefore(op.kids.At(3), in))
 	check(1, 2)
-	op.kids.opBuild(tr)
+	if err := op.kids.opBuild(tr); err != nil {
+		t.Fatal(err)
+	}
 	check(1, 2)
 	if err := tr.unlinkAll([]*Node{in}); err != nil {
 		t.Fatal(err)

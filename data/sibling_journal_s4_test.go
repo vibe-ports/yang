@@ -510,7 +510,7 @@ func TestS4BulkPrefixPublicationRefusal(t *testing.T) {
 		}
 		return tr, op, further
 	}
-	tr, _, further := build()
+	_, _, further := build()
 	wantSkip := further()
 	tr, op, further := build()
 	var points []uint64

@@ -458,7 +458,9 @@ func TestAnyPayloadLinkCleanup(t *testing.T) {
 				t.Fatal(err)
 			}
 			mustLink(t, outer.insert(nil, n, insertDefault))
-			linkLeafrefNode(outside, leaf)
+			if err := linkLeafrefNode(outside, leaf); err != nil {
+				t.Fatal(err)
+			}
 			switch action {
 			case "clear":
 				err = n.copyAnyValue(w, nil, nil, 0)

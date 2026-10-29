@@ -245,7 +245,7 @@ func parseOpWith(ctx context.Context, r io.Reader, s *schema.Set, f Format, t op
 		if p := recover(); p != nil {
 			if journal != nil {
 				journal.rollback = true
-				failed := error(errPanicked)
+				failed := errPanicked
 				journal.end(&failed)
 			}
 			panic(p)

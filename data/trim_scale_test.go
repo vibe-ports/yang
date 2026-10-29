@@ -33,7 +33,9 @@ func trimLinkedTree(t *testing.T, count int, targetFirst bool) (*Tree, *Node, []
 	for i := range count {
 		lref := f.term(t, refSchema, fmt.Sprint(i))
 		mustLink(t, tr.insert(nil, lref, insertLast))
-		linkLeafrefNode(target, lref)
+		if err := linkLeafrefNode(target, lref); err != nil {
+			t.Fatal(err)
+		}
 		lrefs = append(lrefs, lref)
 	}
 	if !targetFirst {
@@ -427,7 +429,9 @@ func TestTrimXPathBulkLinksOrder(t *testing.T) {
 	_, bulkTarget, bulkLrefs := trimLinkedTree(t, count, true)
 	var cleaner bulkLinkCleaner
 	for i := 0; i < count; i += 3 { // every third referrer, so swaps move later items forward
-		freeLinks(refLrefs[i])
+		if err := freeLinks(refLrefs[i]); err != nil {
+			t.Fatal(err)
+		}
 		cleaner.free(bulkLrefs[i])
 	}
 	want, got := positions(refTarget, refLrefs), positions(bulkTarget, bulkLrefs)
