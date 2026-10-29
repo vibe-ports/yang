@@ -145,8 +145,8 @@ func (h *Handle[T]) undo(e *Entry) {
 	h.prev, _ = e.ptr[3].(*Handle[T])
 	h.next, _ = e.ptr[4].(*Handle[T])
 	h.owner, _ = e.ptr[5].(*Seq[T])
-	h.height, h.hsize = int(e.num[0]&0xff), int(e.num[0]>>8) //nolint:gosec // the recorded ints themselves
-	h.size, h.tag = int(e.num[1]), e.num[2]                  //nolint:gosec // the recorded int itself
+	h.height, h.hsize = int(e.num[0]&0xff), int(e.num[0]>>8)
+	h.size, h.tag = int(e.num[1]), e.num[2] //nolint:gosec // the recorded int itself
 	h.kprev, h.knext = nil, nil
 	if l, ok := e.key.(kindLinks[T]); ok {
 		h.kprev, h.knext = l.prev, l.next
