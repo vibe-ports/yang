@@ -151,11 +151,12 @@ func TestOrderedParseFunded(t *testing.T) {
 func TestInterleavedEditBudgetPoints(t *testing.T) {
 	set := opIndexSet(t, orderedSchema)
 	for _, in := range []string{
-		`{"m:c":{"a":"x","zz":"u","c":"z","ll":[3],"yy":"t"}}`,                  // no children table
-		`{"m:c":{"ll":[3],"a":"x","zz":"u","c":"z","yy":"t","l":[{"k":"k2"}]}}`, // with one
+		`{"m:c":{"a":"x","zz":"u","c":"z","ll":[3],"yy":"t"}}`,                          // no children table
+		`{"m:c":{"ll":[3],"a":"x","zz":"u","c":"z","yy":"t","l":[{"k":"k2"}]}}`,         // with one
+		`<c xmlns="urn:m"><ll>3</ll><zz>u</zz><ll>1</ll><ll>2</ll><a>x</a><c>z</c></c>`, // a split run
 	} {
 		tree := func() (*Tree, *Node) {
-			tr, err := parseOrdered(t, set, false, in, nil)
+			tr, err := parseOrdered(t, set, strings.HasPrefix(in, "<"), in, nil)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -163,6 +164,12 @@ func TestInterleavedEditBudgetPoints(t *testing.T) {
 				return tr, c
 			}
 			return nil, nil
+		}
+		// prep runs before the edit: unlink the opaque nodes, or every non-key child, of the
+		// interleaved set (it stays interleaved)
+		prep := map[string]func(n *Node) bool{
+			"opaque-gone": func(n *Node) bool { return n.schema == nil },
+			"emptied":     func(n *Node) bool { return !n.isKey() },
 		}
 		for _, tc := range []struct {
 			name string
@@ -186,18 +193,73 @@ func TestInterleavedEditBudgetPoints(t *testing.T) {
 				return fmt.Errorf("no c")
 			}},
 			{"dup", func(tr *Tree, c *Node) error { _, _, err := tr.Dup(c, nil, DupOptions{Recursive: true}); return err }},
+			{"opaque-gone", func(tr *Tree, _ *Node) error { _, err := tr.NewPath("/m:c/b", "y", NewPathOptions{}); return err }},
+			{"emptied", func(tr *Tree, c *Node) error { _, err := tr.NewTerm(c, "ll", "4", NewOptions{}); return err }},
 		} {
-			t.Run(tc.name, func(t *testing.T) {
+			build := func() (*Tree, *Node) {
 				tr, c := tree()
+				if gone := prep[tc.name]; gone != nil {
+					for _, n := range slices.Collect(c.Children()) {
+						if gone(n) {
+							if err := n.Unlink(); err != nil {
+								t.Fatal(err)
+							}
+						}
+					}
+				}
+				return tr, c
+			}
+			t.Run(tc.name, func(t *testing.T) {
+				tr, c := build()
 				if err := tc.edit(tr, c); err != nil {
 					t.Fatal(err)
 				}
 				opidxAssertTreeInvariant(t, tr)
 				checkEveryHashBudgetPoint(t, func() (*Tree, func() error) {
-					tr, c := tree()
+					tr, c := build()
 					return tr, func() error { return tc.edit(tr, c) }
 				})
 			})
 		}
+	}
+}
+
+// TestSplitRunInsertScaling: sorted insertions into the first piece of a run that an opaque node
+// splits work on that piece only (runPiece cuts the scans first), however long the other piece.
+func TestSplitRunInsertScaling(t *testing.T) {
+	set := opIndexSet(t, orderedSchema)
+	measure := func(n int) int64 {
+		var b strings.Builder
+		b.WriteString(`<c xmlns="urn:m"><ll>1</ll><zz>u</zz>`)
+		for i := range n {
+			fmt.Fprintf(&b, "<ll>%d</ll>", 100+i%150)
+		}
+		b.WriteString(`</c>`)
+		tr, err := parseOrdered(t, set, true, b.String(), nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var c *Node
+		for c = range tr.Top() {
+			break
+		}
+		// the first insertion builds the set's ordered index, once, over all of it
+		if _, err := tr.NewTerm(c, "ll", "60", NewOptions{}); err != nil {
+			t.Fatal(err)
+		}
+		tr.work.Store(0)
+		tr.work.visits = true
+		for v := range 8 {
+			if _, err := tr.NewTerm(c, "ll", fmt.Sprint(2+v), NewOptions{}); err != nil {
+				t.Fatal(err)
+			}
+		}
+		tr.work.visits = false
+		opidxAssertTreeInvariant(t, tr)
+		return tr.work.Load()
+	}
+	small, large := measure(64), measure(4096)
+	if large > 2*small+64 {
+		t.Fatalf("work %d for a 4096-member second piece, %d for 64: the scans cross the opaque node", large, small)
 	}
 }

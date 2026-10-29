@@ -835,7 +835,7 @@ func lastInst(n *Node) *Node {
 		return last
 	}
 	if at := sib.indexOf(sib.schemaSpan(), n); at >= 0 {
-		for _, c := range sib.schemaSpan().Slice(at+1, sib.SchemaLen()).All() {
+		for _, c := range sib.schemaSpan().Slice(at+1, max(at+1, sib.runPiece(at, sib.SchemaLen()))).All() {
 			if c.schema != n.schema {
 				break
 			}

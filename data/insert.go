@@ -387,20 +387,43 @@ func (t *Tree) insertPos(sib *siblings, n *Node, order insertOrder) int {
 // the anchor when it comes first, and n's logical position follows it.
 func (t *Tree) interleavedPos(sib *siblings, n *Node, at int) int {
 	if t.sortedAt {
-		if at > 0 && sib.At(at-1).schema == n.schema {
-			sib.setPlace(placement{mode: placeAfter, node: sib.At(at - 1), target: n})
-		}
-		return at
+		return at // placed by rbPos (sortedPlace)
 	}
-	first := sib.docFirst()
-	if parent := first.parent; sib.ht != nil && parent != nil && parent.schema != nil && sameSet(ctxOf(first), ctxOf(n)) {
-		return at // the hash path: before the first instance of a following schema sibling
+	if o := sib.walkStop(n, at); o != nil {
+		sib.setPlace(placement{mode: placeBefore, node: o, target: n})
+		return sib.beforeOpaque()
 	}
-	if before := sib.beforeOpaque(); at >= before { // the opaque node comes first
-		sib.setPlace(placement{mode: placeBefore, node: sib.st.seq.FirstKind(false).Value, target: n})
-		return before
+	return at // the hash path: before the first instance of a following schema sibling
+}
+
+// walkStop is the opaque sibling lyd_insert_get_next_anchor's walk without hashes stops at
+// before it reaches n's logical anchor at in an interleaved set (nil: none, or the hash path).
+func (s *siblings) walkStop(n *Node, at int) *Node {
+	first := s.docFirst()
+	if first == nil || s.st == nil || !s.st.interleaved() {
+		return nil
 	}
-	return at
+	if parent := first.parent; s.ht != nil && parent != nil && parent.schema != nil && sameSet(ctxOf(first), ctxOf(n)) {
+		return nil
+	}
+	if o := s.st.seq.FirstKind(false); o != nil && at >= s.beforeOpaque() {
+		return o.Value
+	}
+	return nil
+}
+
+// sortedPlace is lyds_link_data_node's physical placement in an interleaved set (design 15):
+// right after n's RB predecessor, else right before the run's leader. It is set before rbPos
+// reserves the link, whose bound reads it.
+func sortedPlace(sib *siblings, n, pred, leader *Node) {
+	if sib.st == nil || !sib.st.interleaved() {
+		return
+	}
+	if pred != nil {
+		sib.setPlace(placement{mode: placeAfter, node: pred, target: n})
+		return
+	}
+	sib.setPlace(placement{mode: placeBefore, node: leader, target: n})
 }
 
 // lastPos is LYD_INSERT_NODE_LAST for the schema node n (lyd_insert_node_last, design 15):
@@ -419,7 +442,7 @@ func (t *Tree) lastPos(parent *Node, sib *siblings, n *Node) (int, error) {
 	}
 	if sortedSupported(n) && at > 0 && sib.At(at-1).schema == n.schema && sib.At(at-1).inRB {
 		leader := sib.At(at - 1)
-		for _, c := range sib.schemaSpan().Slice(0, at-1).Reverse() {
+		for _, c := range sib.schemaSpan().Slice(sib.runPieceStart(at-1), at-1).Reverse() {
 			if c.schema != n.schema {
 				break
 			}
@@ -509,7 +532,7 @@ func (t *Tree) schemaPos(sib *siblings, n *Node, order insertOrder) int {
 			leader = l.At(at)
 		case at > 0 && l.At(at-1).schema == n.schema && l.At(at-1).inRB:
 			leader = l.At(at - 1)
-			for _, c := range l.Slice(0, at-1).Reverse() {
+			for _, c := range l.Slice(sib.runPieceStart(at-1), at-1).Reverse() {
 				if c.schema != n.schema {
 					break
 				}
@@ -697,7 +720,7 @@ func (t *Tree) crossContextSortedPos(sib *siblings, n *Node, lo int) (int, bool)
 	leader := l.At(lo)
 	hi := lo + 1
 	if !sib.rbTree[leader] {
-		for _, c := range l.Slice(hi, l.Len()).All() {
+		for _, c := range l.Slice(hi, max(hi, sib.runPiece(lo, l.Len()))).All() {
 			if c.schema != leader.schema {
 				break
 			}
@@ -900,6 +923,7 @@ func (t *Tree) rbPos(sib *siblings, n *Node, lo, hi int, compare func(*Node, *No
 		if pred != nil {
 			at = lo + slices.Index(run, pred) + 1
 		}
+		sortedPlace(sib, n, pred, run[0]) // the published run's first instance
 		amount, err := t.insertPositionBound(sib, n, insertDefault)
 		if err != nil {
 			return lo, true
@@ -982,6 +1006,7 @@ func (t *Tree) rbPos(sib *siblings, n *Node, lo, hi int, compare func(*Node, *No
 				return lo, false
 			}
 		}
+		sortedPlace(sib, n, pred, leader)
 		if amount, err := t.linkCost(owner, sib, n, at); err != nil || t.reserveHash(addHashBound(amount, 4)) != nil {
 			return lo, true
 		}
@@ -1102,7 +1127,7 @@ func (t *Tree) logicalRunBounds(sib *siblings, n *Node) (lo, hi int) {
 		// first registered record (leaderFirstMixed).
 		if lo = t.sortedLeaderIndex(sib, n); lo >= 0 {
 			hi = lo
-			for _, c := range l.Slice(lo, l.Len()).All() {
+			for _, c := range l.Slice(lo, sib.runPiece(lo, l.Len())).All() {
 				if !schemaLookupMatch(c.schema, n.schema, sib.ht != nil) {
 					break
 				}
@@ -1136,7 +1161,7 @@ func (t *Tree) logicalRunBounds(sib *siblings, n *Node) (lo, hi int) {
 			return 0, 0 // the read credit refused (sticky)
 		}
 		hi = lo
-		for _, c := range l.Slice(lo, l.Len()).All() {
+		for _, c := range l.Slice(lo, sib.runPiece(lo, l.Len())).All() {
 			sib.visit()
 			if c.schema != leader.schema {
 				break
@@ -1266,7 +1291,7 @@ func (t *Tree) logicalRunEnd(sib *siblings, lo int) int {
 		return t.upper(sib.schemaSpan(), lo, func(n *Node) bool { return n.schema != sn })
 	}
 	hi := lo
-	for _, c := range sib.schemaSpan().Slice(lo, sib.SchemaLen()).All() {
+	for _, c := range sib.schemaSpan().Slice(lo, sib.runPiece(lo, sib.SchemaLen())).All() {
 		t.work.Add(1)
 		if c.schema != sn {
 			break
@@ -1292,7 +1317,7 @@ func (t *Tree) logicalRetainedRunEnd(sib *siblings, lo int) int {
 		group = selected
 	}
 	hi := lo
-	for _, n := range sib.schemaSpan().Slice(lo, sib.SchemaLen()).All() {
+	for _, n := range sib.schemaSpan().Slice(lo, sib.runPiece(lo, sib.SchemaLen())).All() {
 		if n.schema != leader.schema && (group == nil || !n.inRB || n.rbGroup != group) {
 			break
 		}
@@ -1737,7 +1762,7 @@ func markRB(sib *siblings, leader *Node) {
 	if at < 0 {
 		return
 	}
-	for _, c := range sib.schemaSpan().Slice(at, sib.SchemaLen()).All() {
+	for _, c := range sib.schemaSpan().Slice(at, sib.runPiece(at, sib.SchemaLen())).All() {
 		if c.schema != leader.schema {
 			break
 		}
@@ -1935,7 +1960,7 @@ func (t *Tree) sortedStorageRefusalMode(sib *siblings, n *Node, order insertOrde
 	// No tree yet: rb_insert_node descends the tree lyds_additionally_create_rb_tree is about to
 	// build from the leader's run, so check exactly that path on a detached copy.
 	detached := &dirtyOrder{work: &t.work}
-	for _, c := range sib.schemaSpan().Slice(lo, sib.SchemaLen()).All() {
+	for _, c := range sib.schemaSpan().Slice(lo, sib.runPiece(lo, sib.SchemaLen())).All() {
 		if c.schema != leader.schema {
 			break
 		}

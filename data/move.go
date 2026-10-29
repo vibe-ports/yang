@@ -48,16 +48,8 @@ func isInner(s *schema.Node) bool {
 	return false
 }
 
-// first is the first sibling, opaque nodes last.
-func (s *siblings) first() *Node {
-	if s.SchemaLen() > 0 {
-		return s.At(0)
-	}
-	if s.OpaqueLen() > 0 {
-		return s.opaqueAt(0)
-	}
-	return nil
-}
+// first is the first sibling in document order (lyd_first_sibling).
+func (s *siblings) first() *Node { return s.docFirst() }
 
 // sibList is the tree whose top level n starts when that top level has more nodes: the Go form
 // of a libyang sibling list of unlinked nodes, which lyd_insert_child and lyd_insert_sibling move
@@ -456,7 +448,7 @@ func (t *Tree) linkOrigin(n *Node) (restore func(), arm func(dst *siblings) (dis
 			// A copied or operation sibling set may have split runs. Limit
 			// this walk to the physical run and charge each inspected slot.
 			leader = n
-			for _, c := range sib.schemaSpan().Slice(0, at).Reverse() {
+			for _, c := range sib.schemaSpan().Slice(sib.runPieceStart(max(at-1, 0)), at).Reverse() {
 				if err := t.work.chargeHash(1); err != nil {
 					return nil, nil, err
 				}
@@ -909,6 +901,7 @@ func (t *Tree) moveNodes(parent *Node, src *Tree) (result error) {
 				if n.schema != nil {
 					at = dst.SchemaLen()
 				}
+				dst.setPlace(placement{mode: placeEnd, target: n}) // the forest in its order (design 15)
 				if err := t.link(parent, dst, n, at); err != nil {
 					return err
 				}

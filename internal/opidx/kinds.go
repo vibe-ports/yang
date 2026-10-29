@@ -142,6 +142,14 @@ func (s *Seq[T]) PrevKind(h *Handle[T]) *Handle[T] {
 	return s.climbPrev(h, h.heavy, true)
 }
 
+// PeekPrevOfKind is the last handle of one kind before h (nil if none), uncharged, O(log n).
+func (s *Seq[T]) PeekPrevOfKind(h *Handle[T], heavy bool) *Handle[T] {
+	if h == nil || h.owner != s {
+		return nil
+	}
+	return s.climbPrev(h, heavy, false)
+}
+
 // PeekNextOfKind is the first handle of one kind after h (nil if none), uncharged, O(log n).
 func (s *Seq[T]) PeekNextOfKind(h *Handle[T], heavy bool) *Handle[T] {
 	if h == nil || h.owner != s {

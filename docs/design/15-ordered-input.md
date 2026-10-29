@@ -64,13 +64,15 @@ write takes the code path it took before (the counted-work and scaling tests are
   - `placeAfter` / `placeBefore`: right after or before a node. This covers the XML parser's
     `lyd_insert_after` of the last same-name opaque sibling (`lydxml_get_hints_opaq`), which may
     lie before a schema sibling or be the last opaque node; a sorted insertion's
-    `lyds_link_data_node` after its RB predecessor (`interleavedPos`); and the next members of a
-    moved run.
+    `lyds_link_data_node` after its RB predecessor, else before the leader (`sortedPlace`, set
+    in `rbPos` before it reserves the link); the next members of a moved run; and a forest moved
+    into an empty set.
 - **Anchors** (`interleavedPos`). Without a children table, or at the top level,
   `lyd_insert_get_next_anchor` walks the siblings and stops at the first opaque one
   (tree_data.c:546-589). When that opaque node comes before the schema anchor, it is the anchor,
   and the logical position becomes the number of schema nodes before it. With a table the anchor is
-  the first instance of the next schema sibling (tree_data.c:520-535), the logical default.
+  the first instance of the next schema sibling (tree_data.c:520-535), the logical default. The XML
+  parser's key-order check uses the same stop (`walkStop`).
 - **Lookups.** `lyd_find_sibling_schema` without a children table stops at the first opaque sibling
   (tree_data_common.c:1126-1131). `schemaFind` and `schemaLookup` therefore find nothing past it
   (`linearBound`), and neither does `runBounds`'s leader. `lyd_validate_new` stops there too
@@ -81,10 +83,12 @@ write takes the code path it took before (the counted-work and scaling tests are
   mode when it interleaves. There the first-instance records use document neighbours
   (`lyd_insert_hash_add`/`lyd_unlink_hash`: `docNeighbours`), the index's run gaps count opaque
   separators (`orderBuild`, `orderAddSchema`, `orderRemove`, `opaqueSplit`), table and record builds
-  walk document order (`logicalInterleaved`), and `runBounds`, `runEnd` and `retainedRunEnd` cut a
-  run at its first opaque node (`runPiece`, one O(log n) read).
+  walk document order (`logicalInterleaved`), and `runBounds`, `runEnd`, `retainedRunEnd` and the
+  other run walks stop at the run's opaque neighbours (`runPiece`, `runPieceStart`: one O(log n)
+  read each) before they read the run, so a walk costs its piece, not the set
+  (`TestSplitRunInsertScaling`).
 - **libyang's sibling list.** Code that models `lyd_child`/`next`/`prev` reads document order:
-  `firstChild`, `hasNext`, `nativeTail`, the key prefix (`positionalChildren`, `keyLinked`,
+  `first` (`lyd_first_sibling`), `firstChild`, `hasNext`, `nativeTail`, the key prefix (`positionalChildren`, `keyLinked`,
   `checkKeys`, `listPredicate`), the validation sibling lists (`topList`, `slicesOf`) and the
   diff/merge sibling lists.
 - **Republication** (`replaceSchema`, `publishRun`) in an interleaved set republishes the run's
@@ -95,13 +99,15 @@ write takes the code path it took before (the counted-work and scaling tests are
 
 ## Evidence
 
-- Oracle fixtures `protocol-v2/ordered-*` (21) cover:
+- Oracle fixtures `protocol-v2/ordered-*` (24) cover:
   - parse order, JSON and XML;
   - the XML opaque anchor;
   - later insertions with and without a children table, crossing the table threshold, and a sorted
     one after an opaque node;
   - a run hidden past the first opaque node;
-  - split leaf-list and list runs, with and without a table;
+  - split leaf-list and list runs, with and without a table, including an insertion before the
+    second piece's leader;
+  - a set that lost its opaque node; an ordered forest whose first root is opaque, moved whole;
   - opaque appends; unlink and re-insert; merge; dup; diff; validation (implicit default, opaque
     error and the stop of `lyd_validate_new`);
   - XPath axes and positions; a key after an opaque child; a validated out-of-order parse.

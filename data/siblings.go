@@ -1679,6 +1679,9 @@ func (s *siblings) beforeOpaque() int {
 		return s.SchemaLen()
 	}
 	h := s.st.seq.FirstKind(false)
+	if h == nil {
+		return s.SchemaLen() // no opaque sibling left
+	}
 	at, _ := s.st.seq.Pos(h)
 	light, _ := s.st.seq.PosKind(h)
 	return at - light

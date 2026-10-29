@@ -776,6 +776,22 @@ func (s *siblings) runPiece(lo, hi int) int {
 	return min(hi, lo+to-from) // the handles between h and o are schema nodes
 }
 
+// runPieceStart is the first logical position of the run piece that holds schema node x: past
+// the last opaque sibling before it in an interleaved set (runPiece's mirror), 0 otherwise.
+func (s *siblings) runPieceStart(x int) int {
+	if x <= 0 || s.st == nil || !s.st.interleaved() {
+		return 0
+	}
+	h := s.st.peek(x)
+	o := s.st.seq.PeekPrevOfKind(h, false)
+	if o == nil {
+		return 0
+	}
+	from, _ := s.st.seq.Pos(o)
+	to, _ := s.st.seq.Pos(h)
+	return x - (to - from - 1) // the handles between o and h are schema nodes
+}
+
 // extent is the physical range [plo, phi) that the logical schema range [lo, hi) spans: the same
 // range unless s is interleaved, where it includes the opaque nodes between its members (an
 // empty range: where a schema node at lo goes).

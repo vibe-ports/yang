@@ -451,7 +451,7 @@ func (p *jsonParser) metadataFinish(parent *Node) (result error) {
 				// then this counted run walk, cached once per schema.
 				// The run is collected, so numbering an instance reads no position.
 				var nodes []*Node
-				for _, c := range sib.schemaSpan().Slice(i, sib.SchemaLen()).All() {
+				for _, c := range sib.schemaSpan().Slice(i, sib.runPiece(i, sib.SchemaLen())).All() {
 					if c.schema != sn {
 						break
 					}
