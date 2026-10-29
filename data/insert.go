@@ -3013,6 +3013,11 @@ func (t *Tree) unlinkAllDefaults(ns, defaults []*Node) (result error) {
 		if err := unlinkCheck(n); err != nil {
 			return err
 		}
+		// the batch's freeLinks: a counterpart governed by an operation waiting on user code
+		// refuses the batch before its first removal (design 13 §2.4 (5))
+		if err := linkGuard(n, &t.work); err != nil {
+			return err
+		}
 	}
 	if err := t.preflightUnlinkAll(ns); err != nil {
 		return err

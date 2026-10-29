@@ -177,6 +177,11 @@ func (t *Tree) TrimXPath(expr string, o XPathOptions) (d []yang.Diagnostic, err 
 	if !chargeBulkFreeLinks(freeNodes, charge, &t.work) {
 		return budgetErr()
 	}
+	for _, n := range freeNodes { // the cleaner's link edits, refused before any removal (design 13 §2.4 (5))
+		if err := linkGuard(n, &t.work); err != nil {
+			return l.diags, l.done(err)
+		}
+	}
 	defaults := npContDfltAffected(free)
 	// unlinkAllDefaults groups its first-instance simulation by sibling set. Preflight the
 	// grouping, each set's position table, and its own removal walk before any mutation.

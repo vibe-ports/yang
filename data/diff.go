@@ -361,6 +361,9 @@ func diffDone(lg *logger, err error) error {
 		return lg.done(err)
 	}
 	for _, it := range de.items {
+		if it == errInProgress {
+			lg.guard = true
+		}
 		_ = lg.logErr(it.Err, "%s", it.Msg)
 	}
 	if de.rc != "" {

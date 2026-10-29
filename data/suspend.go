@@ -309,15 +309,14 @@ func refusedEntry(set *schema.Set) error { _, err := refusedEntryDiags(set); ret
 // refusedEntryDiags is refusedEntry with the diagnostics, for the calls that return them.
 func refusedEntryDiags(set *schema.Set) ([]yang.Diagnostic, error) {
 	lg := &logger{set: set}
-	err := lg.done(errInProgress)
+	err := lg.done(errInProgress) // marks the logger, so the *ValidationError carries the marker
 	return lg.diags, err
 }
 
-// isGuardRefusal reports whether err is, or carries, the guard's refusal in any of the forms our
-// conversions give it: the error itself, an *opError or a *diffError item that copied its
-// message, a *ValidationError that logged it. Only this module's and the standard library's
-// wrappers are walked, so no user method runs (identity is not relied on: a conversion that
-// logs or copies the message keeps the refusal visible).
+// isGuardRefusal reports whether err is, or carries, the guard's refusal, by its private marker
+// (never by text, which a schema's error-message could imitate): the errInProgress singleton
+// itself or as a *diffError item, or a *ValidationError that logged it (guard). Only this
+// module's and the standard library's wrappers are walked, so no user method runs.
 func isGuardRefusal(err error) bool {
 	stack := []error{err}
 	for len(stack) != 0 {
@@ -327,17 +326,17 @@ func isGuardRefusal(err error) bool {
 		case nil:
 			continue
 		case *opError:
-			if x == errInProgress || x.Msg == errInProgress.Msg {
+			if x == errInProgress {
 				return true
 			}
 		case *diffError:
 			for _, it := range x.items {
-				if it == errInProgress || it.Msg == errInProgress.Msg {
+				if it == errInProgress {
 					return true
 				}
 			}
 		case *ValidationError:
-			if hasRefusalDiag(x.Diags) {
+			if x.guard {
 				return true
 			}
 		case *restoredErr, *userErr:
@@ -356,7 +355,8 @@ func isGuardRefusal(err error) bool {
 	return false
 }
 
-// hasRefusalDiag reports whether diags log the guard's refusal.
+// hasRefusalDiag reports whether diags log the guard's message: a presence check of the public
+// form, never a classification (isGuardRefusal uses the marker).
 func hasRefusalDiag(diags []yang.Diagnostic) bool {
 	for _, d := range diags {
 		if d.Msg == errInProgress.Msg {
@@ -377,7 +377,7 @@ func normalizeRefusal(set *schema.Set, err *error, diags *[]yang.Diagnostic) {
 		return
 	}
 	ve, logged := (*err).(*ValidationError) //nolint:errorlint // our own type at the top of the chain only
-	if !logged || ve.RC() != "LY_EINVAL" || !hasRefusalDiag(ve.Diags) {
+	if !logged || !ve.guard || ve.RC() != "LY_EINVAL" || !hasRefusalDiag(ve.Diags) {
 		d, e := refusedEntryDiags(set)
 		*err = e
 		if diags != nil && !hasRefusalDiag(*diags) {
@@ -385,7 +385,7 @@ func normalizeRefusal(set *schema.Set, err *error, diags *[]yang.Diagnostic) {
 		}
 		return
 	}
-	if diags != nil && !hasRefusalDiag(*diags) {
-		*diags = append(*diags, ve.Diags...)
+	if diags != nil && (len(*diags) == 0 || (*diags)[len(*diags)-1] != ve.Diags[len(ve.Diags)-1]) {
+		*diags = append(*diags, ve.Diags[len(ve.Diags)-1])
 	}
 }

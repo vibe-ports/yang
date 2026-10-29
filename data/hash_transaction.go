@@ -548,16 +548,12 @@ func (j *hashTransaction) endKeeping(result *error) {
 }
 
 // guardRefused reports whether the operation met the guard's refusal: its sticky flag, or the
-// refusal in the result or in the sticky error of a counter it runs on (its tree's, a lent one),
-// in any form isGuardRefusal sees. It marks the flag.
+// refusal's marker in the result or in its own tree's sticky error. It marks the flag.
 func (j *hashTransaction) guardRefused(result *error) bool {
+	// its own counter's sticky error is its own (reset when its quota scope began); a lent
+	// counter's may be an earlier operation's, which this one must not import
 	if !j.refused && (isGuardRefusal(j.tree.work.hashErr) || result != nil && isGuardRefusal(*result)) {
 		j.refused = true
-	}
-	for _, w := range j.lent {
-		if !j.refused && isGuardRefusal(w.hashErr) {
-			j.refused = true
-		}
 	}
 	return j.refused
 }

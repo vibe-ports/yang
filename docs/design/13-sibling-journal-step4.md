@@ -129,10 +129,14 @@ scope.
 **One refusal contract** (PR #327 review rounds 1–4). A state that meets the guard's refusal is
 marked `refused` (sticky): `refuse`, `refuseFor` and `refuseIn` mark it where the refused
 operation is known, and `end` marks it whenever its result or the sticky error of a counter it
-runs on carries the refusal in any form (`isGuardRefusal` recognises the refusal raw, copied into
-another `*opError` or a `*diffError`, or logged in a `*ValidationError`, walking only this
-module's and the standard library's wrappers). A refused state restores whatever error value
-reaches `end`/`endKeeping`. Every public boundary defers `normalizeRefusal` first, so after the
+runs on carries the refusal (`isGuardRefusal`). Recognition is by a private marker, never by
+text a schema's error-message could imitate: the `errInProgress` singleton itself or as a
+`*diffError` item, or a `*ValidationError` whose logger logged it (`guard`; `logger.done`,
+`diffDone`, `diagErr` and the parser carry the marker). Only this module's and the standard
+library's wrappers are walked. A lent counter's sticky error is never imported: it may be an
+earlier operation's. A refused state restores whatever error value
+reaches `end`/`endKeeping`. Bulk removals (`unlinkAllDefaults`, `TrimXPath`'s cleaner) check their link records before the
+first removal. Every public boundary defers `normalizeRefusal` first, so after the
 journal has ended the caller always gets the one public form: a `*ValidationError` with RC
 LY_EINVAL whose diagnostics log the refusal, also in the call's returned diagnostics.
 TestS4GuardPublicFormEveryReachPath checks every guarded entry through its receiver, a

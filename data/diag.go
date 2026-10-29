@@ -23,6 +23,7 @@ type ValidationError struct {
 	err   error  // yang.ErrBudget after a libyang nesting limit, or the XML lexer's silent error
 	rc    string // the call's LY_ERR when it is not that of the last error logged
 	set   *schema.Set
+	guard bool // it logs the suspension guard's refusal (design 13 §2.4): a private marker, never text
 }
 
 // Unwrap returns yang.ErrBudget when a nesting limit of the input stopped the parse, or the XML
@@ -76,6 +77,7 @@ type logger struct {
 	paths         []string                  // log_location.paths
 	inputs        []func() int              // log_location.inputs: the current line of each input
 	beforePath    func(*Node) map[*Node]int // parser-only: sorted positions of deferred-run nodes
+	guard         bool                      // it logged the suspension guard's refusal (errInProgress)
 }
 
 // suppress enters ly_temp_log_options(&zero) for this operation's diagnostic sink. Unlike an
@@ -283,7 +285,7 @@ func (e rcError) Error() string { return "data: " + string(e) }
 func (l *logger) result() error {
 	for i, d := range l.diags {
 		if !l.nonfatal[i] && failing(d) {
-			return &ValidationError{Diags: l.diags, set: l.set}
+			return &ValidationError{Diags: l.diags, set: l.set, guard: l.guard}
 		}
 	}
 	return nil
@@ -293,6 +295,9 @@ func (l *logger) result() error {
 // when it is a budget refusal or the call refused before logging (a journal capture error).
 func diagErr(lg *logger, err error) error {
 	if len(lg.diags) > 0 && !errors.Is(err, yang.ErrBudget) {
+		if lg.guard {
+			return errInProgress // the marker survives the copy
+		}
 		return &opError{lg.diags[0].Err, lg.diags[0].Msg}
 	}
 	return err

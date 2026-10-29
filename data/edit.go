@@ -53,6 +53,9 @@ func (l *logger) done(err error) error {
 	}
 	var oe *opError
 	if errors.As(err, &oe) {
+		if oe == errInProgress {
+			l.guard = true // the logged form keeps the private marker
+		}
 		err = l.logErr(oe.Err, "%s", oe.Msg)
 	}
 	if errors.Is(err, errLogged) {
@@ -60,7 +63,7 @@ func (l *logger) done(err error) error {
 	}
 	var rc rcError
 	if errors.As(err, &rc) {
-		return finish(&ValidationError{Diags: l.diags, rc: string(rc), set: l.set})
+		return finish(&ValidationError{Diags: l.diags, rc: string(rc), set: l.set, guard: l.guard})
 	}
 	return finish(err)
 }

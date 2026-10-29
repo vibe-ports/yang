@@ -763,7 +763,7 @@ func TestS4GuardPublicFormEveryReachPath(t *testing.T) {
 			return d, err
 		}),
 		"TrimXPath": ed(func(e env) ([]yang.Diagnostic, error) {
-			return e.recv.TrimXPath("/pv2-links:c/r", XPathOptions{})
+			return e.recv.TrimXPath("/pv2-links:c/t", XPathOptions{}) // keeps t: removes r, linked on the linked path
 		}),
 		"Validate": ed(func(e env) ([]yang.Diagnostic, error) { return e.recv.Validate(ctx, ValidateOptions{}) }),
 		"ValidateModule": ed(func(e env) ([]yang.Diagnostic, error) {
@@ -812,7 +812,13 @@ func TestS4GuardPublicFormEveryReachPath(t *testing.T) {
 					}
 					called = true
 					before := snapshotHashBudgetTree(e.recv)
+					waiting := s4StateImage(a)
 					diags, err := en.call(e)
+					// whatever the call's outcome, the waiting operation's tree, link records
+					// included, is untouched by it
+					if got := s4StateImage(a); got != waiting {
+						t.Errorf("%s/%s: the call (%v) changed the tree of the waiting operation", path, name, err)
+					}
 					if !isGuardRefusal(err) {
 						return nil // allowed, or an ordinary failure of this call
 					}
@@ -826,5 +832,97 @@ func TestS4GuardPublicFormEveryReachPath(t *testing.T) {
 				}
 			})
 		}
+	}
+}
+
+// s4StateImage is tr's typed dump, sibling state and every leafref record, for asserting an
+// operation leaves a tree (including its links into other trees) untouched.
+func s4StateImage(tr *Tree) string {
+	var b strings.Builder
+	fmt.Fprint(&b, snapshotHashBudgetTree(tr))
+	for root := range tr.Top() {
+		for n := range root.allAny() {
+			if n.links != nil {
+				fmt.Fprintf(&b, "|%p:%v:%v", n, n.links.leafrefs, n.links.targets)
+			}
+		}
+	}
+	return b.String()
+}
+
+// TestS4GuardCaughtRefusalDoesNotFailWaiter: a callback of A's deleting ApplyDiff edits B's
+// leafref linked into A, catches the refusal and returns nil. The refusal stays B's: when A
+// later enrolls B's counter (its deletion captures the link's counterpart), A does not import
+// B's sticky error, and ApplyDiff succeeds with the reference result (snapshot review 3).
+func TestS4GuardCaughtRefusalDoesNotFailWaiter(t *testing.T) {
+	set := s4LinksSet(t)
+	ref, _, _, _ := s4LinkedPair(t, set)
+	if err := ref.ApplyDiff(s4Diff(t, set, ref, true), ApplyDiffOptions{}); err != nil {
+		t.Fatal(err)
+	}
+	want := typedDump(ref)
+	a, _, _, r := s4LinkedPair(t, set)
+	called := false
+	err := a.ApplyDiff(s4Diff(t, set, a, true), ApplyDiffOptions{Callback: func(_, _ *Node) error {
+		if !called {
+			called = true
+			if _, err := r.SetValue("b"); !s4Refused(err) {
+				t.Errorf("the linked edit: %v, want the guard's refusal", err)
+			}
+		}
+		return nil
+	}})
+	if err != nil || !called {
+		t.Fatalf("ApplyDiff: %v (called %t), want success", err, called)
+	}
+	if got := typedDump(a); !reflect.DeepEqual(got, want) {
+		t.Fatalf("history differs from the reference:\n%v\nwant\n%v", got, want)
+	}
+}
+
+// TestS4GuardMessageIsNotTheMarker: a schema error-message equal to the guard's text is an
+// ordinary validation failure: Validate keeps LY_EVALID, ValidateDiff keeps its default
+// insertion and its diff (the refusal is recognised by a private marker, not by text;
+// snapshot review 3).
+func TestS4GuardMessageIsNotTheMarker(t *testing.T) {
+	set := opIndexSet(t, `module m { yang-version 1.1; namespace "urn:m"; prefix m;
+  container c { leaf x { type string; must "false()" { error-message "`+errInProgress.Msg+`"; } }
+    leaf d { type string; default "v"; } } }`)
+	build := func() *Tree {
+		tr := newTree(set)
+		c, err := tr.NewInner(nil, "m:c", NewOptions{})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, err := tr.NewTerm(c, "x", "1", NewOptions{}); err != nil {
+			t.Fatal(err)
+		}
+		return tr
+	}
+	ds, err := build().ValidateModule(context.Background(), "m", ValidateOptions{})
+	if !hasRefusalDiag(ds) {
+		t.Fatalf("setup: the must message is not the guard's text: %v", ds)
+	}
+	var ve *ValidationError
+	if !errors.As(err, &ve) || ve.RC() != "LY_EVALID" || isGuardRefusal(err) {
+		t.Fatalf("ValidateModule: %v, want an ordinary LY_EVALID failure", err)
+	}
+	tr := build()
+	diff, _, err := tr.ValidateModuleDiff(context.Background(), "m", ValidateOptions{})
+	if !errors.As(err, &ve) || ve.RC() != "LY_EVALID" {
+		t.Fatalf("ValidateModuleDiff: %v, want LY_EVALID", err)
+	}
+	if s4Child(tr.top.first(), "d", "v") == nil || diff == nil {
+		t.Fatal("ValidateDiff discarded its default insertion")
+	}
+}
+
+// TestS4ParseOpNilSchema: ParseOp with a nil schema returns its argument error (snapshot
+// review 3: the refusal normalizer must not dereference it).
+func TestS4ParseOpNilSchema(t *testing.T) {
+	_, _, err := ParseOp(context.Background(), strings.NewReader("{}"), FormatJSON, nil, OpRPC, ParseOpOptions{})
+	var ve *ValidationError
+	if !errors.As(err, &ve) || ve.RC() != "LY_EINVAL" {
+		t.Fatalf("ParseOp with a nil schema: %v", err)
 	}
 }

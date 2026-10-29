@@ -471,7 +471,7 @@ func parseWith(ctx context.Context, r io.Reader, s *schema.Set, o parseOpts, fp 
 	if err == nil && !lc.rcOnly {
 		err = lc.log.result()
 	} else if errors.Is(err, errLogged) {
-		ve := &ValidationError{Diags: lc.log.diags}
+		ve := &ValidationError{Diags: lc.log.diags, guard: lc.log.guard}
 		if re := (*rcErr)(nil); errors.As(err, &re) {
 			ve.rc = re.rc
 		}
@@ -483,7 +483,7 @@ func parseWith(ctx context.Context, r io.Reader, s *schema.Set, o parseOpts, fp 
 	}
 	var rc rcError
 	if errors.As(err, &rc) {
-		err = &ValidationError{Diags: lc.log.diags, rc: string(rc)}
+		err = &ValidationError{Diags: lc.log.diags, rc: string(rc), guard: lc.log.guard}
 	}
 	if lc.limitHit && errors.As(err, &ve) {
 		ve.err = yang.ErrBudget
