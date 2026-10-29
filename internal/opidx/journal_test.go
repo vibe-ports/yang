@@ -465,7 +465,7 @@ func TestPlannerPaysBeforeEachVisit(t *testing.T) {
 			calls += units
 			return calls <= budget
 		}
-		if b := seq.InsertBound(anchor, true, pay); b != ^uint64(0) && calls > budget {
+		if b := seq.InsertBound(anchor, true, PayFunc(pay)); b != ^uint64(0) && calls > budget {
 			t.Fatalf("budget %d: a refused plan returned the bound %d", budget, b)
 		}
 		if calls > budget+1 {
@@ -474,7 +474,7 @@ func TestPlannerPaysBeforeEachVisit(t *testing.T) {
 	}
 	unpaid := seq.InsertBound(anchor, true, nil)
 	paid := uint64(0)
-	if seq.InsertBound(anchor, true, func(u uint64) bool { paid += u; return true }) != unpaid {
+	if seq.InsertBound(anchor, true, PayFunc(func(u uint64) bool { paid += u; return true })) != unpaid {
 		t.Fatal("paying changed the bound")
 	}
 	if paid < 8 {

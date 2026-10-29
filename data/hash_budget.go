@@ -372,16 +372,16 @@ func (w *workCounter) checkRefreshHash(n *Node) error {
 }
 
 // planPay charges an index bound's planning walk step by step, before each visit, to the
-// operation's quota (outside a prepaid scope: a planner runs before its edit's prepay). Nil
-// counters plan unpaid (a fresh view has no quota).
+// operation's quota (outside a prepaid scope: a planner runs before its edit's prepay). A nil
+// counter plans unpaid (a fresh view has no quota).
 func (w *workCounter) planPay() opidx.Pay {
 	if w == nil {
 		return nil
 	}
-	return func(units uint64) bool {
-		if w.prepaid {
-			return true // planning inside a scope is paid by the enclosing bound
-		}
-		return w.chargeHash(units) == nil
-	}
+	return planPayer{w}
 }
+
+type planPayer struct{ w *workCounter }
+
+// Pay charges units, unless a prepaid scope's bound pays the planning already.
+func (p planPayer) Pay(units uint64) bool { return p.w.prepaid || p.w.chargeHash(units) == nil }

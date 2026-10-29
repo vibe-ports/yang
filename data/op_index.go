@@ -461,10 +461,10 @@ func (s *siblings) publicationIndexBound(run siblingSpan) uint64 {
 	}
 	planned := uint64(0)
 	pay := s.work.planPay()
-	counted := func(units uint64) bool {
+	counted := opidx.PayFunc(func(units uint64) bool {
 		planned += units
-		return pay == nil || pay(units)
-	}
+		return pay == nil || pay.Pay(units)
+	})
 	bound = addHashBound(bound, o.seq.ReplaceHandlesBound(first, last, run.Len(), journaled, counted))
 	return addHashBound(bound, planned) // orderReorder plans the same walk again
 }

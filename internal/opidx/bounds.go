@@ -8,8 +8,15 @@ import (
 )
 
 // Pay charges planning work before it is done; false refuses it (the planner stops, and its bound
-// saturates so the caller's prepay refuses). Nil plans unpaid.
-type Pay func(units uint64) bool
+// saturates so the caller's prepay refuses). Nil plans unpaid. An interface, not a func: a
+// pointer receiver converts without allocating.
+type Pay interface{ Pay(units uint64) bool }
+
+// PayFunc adapts a function to Pay.
+type PayFunc func(units uint64) bool
+
+// Pay calls f.
+func (f PayFunc) Pay(units uint64) bool { return f(units) }
 
 // Point bounds (#240 step 4, design 13 §7): what one mutation charges through its hooks, its
 // work units plus two units per recorded image and three per map cell, for the actual AVL
@@ -103,7 +110,7 @@ func (s *Seq[T]) MoveBound(h, anchor *Handle[T], journaled bool, pay Pay) uint64
 // placed between prev and next (either nil at an end), skip being absent from the order: the
 // same window search, read-only.
 func (s *Seq[T]) planLabel(prev, next, skip *Handle[T], count, scale, length int, pay Pay) (charges, touched uint64, ok bool) {
-	step := func() bool { return pay == nil || pay(1) }
+	step := func() bool { return pay == nil || pay.Pay(1) }
 	before := func(x *Handle[T]) *Handle[T] {
 		if x = x.prev; x == skip && x != nil {
 			x = x.prev
