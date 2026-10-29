@@ -87,8 +87,9 @@ cancellation point and truncated inputs over data and operation parses.
 
 ## Complexity
 
-Positional reads are descents: `At` counts its levels as sibling visits (test builds), the two
-ends are threaded (O(1)), and every sequential consumer walks the threads instead (iterators,
+Positional reads are descents: `At` counts its levels as sibling visits (test builds); a
+position closer to either end than the tree's height is walked along the threads from that end
+instead (a list's key prefix, an end's neighbour: O(distance)), and every sequential consumer walks the threads instead (iterators,
 `siblingSpan.cursor`, handle neighbours); lookups return the node they found rather than a
 position to read again (`schemaFind`, `foreignSchemaFind`). Point reads stay O(log n) and
 uncharged, as slice indexing was; they are O(1) per edit. A point edit costs O(log n + L)
@@ -145,6 +146,18 @@ The third snapshot review (`240s5-snap3`) found two more: the index rebuild afte
 publication had lost its reservation when the publication charge became run-sized (now reserved
 with it: TestMergeSparseBatchChargesRebuild), and sequential readers remained (key comparisons,
 run ends, metadata walks, the removal neighbours), now threaded walks.
+
+The PR reviews found loops that had read a slice by index and now descended per read
+(O(n log n), uncharged): the JSON metadata cursor and metadata walks, and the left-run scan of a
+removed separator, which now runs in the unlink preflight as a walk back from the predecessor,
+one charged unit per member, its leader cached in the plan (TestUnlinkSeparatorLeftRunCharged:
+linear, and a budget one unit short refuses before any write). A sweep of every remaining
+positional read outside tests left no per-element loop over positions: the dup-cache run slot
+(`runSlot`) and `firstModuleSibling` walk the threads, the unlink plan reads its neighbours from
+the handle, and the key-prefix loops (`keyLinked`, `checkKeys`, `positionalChild`,
+`termHashBound`, `exposeListKeys`, `HashKeyValuesEqual`) read positions below the key count,
+which `At` walks from the front. The rest are O(1) point reads per edit: neighbours of a link or
+unlink position, run leaders and ends, a first or last sibling.
 
 **Open:** a point read by position (`At`) is an O(log n) descent counted as sibling visits but
 not charged to the enforced quota, as slice indexing was not; every remaining use reads O(1)

@@ -2793,13 +2793,7 @@ func unlink(n *Node) error {
 		}
 		sib.runGone(n)
 	} else if i := plan.at; i >= 0 {
-		var prev, next *Node
-		if i > 0 {
-			prev = sib.At(i - 1)
-		}
-		if i+1 < sib.SchemaLen() {
-			next = sib.At(i + 1)
-		}
+		prev, next := plan.prev, plan.next
 		if err := sib.removeRBNode(n, prev, next, sib.nativeTail(), nil); err != nil {
 			sib.work.hashErr = err
 			return err
@@ -2808,24 +2802,17 @@ func unlink(n *Node) error {
 			sib.work.hashErr = err
 			return err
 		}
-		if i > 0 && i+1 < sib.SchemaLen() && n.schema != sib.At(i-1).schema &&
-			sib.At(i-1).schema == sib.At(i+1).schema {
+		if left := plan.left; left != nil && sib.rbTree[left] {
 			// Removing a separator joins physical runs, but their RB trees do not merge.
-			left := i - 1
-			for left > 0 && sib.At(left-1).schema == sib.At(left).schema {
-				left--
-			}
-			if sib.rbTree[sib.At(left)] {
-				markUnsorted(sib, sib.At(left))
-			}
+			markUnsorted(sib, left)
 		}
 		sameRetainedRun := func(next *Node) bool {
 			return next != nil && (next.schema == n.schema ||
 				n.inRB && n.rbGroup != nil && next.inRB && next.rbGroup == n.rbGroup)
 		}
 		if sib.firstRun[n.schema] == n {
-			if i+1 < sib.SchemaLen() && sameRetainedRun(sib.At(i+1)) {
-				sib.firstRun[n.schema] = sib.At(i + 1)
+			if sameRetainedRun(next) {
+				sib.firstRun[n.schema] = next
 			} else {
 				delete(sib.firstRun, n.schema)
 			}

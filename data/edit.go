@@ -1658,11 +1658,13 @@ func (t *Tree) moved(c *dupCache, n *Node) {
 }
 
 // runSlot is where n goes in run, its equal instances in sibling order: before the nearest run
-// member after n, after the nearest one before it. It walks out from n both ways at once, so the
-// cost is at most the distance to the nearer end of l, which the insertion of n shifted anyway.
+// member after n, after the nearest one before it. It walks out from n both ways at once along
+// the storage threads, so the cost is at most the distance to the nearer end of l.
 func (t *Tree) runSlot(sib *siblings, run []*Node, n *Node, k idxKey) int {
 	l := sib.schemaSpan()
 	at := sib.orderPosition(n)
+	fh := sib.handle(n)
+	bh := fh
 	member := func(c *Node) int {
 		if c.schema != n.schema {
 			return -1
@@ -1680,10 +1682,11 @@ func (t *Tree) runSlot(sib *siblings, run []*Node, n *Node, k idxKey) int {
 		if b < 0 {
 			return 0 // none before n
 		}
-		if i := member(l.At(f)); i >= 0 {
+		fh, bh = sib.st.seq.Next(fh), sib.st.seq.Prev(bh)
+		if i := member(fh.Value); i >= 0 {
 			return i
 		}
-		if i := member(l.At(b)); i >= 0 {
+		if i := member(bh.Value); i >= 0 {
 			return i + 1
 		}
 	}

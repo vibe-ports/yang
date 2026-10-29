@@ -63,23 +63,26 @@ func (vc *valCtx) firstModuleSibling(top siblingSpan, start int, mod *schema.Mod
 		cmp = strings.Compare(own.Name, mod.Name)
 	}
 	if cmp > 0 { // there may be some preceding data
-		for first > 0 {
+		for i, c := range top.Slice(0, first).Reverse() {
 			if err := vc.checkContext(); err != nil {
 				return 0, err
 			}
-			first--
-			if ownerModule(vc.t.context(), top.At(first)) == mod {
+			first = i
+			if ownerModule(vc.t.context(), c) == mod {
 				cmp = 0
 				break
 			}
 		}
 	}
 	if cmp == 0 { // there may be some preceding data of this module
-		for first > 0 && ownerModule(vc.t.context(), top.At(first-1)) == mod {
+		for i, c := range top.Slice(0, first).Reverse() {
+			if ownerModule(vc.t.context(), c) != mod {
+				break
+			}
 			if err := vc.checkContext(); err != nil {
 				return 0, err
 			}
-			first--
+			first = i
 		}
 		return first, nil
 	}

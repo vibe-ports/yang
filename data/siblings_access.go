@@ -4,6 +4,7 @@ package data
 
 import (
 	"iter"
+	"math/bits"
 	"slices"
 
 	"github.com/vibe-ports/yang/internal/opidx"
@@ -118,20 +119,30 @@ func (s *siblings) SchemaLen() int {
 
 func (s *siblings) OpaqueLen() int { return s.Len() - s.SchemaLen() }
 
-// At is the node at position i: one descent of the storage, its levels counted as sibling
-// visits. A sequential walk uses an iterator (All, Range, from, back) instead.
+// At is the node at position i: a walk along the threads from the nearer end when i is closer
+// to it than the tree's height (a list's keys, a neighbour of an end), else one descent; its
+// steps or levels are counted as sibling visits. A sequential walk uses an iterator (All, Range,
+// from, back) instead.
 func (s *siblings) At(i int) *Node { return s.st.at(i) }
 
 func (st *siblingStore) at(i int) *Node {
-	switch i {
-	case 0: // the ends are threaded: no descent
-		return st.seq.First().Value
-	case st.seq.Len() - 1:
-		return st.seq.Last().Value
+	n := st.seq.Len()
+	var h *opidx.Handle[*Node]
+	steps := 0
+	switch height := bits.Len(uint(n)); { //nolint:gosec // a length is nonnegative
+	case i < height:
+		for h = st.seq.First(); steps < i; steps++ {
+			h = st.seq.Next(h)
+		}
+	case n-1-i < height:
+		for h = st.seq.Last(); steps < n-1-i; steps++ {
+			h = st.seq.Prev(h)
+		}
+	default:
+		h, steps = st.seq.PeekLevels(i)
 	}
-	h, levels := st.seq.PeekLevels(i)
-	if o := st.bind.owner; o != nil && o.work != nil && o.work.visits { // tests only
-		o.work.Add(int64(levels))
+	if o := st.bind.owner; o != nil && o.work != nil && o.work.visits && steps != 0 { // tests only
+		o.work.Add(int64(steps))
 	}
 	return h.Value
 }

@@ -11,7 +11,10 @@ type unlinkPlan struct {
 	gen                      uint64
 	at                       int
 	prev, next, tail, leader *Node
-	order                    *dirtyOrder
+	// left is the physical leader of the run a removed separator joins to the next one, found
+	// by a charged walk back from prev; nil when n separates no run or no run has an RB tree
+	left  *Node
+	order *dirtyOrder
 }
 
 func prepareUnlink(n *Node) (*unlinkPlan, error) {
@@ -48,12 +51,31 @@ func prepareUnlink(n *Node) (*unlinkPlan, error) {
 	if at < 0 {
 		return nil, &opError{"LY_EINT", "Unlinked node in sibling storage."}
 	}
-	var prev, next *Node
+	var prev, next *Node // n's thread neighbours within its partition
+	h := sib.handle(n)
 	if at > 0 {
-		prev = nodes.At(at - 1)
+		prev = sib.st.seq.Prev(h).Value
 	}
 	if at+1 < nodes.Len() {
-		next = nodes.At(at + 1)
+		next = sib.st.seq.Next(h).Value
+	}
+	var left *Node
+	if n.schema != nil && prev != nil && next != nil && n.schema != prev.schema &&
+		prev.schema == next.schema && len(sib.rbTree) != 0 {
+		// removing a separator joins two runs: unlink marks the left run's tree unsorted
+		h = sib.st.seq.Prev(h) // prev, walked back to its run's first member, a charged step each
+		for {
+			if err := w.chargeHash(1); err != nil {
+				return nil, err
+			}
+			sib.visit()
+			p := sib.st.seq.Prev(h)
+			if p == nil || p.Value.schema != prev.schema {
+				break
+			}
+			h = p
+		}
+		left = h.Value
 	}
 	tail := sib.nativeTail()
 	order, leader, err := sib.removalOrder(n, prev, next, tail, nil)
@@ -78,7 +100,7 @@ func prepareUnlink(n *Node) (*unlinkPlan, error) {
 	if err := w.chargeHash(amount); err != nil {
 		return nil, err
 	}
-	p := &unlinkPlan{node: n, sib: sib, gen: sib.gen, at: at, prev: prev, next: next, tail: tail, order: order, leader: leader}
+	p := &unlinkPlan{node: n, sib: sib, gen: sib.gen, at: at, prev: prev, next: next, tail: tail, left: left, order: order, leader: leader}
 	w.unlinkPlan = p
 	return p, nil
 }
