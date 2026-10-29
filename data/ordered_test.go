@@ -35,6 +35,22 @@ func parseOrdered(t testing.TB, set *schema.Set, xml bool, in string, setup func
 	return tr, err
 }
 
+// ordered2Set loads pv2-ordered2, then the other modules, into a context of its own (an owned
+// snapshot).
+func ordered2Set(t testing.TB, more ...string) *schema.Set {
+	t.Helper()
+	c, ds, err := yang.NewContext(yang.Options{NoYangLibrary: true}, os.DirFS("../conformance/corpus/protocol-v2/schemas"))
+	if err != nil {
+		t.Fatal(ds, err)
+	}
+	for _, m := range append([]string{"pv2-ordered2"}, more...) {
+		if ds, err := c.Load(m, "", nil); err != nil {
+			t.Fatal(ds, err)
+		}
+	}
+	return snap.Set(c.Schema())
+}
+
 func orderedChildren(t testing.TB, tr *Tree) []string {
 	t.Helper()
 	for c := range tr.Top() {
@@ -525,17 +541,7 @@ func TestRootLookupMixedContexts(t *testing.T) {
 // lyd_find_sibling_first compares equivalent schemas across contexts, so the probe is
 // translated into the siblings' context before it matches.
 func TestInterleavedLookupForeignInstance(t *testing.T) {
-	owned := func() *schema.Set {
-		c, ds, err := yang.NewContext(yang.Options{NoYangLibrary: true}, os.DirFS("../conformance/corpus/protocol-v2/schemas"))
-		if err != nil {
-			t.Fatal(ds, err)
-		}
-		if ds, err := c.Load("pv2-ordered2", "", nil); err != nil {
-			t.Fatal(ds, err)
-		}
-		return snap.Set(c.Schema())
-	}
-	setA, setB := owned(), owned()
+	setA, setB := ordered2Set(t), ordered2Set(t)
 	trB, err := parseOrdered(t, setB, false, `{"pv2-ordered2:c":{"l":[{"k":"w"}],"zz":"u","l":[{"k":"x"}]}}`, nil)
 	if err != nil {
 		t.Fatal(err)
@@ -668,5 +674,130 @@ func TestForeignPositionPastOpaque(t *testing.T) {
 	}
 	if !slices.Equal(got, []string{"1"}) {
 		t.Fatalf("LYD_LIST_FOR_INST from the first instance = %v, want [1] (%v)", got, names(tr.Top()))
+	}
+}
+
+// TestAloneLeaderUnlink: a single unlink reads node->prev and node->next in document order,
+// whatever their kind, as LYD_NODE_IS_ALONE does: ll 1 sits between two opaque nodes, so its
+// RB leader is alone although a later piece of ll holds the last sibling. Single and batch
+// unlink agree, and so does reinserting the node (oracle: protocol-v2/ordered-unlink-alone-leader).
+func TestAloneLeaderUnlink(t *testing.T) {
+	set := ordered2Set(t) // an owned snapshot: the detached node can be inserted again
+	build := func() (*Tree, *Node, *Node) {
+		tr, err := parseOrdered(t, set, false, `{"pv2-ordered2:c":{"zz":"u","ll":[1],"yy":"v","ll":[9,10,11]}}`, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var c *Node
+		for c = range tr.Top() {
+			break
+		}
+		two, err := tr.NewTerm(c, "ll", "2", NewOptions{})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := two.Unlink(); err != nil {
+			t.Fatal(err)
+		}
+		for n := range c.Children() {
+			if n.Name() == "ll" {
+				return tr, c, n
+			}
+		}
+		t.Fatal("no ll")
+		return nil, nil, nil
+	}
+	single, sc, n := build()
+	if err := n.Unlink(); err != nil {
+		t.Fatal(err)
+	}
+	batch, bc, m := build()
+	if err := batch.unlinkAll([]*Node{m}); err != nil {
+		t.Fatal(err)
+	}
+	opidxAssertTreeInvariant(t, single)
+	opidxAssertTreeInvariant(t, batch)
+	if got, want := typedDump(batch), typedDump(single); !slices.Equal(got, want) {
+		t.Fatalf("batch %v, single %v", got, want)
+	}
+	if n.detachedRB == nil || (m.detachedRB == nil) != (n.detachedRB == nil) {
+		t.Fatalf("the alone leader's RB metadata: single %v, batch %v", n.detachedRB != nil, m.detachedRB != nil)
+	}
+	for _, x := range []struct {
+		tr   *Tree
+		c, n *Node
+	}{{single, sc, n}, {batch, bc, m}} {
+		if err := x.tr.Insert(x.c, x.n); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := x.tr.NewTerm(x.c, "ll", "0", NewOptions{}); err != nil {
+			t.Fatal(err)
+		}
+		opidxAssertTreeInvariant(t, x.tr)
+		if got := names(x.c.Children()); !slices.Equal(got, []string{"zz", "yy", "ll=0", "ll=1", "ll=9", "ll=10", "ll=11"}) {
+			t.Fatalf("after reinsertion: %v", got)
+		}
+	}
+}
+
+// TestForeignFirstSchemaHashed: a merge whose matched parent is of another context links foreign
+// children into a child level (lyd_merge_sibling_r inserts its copies without
+// lyd_insert_check_schema). When
+// the physical first sibling is the tree's own opaque node but the first schema node is
+// foreign, lyd_insert_get_next_anchor reads LYD_CTX(first_sibling), the opaque node's: a local
+// insertion takes the children table path and goes before the next schema sibling's instance.
+func TestForeignFirstSchemaHashed(t *testing.T) {
+	setA, setB := ordered2Set(t, "pv2-ordered3"), ordered2Set(t)
+	tr, err := parseOrdered(t, setA, false, `{"pv2-ordered2:c":{"zz":"u","d":"q","ll":[1,2]}}`, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var c *Node
+	for c = range tr.Top() {
+		break
+	}
+	for _, in := range []string{`{"pv2-ordered2:c":{"a":"x"}}`, `{"pv2-ordered2:c":{"b":"y"}}`} {
+		// a source whose first root is of the tree's context, then a foreign c (as
+		// protocol-v2/merge-foreign-child builds one)
+		src, err := parseOrdered(t, setA, false, `{"pv2-ordered3:a":"x"}`, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		fb, _, err := parseJSONString(setB, in, Reject, false)
+		if err != nil {
+			t.Fatal(err)
+		}
+		f := fb.top.first()
+		if err := unlink(f); err != nil {
+			t.Fatal(err)
+		}
+		if err := src.link(nil, &src.top, f, src.top.SchemaLen()); err != nil {
+			t.Fatal(err)
+		}
+		if err := tr.Merge(src); err != nil {
+			t.Fatal(err)
+		}
+	}
+	// the first merge's linear walk stops at the opaque first sibling; the second one's first
+	// sibling is foreign, as b is: by the table, before d
+	if got := names(c.Children()); !slices.Equal(got, []string{"a=x", "zz", "b=y", "d=q", "ll=1", "ll=2"}) {
+		t.Fatalf("after the merges: %v", got)
+	}
+	var a *Node
+	for a = range c.Children() {
+		break
+	}
+	if err := a.Unlink(); err != nil {
+		t.Fatal(err)
+	}
+	if c.kids.ht == nil || !c.kids.st.interleaved() || ctxOf(c.kids.At(0)) != setB {
+		t.Fatal("want an interleaved child level with a table and a foreign first schema node")
+	}
+	if _, err := tr.NewTerm(c, "c", "z", NewOptions{}); err != nil {
+		t.Fatal(err)
+	}
+	opidxAssertTreeInvariant(t, tr)
+	if got := names(c.Children()); !slices.Equal(got, []string{"zz", "b=y", "c=z", "d=q", "ll=1", "ll=2"}) {
+		t.Fatalf("after the insertion: %v", got)
 	}
 }

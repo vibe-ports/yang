@@ -1,0 +1,20 @@
+# sorted insertions into a leaf-list run split by an opaque node, before and after the children table exists: lyds_insert's leader is lyd_find_sibling_schema's first match (the linear walk, then the table's first registered first-instance record), and each insertion moves or adds records (lyd_insert_hash_add)
+fixtures:
+  - id: protocol-v2/ordered-split-run-records
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#7.7.7"]
+    areas: [codecs]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      context_options: ["no_yanglibrary"]
+      modules: [{name: "pv2-ordered2"}]
+      steps:
+        - {do: parse, format: json, data_type: get, unknown: opaque, parse_options: [ordered], data: '{"pv2-ordered2:c": {"ll": [3], "zz": "u", "ll": [1]}}'}
+        - {do: edit, insert_term: {parent: /pv2-ordered2:c, name: ll, value: "5"}}
+        - {do: edit, insert_term: {parent: /pv2-ordered2:c, name: ll, value: "2"}}
+        - {do: edit, insert_term: {parent: /pv2-ordered2:c, name: ll, value: "0"}}
+        - {do: edit, insert_term: {parent: /pv2-ordered2:c, name: ll, value: "9"}}
+        - {do: dump}
+    golden: golden/ordered-split-run-records.json

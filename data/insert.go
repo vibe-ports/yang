@@ -586,7 +586,8 @@ func (t *Tree) crossContextInsertPos(sib *siblings, n *Node, newCtx *schema.Set,
 	if n.schema.InOutput() {
 		opts = schema.GetNextOutput
 	}
-	if ctxOf(l.At(0)) == newCtx && l.At(0).parent != nil && l.At(0).parent.schema != nil && sib.ht != nil {
+	// LYD_CTX(first_sibling): the physical first sibling, an opaque one included (design 15)
+	if ctxOf(sib.docFirst()) == newCtx && l.At(0).parent != nil && l.At(0).parent.schema != nil && sib.ht != nil {
 		parent := l.At(0).parent.schema
 		// lyd_find_sibling_schema is a hash lookup in libyang. The mixed sibling set being built
 		// has no lineage index, so each probe indexes it once; the schema walk and the index are
@@ -637,6 +638,16 @@ func (t *Tree) crossContextInsertPos(sib *siblings, n *Node, newCtx *schema.Set,
 						return l.Len(), true
 					}
 					if schemaLookupMatch(c.schema, sn, true) {
+						if sib.st.interleaved() {
+							// a split run has a record per piece: the table returns the bucket's
+							// first registered one, not the document-first instance (design 15)
+							if t.work.chargeHash(uint64(len(sib.leaders))) != nil {
+								return l.Len(), true
+							}
+							if r := sib.leaderFirstMixed(sn); r != nil {
+								return max(sib.orderPosition(r), 0), true
+							}
+						}
 						return i + j, true
 					}
 				}
@@ -1153,7 +1164,7 @@ func (t *Tree) logicalRunBounds(sib *siblings, n *Node) (lo, hi int) {
 		// Position locates the insertion run; the nearer endpoint scan is bounded by
 		// the insertion shift plus the run walked/sorted here.
 		if lo, hi, ok := sib.contiguousBounds(leader); ok {
-			return lo, hi
+			return lo, sib.runPiece(lo, hi) // an opaque sibling ends the run (design 15)
 		}
 		// A copied user-ordered schema may have split runs. Native lyds_insert
 		// selects one run and must walk it; charge those unavoidable visits.
@@ -1431,7 +1442,7 @@ func (t *Tree) unorderedAnchor(sib *siblings, n *Node) int {
 	dp := n.schema.DataParent()
 	// The children_ht branch needs LYD_CTX(first_sibling) == LYD_CTX(new_node)
 	// (tree_data.c:522-523); a foreign first sibling takes the linear walk.
-	if sib.ht != nil && (sib.SchemaLen() == 0 || sameSet(ctxOf(sib.At(0)), ctxOf(n))) {
+	if sib.ht != nil && (sib.SchemaLen() == 0 || sameSet(ctxOf(sib.docFirst()), ctxOf(n))) {
 		order, from := t.opOrder(dp, false), t.schemaRank(n.schema)+1
 		if sib.SchemaLen() > 0 && sib.At(0).parent != nil {
 			if sp := sib.At(0).parent.schema; sp != nil && dp != sp {

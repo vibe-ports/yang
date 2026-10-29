@@ -76,7 +76,7 @@ var ignoredErrorAllowlist = map[string]string{
 	"parse_json.go:97:lexErr":                "lexErr performs the required logging; parser construction returns its fatal marker",
 	"parse_json.go:113:val":                  allowLoggedMarker,
 	"parse_json.go:254:val":                  allowLoggedMarker,
-	"parse_json.go:440:getSnode":             "metadata replay intentionally uses only the resolved schema; getSnode has already logged a strict lookup failure",
+	"parse_json.go:445:getSnode":             "metadata replay intentionally uses only the resolved schema; getSnode has already logged a strict lookup failure",
 	"parse_xml.go:78:val":                    allowLoggedMarker,
 	"parse_xml.go:226:log":                   "the supplied not-found logger records the diagnostic; the closure returns LY_ENOTFOUND explicitly",
 	"path.go:80:WriteByte":                   allowNoFailWriter,

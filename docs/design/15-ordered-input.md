@@ -119,7 +119,7 @@ write takes the code path it took before (the counted-work and scaling tests are
 
 ## Evidence
 
-- Oracle fixtures `protocol-v2/ordered-*` (38; `ordered-split-list-merge-destruct` is unsupported,
+- Oracle fixtures `protocol-v2/ordered-*` (44; `ordered-split-list-merge-destruct` is unsupported,
 U-0113) cover:
   - parse order, JSON and XML;
   - the XML opaque anchor;
@@ -138,6 +138,10 @@ U-0113) cover:
   - opaque appends; unlink and re-insert; merge; dup; diff; validation (implicit default, opaque
     error and the stop of `lyd_validate_new`);
   - XPath axes and positions; a key after an opaque child; a validated out-of-order parse.
+  - JSON metadata past an opaque separator, on an opaque first match, and before the data; an
+    alone leader unlinked and re-inserted; sorted insertions into a split run across the table
+    threshold; a local insertion whose first sibling is opaque while the first schema node is
+    foreign.
   The `seq/trim-*` and `ops/opidx-split-run-leader-switch` fixtures, which parse ordered, now run.
   The request-differential `ordered-input` class runs against the live oracle.
 - Go: `TestSequenceKindModel` (opidx), `TestSiblingFacadeInterleavedModel`,
@@ -145,31 +149,71 @@ U-0113) cover:
   (every budget limit and cancellation point of interleaving ordered parses), and
   `TestInterleavedEditBudgetPoints` (NewPath, sorted insertion, Merge, Unlink and Dup on interleaved
   trees, with and without a table, refused at every charge boundary). The storage invariant also
-  checks the kinds, the kind threads and the document-order run gaps.
+  checks the kinds, the kind threads and the document-order run gaps. `TestAloneLeaderUnlink` compares single and batch
+  unlink and reinsertion, and `TestForeignFirstSchemaHashed` covers the physical first sibling's context.
 
-## Sweep of schema-only walks (gate round 3)
+## Sweep of sibling reads (gate rounds 3 and 4)
 
-Every non-test use of `schemaSpan()`, `SchemaAll()`, a `SchemaLen`-bounded loop or a schema-only
-neighbour was classified. Code that models libyang's physical sibling list (`next`/`prev`,
-`LYD_LIST_FOR_INST`, `lyd_insert_hash_add`'s neighbours, the linear `lyd_find_sibling_schema`, a
-DFS) reads document order or stops at the run piece:
-- fixed in this round: `instanceRun` (all branches, `docFrom`), `visibleNeighbours` (document
-  order over the run's extent), `removalOrder`'s linear leader scan (`linearBound`),
-  `splitOpRun` (document order);
-- fixed earlier: run bounds and walks (`runPiece`, `runPieceStart`), first-instance records and
-  index gaps (`docNeighbours`, `opaqueSplit`), lookups (`linearBound`, `foreignScan`), key
-  prefixes, predicates and libyang's sibling lists (`docSpan`).
+Rule: where libyang reads `node->prev`/`node->next`, `LYD_CTX(first_sibling)` or iterates
+siblings (`LY_LIST_FOR`, `LYD_LIST_FOR_INST`, `lyd_first_sibling`, `lyd_find_sibling_*`), the port
+reads document order in an interleaved set, unless the result is the same for every interleaving.
+The logical view is schema nodes in document order, then opaque nodes in document order. So a
+walk that skips opaque nodes without stopping at them sees the same nodes in the same order.
 
-The rest is a logical schema view and correct as is:
-- whole-set scans whose order does not matter: hash and work bounds, binding stacks,
-  `has`, `indexAnyOrderBound`, `dupIndex`, `foreignInstances`, the dup cache, `opInst`;
-- list keys, which an interleaved set cannot separate from their list's start: a key after an
-  opaque child fails `checkKeys`;
-- positions that `link` places physically afterwards (`schemaPos`, the cross-context and
-  operation anchors, `unorderedAnchor`, `rbPos`, `insertBefore`, `linkOrigin`, `ValidateOp`'s
-  origin), and runs whose bounds are already cut at the piece;
-- sets that are never interleaved (the parser's deferred runs, `logical()`'s plain branch, the
-  non-interleaved branches of `topList`/`slicesOf`).
+Read in document order (fixed):
+- round 3: `instanceRun` (`docFrom`), `visibleNeighbours`, `removalOrder`'s linear leader scan
+  (`linearBound`), `splitOpRun`;
+- round 4:
+  - single unlink reads `node->prev`/`node->next` directly (`prepareUnlink`;
+    `LYD_NODE_IS_ALONE` keeps an alone leader's RB metadata on the detached node);
+  - JSON metadata after the data couples with document successors (`metaAttr`);
+  - JSON metadata selects its target among schema and opaque matches in document order
+    (`parseAttribute`);
+  - JSON metadata before the data numbers schema and opaque matches together
+    (`metadataFinish`);
+  - `LYD_CTX(first_sibling)` and `LYD_CTX(siblings)` read the physical first sibling, which may
+    be opaque (`crossContextInsertPos`, `unorderedAnchor`, the foreign branches of
+    `lyd_find_sibling_first`);
+  - the cross-context table probe returns the bucket's first record (`leaderFirstMixed`);
+  - `runBounds` cuts a gap-free operation or unordered run at its piece;
+- earlier rounds: run bounds and walks (`runPiece`, `runPieceStart`), first-instance records and
+  index gaps (`docNeighbours`, `opaqueSplit`), lookups (`linearBound`, `foreignScan`),
+  predicates, the printers' sibling lists and every `lyd_first_sibling` read (`docSpan`, `all`).
+
+Kept logical, with the proof of equivalence:
+- Positions that `link` places physically. Anchor position `at` links right before
+  `At(at)`. The append position links right after the last schema node, which is where
+  `lyd_insert_node_ordby_schema` goes past the trailing opaque block. The linear anchor walks
+  (`unorderedAnchor`, `opAnchor`, `crossContextInsertPos`) decide only on the schema prefix
+  before the first opaque node. Any result past that prefix is replaced by that opaque node
+  (`walkStop`). Sorted links place after the RB predecessor (`sortedPlace`). Origins use
+  `originPlace`. `insertBefore` links before its anchor.
+- Lookups that skip opaque nodes and never stop at them. `has`, `dupIndex`,
+  `foreignInstances`, the dup-instance set (`lyd_find_sibling_dup_inst_set`'s no-table branch
+  compares every sibling, and opaque and schema nodes never match), `opInst`, `allInstances`.
+  The opaque-only scans `opqFirst`, `opaqueFirst` and `opaqueLast` (`lydxml_get_hints_opaq`'s
+  backward walk) see opaque nodes in document order.
+- Context routing: `mixedSortedLookup`, `foreignFor`, `mixedSwitch` and the refusal modes.
+  Opaque nodes are never candidates of `lyd_find_sibling_schema`, and `contexts` counts only
+  schema nodes.
+- Keys. A list's keys are its first children, and a key after an opaque child fails `checkKeys`
+  (`ordered-xml-key-after-opaque`). Key prefixes, key hashes and key compares are the same.
+- Comparisons: `compareSiblingFrames` walks document order. The narrowing digest is built over
+  the logical order. Pairwise-equal document sequences partition into pairwise-equal logical
+  ones, so the digest never rejects an equal pair.
+- Order-free scans: hash and work bounds, binding and capture stacks, free order, test-only
+  record checks.
+- Sets that are never interleaved:
+  - `markUnordered`'s record materialization runs before the first out-of-order link, while
+    the set is still in schema order;
+  - the parser's deferred runs (`appendSorted` refuses an interleaved set, and a parse without
+    `Ordered` never interleaves);
+  - `nextAnchor`'s ordered branch (an interleaved set is `schemaUnordered`);
+  - the eventTime check (operation parses take no `Ordered`);
+  - unindexed singleton sets.
+
+The XML parser couples attributes to their own element and reads no sibling. Both printers walk
+`all()`.
 
 ## Merge and the destructive merge
 

@@ -2051,7 +2051,7 @@ func (t *Tree) findFirstWork(s *siblings, target *Node, work *workCounter) (*Nod
 	}
 	sn := target.schema
 	if sn != nil && s.SchemaLen() != 0 {
-		if first := s.At(0); !sameSet(ctxOf(first), ctxOf(target)) {
+		if first := s.docFirst(); !sameSet(ctxOf(first), ctxOf(target)) { // LYD_CTX(siblings): physically first
 			// The no-table branch of lyd_find_sibling_first compares the live
 			// siblings directly. Mapping first would lose operation output nodes
 			// because lyd_find_schema_ctx walks lys_getnext with input options.

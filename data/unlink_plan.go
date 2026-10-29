@@ -39,10 +39,6 @@ func prepareUnlink(n *Node) (*unlinkPlan, error) {
 	if err := linkGuard(n, w); err != nil {
 		return nil, err
 	}
-	nodes := sib.schemaSpan()
-	if n.schema == nil {
-		nodes = sib.opaqueSpan()
-	}
 	at := sib.orderPosition(n) // the storage's rank walk, paid before it runs
 	if w.hashErr != nil {
 		return nil, w.hashErr
@@ -53,13 +49,12 @@ func prepareUnlink(n *Node) (*unlinkPlan, error) {
 	if at < 0 {
 		return nil, &opError{"LY_EINT", "Unlinked node in sibling storage."}
 	}
-	var prev, next *Node // n's thread neighbours within its partition
+	// n's node->prev and node->next: the document neighbours, whatever their kind (design 15);
+	// a schema node's opaque successor is passed as none, as no RB metadata moves onto it
 	h := sib.handle(n)
-	if at > 0 {
-		prev = sib.st.seq.Prev(h).Value
-	}
-	if at+1 < nodes.Len() {
-		next = sib.st.seq.Next(h).Value
+	prev, next := handleValue(sib.st.seq.Prev(h)), handleValue(sib.st.seq.Next(h))
+	if n.schema != nil && next != nil && next.schema == nil {
+		next = nil
 	}
 	var left *Node
 	separates := n.schema != nil && prev != nil && next != nil && n.schema != prev.schema &&

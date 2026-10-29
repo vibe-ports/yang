@@ -1,0 +1,18 @@
+# JSON leaf-list metadata whose instances an opaque node separates: lydjson_meta_attr follows node->next, so the second metadata object meets the opaque node
+fixtures:
+  - id: protocol-v2/ordered-json-meta-past-opaque
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7952#5.2.1"]
+    areas: [codecs]
+    request:
+      op: "data"
+      searchdirs: [schemas]
+      context_options: ["no_yanglibrary"]
+      modules: [{name: "pv2-ordered2"}]
+      format: "json"
+      data_type: "get"
+      unknown: "opaque"
+      parse_options: [ordered]
+      data: '{"pv2-ordered2:c":{"ll":[1],"zz":"x","ll":[2],"@ll":[null,null]}}'
+    golden: golden/ordered-json-meta-past-opaque.json

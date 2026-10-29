@@ -1,0 +1,99 @@
+{
+  "context_diagnostics": [],
+  "diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "pv2-ordered2",
+      "revision": null
+    },
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "pv2-mdapi",
+      "revision": null
+    }
+  ],
+  "op": "data",
+  "protocol": 2,
+  "rc": {
+    "err": 0,
+    "name": "LY_SUCCESS"
+  },
+  "tree": {
+    "json": "{\n  \"pv2-ordered2:c\": {\n    \"b\": false,\n    \"@b\": {\n      \"pv2-mdapi:num\": 300\n    },\n    \"b\": \"ok\"\n  }\n}\n",
+    "xml": "<c xmlns=\"urn:vibe-ports:yang:conformance:pv2-ordered2\">\n  <b xmlns:pa=\"urn:vibe-ports:yang:conformance:pv2-mdapi\" pa:num=\"300\">false</b>\n  <b>ok</b>\n</c>\n"
+  },
+  "typed": [
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": true,
+        "when_true": false
+      },
+      "kind": "container",
+      "meta": [],
+      "opaque": null,
+      "path": "/pv2-ordered2:c",
+      "schema": "/pv2-ordered2:c",
+      "value": null
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "opaque",
+      "meta": [
+        {
+          "module": "pv2-mdapi",
+          "name": "num",
+          "value": "300"
+        }
+      ],
+      "opaque": {
+        "format": "json",
+        "module": "pv2-ordered2",
+        "name": "b",
+        "namespace": null,
+        "prefix": null
+      },
+      "path": "/pv2-ordered2:c/b",
+      "schema": null,
+      "value": {
+        "canonical": "false",
+        "hints": [
+          "boolean"
+        ],
+        "type": null,
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": true,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/pv2-ordered2:c/b",
+      "schema": "/pv2-ordered2:c/b",
+      "value": {
+        "canonical": "ok",
+        "type": "string",
+        "typedef": null,
+        "union_member": null
+      }
+    }
+  ],
+  "verdict": "valid"
+}

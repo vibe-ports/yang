@@ -1218,7 +1218,7 @@ func (t *Tree) keylessFirst(c *dupCache, sib *siblings, target *Node) (*Node, er
 	}
 	sn := target.schema
 	if sib.SchemaLen() != 0 {
-		first := sib.At(0)
+		first := sib.docFirst() // LYD_CTX(siblings): the physical first sibling, an opaque one included
 		if !sameSet(ctxOf(first), ctxOf(target)) {
 			// lyd_find_sibling_first maps no schema in its linear branch. In
 			// particular, lyd_find_schema_ctx always walks operation input, so it
