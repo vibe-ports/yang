@@ -116,7 +116,7 @@ var ignoredErrorAllowlist = map[string]string{
 	"validate.go:822:WriteByte":              allowNoFailWriter,
 	"xpathnode.go:83:LookupPrepared":         "LookupChild prepares without a charge callback, so LookupPrepared cannot return a work error",
 	"xpathnode.go:88:LookupPrepared":         "the schema-only probe has no charge callback, so LookupPrepared cannot return a work error",
-	"xpathnode.go:371:StringWithBudget":      "String uses a background context and nil budget callbacks; serialization errors remain available through StringWithBudget",
+	"xpathnode.go:495:StringWithBudget":      "String uses a background context and nil budget callbacks; serialization errors remain available through StringWithBudget",
 }
 
 type auditImporter struct {

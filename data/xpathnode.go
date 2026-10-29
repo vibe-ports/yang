@@ -101,8 +101,14 @@ func (x xn) LookupPrepared(prepared xpath.InstanceProbe) ([]xpath.Node, bool, er
 	}
 	p, ok := prepared.(*xprobe)
 	sib := &x.n.kids
-	if ok && sib.ht == nil && sib.st != nil && sib.st.interleaved() && x.n.flags&flagDead == 0 {
-		return interleavedLookup(sib, x.set, p)
+	if ok && sib.st != nil && sib.st.interleaved() && x.n.flags&flagDead == 0 {
+		if sib.ht == nil {
+			return interleavedLookup(sib, x.set, p)
+		}
+		if sib.mixedContexts() || isDupInstList(p.node.schema) {
+			// the evaluator's scan would look at every child (design 15)
+			return interleavedTableLookup(sib, x.set, p)
+		}
 	}
 	if !ok || sib.ht == nil || sib.mixedContexts() || x.n.flags&flagDead != 0 {
 		return nil, false, nil
@@ -118,9 +124,14 @@ func (x xn) LookupPrepared(prepared xpath.InstanceProbe) ([]xpath.Node, bool, er
 			// evaluator's scan would match the unequal node by module and name.
 			return opaqFallback(sib, x.set, p)
 		}
-		if p = p.toCtx(x.set); p == nil {
+		q := p.toCtx(x.set)
+		if q == nil {
+			if sib.st.interleaved() {
+				return interleavedTableLookup(sib, x.set, p) // no stored match: then opaq_next
+			}
 			return nil, false, nil // the instance does not store there: the charged scan
 		}
+		p = q
 	}
 	c := sib.ht[p.key]
 	if c != nil && c.count > 1 && isDupInstList(p.node.schema) {
@@ -194,6 +205,109 @@ func interleavedLookup(sib *siblings, set *schema.Set, p *xprobe) ([]xpath.Node,
 	return opaqFallback(sib, set, p)
 }
 
+// interleavedTableLookup is moveto_node_hash_child's lookup in an interleaved set with a children
+// table where the single-context bucket read does not apply (tableFirst); a miss is
+// lyd_find_sibling_opaq_next.
+func interleavedTableLookup(sib *siblings, set *schema.Set, p *xprobe) ([]xpath.Node, bool, error) {
+	n, err := tableFirst(sib, set, p)
+	if err != nil {
+		return nil, false, err
+	}
+	if n != nil {
+		return []xpath.Node{wrap(set, n)}, true, nil
+	}
+	return opaqFallback(sib, set, p)
+}
+
+// tableFirst is the children table's answer for p in an interleaved set holding siblings of
+// several contexts or a duplicate-instance list. The table's buckets hash module and node names,
+// so lyd_hash_table_(schema_)val_equal sees the equivalent schema nodes of every context in one
+// bucket and takes the first registered match. Here each equivalent schema node's bucket is read
+// and the earliest registration wins, one charged step per distinct schema node and per bucket
+// member. A list or leaf-list is found by its first-instance record (leaderFirstMixed); for a
+// duplicate-instance list lyd_find_sibling_first then walks node->next while the schema matches.
+func tableFirst(sib *siblings, set *schema.Set, p *xprobe) (*Node, error) {
+	sn := p.node.schema
+	if sib.firstRecordSchema(sn) && (p.schemaOnly || isDupInstList(sn)) {
+		if err := p.work(int64(len(sib.leaders)) + 1); err != nil {
+			return nil, err
+		}
+		c := sib.leaderFirstMixed(sn)
+		if p.schemaOnly {
+			return live(c), nil
+		}
+		for ; c != nil && c.schema != nil && compareSchemaEqual(c.schema, sn, false); c = sib.docNext(c) {
+			if err := p.work(1); err != nil {
+				return nil, err
+			}
+			q := p
+			if c.schema != sn {
+				if q = p.toCtx(ctxOf(c)); q == nil {
+					continue
+				}
+			}
+			m, err := q.Match(xn{c, set})
+			if err != nil {
+				return nil, err
+			}
+			if m {
+				return live(c), nil
+			}
+		}
+		return nil, nil
+	}
+	if sib.order == nil {
+		return nil, nil
+	}
+	var found *Node
+	var best uint64
+	for k := range sib.order.entries {
+		if err := p.work(1); err != nil {
+			return nil, err
+		}
+		if !compareSchemaEqual(sn, k, true) {
+			continue
+		}
+		q := p
+		if k != sn && !p.schemaOnly {
+			if q = p.toCtx(k.Module.Owner); q == nil {
+				continue
+			}
+		}
+		key := q.key
+		key.s = k
+		for n := range sib.bucketNodes(key) {
+			if err := p.work(1); err != nil {
+				return nil, err
+			}
+			if n.flags&flagDead != 0 {
+				continue
+			}
+			m := p.schemaOnly
+			if !m {
+				var err error
+				if m, err = q.Match(xn{n, set}); err != nil {
+					return nil, err
+				}
+			}
+			if r := sib.exactByNode[n]; m && r != nil {
+				if found == nil || r.order < best {
+					found, best = n, r.order
+				}
+				break
+			}
+		}
+	}
+	return found, nil
+}
+
+func live(n *Node) *Node {
+	if n == nil || n.flags&flagDead != 0 {
+		return nil
+	}
+	return n
+}
+
 // opaqFallback is lyd_find_sibling_opaq_next after a lookup miss, charged; a handled miss.
 func opaqFallback(sib *siblings, set *schema.Set, p *xprobe) ([]xpath.Node, bool, error) {
 	for _, c := range sib.opaqNextSpan().All() {
@@ -259,6 +373,16 @@ func (x xn) FirstChild(sn xpath.SchemaNode) (xpath.Node, bool) {
 	}
 	sib := x.childSiblings()
 	if sib.mixedContexts() {
+		if sib.ht != nil && sib.st != nil && sib.st.interleaved() && x.n.any == nil {
+			// the evaluator's walk stops at the first opaque sibling; the table does not (design 15)
+			p := &xprobe{node: newInner(s.s), set: s.set, schemaOnly: true}
+			p.key, _ = hashOf(p.node)
+			c, err := tableFirst(sib, x.set, p)
+			if err != nil || c == nil {
+				return nil, err == nil
+			}
+			return wrap(x.set, c), true
+		}
 		return nil, false // siblings of several contexts: the evaluator's scan with SchemaLookupMatch
 	}
 	if first := sib.first(); first != nil && xpathNodeSet(x.set, first) != s.set {

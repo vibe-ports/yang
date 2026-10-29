@@ -119,7 +119,7 @@ write takes the code path it took before (the counted-work and scaling tests are
 
 ## Evidence
 
-- Oracle fixtures `protocol-v2/ordered-*` (45; `ordered-split-list-merge-destruct` is unsupported,
+- Oracle fixtures `protocol-v2/ordered-*` (47; `ordered-split-list-merge-destruct` is unsupported,
 U-0113) cover:
   - parse order, JSON and XML;
   - the XML opaque anchor;
@@ -142,7 +142,8 @@ U-0113) cover:
     alone leader unlinked and re-inserted; sorted insertions into a split run across the table
     threshold; a local insertion whose first sibling is opaque while the first schema node is
     foreign.
-  - a Merge into a list run split by a schema node.
+  - a Merge into a list run split by a schema node; XPath in a table level of two contexts; a
+    diff insertion after an anchor followed by an opaque node (D-0058).
   The `seq/trim-*` and `ops/opidx-split-run-leader-switch` fixtures, which parse ordered, now run.
   The request-differential `ordered-input` class runs against the live oracle.
 - Go: `TestSequenceKindModel` (opidx), `TestSiblingFacadeInterleavedModel`,
@@ -180,6 +181,13 @@ Read in document order (fixed):
     `lyd_find_sibling_first`);
   - the cross-context table probe returns the bucket's first record (`leaderFirstMixed`);
   - `runBounds` cuts a gap-free operation or unordered run at its piece;
+- round 6: XPath child lookups in an interleaved set with a children table, either holding
+  siblings of several contexts or looking up a duplicate-instance list, read the table's
+  buckets of every equivalent schema node (`tableFirst`), then `lyd_find_sibling_opaq_next`.
+  They no longer decline to the evaluator's scan of all children. `FirstChild` does the same
+  for its mixed-context case, and a probe that cannot be stored in the siblings' context misses
+  (`TestInterleavedLookupMatrix`: table present or absent, one or two contexts, a probe of
+  either context, the document root);
 - round 5: Merge does not batch copies into a run that has several pieces, even when the
   pieces are split by schema nodes only (`sortedRunBatchable`, the run's gaps). An insertion
   can move a piece's first-instance record, and the next copy then selects its leader again;
@@ -242,6 +250,10 @@ the anchor. `InsertAfter` places:
 - an opaque node after a schema anchor first among the opaque nodes;
 - a schema node after a schema anchor before the next schema node, which in an interleaved set is
   past any opaque node that follows the anchor.
+
+`protocol-v2/ordered-diff-insert-after-opaque` measures the last case through ApplyDiff. In
+`u1, zz, u2`, inserting `u3` after `u1` gives libyang `u1, u3, zz, u2` and the port
+`u1, zz, u3, u2`.
 
 The parse-order text, the `ordered-input` B class, the engine refusal and the engine's D-0058
 allowlist entries are gone.

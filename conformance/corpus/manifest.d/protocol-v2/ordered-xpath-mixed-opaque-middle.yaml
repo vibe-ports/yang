@@ -1,0 +1,22 @@
+# a hashed child lookup in an ordered child level whose children table holds instances of two schema contexts (a merge of another context's child, lyd_merge_sibling_r): the miss falls back to lyd_find_sibling_opaq_next, which searches only the trailing opaque block, so the opaque node of the name in the middle is not found
+fixtures:
+  - id: protocol-v2/ordered-xpath-mixed-opaque-middle
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#6.4"]
+    areas: [codecs]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      context_options: ["no_yanglibrary"]
+      modules: [{name: "pv2-ordered2"}, {name: "pv2-lyds"}]
+      steps:
+        - {do: parse, format: json, data_type: get, data: '{"pv2-ordered2:c": {"st": [3]}}'}
+        - {do: insert, format: json, data_type: get, data: '{"pv2-lyds:ll": [5]}', target: {searchdirs: [schemas], modules: [{name: "pv2-ordered2"}, {name: "pv2-lyds"}], context_options: ["no_yanglibrary"]}}
+        - {do: edit, format: json, data_type: get, unknown: opaque, parse_options: [ordered], merge_into: '{"pv2-ordered2:c": {"a": "x", "b": false, "c": "z", "d": "d", "ll": [1]}}'}
+        - {do: dump}
+        - {do: xpath, xpath: /pv2-ordered2:c/b}
+        - {do: xpath, xpath: /pv2-ordered2:c/st}
+        - {do: xpath, xpath: "/pv2-ordered2:c/ll[.='1']"}
+        - {do: xpath, xpath: /pv2-ordered2:c/a}
+    golden: golden/ordered-xpath-mixed-opaque-middle.json

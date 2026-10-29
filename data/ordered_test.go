@@ -920,3 +920,117 @@ func TestSchemaSplitMergeUnbatched(t *testing.T) {
 		t.Fatalf("%v, want %v", got, want)
 	}
 }
+
+// TestInterleavedLookupMatrix: every XPath child lookup of an interleaved set answers by the
+// native rules and never declines to the evaluator's scan of all children (design 15): with and
+// without a children table, siblings of one context or of two (a merge of another context's
+// child), a probe of the siblings' context or of another one, and the document root. The opaque
+// b in the middle is not found (lyd_find_sibling_opaq_next searches the trailing opaque block).
+func TestInterleavedLookupMatrix(t *testing.T) {
+	setA, setB := ordered2Set(t, "pv2-ordered3"), ordered2Set(t, "pv2-ordered3")
+	child := func(in string, mixed bool) (*Node, *Tree) {
+		tr, err := parseOrdered(t, setA, false, in, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if mixed {
+			src, err := parseOrdered(t, setA, false, `{"pv2-ordered3:a":"r"}`, nil)
+			if err != nil {
+				t.Fatal(err)
+			}
+			fb, _, err := parseJSONString(setB, `{"pv2-ordered2:c":{"st":[3]}}`, Reject, false)
+			if err != nil {
+				t.Fatal(err)
+			}
+			f := fb.top.first()
+			if err := unlink(f); err != nil {
+				t.Fatal(err)
+			}
+			if err := src.link(nil, &src.top, f, src.top.SchemaLen()); err != nil {
+				t.Fatal(err)
+			}
+			if err := tr.Merge(src); err != nil {
+				t.Fatal(err)
+			}
+		}
+		for n := range tr.Top() {
+			if n.Name() == "c" {
+				return n, tr
+			}
+		}
+		t.Fatal("no c")
+		return nil, nil
+	}
+	find := func(set *schema.Set, mod, name string) *schema.Node {
+		for _, n := range set.Implemented(mod).Top {
+			if mod == "pv2-ordered3" && n.Name == name {
+				return n
+			}
+			for _, k := range n.Children { // pv2-ordered2: the children of c
+				if k.Name == name && mod == "pv2-ordered2" {
+					return k
+				}
+			}
+		}
+		t.Fatalf("no %s:%s", mod, name)
+		return nil
+	}
+	type lookup interface {
+		LookupPrepared(xpath.InstanceProbe) ([]xpath.Node, bool, error)
+	}
+	check := func(label string, l lookup, set *schema.Set, mod, name string, vals []string, want bool) {
+		t.Helper()
+		p, err := xs{s: find(set, mod, name), set: set}.PrepareInstance(vals, func(int64) error { return nil })
+		if err != nil {
+			t.Fatal(label, err)
+		}
+		got, handled, err := l.LookupPrepared(p)
+		if err != nil || !handled || (len(got) == 1) != want || len(got) > 1 {
+			t.Fatalf("%s %s %v: %v handled %v err %v", label, name, vals, got, handled, err)
+		}
+	}
+	for _, tc := range []struct {
+		label string
+		in    string
+		mixed bool
+		table bool
+	}{
+		{"no table", `{"pv2-ordered2:c":{"a":"x","b":false,"c":"z"}}`, false, false},
+		{"table", `{"pv2-ordered2:c":{"a":"x","b":false,"c":"z","d":"d","ll":[1]}}`, false, true},
+		{"table, two contexts", `{"pv2-ordered2:c":{"a":"x","b":false,"c":"z","d":"d","ll":[1]}}`, true, true},
+		{"no table, two contexts", `{"pv2-ordered2:c":{"a":"x","b":false,"c":"z"}}`, true, false},
+	} {
+		c, _ := child(tc.in, tc.mixed)
+		if !c.kids.st.interleaved() || (c.kids.ht != nil) != tc.table || c.kids.mixedContexts() != tc.mixed {
+			t.Fatalf("%s: interleaved %v table %v mixed %v", tc.label, c.kids.st.interleaved(), c.kids.ht != nil, c.kids.mixedContexts())
+		}
+		for _, probeSet := range []*schema.Set{setA, setB} {
+			label := tc.label
+			if probeSet == setB {
+				label += ", probe of another context"
+			}
+			x := xn{c, setA}
+			check(label, x, probeSet, "pv2-ordered2", "b", nil, false)
+			check(label, x, probeSet, "pv2-ordered2", "a", nil, true)
+			// without a table lyd_find_sibling_schema stops at the opaque b (only the inputs with a
+			// table hold ll)
+			check(label, x, probeSet, "pv2-ordered2", "c", nil, tc.table)
+			check(label, x, probeSet, "pv2-ordered2", "ll", []string{"1"}, tc.table)
+			check(label, x, probeSet, "pv2-ordered2", "ll", []string{"7"}, false)
+			check(label, x, probeSet, "pv2-ordered2", "st", []string{"3"}, tc.mixed)
+		}
+	}
+	// the document root: no table
+	tr, err := parseOrdered(t, setA, false, `{"pv2-ordered3:a":"x","pv2-ordered3:zz":"u","pv2-ordered3:b":"y"}`, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !tr.top.st.interleaved() {
+		t.Fatal("the top level is not interleaved")
+	}
+	for _, probeSet := range []*schema.Set{setA, setB} {
+		r := xroot{sib: &tr.top, set: setA}
+		check("root", r, probeSet, "pv2-ordered3", "a", nil, true)
+		check("root", r, probeSet, "pv2-ordered3", "b", nil, false) // past the first opaque root
+	}
+}

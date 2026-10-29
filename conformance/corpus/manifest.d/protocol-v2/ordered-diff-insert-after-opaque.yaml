@@ -1,0 +1,22 @@
+# a diff inserts a user-ordered instance after an anchor that an opaque sibling follows (ordered input): lyd_diff_insert's lyd_insert_after links it immediately after the anchor, before the opaque node; InsertAfter places a schema node after a schema sibling before the next schema node, past the opaque one (D-0058)
+fixtures:
+  - id: protocol-v2/ordered-diff-insert-after-opaque
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#7.7.7"]
+    areas: [diff]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      context_options: ["no_yanglibrary"]
+      modules: [{name: "pv2-diff"}]
+      steps:
+        - {do: parse, format: json, data_type: data, parse_only: true, unknown: opaque, parse_options: [ordered], data: '{"pv2-diff:c": {"ul": ["u1"], "zz": "x", "ul": ["u2"]}}'}
+        - {do: diff_parse, format: json, data_type: data, data: '{"pv2-diff:c": {"@": {"yang:operation": "none"}, "ul": ["u3"], "@ul": [{"yang:operation": "create", "yang:value": "u1"}]}}'}
+        - {do: diff_apply}
+        - {do: dump}
+    golden: golden/ordered-diff-insert-after-opaque.json
+    assert:
+      verdict: valid
+      deviation: D-0058
+      waive: [tree, typed]   # only the position of u3 differs: libyang u1, u3, zz, u2; the port u1, zz, u3, u2
