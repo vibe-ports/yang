@@ -129,7 +129,7 @@ func (st *siblingStore) at(i int) *Node {
 	n := st.seq.Len()
 	var h *opidx.Handle[*Node]
 	steps := 0
-	switch height := bits.Len(uint(n)); { //nolint:gosec // a length is nonnegative
+	switch height := bits.Len(uint(n)); {
 	case i < height:
 		for h = st.seq.First(); steps < i; steps++ {
 			h = st.seq.Next(h)
