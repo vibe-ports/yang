@@ -255,3 +255,70 @@ func forwardRecoveryInState(t *testing.T, tr *Tree, prepare func(*testing.T), pi
 	}
 	opidxAssertTreeInvariant(t, tr)
 }
+
+const relocationListModule = `module m { yang-version 1.1; namespace "urn:m"; prefix m;
+  container c { list l { key k; ordered-by user; leaf k { type string; }
+    leaf-list x { type uint32; } } } }`
+
+// relocationListTrees parses c/l = [a (with k values of x), b] and a diff of m entries, each its
+// own c, moving a after b and back (yang:key anchors), one replace each.
+func relocationListTrees(t *testing.T, set *schema.Set, k, m int) (*Tree, *Tree) {
+	t.Helper()
+	var data, diff strings.Builder
+	data.WriteString(`<c xmlns="urn:m"><l><k>a</k>`)
+	for i := range k {
+		fmt.Fprintf(&data, "<x>%d</x>", i)
+	}
+	data.WriteString(`</l><l><k>b</k></l></c>`)
+	for i := range m {
+		anchor, orig := `[k='b']`, ``
+		if i%2 == 1 {
+			anchor, orig = ``, `[k='b']`
+		}
+		fmt.Fprintf(&diff, `<c xmlns="urn:m" xmlns:yang="urn:ietf:params:xml:ns:yang:1" yang:operation="none">`+
+			`<l yang:operation="replace" yang:key="%s" yang:orig-key="%s"><k>a</k></l></c>`, anchor, orig)
+	}
+	return followupsDiff(t, set, data.String()), followupsDiff(t, set, diff.String())
+}
+
+// TestApplyDiffRepeatedListMoveSubtree (design 14, step 6): M moves of one list instance with K
+// descendants in one ApplyDiff cost per move what a move costs, not the size of the moved
+// subtree: a move within its set keeps its subtree's binding, so its recovery reserves none of it.
+func TestApplyDiffRepeatedListMoveSubtree(t *testing.T) {
+	set := reviewDiffSet(t, relocationListModule)
+	const m = 64
+	measure := func(k int) uint64 {
+		tr, diff := relocationListTrees(t, set, k, m)
+		tr.work.hashUsed = 0
+		if err := tr.ApplyDiff(diff, ApplyDiffOptions{}); err != nil {
+			t.Fatal(err)
+		}
+		if first := tr.top.first().kids.At(0); first.kids.At(0).value.Canonical() != "a" {
+			t.Fatalf("k=%d: a is not first after an even number of moves", k)
+		}
+		opidxAssertTreeInvariant(t, tr)
+		return tr.work.hashUsed
+	}
+	small, large := measure(16), measure(4096)
+	t.Logf("M=%d moves: charged %d with 16 descendants, %d with 4096", m, small, large)
+	if large > 2*small { // was about M times the subtree
+		t.Fatalf("the moves' charge grew with the moved subtree: %d -> %d", small, large)
+	}
+	// the budget the small subtree needed twice over suffices for the large one, and a budget
+	// short of it refuses with the tree unchanged
+	tr, diff := relocationListTrees(t, set, 4096, m)
+	tr.work.hashUsed, tr.work.hashLimit = 0, 2*small
+	if err := tr.ApplyDiff(diff, ApplyDiffOptions{}); err != nil {
+		t.Fatalf("the moves of a large subtree within twice the small one's budget: %v", err)
+	}
+	tr, diff = relocationListTrees(t, set, 4096, m)
+	before := snapshotHashBudgetTree(tr)
+	tr.work.hashUsed, tr.work.hashLimit = 0, large/2
+	if err := tr.ApplyDiff(diff, ApplyDiffOptions{}); !errors.Is(err, yang.ErrBudget) {
+		t.Fatalf("half the budget: %v, want ErrBudget", err)
+	}
+	if !reflect.DeepEqual(snapshotHashBudgetTree(tr), before) {
+		t.Fatal("the refused diff changed the tree")
+	}
+	opidxAssertTreeInvariant(t, tr)
+}

@@ -484,7 +484,7 @@ func (t *Tree) linkOrigin(n *Node) (restore func(), arm func(dst *siblings) (dis
 	linksUndo := func() {}
 	var recovery uint64
 	disarm := func() {} // a refusal after arming drops the armed removal undos, restoring nothing
-	var journaled bool
+	var journaled, stays bool
 	var left *Node
 	var leftUns, leftHad bool
 	armOrigin := func() error {
@@ -522,7 +522,9 @@ func (t *Tree) linkOrigin(n *Node) (restore func(), arm func(dst *siblings) (dis
 			if err != nil {
 				return err
 			}
-			binding, err := subtreeBindingBound(n, &owner.work, true)
+			// relinking binds the subtree to the origin's counter again; a move within its own set
+			// keeps that binding (no walk: the subtree may be large and moved many times)
+			binding, err := subtreeBindingBound(n, &owner.work, !stays)
 			if err != nil {
 				return err
 			}
@@ -611,6 +613,7 @@ func (t *Tree) linkOrigin(n *Node) (restore func(), arm func(dst *siblings) (dis
 	}
 	arm = func(dst *siblings) (func(), error) {
 		journaled = dst != nil && t.journaledRelocation(n, sib, dst)
+		stays = dst == sib && !detachedOrigin && sib.work == &owner.work
 		if err := armOrigin(); err != nil {
 			return nil, err
 		}

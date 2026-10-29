@@ -224,7 +224,17 @@ be narrowed; this section is its plan.
    list's non-key in front of its keys exposes them (`exposeListKeys` rewrites their key slots),
    which relinking does not undo: a child of a list instance keeps its level (the repeated moves
    the consult names are a leaf-list's or a list's instances, whose parent is not a list instance).
-   The unjournaled forward recovery has the same key-slot gap on main (a follow-up).
+   (An unjournaled relocation cannot meet that case: a non-key in front of its list's keys
+   exists only in an unordered set, which keeps an ordered index and so takes the local
+   transaction.) The PR review found the forward path's recovery reserved a rebinding of the
+   moved node's whole subtree (`subtreeBindingBound`, forced), M moves of a list instance with K
+   descendants costing Θ(MK); a move within its own set keeps its subtree's binding and reserves
+   none (TestApplyDiffRepeatedListMoveSubtree). Per move the forward path now pays O(log n)
+   point bounds: the origin's rank walk, the link bound reserved four times as recovery, the
+   origin record and metadata undos (sized by the node's own records, groups and links), and
+   the unlink plan, whose separator and repeated-key walks are charged as before; an operation's
+   or unordered set's leader walk back over the node's run (`linkOrigin`) is linear in its
+   position, as on main.
 3. **D-0149 wording.** Rank and index reads on a mutation path are charged (read credits);
    point reads by position (`At`) are O(log n) descents counted as sibling visits but not
    charged, as slice indexing was not. The Open note is narrowed to that.
