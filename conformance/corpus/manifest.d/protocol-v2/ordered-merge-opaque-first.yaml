@@ -1,0 +1,17 @@
+# lyd_find_sibling_opaq_next from an opaque first sibling walks every sibling: a merged opaque node updates the first one
+fixtures:
+  - id: protocol-v2/ordered-merge-opaque-first
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#7.5.7"]
+    areas: [codecs]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      context_options: ["no_yanglibrary"]
+      modules: [{name: "pv2-ordered2"}]
+      steps:
+        - {do: parse, format: json, data_type: get, unknown: opaque, parse_options: [ordered], data: '{"pv2-ordered2:c": {"zz": "old", "a": "x", "yy": "t"}}'}
+        - {do: edit, merge: '{"pv2-ordered2:c": {"zz": "new", "yy": "t2"}}', data_type: get, unknown: opaque}
+        - {do: dump}
+    golden: golden/ordered-merge-opaque-first.json

@@ -1806,7 +1806,10 @@ func (t *Tree) mergeSibling(lv *mergeLevel, src *Node) error {
 	var match *Node
 	switch {
 	case src.schema == nil:
-		match = opaqNext(sib, src.Name())
+		var err error
+		if match, err = opaqNext(sib, src.Name()); err != nil {
+			return err
+		}
 	case src.schema.Kind == schema.List && src.schema.Keyless() && !sib.mixedContexts():
 		var err error
 		if match, err = t.keylessFirst(cache, sib, src); err != nil {
@@ -2041,19 +2044,30 @@ func (t *Tree) flushMerge(lv *mergeLevel) error {
 	return nil
 }
 
-// opaqNext is lyd_find_sibling_opaq_next from the first opaque sibling: the first opaque node
-// named name.
-func opaqNext(s *siblings, name string) *Node {
+// opaqNext is lyd_find_sibling_opaq_next from the first sibling: the first opaque node named
+// name; the error is a refused charge of its walk.
+func opaqNext(s *siblings, name string) (*Node, error) {
 	if s.st == nil || !s.st.interleaved() {
-		return s.opaqueFirst(name)
+		return s.opaqueFirst(name), nil
 	}
-	for _, n := range s.opaqTail().All() { // only the trailing opaque nodes (design 15)
+	// From an opaque first sibling the walk covers every sibling; from a schema one, the trailing
+	// opaque block (tree_data.c:3392-3412). It compares LYD_NAME, a schema node's name too.
+	span := s.opaqTail()
+	if first := s.docFirst(); first != nil && first.schema == nil {
+		span = s.docSpan()
+	}
+	for _, n := range span.All() {
+		if s.work != nil {
+			if err := s.work.chargeHash(1); err != nil {
+				return nil, err
+			}
+		}
 		s.visit()
-		if n.opaq.Name == name {
-			return n
+		if n.Name() == name {
+			return n, nil
 		}
 	}
-	return nil
+	return nil, nil
 }
 
 // dup is lyd_dup_single with LYD_DUP_RECURSIVE | LYD_DUP_WITH_FLAGS: an unlinked copy of n and

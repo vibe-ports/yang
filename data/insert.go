@@ -1162,6 +1162,9 @@ func (t *Tree) logicalRunBounds(sib *siblings, n *Node) (lo, hi int) {
 		}
 		hi = lo
 		for _, c := range l.Slice(lo, sib.runPiece(lo, l.Len())).All() {
+			if t.work.chargeHash(1) != nil {
+				return lo, lo // refused before the read (sticky in t.work.hashErr)
+			}
 			sib.visit()
 			if c.schema != leader.schema {
 				break
@@ -1572,7 +1575,11 @@ func (s *siblings) opInst(sn *schema.Node) []*Node {
 // siblings and finds the first indexed instance.
 func (t *Tree) schemaLookupOperation(s *siblings, sn *schema.Node) *Node {
 	if s.ht == nil {
-		return s.documentFirst(sn)
+		first := s.documentFirst(sn)
+		if first != nil && s.st.interleaved() && s.Index(first) >= s.beforeOpaque() {
+			return nil // the walk stops at the first opaque sibling (linearBound, design 15)
+		}
+		return first
 	}
 	if s.firstRecordSchema(sn) {
 		return s.leaderFirst(sn)
@@ -3123,8 +3130,8 @@ func (t *Tree) unlinkAllDefaults(ns, defaults []*Node) (result error) {
 	// One virtual link sequence per affected sibling set replays native unlink order and
 	// intermediate metadata/hash-leader transitions. Physical storage is compacted once.
 	type links struct {
-		prev, next       map[*Node]*Node
-		tail, opaqueTail *Node
+		prev, next map[*Node]*Node
+		tail       *Node // first->prev: the last sibling in document order
 	}
 	sets := map[*siblings]*links{}
 	for _, n := range ns {
@@ -3138,21 +3145,14 @@ func (t *Tree) unlinkAllDefaults(ns, defaults []*Node) (result error) {
 		if err := sib.touch(); err != nil {
 			return err
 		}
-		l := &links{prev: map[*Node]*Node{}, next: map[*Node]*Node{}}
-		if sib.SchemaLen() > 0 {
-			l.tail = sib.At(sib.SchemaLen() - 1)
-		}
-		if sib.OpaqueLen() > 0 {
-			l.opaqueTail = sib.opaqueAt(sib.OpaqueLen() - 1)
-		}
-		for _, nodes := range []siblingSpan{sib.schemaSpan(), sib.opaqueSpan()} {
-			var prev *Node
-			for _, c := range nodes.All() {
-				if prev != nil {
-					l.prev[c], l.next[prev] = prev, c
-				}
-				prev = c
+		// libyang's prev/next: document order, an opaque node between schema nodes included
+		l := &links{prev: map[*Node]*Node{}, next: map[*Node]*Node{}, tail: sib.docLast()}
+		var prev *Node
+		for _, c := range sib.docSpan().All() {
+			if prev != nil {
+				l.prev[c], l.next[prev] = prev, c
 			}
+			prev = c
 		}
 		sets[sib] = l
 	}
@@ -3171,8 +3171,16 @@ func (t *Tree) unlinkAllDefaults(ns, defaults []*Node) (result error) {
 			}
 			// Removing separators joins physical runs, never their independent retained trees.
 			var leader *Node
-			for _, n := range sib.SchemaAll() {
+			survivors := sib.SchemaAll()
+			if sib.st != nil && sib.st.interleaved() {
+				survivors = sib.All() // an opaque node ends a run (design 15)
+			}
+			for _, n := range survivors {
 				t.work.Add(1)
+				if n.schema == nil {
+					leader = nil
+					continue
+				}
 				if leader == nil || leader.schema != n.schema {
 					leader = n
 				}
@@ -3241,11 +3249,17 @@ func (t *Tree) unlinkAllDefaults(ns, defaults []*Node) (result error) {
 		}
 		l := sets[sib]
 		prev, next := l.prev[n], l.next[n]
-		tail := l.tail
-		if l.opaqueTail != nil {
-			tail = l.opaqueTail
+		rbNext := next // an opaque successor ends the run: the single unlink passes none either
+		if n.schema != nil && next != nil && next.schema == nil {
+			rbNext = nil
 		}
-		if err := sib.removeRBNode(n, prev, next, tail, func(c *Node) (*Node, *Node) { return l.prev[c], l.next[c] }); err != nil {
+		if err := sib.removeRBNode(n, prev, rbNext, l.tail, func(c *Node) (*Node, *Node) {
+			after := l.next[c]
+			if after != nil && after.schema == nil {
+				after = nil // as the leader's storage neighbours in removalOrder
+			}
+			return l.prev[c], after
+		}); err != nil {
 			return err
 		}
 		if err := freeLinks(n); err != nil {
@@ -3276,9 +3290,6 @@ func (t *Tree) unlinkAllDefaults(ns, defaults []*Node) (result error) {
 		}
 		if l.tail == n {
 			l.tail = prev
-		}
-		if l.opaqueTail == n {
-			l.opaqueTail = prev
 		}
 		parents[n] = n.parent
 		n.parent, n.tree, n.inRB, n.rbGroup = nil, nil, false, nil

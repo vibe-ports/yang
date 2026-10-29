@@ -122,13 +122,16 @@ APIs too, retiring `canonical-values` (U-0108) and `list2` (U-0109).
 
 | B class | Registry ID | Capability gap | Single-field |
 |---|---|---|---:|
-| `ordered-input` | D-0058 | `LYD_PARSE_ORDERED` input ordering | 39 |
 | `any-direct` | U-0112 | `any_direct` step: native pointer-level any-value calls | 230 |
 | `operation-parent` | U-0106 | Operation input into an existing parent, or reply into an opaque request | 691 |
 | `reply-non-operation-parent` | U-0110 | Reply into a parent that is not an RPC/action; `ParseOpOptions.Request` rejects it before parsing | 0 |
-| **Total** | | | **960** |
+| **Total** | | | **921** |
 
 The classifier requires the relevant step and the exact unsupported reason.
+
+`ordered-input` (D-0058, 39 single-field requests) is retired: `ParseOptions.Ordered` (#247,
+design 15) runs `LYD_PARSE_ORDERED` requests, and they agree with the live oracle;
+`TestParseFlagsDifferential` covers `ordered` too.
 
 U-0110 now covers only `reply-non-operation-parent`, tracked in
 [#247](https://github.com/vibe-ports/yang/issues/247). The six NETCONF/RESTCONF

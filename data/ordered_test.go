@@ -263,3 +263,53 @@ func TestSplitRunInsertScaling(t *testing.T) {
 		t.Fatalf("work %d for a 4096-member second piece, %d for 64: the scans cross the opaque node", large, small)
 	}
 }
+
+// TestSplitRunBulkUnlink: a batch removal (TrimXPath's unlinkAll) of a split run's second-piece
+// leader sees libyang's prev, the opaque node, as a single unlink does: it leads its own piece
+// (oracle: protocol-v2/ordered-delete-split-leader for the single unlink).
+func TestSplitRunBulkUnlink(t *testing.T) {
+	set := opIndexSet(t, orderedSchema)
+	build := func() (*Tree, *Node) {
+		tr, err := parseOrdered(t, set, true, `<c xmlns="urn:m"><a>x</a><b>y</b><ll>4</ll><ll>2</ll><zz>u</zz><ll>3</ll><c>z</c></c>`, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var c *Node
+		for c = range tr.Top() {
+			break
+		}
+		var zero *Node
+		for _, v := range []string{"1", "0"} {
+			n, err := tr.NewTerm(c, "ll", v, NewOptions{})
+			if err != nil {
+				t.Fatal(err)
+			}
+			zero = n
+		}
+		return tr, zero
+	}
+	single, n := build()
+	if err := n.Unlink(); err != nil {
+		t.Fatal(err)
+	}
+	batch, m := build()
+	if err := batch.unlinkAll([]*Node{m}); err != nil {
+		t.Fatal(err)
+	}
+	opidxAssertTreeInvariant(t, batch)
+	if got, want := typedDump(batch), typedDump(single); !slices.Equal(got, want) {
+		t.Fatalf("batch %v, single %v", got, want)
+	}
+	for _, tr := range []*Tree{single, batch} {
+		var c *Node
+		for c = range tr.Top() {
+			break
+		}
+		if _, err := tr.NewTerm(c, "ll", "5", NewOptions{}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if got, want := typedDump(batch), typedDump(single); !slices.Equal(got, want) {
+		t.Fatalf("after an insertion: batch %v, single %v", got, want)
+	}
+}

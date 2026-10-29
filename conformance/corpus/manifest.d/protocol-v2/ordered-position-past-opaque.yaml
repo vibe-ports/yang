@@ -1,0 +1,18 @@
+# a positional path to a state leaf-list instance past the first opaque sibling of a set without a children table: lyd_find_sibling_schema's walk stops at the opaque node
+fixtures:
+  - id: protocol-v2/ordered-position-past-opaque
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#7.5.7"]
+    areas: [codecs]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      context_options: ["no_yanglibrary"]
+      modules: [{name: "pv2-ordered2"}]
+      steps:
+        - {do: parse, format: json, data_type: get, unknown: opaque, parse_options: [ordered], data: '{"pv2-ordered2:c": {"zz": "u", "st": [5, 3]}}'}
+        - {do: edit, set: {path: "/pv2-ordered2:c/st[1]", value: "7"}}
+        - {do: dump}
+        - {do: xpath, xpath: "/pv2-ordered2:c/st[1]"}
+    golden: golden/ordered-position-past-opaque.json

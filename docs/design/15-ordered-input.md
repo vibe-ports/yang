@@ -74,10 +74,11 @@ write takes the code path it took before (the counted-work and scaling tests are
   the first instance of the next schema sibling (tree_data.c:520-535), the logical default. The XML
   parser's key-order check uses the same stop (`walkStop`).
 - **Lookups.** `lyd_find_sibling_schema` without a children table stops at the first opaque sibling
-  (tree_data_common.c:1126-1131). `schemaFind` and `schemaLookup` therefore find nothing past it
-  (`linearBound`), and neither does `runBounds`'s leader. `lyd_validate_new` stops there too
-  (validation.c:1023). `lyd_find_sibling_opaq_next` searches only the trailing opaque block
-  (`opaqTail`).
+  (tree_data_common.c:1126-1131). `schemaFind`, `schemaLookup` and the first-instance lookup they
+  share with `opRun` and `runBounds` (`schemaLookupOperation`) therefore find nothing past it
+  (`linearBound`). `lyd_validate_new` stops there too
+  (validation.c:1023). `lyd_find_sibling_opaq_next` searches the trailing opaque block, or every sibling from
+  an opaque first one (`opaqNext`, charged per step).
 - **Runs.** In an interleaved set an opaque node ends a run, as another schema node does
   (`LYD_LIST_FOR_INST`, `lyds_additionally_create_rb_tree`). The set switches to the unordered
   mode when it interleaves. There the first-instance records use document neighbours
@@ -89,8 +90,8 @@ write takes the code path it took before (the counted-work and scaling tests are
   (`TestSplitRunInsertScaling`).
 - **libyang's sibling list.** Code that models `lyd_child`/`next`/`prev` reads document order:
   `first` (`lyd_first_sibling`), `firstChild`, `hasNext`, `nativeTail`, the key prefix (`positionalChildren`, `keyLinked`,
-  `checkKeys`, `listPredicate`), the validation sibling lists (`topList`, `slicesOf`) and the
-  diff/merge sibling lists.
+  `checkKeys`, `listPredicate`), the validation sibling lists (`topList`, `slicesOf`), the
+  diff/merge sibling lists and a batch removal's virtual links (`unlinkAllDefaults`).
 - **Republication** (`replaceSchema`, `publishRun`) in an interleaved set republishes the run's
   physical extent. Opaque nodes keep their slots, and new members follow the extent.
   `republishBound` prices the extent and its assembly, and `publicationIndexBound` and
@@ -99,7 +100,7 @@ write takes the code path it took before (the counted-work and scaling tests are
 
 ## Evidence
 
-- Oracle fixtures `protocol-v2/ordered-*` (24) cover:
+- Oracle fixtures `protocol-v2/ordered-*` (28) cover:
   - parse order, JSON and XML;
   - the XML opaque anchor;
   - later insertions with and without a children table, crossing the table threshold, and a sorted
@@ -108,6 +109,8 @@ write takes the code path it took before (the counted-work and scaling tests are
   - split leaf-list and list runs, with and without a table, including an insertion before the
     second piece's leader;
   - a set that lost its opaque node; an ordered forest whose first root is opaque, moved whole;
+  - freeing a split run's second-piece leader; a merge from an opaque first sibling; a positional
+    path past the first opaque sibling; Merge (no `LYD_MERGE_DESTRUCT`) into a split run;
   - opaque appends; unlink and re-insert; merge; dup; diff; validation (implicit default, opaque
     error and the stop of `lyd_validate_new`);
   - XPath axes and positions; a key after an opaque child; a validated out-of-order parse.
@@ -120,17 +123,16 @@ write takes the code path it took before (the counted-work and scaling tests are
   trees, with and without a table, refused at every charge boundary). The storage invariant also
   checks the kinds, the kind threads and the document-order run gaps.
 
-## Remaining restriction
+## Merge and the destructive merge
 
-A merge keeps the leader it found for the following source instances of the same schema node
-(`lyds_insert2`'s `leader_p`, tree_data.c:2755-2760; `lyds_insert2`, tree_data_sorted.c:1256-1279).
-The port looks the leader up again per instance once the run has no RB tree (`sortedRunBatchable`).
-The two differ only in a run split into pieces, by an opaque node or, in unordered copies, by
-another schema node. There, a new run start in the first piece replaces its first-instance
-record, and a re-lookup then finds the other piece. A merge of `k0, k3` into `k2 | zz | k1` puts
-`k3` after `k1`, where libyang puts it after `k2`. `protocol-v2/ordered-split-list-hashed`
-therefore merges only `k1, k3`. The same path serves unordered copies, so this predates this
-change, and it is a follow-up.
+`Tree.Merge` is `lyd_merge_siblings` without options. Each new instance goes through
+`lyd_insert_node` with a fresh leader lookup. The oracle's `edit merge` step uses
+`LYD_MERGE_DESTRUCT`, which pools the source's RB nodes and keeps the leader of the previous
+instance (`lyds_insert2`, tree_data.c:2721-2760). The two agree unless a run is split. In
+`k2 | zz | k1`, merging `k0, k3` puts `k3` after `k1` without `DESTRUCT`, which is the port's and
+libyang's result (`protocol-v2/ordered-split-list-merge-into`, a `merge_into` step), and after
+`k2` with it. The port exports no destructive merge, so `protocol-v2/ordered-split-list-hashed`
+merges only `k1, k3` through the `edit merge` step.
 
 ## D-0058 after this change
 

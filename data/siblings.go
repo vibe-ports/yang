@@ -1652,11 +1652,7 @@ func (t *Tree) schemaLookup(s *siblings, sn *schema.Node) *Node {
 	mixed := s.mixedContexts()
 	if (opChild(sn) || s.schemaUnordered) && !mixed &&
 		(s.SchemaLen() == 0 || sn.Module.Owner == nil || ctxOf(s.At(0)) == sn.Module.Owner) {
-		n := t.schemaLookupOperation(s, sn)
-		if n != nil && s.linearBound() < s.SchemaLen() && s.orderPosition(n) >= s.linearBound() {
-			return nil // past the first opaque sibling (linearBound)
-		}
-		return n
+		return t.schemaLookupOperation(s, sn) // bounded by linearBound itself
 	}
 	_, n := t.schemaFind(s, sn)
 	return n

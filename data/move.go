@@ -448,7 +448,7 @@ func (t *Tree) linkOrigin(n *Node) (restore func(), arm func(dst *siblings) (dis
 			// A copied or operation sibling set may have split runs. Limit
 			// this walk to the physical run and charge each inspected slot.
 			leader = n
-			for _, c := range sib.schemaSpan().Slice(sib.runPieceStart(max(at-1, 0)), at).Reverse() {
+			for _, c := range sib.schemaSpan().Slice(sib.runPieceStart(at), at).Reverse() {
 				if err := t.work.chargeHash(1); err != nil {
 					return nil, nil, err
 				}

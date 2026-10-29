@@ -25,6 +25,10 @@ module pv2-ordered2 {
     leaf-list ll {
       type uint8;
     }
+    leaf-list st {
+      config false;
+      type uint8;
+    }
     list l {
       key "k";
       leaf k {
