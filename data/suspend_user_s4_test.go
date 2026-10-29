@@ -560,3 +560,29 @@ func TestS4GuardDetachedRequestReader(t *testing.T) {
 		}
 	}
 }
+
+// TestS4ParseOpReentrancyPublicRefusal: a Reader of a public ParseOp that calls ParseOp again
+// with the same (now suspended) Request gets the public, logged refusal: a *ValidationError with
+// RC LY_EINVAL and its diagnostic, in the error and in the returned diagnostics (PR #327 review,
+// round 3). The outer parse completes.
+func TestS4ParseOpReentrancyPublicRefusal(t *testing.T) {
+	set, parent := s4OpsFixture(t)
+	for _, detached := range []bool{false, true} {
+		tree, op := parent()
+		if detached {
+			if err := tree.top.first().Unlink(); err != nil {
+				t.Fatal(err)
+			}
+		}
+		var innerDiags []yang.Diagnostic
+		var innerErr error
+		r := &mutatingReader{in: strings.NewReader(`{}`), mutate: func() {
+			_, innerDiags, innerErr = ParseOp(context.Background(), strings.NewReader(`{}`), FormatJSON, snap.New(set),
+				OpReply, ParseOpOptions{Request: op})
+		}}
+		if _, _, err := ParseOp(context.Background(), r, FormatJSON, snap.New(set), OpReply, ParseOpOptions{Request: op}); err != nil {
+			t.Fatalf("detached=%t: the outer parse: %v", detached, err)
+		}
+		s4PublicRefusal(t, "ParseOp", innerDiags, innerErr, true)
+	}
+}

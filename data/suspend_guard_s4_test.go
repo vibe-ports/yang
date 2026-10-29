@@ -543,31 +543,78 @@ func TestS4GuardNestedRefusalLeavesOuterOperation(t *testing.T) {
 		t.Fatal(err)
 	}
 	want := typedDump(ref)
-	mutators := map[string]func(a *Tree, c, leaf *Node) error{
-		"SetValue": func(_ *Tree, _, leaf *Node) error { _, err := leaf.SetValue("b"); return err },
-		"SetValueCanonical": func(_ *Tree, _, leaf *Node) error {
+	type call func(a *Tree, c, leaf *Node) ([]yang.Diagnostic, error)
+	noDiags := func(f func(a *Tree, c, leaf *Node) error) call {
+		return func(a *Tree, c, leaf *Node) ([]yang.Diagnostic, error) { return nil, f(a, c, leaf) }
+	}
+	mutators := map[string]call{
+		"SetValue": noDiags(func(_ *Tree, _, leaf *Node) error { _, err := leaf.SetValue("b"); return err }),
+		"SetValueCanonical": noDiags(func(_ *Tree, _, leaf *Node) error {
 			_, err := leaf.SetValueCanonical("b")
 			return err
-		},
-		"NewTerm": func(a *Tree, c, _ *Node) error { _, err := a.NewTerm(c, "t", "n", NewOptions{}); return err },
-		"NewList": func(a *Tree, c, _ *Node) error { _, err := a.NewList(c, "l", []string{"n"}, NewOptions{}); return err },
-		"NewPath": func(a *Tree, _, _ *Node) error {
+		}),
+		"NewTerm":  noDiags(func(a *Tree, c, _ *Node) error { _, err := a.NewTerm(c, "t", "n", NewOptions{}); return err }),
+		"NewInner": noDiags(func(a *Tree, _, _ *Node) error { _, err := a.NewInner(nil, "pv2-links:c", NewOptions{}); return err }),
+		"NewList":  noDiags(func(a *Tree, c, _ *Node) error { _, err := a.NewList(c, "l", []string{"n"}, NewOptions{}); return err }),
+		"NewList2": noDiags(func(a *Tree, c, _ *Node) error { _, err := a.NewList2(c, "l", "[k='n']", NewOptions{}); return err }),
+		"NewOpaque": noDiags(func(a *Tree, c, _ *Node) error {
+			_, err := a.NewOpaque(c, "o", "v", OpaqueOptions{})
+			return err
+		}),
+		"NewPath": noDiags(func(a *Tree, _, _ *Node) error {
 			_, err := a.NewPath("/pv2-links:c/t[.='n']", "", NewPathOptions{})
 			return err
+		}),
+		"NewMeta": noDiags(func(a *Tree, _, leaf *Node) error { _, err := a.NewMeta(leaf, "x:y", "z"); return err }),
+		"Insert":  noDiags(func(a *Tree, c, leaf *Node) error { return a.Insert(c, leaf) }),
+		"Remove":  noDiags(func(_ *Tree, _, leaf *Node) error { return leaf.Remove() }),
+		"Unlink":  noDiags(func(_ *Tree, _, leaf *Node) error { return leaf.Unlink() }),
+		"Merge": noDiags(func(a *Tree, _, _ *Node) error {
+			return a.Merge(s4ParseLinks(t, set, `{"pv2-links:c":{"t":["m"]}}`))
+		}),
+		"ApplyDiff": noDiags(func(a *Tree, _, _ *Node) error { return a.ApplyDiff(s4Diff(t, set, a, false), ApplyDiffOptions{}) }),
+		"MergeDiff": noDiags(func(a *Tree, _, _ *Node) error { return a.MergeDiff(s4Diff(t, set, a, false), MergeDiffOptions{}) }),
+		"MergeDiffTree": noDiags(func(a *Tree, _, _ *Node) error {
+			return a.MergeDiffTree(nil, s4Diff(t, set, a, false).top.first(), MergeDiffOptions{})
+		}),
+		"Dup": func(a *Tree, c, leaf *Node) ([]yang.Diagnostic, error) {
+			_, d, err := a.Dup(leaf, c, DupOptions{})
+			return d, err
 		},
-		"Insert":    func(a *Tree, c, leaf *Node) error { return a.Insert(c, leaf) },
-		"Remove":    func(_ *Tree, _, leaf *Node) error { return leaf.Remove() },
-		"Unlink":    func(_ *Tree, _, leaf *Node) error { return leaf.Unlink() },
-		"Merge":     func(a *Tree, _, _ *Node) error { return a.Merge(s4ParseLinks(t, set, `{"pv2-links:c":{"t":["m"]}}`)) },
-		"Dup":       func(a *Tree, c, leaf *Node) error { _, _, err := a.Dup(leaf, c, DupOptions{}); return err },
-		"TrimXPath": func(a *Tree, _, _ *Node) error { _, err := a.TrimXPath("/pv2-links:c/t", XPathOptions{}); return err },
-		"Validate": func(a *Tree, _, _ *Node) error {
-			_, err := a.Validate(context.Background(), ValidateOptions{})
-			return err
+		"DupSiblings": func(a *Tree, c, leaf *Node) ([]yang.Diagnostic, error) {
+			_, d, err := a.DupSiblings(leaf, c, DupOptions{})
+			return d, err
 		},
-		"LinkLinks": func(a *Tree, _, _ *Node) error { _, err := a.LinkLeafrefs(context.Background()); return err },
-		"ApplyDiff": func(a *Tree, _, _ *Node) error { return a.ApplyDiff(s4Diff(t, set, a, false), ApplyDiffOptions{}) },
+		"TrimXPath": func(a *Tree, _, _ *Node) ([]yang.Diagnostic, error) {
+			return a.TrimXPath("/pv2-links:c/t", XPathOptions{})
+		},
+		"Validate": func(a *Tree, _, _ *Node) ([]yang.Diagnostic, error) {
+			return a.Validate(context.Background(), ValidateOptions{})
+		},
+		"ValidateModule": func(a *Tree, _, _ *Node) ([]yang.Diagnostic, error) {
+			return a.ValidateModule(context.Background(), "pv2-links", ValidateOptions{})
+		},
+		"ValidateModuleFinal": func(a *Tree, _, _ *Node) ([]yang.Diagnostic, error) {
+			return a.ValidateModuleFinal(context.Background(), "pv2-links", ValidateOptions{})
+		},
+		"ValidateDiff": func(a *Tree, _, _ *Node) ([]yang.Diagnostic, error) {
+			_, d, err := a.ValidateDiff(context.Background(), ValidateOptions{})
+			return d, err
+		},
+		"ValidateModuleDiff": func(a *Tree, _, _ *Node) ([]yang.Diagnostic, error) {
+			_, d, err := a.ValidateModuleDiff(context.Background(), "pv2-links", ValidateOptions{})
+			return d, err
+		},
+		"ValidateOp": func(a *Tree, _, _ *Node) ([]yang.Diagnostic, error) {
+			return a.ValidateOp(context.Background(), OpRPC, ValidateOpOptions{})
+		},
+		"LinkLeafrefs": func(a *Tree, _, _ *Node) ([]yang.Diagnostic, error) {
+			return a.LinkLeafrefs(context.Background())
+		},
 	}
+	returnsDiags := map[string]bool{"Dup": true, "DupSiblings": true, "TrimXPath": true, "Validate": true,
+		"ValidateModule": true, "ValidateModuleFinal": true, "ValidateDiff": true, "ValidateModuleDiff": true,
+		"ValidateOp": true, "LinkLeafrefs": true}
 	for name, mutate := range mutators {
 		t.Run(name, func(t *testing.T) {
 			a, _, _, _ := s4LinkedPair(t, set)
@@ -580,9 +627,8 @@ func TestS4GuardNestedRefusalLeavesOuterOperation(t *testing.T) {
 				c := a.top.first()
 				leaf := s4Child(c, "t", "y")
 				used := a.work.hashUsed
-				if err := mutate(a, c, leaf); !s4Refused(err) {
-					t.Errorf("%s from the callback: %v, want the guard's refusal", name, err)
-				}
+				diags, err := mutate(a, c, leaf)
+				s4PublicRefusal(t, name, diags, err, returnsDiags[name])
 				if a.work.hashErr != nil || a.work.hashUsed != used {
 					t.Errorf("%s: the refusal leaked into the operation's counter (%v, %d units)", name, a.work.hashErr, a.work.hashUsed-used)
 				}
@@ -595,5 +641,27 @@ func TestS4GuardNestedRefusalLeavesOuterOperation(t *testing.T) {
 				t.Fatalf("history differs from the reference:\n%v\nwant\n%v", got, want)
 			}
 		})
+	}
+}
+
+// s4PublicRefusal asserts the public form of the guard's refusal: a *ValidationError whose RC is
+// LY_EINVAL and whose diagnostics carry the message, and the same diagnostic in the returned
+// slice of a call that returns one (wantDiags).
+func s4PublicRefusal(t *testing.T, name string, diags []yang.Diagnostic, err error, wantDiags bool) {
+	t.Helper()
+	var ve *ValidationError
+	if !errors.As(err, &ve) || ve.RC() != "LY_EINVAL" {
+		t.Errorf("%s: %T %v, want a *ValidationError with RC LY_EINVAL", name, err, err)
+		return
+	}
+	found := false
+	for _, d := range ve.Diags {
+		found = found || strings.Contains(d.Msg, errInProgress.Msg)
+	}
+	if !found {
+		t.Errorf("%s: no diagnostic names the refusal: %v", name, ve.Diags)
+	}
+	if wantDiags && (len(diags) == 0 || !strings.Contains(diags[len(diags)-1].Msg, errInProgress.Msg)) {
+		t.Errorf("%s: the returned diagnostics %v miss the refusal", name, diags)
 	}
 }

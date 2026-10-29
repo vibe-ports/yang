@@ -86,7 +86,7 @@ func (n *Node) Schema() *yang.SchemaNode {
 // valid earlier (FlagWhenTrue), else it is an error. Diagnostics and err as for Parse.
 func (t *Tree) Validate(ctx context.Context, o ValidateOptions) (_ []yang.Diagnostic, err error) {
 	if t.work.inProgress() { // an operation in progress governs t: refused before its counter is used
-		return nil, refusedEntry(t.context())
+		return refusedEntryDiags(t.context())
 	}
 	ctx = suspending(ctx, &t.work) // its polls run the user's context suspended (design 13 §2.4)
 	defer func() { err = restoreUser(err) }()
@@ -102,7 +102,7 @@ func (t *Tree) Validate(ctx context.Context, o ValidateOptions) (_ []yang.Diagno
 // ValidateModuleDiff for the diff-returning form and its mutation and error semantics.
 func (t *Tree) ValidateModule(ctx context.Context, module string, o ValidateOptions) (_ []yang.Diagnostic, err error) {
 	if t.work.inProgress() { // an operation in progress governs t: refused before its counter is used
-		return nil, refusedEntry(t.context())
+		return refusedEntryDiags(t.context())
 	}
 	ctx = suspending(ctx, &t.work) // its polls run the user's context suspended (design 13 §2.4)
 	defer func() { err = restoreUser(err) }()

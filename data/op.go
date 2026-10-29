@@ -6,6 +6,7 @@ package data
 
 import (
 	"context"
+	"errors"
 	"io"
 
 	"github.com/vibe-ports/yang"
@@ -133,7 +134,13 @@ func ParseOp(ctx context.Context, r io.Reader, f Format, s *yang.Schema, typ OpT
 	if argErrOf != nil {
 		return fail(set, argErrOf)
 	}
+	if req != nil && governing(req).suspendedState() {
+		return fail(set, errInProgress) // its operation waits on user code: refused before the read
+	}
 	tree, op, env, diags, err := parseOpWith(ctx, r, set, f, opType(typ), req, o.Unknown, o.Budget)
+	if oe := (*opError)(nil); errors.As(err, &oe) && oe == errInProgress {
+		return fail(set, err) // a raw guard refusal gets the public, logged form
+	}
 	if err != nil {
 		return OpResult{Envelope: env}, diags, err
 	}
@@ -163,7 +170,7 @@ type ValidateOpOptions struct {
 // unlinked again): it needs exclusive access to both.
 func (t *Tree) ValidateOp(ctx context.Context, typ OpType, o ValidateOpOptions) (_ []yang.Diagnostic, err error) {
 	if t.work.inProgress() { // an operation in progress governs t: refused before its counter is used
-		return nil, refusedEntry(t.context())
+		return refusedEntryDiags(t.context())
 	}
 	ctx = suspending(ctx, &t.work) // its polls run the user's context suspended (design 13 §2.4)
 	defer func() { err = restoreUser(err) }()

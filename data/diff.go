@@ -43,7 +43,8 @@ func (op diffOp) String() string { return [...]string{"create", "delete", "repla
 // implicit-node and XPath budgets.
 func (t *Tree) ValidateDiff(ctx context.Context, o ValidateOptions) (diff *Tree, d []yang.Diagnostic, err error) {
 	if t.work.inProgress() { // an operation in progress governs t: refused before its counter is used
-		return nil, nil, refusedEntry(t.context())
+		d, err := refusedEntryDiags(t.context())
+		return nil, d, err
 	}
 	ctx = suspending(ctx, &t.work) // its polls run the user's context suspended (design 13 §2.4)
 	defer func() { err = restoreUser(err) }()
@@ -90,7 +91,8 @@ func (t *Tree) ValidateDiff(ctx context.Context, o ValidateOptions) (diff *Tree,
 func (t *Tree) ValidateModuleDiff(ctx context.Context, module string, o ValidateOptions) (diff *Tree,
 	d []yang.Diagnostic, err error) {
 	if t.work.inProgress() { // an operation in progress governs t: refused before its counter is used
-		return nil, nil, refusedEntry(t.context())
+		d, err := refusedEntryDiags(t.context())
+		return nil, d, err
 	}
 	ctx = suspending(ctx, &t.work) // its polls run the user's context suspended (design 13 §2.4)
 	defer func() { err = restoreUser(err) }()

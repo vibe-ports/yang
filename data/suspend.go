@@ -297,5 +297,13 @@ func linkGuard(n *Node, w *workCounter) error {
 // error, which would otherwise fail the waiting operation.
 func (w *workCounter) inProgress() bool { return w != nil && w.journal.suspendedState() }
 
-// refusedEntry is that refusal, logged as LY_EINVAL in the caller's context.
-func refusedEntry(set *schema.Set) error { return (&logger{set: set}).done(errInProgress) }
+// refusedEntry is that refusal, logged as LY_EINVAL in the caller's context: a *ValidationError
+// carrying the diagnostic.
+func refusedEntry(set *schema.Set) error { _, err := refusedEntryDiags(set); return err }
+
+// refusedEntryDiags is refusedEntry with the diagnostics, for the calls that return them.
+func refusedEntryDiags(set *schema.Set) ([]yang.Diagnostic, error) {
+	lg := &logger{set: set}
+	err := lg.done(errInProgress)
+	return lg.diags, err
+}
