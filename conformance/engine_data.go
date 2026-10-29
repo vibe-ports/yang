@@ -42,11 +42,7 @@ var parseFlags = map[string]func(*data.ParseOptions){
 	"store_only":            func(o *data.ParseOptions) { o.StoreOnly = true },
 	"json_null":             func(o *data.ParseOptions) { o.JSONNull = true },
 	"json_string_datatypes": func(o *data.ParseOptions) { o.JSONStringDatatypes = true },
-}
-
-// parseUnsupported are the oracle's parse_options this engine refuses, with the reason.
-var parseUnsupported = map[string]string{
-	"ordered": "(not exported: LYD_PARSE_ORDERED input order, D-0058)",
+	"ordered":               func(o *data.ParseOptions) { o.Ordered = true },
 }
 
 var validateFlags = map[string]func(*data.ValidateOptions){
@@ -306,7 +302,7 @@ func dataOptions(p map[string]any, exec executionContext) (data.ParseOptions, er
 	for _, f := range list(p["parse_options"]) {
 		set, ok := parseFlags[fmt.Sprint(f)]
 		if !ok {
-			return o, fmt.Errorf("%w: parse option %v %s", ErrUnsupported, f, parseUnsupported[fmt.Sprint(f)])
+			return o, fmt.Errorf("%w: parse option %v", ErrUnsupported, f)
 		}
 		set(&o)
 	}

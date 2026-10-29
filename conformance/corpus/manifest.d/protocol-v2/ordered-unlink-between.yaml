@@ -1,0 +1,22 @@
+# unlinking the schema nodes around an interleaved opaque node, then inserting again
+fixtures:
+  - id: protocol-v2/ordered-unlink-between
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#7.5.7"]
+    areas: [codecs]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      context_options: ["no_yanglibrary"]
+      modules: [{name: "pv2-ordered2"}]
+      steps:
+        - {do: parse, format: json, data_type: get, unknown: opaque, parse_options: [ordered], data: '{"pv2-ordered2:c": {"a": "x", "zz": "u", "b": "y", "yy": "t", "c": "z"}}'}
+        - {do: edit, delete: /pv2-ordered2:c/b}
+        - {do: dump}
+        - {do: edit, set: {path: /pv2-ordered2:c/b, value: "y2"}}
+        - {do: dump}
+        - {do: edit, delete: /pv2-ordered2:c/a}
+        - {do: edit, set: {path: /pv2-ordered2:c/a, value: "x2"}}
+        - {do: dump}
+    golden: golden/ordered-unlink-between.json

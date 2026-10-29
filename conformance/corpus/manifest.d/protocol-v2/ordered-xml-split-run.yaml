@@ -1,0 +1,18 @@
+# LYD_PARSE_ORDERED XML input whose leaf-list run an opaque node splits (undefined input order, design 15 restriction)
+fixtures:
+  - id: protocol-v2/ordered-xml-split-run
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#7.5.7"]
+    areas: [codecs]
+    request:
+      op: "data"
+      searchdirs: [schemas]
+      context_options: ["no_yanglibrary"]
+      modules: [{name: "pv2-ordered2"}]
+      format: xml
+      data_type: get
+      unknown: opaque
+      parse_options: [ordered]
+      data: '<c xmlns="urn:vibe-ports:yang:conformance:pv2-ordered2"><ll>1</ll><zz>u</zz><ll>2</ll></c>'
+    golden: golden/ordered-xml-split-run.json

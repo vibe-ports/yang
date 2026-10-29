@@ -1,0 +1,485 @@
+{
+  "context_diagnostics": [],
+  "failed_step": null,
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "pv2-ordered2",
+      "revision": null
+    }
+  ],
+  "op": "sequence",
+  "protocol": 2,
+  "rc": {
+    "err": 0,
+    "name": "LY_SUCCESS"
+  },
+  "steps": [
+    {
+      "diagnostics": [],
+      "do": "parse",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-ordered2:c",
+          "schema": "/pv2-ordered2:c",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-ordered2:c/ll[.='3']",
+          "schema": "/pv2-ordered2:c/ll",
+          "value": {
+            "canonical": "3",
+            "type": "uint8",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "opaque",
+          "meta": [],
+          "opaque": {
+            "format": "json",
+            "module": "pv2-ordered2",
+            "name": "zz",
+            "namespace": null,
+            "prefix": null
+          },
+          "path": "/pv2-ordered2:c/zz",
+          "schema": null,
+          "value": {
+            "canonical": "u",
+            "hints": [
+              "string",
+              "num64"
+            ],
+            "type": null,
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-ordered2:c/c",
+          "schema": "/pv2-ordered2:c/c",
+          "value": {
+            "canonical": "z",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        }
+      ]
+    },
+    {
+      "diagnostics": [],
+      "do": "edit",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-ordered2:c",
+          "schema": "/pv2-ordered2:c",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-ordered2:c/ll[.='3']",
+          "schema": "/pv2-ordered2:c/ll",
+          "value": {
+            "canonical": "3",
+            "type": "uint8",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-ordered2:c/ll[.='5']",
+          "schema": "/pv2-ordered2:c/ll",
+          "value": {
+            "canonical": "5",
+            "type": "uint8",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "opaque",
+          "meta": [],
+          "opaque": {
+            "format": "json",
+            "module": "pv2-ordered2",
+            "name": "zz",
+            "namespace": null,
+            "prefix": null
+          },
+          "path": "/pv2-ordered2:c/zz",
+          "schema": null,
+          "value": {
+            "canonical": "u",
+            "hints": [
+              "string",
+              "num64"
+            ],
+            "type": null,
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-ordered2:c/c",
+          "schema": "/pv2-ordered2:c/c",
+          "value": {
+            "canonical": "z",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        }
+      ]
+    },
+    {
+      "diagnostics": [],
+      "do": "edit",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-ordered2:c",
+          "schema": "/pv2-ordered2:c",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-ordered2:c/ll[.='1']",
+          "schema": "/pv2-ordered2:c/ll",
+          "value": {
+            "canonical": "1",
+            "type": "uint8",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-ordered2:c/ll[.='3']",
+          "schema": "/pv2-ordered2:c/ll",
+          "value": {
+            "canonical": "3",
+            "type": "uint8",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-ordered2:c/ll[.='5']",
+          "schema": "/pv2-ordered2:c/ll",
+          "value": {
+            "canonical": "5",
+            "type": "uint8",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "opaque",
+          "meta": [],
+          "opaque": {
+            "format": "json",
+            "module": "pv2-ordered2",
+            "name": "zz",
+            "namespace": null,
+            "prefix": null
+          },
+          "path": "/pv2-ordered2:c/zz",
+          "schema": null,
+          "value": {
+            "canonical": "u",
+            "hints": [
+              "string",
+              "num64"
+            ],
+            "type": null,
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-ordered2:c/c",
+          "schema": "/pv2-ordered2:c/c",
+          "value": {
+            "canonical": "z",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        }
+      ]
+    },
+    {
+      "diagnostics": [],
+      "do": "dump",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "tree": {
+        "json": "{\n  \"pv2-ordered2:c\": {\n    \"ll\": [\n      1,\n      3,\n      5\n    ],\n    \"zz\": \"u\",\n    \"c\": \"z\"\n  }\n}\n",
+        "xml": "<c xmlns=\"urn:vibe-ports:yang:conformance:pv2-ordered2\">\n  <ll>1</ll>\n  <ll>3</ll>\n  <ll>5</ll>\n  <zz>u</zz>\n  <c>z</c>\n</c>\n"
+      },
+      "typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-ordered2:c",
+          "schema": "/pv2-ordered2:c",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-ordered2:c/ll[.='1']",
+          "schema": "/pv2-ordered2:c/ll",
+          "value": {
+            "canonical": "1",
+            "type": "uint8",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-ordered2:c/ll[.='3']",
+          "schema": "/pv2-ordered2:c/ll",
+          "value": {
+            "canonical": "3",
+            "type": "uint8",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-ordered2:c/ll[.='5']",
+          "schema": "/pv2-ordered2:c/ll",
+          "value": {
+            "canonical": "5",
+            "type": "uint8",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "opaque",
+          "meta": [],
+          "opaque": {
+            "format": "json",
+            "module": "pv2-ordered2",
+            "name": "zz",
+            "namespace": null,
+            "prefix": null
+          },
+          "path": "/pv2-ordered2:c/zz",
+          "schema": null,
+          "value": {
+            "canonical": "u",
+            "hints": [
+              "string",
+              "num64"
+            ],
+            "type": null,
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-ordered2:c/c",
+          "schema": "/pv2-ordered2:c/c",
+          "value": {
+            "canonical": "z",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        }
+      ]
+    }
+  ],
+  "verdict": "valid"
+}

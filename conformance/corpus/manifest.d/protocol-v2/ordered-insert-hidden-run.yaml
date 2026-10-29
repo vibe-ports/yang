@@ -1,0 +1,19 @@
+# a run past the first opaque node is invisible to lyd_find_sibling_schema without a children table (tree_data_common.c:1126-1131): the next instance is inserted by schema instead of into the run
+fixtures:
+  - id: protocol-v2/ordered-insert-hidden-run
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#7.5.7"]
+    areas: [codecs]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      context_options: ["no_yanglibrary"]
+      modules: [{name: "pv2-ordered2"}]
+      steps:
+        - {do: parse, format: json, data_type: get, unknown: opaque, parse_options: [ordered], data: '{"pv2-ordered2:c": {"a": "x", "zz": "u", "ll": [3]}}'}
+        - {do: edit, insert_term: {parent: /pv2-ordered2:c, name: ll, value: "5"}}
+        - {do: dump}
+        - {do: edit, insert_term: {parent: /pv2-ordered2:c, name: ll, value: "1"}}
+        - {do: dump}
+    golden: golden/ordered-insert-hidden-run.json

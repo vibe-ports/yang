@@ -1,0 +1,17 @@
+# LYD_PARSE_ORDERED keeps an opaque node between schema nodes; a later insertion without a children table stops its anchor walk at that opaque node (tree_data.c:546-589)
+fixtures:
+  - id: protocol-v2/ordered-insert-before-opaque
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#7.5.7"]
+    areas: [codecs]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      context_options: ["no_yanglibrary"]
+      modules: [{name: "pv2-ordered2"}]
+      steps:
+        - {do: parse, format: json, data_type: get, unknown: opaque, parse_options: [ordered], data: '{"pv2-ordered2:c": {"a": "x", "zz": "u", "c": "z"}}'}
+        - {do: edit, set: {path: /pv2-ordered2:c/b, value: "y"}}
+        - {do: dump}
+    golden: golden/ordered-insert-before-opaque.json
