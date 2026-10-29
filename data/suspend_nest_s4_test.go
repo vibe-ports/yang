@@ -14,7 +14,10 @@ import (
 )
 
 const s4NestModule = `module s4n {yang-version 1.1;namespace "urn:s4n";prefix n;
- container c {leaf x {type string;}leaf y {type string;}leaf z {type string;}}
+ container c {leaf x {type string;}leaf y {type string;}leaf z {type string;}
+  container d1 {container d2 {container d3 {leaf w {type string;}}}}
+  container e1 {container e2 {container e3 {leaf w {type string;}}}}
+  anydata ad;}
  rpc r {input {leaf i {type string;}leaf j {type string;}} output {leaf o {type string;}}}}`
 
 // s4Side is one operation of the nesting matrix on a fresh fixture: run calls user from the
@@ -22,7 +25,8 @@ const s4NestModule = `module s4n {yang-version 1.1;namespace "urn:s4n";prefix n;
 // node detached from that object before it, and snap the object's state.
 type s4Side struct {
 	held, stale *Node
-	during      *Node // a node the operation detaches before its user code runs (nil: none)
+	during      *Node   // a node the operation detaches before its user code runs (nil: none)
+	more        []*Node // further held objects: deep descendants, payload nodes (edited by Unlink)
 	snap        func() string
 	run         func(user func() error) error
 }
@@ -114,6 +118,25 @@ func s4NestSides(t *testing.T, set *schema.Set) map[string]func() s4Side {
 				f := s4Once(user)
 				return o.ApplyDiff(d, ApplyDiffOptions{Callback: func(_, _ *Node) error { return f() }})
 			}}
+		},
+		"ApplyDiff deep+payload": func() s4Side { // deep subtrees and an anydata payload, attached and detached
+			in := `{"s4n:c":{"x":"1","d1":{"d2":{"d3":{"w":"1"}}},"e1":{"e2":{"e3":{"w":"1"}}},"ad":{"p":{"q":"1"}}}}`
+			o := data(in)
+			d := diff(data(`{"s4n:c":{"x":"1"}}`), data(`{"s4n:c":{"x":"2"}}`)) // Diff does not take anydata
+			c := o.top.first()
+			deep := named(named(named(named(c, "d1"), "d2"), "d3"), "w")
+			staleRoot := unlink(named(c, "e1"))
+			staleDeep := named(named(named(staleRoot, "e2"), "e3"), "w")
+			ad := named(c, "ad")
+			if ad.any == nil || ad.any.children.len() == 0 {
+				t.Fatal("setup: the anydata has no payload tree")
+			}
+			payload := ad.any.children.At(0)
+			return s4Side{held: deep, stale: staleDeep, more: []*Node{named(c, "d1"), payload, staleRoot}, snap: dump(o),
+				run: func(user func() error) error {
+					f := s4Once(user)
+					return o.ApplyDiff(d, ApplyDiffOptions{Callback: func(_, _ *Node) error { return f() }})
+				}}
 		},
 		"MergeDiff": func() s4Side {
 			o := diff(data(`{"s4n:c":{"x":"1","y":"1"}}`), data(`{"s4n:c":{"x":"2","y":"2"}}`))

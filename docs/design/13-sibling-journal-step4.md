@@ -114,7 +114,9 @@ state owns, refuses: no state accepts another's objects as its own. enroll (the 
 detached parent, of a ParseOp request, of a link owner), rebind, joinLinkJournal and joint
 transactions all use it; a counterless detached set still gets the state's temporary counter until
 end. A public entry refuses a held node argument (a parent, a moved node, an annotated node) before
-it opens any counter's accounting scope. So a ParseOp on a request detached from a waiting tree
+it opens any counter's accounting scope, and the binding preflight of a subtree about to be
+rebound (subtreeBindingBound) refuses a held set anywhere in it before any set is rebound, lent
+or recorded (TestS4RefusedMoveLeavesNoBinding). So a ParseOp on a request detached from a waiting tree
 refuses before it reads, and one on a request whose counter is free enrolls it and its Reader meets
 ParseOp's own hold (TestS4NestedParseOpOnStaleRequest, the nesting matrix
 TestS4NestedOperationsHoldTheirOwn, TestS4CapturedLinkOwnerIsHeld,

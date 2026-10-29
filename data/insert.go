@@ -2440,6 +2440,9 @@ func subtreeBindingBound(root *Node, work *workCounter, force bool) (uint64, err
 	if !force && childStorage(root).work == work {
 		return 0, nil
 	}
+	if heldNode(root) {
+		return 0, refuseIn(work.journal)
+	}
 	if err := work.chargeHash(1); err != nil {
 		return 0, err
 	}
@@ -2451,6 +2454,9 @@ func subtreeBindingBound(root *Node, work *workCounter, force bool) (uint64, err
 		sib := childStorage(n)
 		if !force && sib.work == work {
 			continue
+		}
+		if heldSet(sib) { // a held binding below: refused before any set is rebound or lent
+			return 0, refuseIn(work.journal)
 		}
 		children := uint64(sib.SchemaLen() + sib.OpaqueLen()) //nolint:gosec // sibling counts are nonnegative
 		if err := work.chargeHash(1 + children); err != nil {

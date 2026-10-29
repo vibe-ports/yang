@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"reflect"
 	"strings"
 	"sync"
 	"testing"
@@ -449,6 +450,68 @@ func TestS4CapturedLinkOwnerIsHeld(t *testing.T) {
 	}
 	if got := links(); got != before {
 		t.Fatalf("after rollback: %s, want %s", got, before)
+	}
+}
+
+// TestS4RefusedMoveLeavesNoBinding: in TestS4CapturedLinkOwnerIsHeld's setup, a callback that
+// catches the refusal of moving the held detached subtree into another tree, then edits that
+// tree and returns nil, leaves no trace: the subtree's bindings and the other tree's counter are
+// as before, nothing was lent, and the other tree stays editable (astra round 9).
+func TestS4RefusedMoveLeavesNoBinding(t *testing.T) {
+	set := s4LinksSet(t)
+	b := s4ParseLinks(t, set, `{"pv2-links:c":{"l":[{"k":"a"}],"r":"a","v":"a"}}`)
+	if _, err := b.LinkLeafrefs(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	a := s4ParseLinks(t, set, `{"pv2-links:c":{"t":["y"]}}`)
+	bc := b.top.first()
+	if err := a.Insert(a.top.first(), s4Child(bc, "l", "a")); err != nil {
+		t.Fatal(err)
+	}
+	if err := bc.Unlink(); err != nil {
+		t.Fatal(err)
+	}
+	bindings := func() []*workCounter {
+		var ws []*workCounter
+		for n := range bc.allAny() {
+			ws = append(ws, childStorage(n).work)
+		}
+		return ws
+	}
+	before := bindings()
+	free := s4ParseLinks(t, set, `{"pv2-links:c":{"t":["q"]}}`)
+	q := s4Child(free.top.first(), "t", "q")
+	var moveErr, editErr error
+	var freeJournal *hashTransaction
+	called := false
+	err := a.ApplyDiff(s4Diff(t, set, a, true), ApplyDiffOptions{Callback: func(_, _ *Node) error {
+		if s4Child(a.top.first(), "l", "a") != nil || called {
+			return nil
+		}
+		called = true
+		moveErr = free.Insert(nil, bc)
+		_, editErr = q.SetValue("p")
+		freeJournal = free.work.journal
+		return nil
+	}})
+	if err != nil || !called {
+		t.Fatalf("ApplyDiff: %v (called %t)", err, called)
+	}
+	s4PublicRefusal(t, "moving the held detached subtree", nil, moveErr, false)
+	if editErr != nil || q.Value() != "p" || freeJournal != nil {
+		t.Fatalf("editing the other tree after the caught refusal: %v (value %q, journal left %t)", editErr, q.Value(), freeJournal != nil)
+	}
+	if got := bindings(); !reflect.DeepEqual(got, before) || bc.treeOf() != nil {
+		t.Fatal("the refused move changed the subtree's bindings")
+	}
+	if free.work.journal != nil || free.work.held() {
+		t.Fatal("the other tree keeps a journal or a hold")
+	}
+	if _, err := q.SetValue("o"); err != nil {
+		t.Fatal(err)
+	}
+	if err := free.Insert(nil, bc); err != nil { // and the move works once ApplyDiff returned
+		t.Fatal(err)
 	}
 }
 

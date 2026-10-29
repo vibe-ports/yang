@@ -23,7 +23,8 @@ func (e *s4IsErr) Is(error) bool { e.edit(); return false }
 // context; error methods through every outcome) and each outcome of that user code (success, an
 // error, an error with methods, the budget, cancellation, a panic), user code meets:
 //   - objects bound to the waiting counter, refused in the public form and unchanged: attached,
-//     detached before the operation, detached by it (ApplyDiff+delete);
+//     detached before the operation, detached by it (ApplyDiff+delete); leaves, deep subtrees
+//     and their descendants, an anydata payload node (ApplyDiff deep+payload);
 //   - objects of other counters, edited: a node of an independent idle tree, and a node built
 //     during the wait (no counter of the waiting tree);
 //
@@ -37,7 +38,7 @@ func TestS4Lifecycle(t *testing.T) {
 	sides := s4NestSides(t, set)
 	outcomes := []string{"success", "error", "error methods", "budget", "cancel", "panic"}
 	cases := 0
-	for _, entry := range []string{"ApplyDiff", "ApplyDiff+delete", "MergeDiff", "ParseOp+Reader", "Validate+ctx"} {
+	for _, entry := range []string{"ApplyDiff", "ApplyDiff+delete", "ApplyDiff deep+payload", "MergeDiff", "ParseOp+Reader", "Validate+ctx"} {
 		for _, outcome := range outcomes {
 			name := entry + "/" + outcome
 			benign := sides[entry]()
@@ -52,11 +53,18 @@ func TestS4Lifecycle(t *testing.T) {
 			}
 			indep := s4ParseLinks(t, set, `{"s4n:c":{"x":"1"}}`)
 			indepLeaf := s4Named(t, indep.top.first(), "x")
+			parents := make([]*Node, len(op.more))
+			for i, n := range op.more {
+				parents[i] = n.parent
+			}
 			var refusals, edits []error
 			editHeld := func() {
 				for _, n := range held {
 					_, err := n.SetValue("9")
 					refusals = append(refusals, err)
+				}
+				for _, n := range op.more {
+					refusals = append(refusals, n.Unlink())
 				}
 			}
 			user := func() error {
@@ -93,16 +101,21 @@ func TestS4Lifecycle(t *testing.T) {
 				t.Errorf("%s: returned %v, panicked %v", name, err, panicked)
 				continue
 			}
-			if len(refusals) < len(held) {
+			if len(refusals) < len(held)+len(op.more) {
 				t.Errorf("%s: user code made %d edits of held objects", name, len(refusals))
 				continue
 			}
 			for i, err := range refusals {
-				s4PublicRefusal(t, fmt.Sprintf("%s: held object %d", name, i%len(held)), nil, err, false)
+				s4PublicRefusal(t, fmt.Sprintf("%s: held object %d", name, i%(len(held)+len(op.more))), nil, err, false)
 			}
 			for i, n := range held {
 				if n.Value() == "9" {
 					t.Errorf("%s: a refused edit changed held object %d", name, i)
+				}
+			}
+			for i, n := range op.more {
+				if n.parent != parents[i] {
+					t.Errorf("%s: a refused Unlink moved object %d", name, i)
 				}
 			}
 			for i, err := range edits {
@@ -126,6 +139,14 @@ func TestS4Lifecycle(t *testing.T) {
 				}
 				if _, err := n.SetValue("8"); err != nil {
 					t.Errorf("%s: edit of object %d after the operation: %v", name, i, err)
+				}
+			}
+			for i, n := range op.more {
+				if w := childStorage(n).work; w.held() || w != nil && w.journal != nil {
+					t.Errorf("%s: object %d keeps an enrollment after the operation", name, i)
+				}
+				if err := n.Unlink(); err != nil {
+					t.Errorf("%s: Unlink of object %d after the operation: %v", name, i, err)
 				}
 			}
 		}
