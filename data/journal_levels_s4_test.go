@@ -464,3 +464,124 @@ func TestS4ValidateOpOneState(t *testing.T) {
 		s4Check(t, "validate", []*Tree{req, oper})
 	}
 }
+
+// TestS4TransferBindingCharges is G5: after an indexed whole-forest transfer the index hooks
+// report to the destination (the binding's owner): its counter counts the index work, the old
+// one does not; a rollback gives the binding its owner back.
+func TestS4TransferBindingCharges(t *testing.T) {
+	set := reviewDiffSet(t, s4JournalModule)
+	src, op := s4OpTree(t, set, "5", "1", "9")
+	dstTree := newTree(set)
+	holder := newInner(op.schema, &src.work) // a payload of the same tree, as takeAnyChildren's
+	dst := &holder.kids
+	n := s4Child(op, "w", "9")
+	o := op.kids.order
+	j := beginHashTransaction(src)
+	if err := src.touch(dst); err != nil {
+		t.Fatal(err)
+	}
+	if err := dst.transferFrom(&op.kids); err != nil {
+		t.Fatal(err)
+	}
+	dst.setWork(&dstTree.work)
+	if o.bind.owner != dst {
+		t.Fatal("the transfer did not rebind the index to its new owner")
+	}
+	src.work.Store(0)
+	dstTree.work.Store(0)
+	if dst.orderPosition(n) < 0 {
+		t.Fatal("the transferred index lost the node")
+	}
+	if dstTree.work.Load() == 0 || src.work.Load() != 0 {
+		t.Fatalf("index work went to the source (%d) instead of the destination (%d)", src.work.Load(), dstTree.work.Load())
+	}
+	failed := errors.New("refused")
+	j.rollback = true
+	before := s4Mallocs()
+	j.end(&failed)
+	if n := s4Mallocs() - before; n != 0 {
+		t.Fatalf("the rollback allocated %d times", n) // G7: no hook reinstallation
+	}
+	if o.bind.owner != &op.kids || op.kids.order != o || dst.order != nil {
+		t.Fatal("the rollback did not give the index back to its owner")
+	}
+	s4Check(t, "after", []*Tree{src})
+}
+
+// TestS4CompleteRollbackAllocs is G7: the complete rollback of an operation over an indexed set
+// (index edits, an index rebuild, whole captures of both trees and a counter rebinding through
+// moveNodes) allocates nothing.
+func TestS4CompleteRollbackAllocs(t *testing.T) {
+	set := reviewDiffSet(t, s4JournalModule)
+	defer runtime.GOMAXPROCS(runtime.GOMAXPROCS(1))
+	dst, dop := s4OpTree(t, set, "5", "1", "9")
+	src := s4DataTree(t, set, "3", "7")
+	before := snapshotHashBudgetTree(dst)
+	j := beginHashTransaction(dst)
+	for _, v := range []string{"2", "4", "6", "8", "10", "12"} {
+		if _, err := dst.NewTerm(dop, "w", v, NewOptions{}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := dop.kids.orderBuild(dst); err != nil { // an index replacement
+		t.Fatal(err)
+	}
+	if err := s4Child(dop, "w", "9").Remove(); err != nil {
+		t.Fatal(err)
+	}
+	if err := dst.Insert(nil, src.top.first()); err != nil { // moveNodes: rebinds src's subtree
+		t.Fatal(err)
+	}
+	failed := errors.New("refused")
+	j.rollback = true
+	allocs := s4Mallocs()
+	j.end(&failed)
+	if n := s4Mallocs() - allocs; n != 0 {
+		t.Fatalf("the complete rollback allocated %d times", n)
+	}
+	if !reflect.DeepEqual(snapshotHashBudgetTree(dst), before) {
+		t.Fatal("the rollback did not restore the tree")
+	}
+	s4Check(t, "after", []*Tree{dst, src})
+}
+
+// TestS4RefreshExactThroughValidation is G6: tree validation of an operation changes a union
+// member (leafref to string) in place, refreshing the exact-value index (validateIncomplete,
+// refreshExact, outside the prepaid scopes). Every refusal of the ValidateOp leaves the index as
+// it was; the completed validation leaves a consistent index.
+func TestS4RefreshExactThroughValidation(t *testing.T) {
+	set := opIndexSet(t, `module m { yang-version 1.1; namespace "urn:m"; prefix m;
+  rpc op { input { leaf target { type int32; }
+    leaf-list v { ordered-by user; type union { type leafref { path "../target"; } type string; } } } } }`)
+	build := func() (*Tree, *Node) {
+		tr, op := opIndexParseRPC(t, set, `{"m:op":{}}`)
+		for _, v := range []string{"01", "02", "03", "04", "05"} { // stored as leafref members
+			if _, err := tr.NewTerm(op, "v", v, NewOptions{}); err != nil {
+				t.Fatal(err)
+			}
+		}
+		return tr, op
+	}
+	tr, _ := build()
+	if _, err := tr.ValidateOp(context.Background(), OpRPC, ValidateOpOptions{}); err != nil {
+		var ve *ValidationError
+		if !errors.As(err, &ve) {
+			t.Fatal(err)
+		}
+	}
+	need := tr.work.hashUsed
+	for limit := uint64(1); limit < need; limit++ {
+		tr, op := build()
+		index, snap := s4IndexImage(&op.kids), snapshotHashBudgetTree(tr)
+		tr.work.hashLimit = limit
+		_, err := tr.ValidateOp(context.Background(), OpRPC, ValidateOpOptions{})
+		tr.work.hashLimit = 0
+		if !errors.Is(err, yang.ErrBudget) {
+			continue
+		}
+		if s4IndexImage(&op.kids) != index || !reflect.DeepEqual(snapshotHashBudgetTree(tr), snap) {
+			t.Fatalf("limit %d: the refused validation changed the index", limit)
+		}
+	}
+	s4Check(t, "validated", []*Tree{tr})
+}
