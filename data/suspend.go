@@ -91,7 +91,9 @@ func heldNode(n *Node) bool {
 	if !childStorage(n).work.held() {
 		return false // n's binding: the tree's counter, or one lent to the state on it
 	}
-	heldWalks++
+	if heldWalkHook != nil {
+		heldWalkHook()
+	}
 	g := governing(n)
 	root := n
 	for x := n; x != nil; x = x.parent {
@@ -106,8 +108,8 @@ func heldNode(n *Node) bool {
 	return g.suspendedState() && g.detached[root] != 0
 }
 
-// heldWalks counts heldNode's root walks (tests: the common path must not walk).
-var heldWalks int
+// heldWalkHook, nil outside tests, observes heldNode's root walks (the common path must not walk).
+var heldWalkHook func()
 
 // heldSet reports whether the sibling set s is held: as its first member is (a set and its
 // members share their root). An empty set has no member to place it: it is held only by a
@@ -243,22 +245,9 @@ func (e *restoredErr) Error() string {
 func (e *restoredErr) Unwrap() []error { return []error{e.outer, e.user.err} }
 
 // callUser runs user code f suspended, its error classified before the state resumes.
-func (w *workCounter) callUser(f func() error, also ...*workCounter) error {
+func (w *workCounter) callUser(f func() error) error {
 	defer w.suspend()()
-	for _, o := range also { // the other trees the operation reads (a diff source)
-		if o != w {
-			defer o.suspend()()
-		}
-	}
 	return classifyUser(f())
-}
-
-// workOf is the counter of n's tree (nil for a detached node).
-func workOf(n *Node) *workCounter {
-	if t := n.treeOf(); t != nil {
-		return &t.work
-	}
-	return nil
 }
 
 // readUser is io.ReadAll of a user Reader, suspended, its error classified inside.

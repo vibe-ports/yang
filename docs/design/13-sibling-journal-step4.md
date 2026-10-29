@@ -102,10 +102,12 @@ to the root once: the node is held if it is in the held tree, or if the waiting 
 (an in-flight detachment that state restores). An empty set has no member to place it and is held
 only by a waiting state bound to it; a node entering an empty set of the held tree is refused by
 its rebinding to the held counter or by the entry guard of the tree it enters
-(TestS4DetachedNodeNotHeldByItsOldTree, TestS4HeldCheckIsConstantOnTheCommonPath). Diff callbacks
-hold the source diff's counter as well as the destination's (`callUser(f, also...)`), so a
-callback cannot change a source node the traversal has yet to read
-(TestS4CallbackHoldsTheDiffSource).
+(TestS4DetachedNodeNotHeldByItsOldTree, TestS4HeldCheckIsConstantOnTheCommonPath). Rebinding
+such a subtree lends nothing to the waiting state its stale binding names. The diff given to
+ApplyDiff and the source of MergeDiff are not held: they are read-only arguments, possibly shared
+by concurrent operations (doc.go), and changing one during the operation is a caller contract
+violation, as in libyang (TestS4SharedDiffSourceIsNotHeld runs concurrent applies and merges of
+one diff under -race).
 
 User code runs during a mutation only in the diff callbacks, the Reader of a ParseOp with a
 parent, and the methods of a context (and of the errors they all return). Around each the

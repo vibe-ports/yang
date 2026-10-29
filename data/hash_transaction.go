@@ -754,21 +754,28 @@ func (s *siblings) setWork(work *workCounter) {
 }
 
 // rebind records the work counter of s before bindSubtreeWork moves it to another tree.
-func (s *siblings) rebind(work *workCounter) error {
+// owner is the node s holds the children of. A held binding of a subtree detached before the
+// waiting operation is accounting only: the subtree is not held (heldNode places it by its
+// root), and nothing of it goes to the waiting state.
+func (s *siblings) rebind(owner *Node, work *workCounter) error {
 	if s.work == work {
 		return nil
 	}
-	if heldSet(s) || work.held() {
+	if heldNode(owner) || work.held() {
 		return refuseIn(s.journal(), work.journal)
 	}
-	if from := s.journal(); from != nil && work.journal == nil {
+	from := s.journal()
+	if from.suspendedState() {
+		from = nil // a stale binding: the subtree left that tree before its operation
+	}
+	if from != nil && work.journal == nil {
 		if err := from.charge(1); err != nil {
 			return err
 		}
 		work.journal = from
 		from.lent = append(from.lent, work)
 	}
-	for _, j := range [2]*hashTransaction{s.journal(), work.journal} {
+	for _, j := range [2]*hashTransaction{from, work.journal} {
 		if j == nil {
 			continue
 		}

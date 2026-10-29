@@ -5,8 +5,8 @@ package data
 import (
 	"context"
 	"fmt"
-	"reflect"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/vibe-ports/yang/internal/snap"
@@ -206,6 +206,14 @@ func TestS4DetachedNodeNotHeldByItsOldTree(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ApplyDiff whose callback edits an unrelated detached node: %v", err)
 	}
+	// inside ApplyDiff on its former tree, whose journal its retained binding still names
+	err = tr.ApplyDiff(s4Diff(t, set, tr, false), ApplyDiffOptions{Callback: func(_, _ *Node) error {
+		_, err := detached.SetValue("v")
+		return err
+	}})
+	if err != nil || detached.Value() != "v" {
+		t.Fatalf("ApplyDiff on its former tree whose callback edits the detached node: %v (value %q)", err, detached.Value())
+	}
 }
 
 // TestS4HeldCheckIsConstantOnTheCommonPath: touching every node of a journaled deep chain,
@@ -218,7 +226,9 @@ func TestS4HeldCheckIsConstantOnTheCommonPath(t *testing.T) {
 		nodes = append(nodes, n)
 	}
 	j := beginHashTransaction(tr)
-	heldWalks = 0
+	walks := 0
+	heldWalkHook = func() { walks++ }
+	defer func() { heldWalkHook = nil }()
 	for _, n := range nodes {
 		if err := n.touch(); err != nil {
 			t.Fatal(err)
@@ -227,47 +237,43 @@ func TestS4HeldCheckIsConstantOnTheCommonPath(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	walks := heldWalks
 	j.end(nil)
 	if walks != 0 {
 		t.Fatalf("%d guard root walks on the common path", walks)
 	}
 }
 
-// TestS4CallbackHoldsTheDiffSource: an ApplyDiff callback that changes a leaf of the source
-// diff before the traversal reaches it is refused (the source is held through callbacks), and
-// ApplyDiff gives the reference result (snapshot review 4, direction note).
-func TestS4CallbackHoldsTheDiffSource(t *testing.T) {
+// TestS4SharedDiffSourceIsNotHeld: the diff given to ApplyDiff and the source of MergeDiff
+// are read-only arguments (doc.go), not held: concurrent applies and merges of one diff into
+// separate trees, with callbacks, do not race (run under -race).
+func TestS4SharedDiffSourceIsNotHeld(t *testing.T) {
 	set := s4LinksSet(t)
-	ref, _, _, _ := s4LinkedPair(t, set)
-	if err := ref.ApplyDiff(s4Diff(t, set, ref, false), ApplyDiffOptions{}); err != nil {
-		t.Fatal(err)
-	}
-	want := typedDump(ref)
-	a, _, _, _ := s4LinkedPair(t, set)
-	diff := s4Diff(t, set, a, false)
-	var leaf *Node
-	for n := range diff.top.first().allAny() {
-		if n.schema != nil && n.isTerm() && n.Value() == "z" {
-			leaf = n
+	diff := s4Diff(t, set, s4ParseLinks(t, set, `{"pv2-links:c":{"t":["y"]}}`), false)
+	var wg sync.WaitGroup
+	errs := make([]error, 8)
+	for i := range errs {
+		dst := s4ParseLinks(t, set, `{"pv2-links:c":{"t":["y"]}}`)
+		if i%2 != 0 { // MergeDiff merges into a diff
+			d, err := Diff(dst, s4ParseLinks(t, set, `{"pv2-links:c":{"t":["y","w"]}}`), DiffOptions{})
+			if err != nil {
+				t.Fatal(err)
+			}
+			dst = d
 		}
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			if i%2 == 0 {
+				errs[i] = dst.ApplyDiff(diff, ApplyDiffOptions{Callback: func(_, _ *Node) error { return nil }})
+				return
+			}
+			errs[i] = dst.MergeDiff(diff, MergeDiffOptions{Callback: func(_, _ *Node) error { return nil }})
+		}()
 	}
-	if leaf == nil {
-		t.Fatal("setup: the diff has no created t='z'")
-	}
-	called := false
-	err := a.ApplyDiff(diff, ApplyDiffOptions{Callback: func(_, _ *Node) error {
-		if !called {
-			called = true
-			_, err := leaf.SetValue("zz")
-			s4PublicRefusal(t, "source SetValue", nil, err, false)
+	wg.Wait()
+	for i, err := range errs {
+		if err != nil {
+			t.Fatalf("goroutine %d: %v", i, err)
 		}
-		return nil
-	}})
-	if err != nil || !called {
-		t.Fatalf("ApplyDiff: %v (called %t)", err, called)
-	}
-	if got := typedDump(a); !reflect.DeepEqual(got, want) {
-		t.Fatalf("history differs from the reference:\n%v\nwant\n%v", got, want)
 	}
 }
