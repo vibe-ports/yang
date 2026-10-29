@@ -168,17 +168,23 @@ func s4History(t *testing.T, sc s4Scenario, limited int) {
 	if reflect.DeepEqual(wantDone, wantSkip) {
 		t.Fatal("setup: the operation is not observable")
 	}
-	limits := map[uint64]bool{}
+	limits := map[uint64]bool{} // true: a charge point's own limit, kept under the race detector too
 	for limit := uint64(1); limit < need; limit++ {
-		limits[limit] = true
+		if raceSweep(limit, need) {
+			limits[limit] = false
+		}
 	}
-	for _, at := range points {
-		if at > 1 {
+	for i, at := range points {
+		// under the race detector every 4th charge point is kept (all of them normally)
+		if at > 1 && (!raceEnabled || fzFull || i%4 == 0) {
 			limits[at-1] = true
 		}
 	}
-	for limit := range limits {
+	for limit, point := range limits {
 		for _, retry := range []bool{false, true} {
+			if retry && raceEnabled && !point && !fzFull {
+				continue // under the race detector, retries at the charge points only
+			}
 			trees, op, further := sc.build(t)
 			before := make([]hashBudgetSnapshot, len(trees))
 			for i, tr := range trees {

@@ -2180,7 +2180,8 @@ func (t *Tree) linkApplyBound(parent *Node, sib *siblings, n *Node, at int) (uin
 		// or made so by its position among the keys) and reindex the list in its own siblings
 		// (a term the prepaid scope exposed)
 		if ps := parent.siblingsOf(); ps != nil && ps.ht != nil {
-			amount = addHashBound(amount, indexAnyOrderBound(parent, n, &t.work))
+			// the compared prefix after the link: the first len(Keys) positions with n at at
+			amount = addHashBound(amount, indexInsertedBound(parent, n, at, &t.work))
 		}
 	}
 	amount = addHashBound(amount, t.linkIndexBound(parent, sib, n, at))
