@@ -377,3 +377,56 @@ func TestS4RestoreUserKeepsOurWrapping(t *testing.T) {
 		t.Fatalf("restoreUser(wrapped) = %v", got)
 	}
 }
+
+// TestS4GuardDetachedRequest: a ParseOp into a detached request (its tree is the parser's,
+// the request captured whole) whose context mutates the request is refused: the captured
+// detached sets are enrolled in the parse's state, so a mutation cannot write under its
+// rollback (snapshot review 1, finding 2). Afterwards the request is mutable again.
+func TestS4GuardDetachedRequest(t *testing.T) {
+	set, parent := s4OpsFixture(t)
+	for _, unbound := range []bool{false, true} {
+		tree, op := parent()
+		root := tree.top.first()
+		if err := root.Unlink(); err != nil {
+			t.Fatal(err)
+		}
+		if unbound {
+			for n := range root.allAny() { // a set without a counter
+				n.kids.setWork(nil)
+			}
+		}
+		before := s4Dumps(newTreeWith(set, root))
+		attempts, refusals := 0, 0
+		ctx := &mutatingCtx{Context: context.Background()}
+		ctx.mutate = func() {
+			attempts++
+			if err := op.kids.first().Remove(); s4Refused(err) {
+				refusals++
+			}
+		}
+		if _, _, _, err := parseOp(ctx, strings.NewReader(`{}`), set, FormatJSON, opReply, op, Reject); err != nil {
+			t.Fatal(err)
+		}
+		if attempts == 0 || refusals != attempts {
+			t.Fatalf("unbound=%t: %d attempts, %d refused", unbound, attempts, refusals)
+		}
+		if got := s4Dumps(newTreeWith(set, root)); !reflect.DeepEqual(got, before) {
+			t.Fatalf("unbound=%t: request %v, want %v", unbound, got, before)
+		}
+		if unbound && op.kids.work != nil {
+			t.Fatal("the temporary binding outlived the parse")
+		}
+		if err := op.kids.first().Remove(); err != nil {
+			t.Fatalf("unbound=%t: after the parse: %v", unbound, err)
+		}
+	}
+}
+
+// newTreeWith is a dump view of a detached root (typedDump walks a tree's top level).
+func newTreeWith(set *schema.Set, root *Node) *Tree {
+	tr := newTree(set)
+	if err := tr.top.Build([]*Node{root}, nil); err != nil { // a fresh view: nothing to capture
+		panic(err)
+	}
+	return tr
+}

@@ -82,6 +82,9 @@ type hashTransaction struct {
 	// opens no hash-work scope, and its end only reports the refusal
 	suspendDepth int
 	refusing     bool
+	// unbound is the counter enroll binds counterless detached sets to (unboundSets) until end
+	unbound     *workCounter
+	unboundSets []*siblings
 }
 
 // refusingState is what a begin returns inside a suspended state: the operation is refused
@@ -510,6 +513,7 @@ func (j *hashTransaction) end(result *error) {
 			j.restore()
 		}
 	}
+	j.release()
 	j.index.Commit() // after a restore the log is empty; otherwise its tombstones go
 	for _, b := range j.bound {
 		if b.state == j {
@@ -762,6 +766,11 @@ func (j *hashTransaction) captureDetachedParent(parent *Node) error {
 		} else if err := j.captureSiblings(s); err != nil {
 			return err
 		}
+		// enrollment (design 13 §2.4): user code that reaches the captured detached tree meets
+		// this state, suspended, instead of writing under its rollback
+		if err := j.enroll(s); err != nil {
+			return err
+		}
 		stack = s.schemaSpan().AppendTo(stack)
 		stack = s.opaqueSpan().AppendTo(stack)
 	}
@@ -856,9 +865,8 @@ func (j *hashTransaction) captureOwner(c *Node) error {
 	if g == nil {
 		// enrollment (design 13 §2.4 (4)): c's tree joins this state until end, so a callback
 		// that later reaches it meets this state, suspended, even after the link is gone
-		if w := governingCounter(c); w != nil && w.journal == nil {
-			w.journal = j
-			j.lent = append(j.lent, w)
+		if err := j.enroll(childStorage(c)); err != nil {
+			return err
 		}
 	}
 	addWhole(j, j.owners, &j.img.owners, wholeOwner, c, c.links)
@@ -1153,4 +1161,46 @@ func governingCounter(c *Node) *workCounter {
 		return &t.work
 	}
 	return nil
+}
+
+// enroll makes this state govern s until it ends (design 13 §2.4): s's counter is lent to it,
+// or, for a set without a counter (an unbound detached set), s is bound to the state's
+// temporary counter, recorded as a works entry (a rollback restores it) and unbound at end.
+func (j *hashTransaction) enroll(s *siblings) error {
+	switch w := s.work; {
+	case w != nil && w.journal != nil:
+		return nil // governed already: this state, or another one (refused when suspended)
+	case w != nil:
+		if err := j.charge(1); err != nil {
+			return err
+		}
+		w.journal = j
+		j.lent = append(j.lent, w)
+		return nil
+	}
+	if err := j.charge(1); err != nil {
+		return err
+	}
+	if j.unbound == nil {
+		j.unbound = &workCounter{journal: j}
+		j.lent = append(j.lent, j.unbound)
+	}
+	j.maps()
+	if !captured(j, j.works, s) && !captured(j, j.siblings, s) {
+		addWhole(j, j.works, &j.img.works, wholeWorks, s, s.work)
+	}
+	s.setWork(j.unbound)
+	j.unboundSets = append(j.unboundSets, s)
+	return nil
+}
+
+// release unbinds the sets enroll bound that still use the temporary counter.
+func (j *hashTransaction) release() {
+	for _, s := range j.unboundSets {
+		if s.work == j.unbound {
+			s.setWork(nil)
+		}
+	}
+	clear(j.unboundSets)
+	j.unboundSets = j.unboundSets[:0]
 }
