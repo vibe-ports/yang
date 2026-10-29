@@ -184,14 +184,21 @@ be narrowed; this section is its plan.
    at most `orderBuildBound` = 12 units per handle. The building binding reports that work: it
    draws from an open credit (a link that builds the index: `indexAddBound` includes
    `orderBuildBound`, so link's refund no longer returns it), and is counted only otherwise
-   (`rbPublish` charges `orderBuildBound` with its publication, before its first write).
+   (`rbPublish` charges `orderBuildBound` for its schema and opaque siblings with its
+   publication, before its first write). Distinct schema nodes can share a rank (the first input
+   leaves of two RPCs under one opaque parent): the rank set keeps it once, as insertion did.
    Keeping the index across the publication (re-registering only the run) is not needed for the
    bound and is not done. Evidence: TestMergeSparseBatchChargesRebuild (counted work per charged
    unit flat over N = 256..16K, 0.42 to 0.71 before; a budget one unit short refuses before any
-   write), TestMergeWideBatchRebuildRanks (N distinct input leaves), TestLinkBuildsIndexCharged
+   write; also beside N opaque siblings), TestMergeWideBatchRebuildRanks (N distinct input
+   leaves), TestOrderBuildRepeatedRanks, TestLinkBuildsIndexCharged
    (a link that makes N siblings unordered: charged at least 3 units per handle, about 1 before;
    flat; refused one unit short), opidx TestOccurrencesBuildModel and TestRanksBuildModel
    (against one-by-one insertion, balanced, exact work).
+
+   The implementation's first snapshot review (`240s6-snap1`) found three blocking issues, all
+   fixed: a repeated rank refused the build (and panicked); the publication's reservation left out
+   the opaque siblings the rebuild registers; a test constant overflowed `int` on 386.
 2. **Per-move recovery inside a state.** A one-node relocation inside a running state opened a
    level, and a level captures every object afresh (design 13), so each move copied the whole
    sibling set's compatibility records and node structs: an ApplyDiff of N moves before the

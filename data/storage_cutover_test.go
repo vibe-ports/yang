@@ -436,44 +436,54 @@ func TestPublishSparseDirtyRuns(t *testing.T) {
 func TestMergeSparseBatchChargesRebuild(t *testing.T) {
 	set := opIndexSet(t, `module m { yang-version 1.1; namespace "urn:m"; prefix m;
 	  rpc r { input { leaf-list v { type uint32; } leaf-list z { type uint32; ordered-by user; } } } }`)
-	build := func(n int) (*Tree, *Node, *Tree) {
+	// with opaque, N opaque siblings as well: the rebuild registers them too
+	build := func(n int, opaque bool) (*Tree, *Node, *Tree) {
 		dst, op := opIndexParseRPC(t, set, `{"m:r":{"v":[0,100],"z":[`+opIndexValues(n, false)+`]}}`)
+		for i := 0; opaque && i < n; i++ {
+			if _, err := dst.NewOpaque(op, "x", fmt.Sprint(i), OpaqueOptions{Format: FormatJSON, Module: "m"}); err != nil {
+				t.Fatal(err)
+			}
+		}
 		src, _ := opIndexParseRPC(t, set, `{"m:r":{"v":[7,3]}}`)
 		return dst, op, src
 	}
-	var ratios []float64
-	for _, n := range scaleSizes([]int{256, 2048, 16384}, 2) {
-		dst, op, src := build(n)
-		dst.work.hashUsed = 0
-		dst.work.Store(0)
-		if err := dst.Merge(src); err != nil {
-			t.Fatal(err)
-		}
-		if op.kids.order == nil {
-			t.Fatal("the destination lost its index")
-		}
-		used, work := dst.work.hashUsed, dst.work.Load()
-		// the merge's own work is charged about 13 units per sibling; the rebuild adds 8 more
-		if used < 16*uint64(n) { //nolint:gosec // a small size
-			t.Fatalf("N=%d: the index rebuild was not charged (%d units)", n, used)
-		}
-		ratios = append(ratios, float64(work)/float64(used))
-		t.Logf("N=%d: counted work %d, charged %d (%.3f per unit)", n, work, used, ratios[len(ratios)-1])
-		opidxAssertTreeInvariant(t, dst)
+	for _, opaque := range []bool{false, true} {
+		var ratios []float64
+		for _, n := range scaleSizes([]int{256, 2048, 16384}, 2) {
+			dst, op, src := build(n, opaque)
+			dst.work.hashUsed = 0
+			dst.work.Store(0)
+			if err := dst.Merge(src); err != nil {
+				t.Fatal(err)
+			}
+			if op.kids.order == nil {
+				t.Fatal("the destination lost its index")
+			}
+			used, work := dst.work.hashUsed, dst.work.Load()
+			// the merge's own work is charged about 13 units per sibling; the rebuild adds
+			// orderBuildBound's 12 per schema or opaque sibling
+			handles := uint64(op.kids.Len())    //nolint:gosec // a small size
+			if used < 12*handles+13*uint64(n) { //nolint:gosec // a small size
+				t.Fatalf("N=%d opaque=%t: the index rebuild was not charged (%d units)", n, opaque, used)
+			}
+			ratios = append(ratios, float64(work)/float64(used))
+			t.Logf("N=%d opaque=%t: counted work %d, charged %d (%.3f per unit)", n, opaque, work, used, ratios[len(ratios)-1])
+			opidxAssertTreeInvariant(t, dst)
 
-		dst, _, src = build(n)
-		before := snapshotHashBudgetTree(dst)
-		dst.work.hashUsed, dst.work.hashLimit = 0, used-1
-		if err := dst.Merge(src); !errors.Is(err, yang.ErrBudget) {
-			t.Fatalf("N=%d: merge with budget %d = %v, want ErrBudget", n, used-1, err)
+			dst, _, src = build(n, opaque)
+			before := snapshotHashBudgetTree(dst)
+			dst.work.hashUsed, dst.work.hashLimit = 0, used-1
+			if err := dst.Merge(src); !errors.Is(err, yang.ErrBudget) {
+				t.Fatalf("N=%d opaque=%t: merge with budget %d = %v, want ErrBudget", n, opaque, used-1, err)
+			}
+			if !reflect.DeepEqual(snapshotHashBudgetTree(dst), before) {
+				t.Fatalf("N=%d opaque=%t: the refused merge changed the tree", n, opaque)
+			}
+			opidxAssertTreeInvariant(t, dst)
 		}
-		if !reflect.DeepEqual(snapshotHashBudgetTree(dst), before) {
-			t.Fatalf("N=%d: the refused merge changed the tree", n)
+		if last := ratios[len(ratios)-1]; last > 1.1*ratios[0] {
+			t.Fatalf("opaque=%t: counted work per charged unit grew with N: %v", opaque, ratios)
 		}
-		opidxAssertTreeInvariant(t, dst)
-	}
-	if last := ratios[len(ratios)-1]; last > 1.1*ratios[0] {
-		t.Fatalf("counted work per charged unit grew with N: %v", ratios)
 	}
 }
 
@@ -571,4 +581,39 @@ func TestLinkBuildsIndexCharged(t *testing.T) {
 	if last := ratios[len(ratios)-1]; last > 1.1*ratios[0] {
 		t.Fatalf("counted work per charged unit grew with N: %v", ratios)
 	}
+}
+
+// TestOrderBuildRepeatedRanks (step 6): distinct schema nodes can share a rank (the first input
+// leaves of two RPCs duplicated under one opaque parent); the rank set keeps it once, as one
+// insertion each did, and a rebuild over them does not refuse.
+func TestOrderBuildRepeatedRanks(t *testing.T) {
+	set := opIndexSet(t, `module m { yang-version 1.1; namespace "urn:m"; prefix m;
+	  rpc r1 { input { leaf a { type uint32; } } } rpc r2 { input { leaf b { type uint32; } } } }`)
+	_, op1 := opIndexParseRPC(t, set, `{"m:r1":{"a":1}}`)
+	_, op2 := opIndexParseRPC(t, set, `{"m:r2":{"b":2}}`)
+	tr := newTree(set)
+	parent, err := tr.NewOpaque(nil, "p", "", OpaqueOptions{Format: FormatJSON, Module: "m"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, n := range []*Node{op1.kids.At(0), op2.kids.At(0)} {
+		if _, _, err := tr.Dup(n, parent, DupOptions{}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	s := &parent.kids
+	if s.SchemaLen() != 2 || s.order == nil {
+		t.Fatalf("fixture: %d children, index %t", s.SchemaLen(), s.order != nil)
+	}
+	if s.order.ranks[0].Len() != 1 {
+		t.Fatalf("fixture: %d ranks, want the shared one", s.order.ranks[0].Len())
+	}
+	s.order = nil
+	if err := s.opBuild(tr); err != nil {
+		t.Fatal(err)
+	}
+	if s.order.ranks[0].Len() != 1 {
+		t.Fatalf("the rebuild holds %d ranks, want the shared one", s.order.ranks[0].Len())
+	}
+	opidxAssertTreeInvariant(t, tr)
 }

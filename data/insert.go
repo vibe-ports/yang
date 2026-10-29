@@ -2570,8 +2570,9 @@ func (t *Tree) rbPublish(parent *Node, sib *siblings, lo, hi int, group *rbGroup
 	}
 	rebuild := spliceNeedsOrder(sib, attach) // publishRun drops a present index
 	if rebuild {
-		// opBuild registers every sibling again (counted, not charged: reserve it here)
-		pub = addHashBound(pub, orderBuildBound(size))
+		// opBuild registers every sibling again, the opaque ones included (counted, not
+		// charged: reserve it here)
+		pub = addHashBound(pub, orderBuildBound(size+sib.OpaqueLen()))
 	}
 	if err := t.work.chargeHash(pub); err != nil {
 		return err

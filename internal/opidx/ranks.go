@@ -123,11 +123,12 @@ func (r *Ranks) rankBalance(n *rankNode) *rankNode {
 	return n
 }
 
-// Build fills an empty set without a journal with keys, distinct and nonnegative, in any order:
+// Build fills an empty set without a journal with keys, nonnegative, in any order and possibly
+// repeated:
 // an LSD radix sort by bytes (as many passes as the largest key has bytes) and a balanced tree
 // over the sorted keys, one unit of work per key per pass and per node: O(len(keys)), where
 // Insert one by one is O(n log n). It reports false, filling nothing, for a set that is not empty
-// or has a journal, and for a negative or repeated key.
+// or has a journal, and for a negative key.
 func (r *Ranks) Build(keys []int) bool {
 	if r.len != 0 || r.root != nil || r.journal() != nil {
 		return false
@@ -159,11 +160,7 @@ func (r *Ranks) Build(keys []int) bool {
 			break
 		}
 	}
-	for i := 1; i < len(sorted); i++ {
-		if sorted[i] == sorted[i-1] {
-			return false
-		}
-	}
+	sorted = slices.Compact(sorted) // a set: a repeated key is present once, as Insert keeps it
 	r.root, r.len = r.build(sorted), len(sorted)
 	return true
 }

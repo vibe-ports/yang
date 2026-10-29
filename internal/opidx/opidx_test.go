@@ -617,14 +617,15 @@ func checkOccBalanced[T any](t *testing.T, n *occNode[T]) int {
 }
 
 // TestRanksBuildModel: Build answers every query as inserting one by one does, with a balanced
-// tree, one unit per key per radix pass and per node, and refuses repeated or negative keys and
-// a non-empty set.
+// tree, one unit per key per radix pass and per node, keeps a repeated key once, and refuses a
+// negative key and a non-empty set.
 func TestRanksBuildModel(t *testing.T) {
 	rng := rand.New(rand.NewSource(6)) //nolint:gosec // a reproducible test sequence
 	for _, n := range []int{0, 1, 2, 9, 255, 256, 3000} {
 		keys := rng.Perm(4 * n)[:n]
 		if n == 3000 {
-			keys[0] = 1 << 40 // six radix passes
+			keys[0] = int(^uint(0) >> 1) // a pass per byte of int: eight (four on 386)
+			keys[1] = keys[2]            // a repeated key is present once
 		}
 		var built, one Ranks
 		var work uint64
@@ -638,11 +639,11 @@ func TestRanksBuildModel(t *testing.T) {
 			largest = max(largest, k)
 		}
 		passes := uint64(1)
-		for largest>>(8*passes) != 0 {
+		for passes < 8 && largest>>(8*passes) != 0 {
 			passes++
 		}
-		if work != uint64(n)*(passes+1) { //nolint:gosec // a test size
-			t.Fatalf("n=%d: build work %d, want %d", n, work, uint64(n)*(passes+1)) //nolint:gosec // a test size
+		if want := uint64(n)*passes + uint64(one.Len()); work != want { //nolint:gosec // a test size
+			t.Fatalf("n=%d: build work %d, want %d", n, work, want)
 		}
 		if built.Len() != one.Len() {
 			t.Fatalf("n=%d: lengths differ", n)
@@ -673,7 +674,7 @@ func TestRanksBuildModel(t *testing.T) {
 		}
 	}
 	var r Ranks
-	if r.Build([]int{3, 1, 3}) || r.Build([]int{-1}) || r.Len() != 0 {
-		t.Fatal("repeated or negative keys were accepted")
+	if r.Build([]int{-1}) || r.Len() != 0 {
+		t.Fatal("a negative key was accepted")
 	}
 }
