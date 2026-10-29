@@ -891,13 +891,15 @@ func (t *Tree) rbPos(sib *siblings, n *Node, lo, hi int, compare func(*Node, *No
 				sib.rbDualCount[old]++
 			}
 			a.inRB, a.rbGroup = true, group
-			sib.refreshRB(a) // the ordered index keys RB membership by tree
+			if err := sib.refreshRB(a); err != nil { // the ordered index keys RB membership by tree
+				return lo, false
+			}
 		}
 		if sib.order != nil {
 			if d := sib.order.entries[leader.schema]; d != nil && d.gaps == 0 {
 				sib.opRebuild(l.Slice(lo, hi)) // only this run was reordered
-			} else {
-				sib.opBuild(t) // retain other runs copied from a user-ordered schema
+			} else if err := sib.opBuild(t); err != nil { // retain other runs copied from a user-ordered schema
+				return lo, false
 			}
 		}
 		sib.rbOrders[group] = order
@@ -1546,28 +1548,29 @@ func (s *siblings) opNeighbours(at int) (left, right *schema.Node) {
 }
 
 // opBuild (re)builds the instance index of an operation or unordered copy; mutations only.
-func (s *siblings) opBuild(t *Tree) {
-	s.orderBuild(t)
+func (s *siblings) opBuild(t *Tree) error {
+	return s.orderBuild(t)
 }
 
 // opRemove drops n, being unlinked, from the instance index and returns whether its schema and
 // any of its RB-tree members survive.
-func (s *siblings) opRemove(n *Node, _ int) (survives, survivesInRB bool) {
-	if err := s.touch(); err != nil {
-		return false, false
+func (s *siblings) opRemove(n *Node, _ int) (survives, survivesInRB bool, err error) {
+	if err := s.touchSticky(); err != nil {
+		return false, false, err
 	}
 	if s.order == nil {
-		return false, false
+		return false, false, nil
 	}
-	return s.orderRemove(n)
+	survives, survivesInRB = s.orderRemove(n)
+	return survives, survivesInRB, nil
 }
 
 // opOrderAdd records n, just placed at index at of s.schemaSpan(), in the ordered index.
-func (s *siblings) opOrderAdd(t *Tree, n *Node, at int) {
-	if err := s.touch(); err != nil {
-		return
+func (s *siblings) opOrderAdd(t *Tree, n *Node, at int) error {
+	if err := s.touchSticky(); err != nil {
+		return err
 	}
-	s.orderAddSchema(t, n, at)
+	return s.orderAddSchema(t, n, at)
 }
 
 // opAnchor is lyd_insert_get_next_anchor for an operation's child n: the index of the sibling n
@@ -1675,7 +1678,9 @@ func markRB(sib *siblings, leader *Node) {
 			}
 			sib.At(i).rbGroup = group
 		}
-		sib.refreshRB(sib.At(i))
+		if sib.refreshRB(sib.At(i)) != nil {
+			return // sticky: the operation fails and its journal restores
+		}
 	}
 }
 
@@ -2064,12 +2069,16 @@ func (t *Tree) link(parent *Node, sib *siblings, n *Node, at int) error {
 		if err := sib.appendNode(n); err != nil {
 			return err
 		}
-		sib.orderAddOpaque(t, parent, n, at)
+		if err := sib.orderAddOpaque(t, parent, n, at); err != nil {
+			return err
+		}
 	case n.schema == nil:
 		if _, err := sib.InsertAt(sib.SchemaLen()+at, n); err != nil {
 			return err
 		}
-		sib.orderAddOpaque(t, parent, n, at)
+		if err := sib.orderAddOpaque(t, parent, n, at); err != nil {
+			return err
+		}
 	default:
 		first := sib.firstRun[n.schema] == nil || at < sib.SchemaLen() && sib.At(at) == sib.firstRun[n.schema]
 		if j := sib.narrow(); j != nil && (sib.firstRun == nil || first) {
@@ -2103,9 +2112,13 @@ func (t *Tree) link(parent *Node, sib *siblings, n *Node, at int) error {
 		switch {
 		case !opChild(n.schema) && !sib.schemaUnordered && sib.order == nil:
 		case sib.order == nil:
-			sib.opBuild(t) // the operation's first child (or the first since a bulk removal)
+			if err := sib.opBuild(t); err != nil { // the operation's first child (or the first since a bulk removal)
+				return err
+			}
 		default:
-			sib.opOrderAdd(t, n, at)
+			if err := sib.opOrderAdd(t, n, at); err != nil {
+				return err
+			}
 		}
 	}
 	t.attach(parent, sib, n)
@@ -2618,7 +2631,9 @@ func (t *Tree) rbPublish(parent *Node, sib *siblings, lo, hi int, group *rbGroup
 		t.work.Add(int64(sib.SchemaLen()))
 	}
 	if spliceNeedsOrder(sib, attach) {
-		sib.opBuild(t) // one counted pass, like the publication itself
+		if err := sib.opBuild(t); err != nil { // one counted pass, like the publication itself
+			return err
+		}
 	}
 	pending := make(map[*Node]bool, len(attach))
 	for _, n := range attach {
@@ -2824,7 +2839,9 @@ func unlink(n *Node) error {
 		sib.leaderUnlink(n, i, true) // lyd_unlink_hash observes n while it is still linked
 		survives := false
 		if sib.order != nil {
-			survives, _ = sib.opRemove(n, i) // neighbours still surround n
+			if survives, _, err = sib.opRemove(n, i); err != nil { // neighbours still surround n
+				return err
+			}
 		}
 		moved, err := sib.DeleteAt(i)
 		if err != nil {
@@ -3066,7 +3083,12 @@ func (t *Tree) unlinkAllDefaults(ns, defaults []*Node) (result error) {
 				}
 			}
 			if sib.order != nil {
-				sib.opBuild(t)
+				if err := sib.opBuild(t); err != nil {
+					if result == nil {
+						result = err
+					}
+					return
+				}
 			}
 			sib.gen++
 		}

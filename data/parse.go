@@ -1126,6 +1126,9 @@ func (lc *lydCtx) flushDirtyRun(k dirtyRun, lo int) {
 	// Publish as one mutation: cancellation must not leave duplicated/missing pointers in
 	// a partially copied run, particularly when parsing into an existing operation.
 	if err := k.sib.replaceSchema(lo, lo+count, ordered); err != nil {
+		if lc.tree.work.hashErr == nil {
+			lc.tree.work.hashErr = err // the publication is refused: the parse fails and restores
+		}
 		return
 	}
 	run = k.sib.schemaSpan().Slice(lo, lo+count)

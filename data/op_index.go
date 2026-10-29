@@ -301,9 +301,9 @@ func (s *siblings) orderUnregister(n *Node) *opidx.Handle[*Node] {
 // orderBuild replaces only the ordered acceleration structures. It never
 // derives or changes children_ht, ordinary hash records, schema-alias records,
 // or first-instance record order.
-func (s *siblings) orderBuild(t *Tree) {
-	if err := s.touch(); err != nil {
-		return
+func (s *siblings) orderBuild(t *Tree) error {
+	if err := s.touchSticky(); err != nil {
+		return err
 	}
 	o := newChildOrder()
 	for _, n := range s.SchemaAll() {
@@ -337,6 +337,7 @@ func (s *siblings) orderBuild(t *Tree) {
 	if o.bind.state != nil {
 		o.bind.state.bound = append(o.bind.state.bound, o.bind)
 	}
+	return nil
 }
 
 func (s *siblings) orderNewEntry(t *Tree, sn *schema.Node) *opEntry {
@@ -353,10 +354,9 @@ func (s *siblings) orderNewEntry(t *Tree, sn *schema.Node) *opEntry {
 	return d
 }
 
-func (s *siblings) orderAddSchema(t *Tree, n *Node, at int) {
+func (s *siblings) orderAddSchema(t *Tree, n *Node, at int) error {
 	if s.order == nil {
-		s.orderBuild(t)
-		return
+		return s.orderBuild(t)
 	}
 	o := s.order
 	j := o.bind
@@ -379,18 +379,19 @@ func (s *siblings) orderAddSchema(t *Tree, n *Node, at int) {
 	if n.inRB && n.rbGroup != nil {
 		opidx.AddInt(j, &d.rb, 1)
 	}
+	return nil
 }
 
-func (s *siblings) orderAddOpaque(t *Tree, parent, n *Node, at int) {
+func (s *siblings) orderAddOpaque(t *Tree, parent, n *Node, at int) error {
 	if s.order == nil {
 		if !isOp(schemaOf(parent)) {
-			return
+			return nil
 		}
-		s.orderBuild(t)
-		return
+		return s.orderBuild(t)
 	}
 	h := s.order.seq.InsertBefore(s.order.seq.Select(s.SchemaLen()+at), n)
 	s.orderRegister(n, h)
+	return nil
 }
 
 func schemaOf(n *Node) *schema.Node {
@@ -681,17 +682,17 @@ func (s *siblings) exactAtOrAfter(sn *schema.Node, target, first *Node) *Node {
 
 // refreshRB synchronizes one linked node's membership after inRB/rbGroup is
 // changed. Occurrence registration is independent of physical reordering.
-func (s *siblings) refreshRB(n *Node) {
+func (s *siblings) refreshRB(n *Node) error {
 	if s.order == nil || n == nil || n.schema == nil {
-		return
+		return nil
 	}
 	defer s.work.unpaidIndexWrites()() // paid inside link's scope; rbPos's tree is exempt
-	if err := s.touch(); err != nil {
-		return
+	if err := s.touchSticky(); err != nil {
+		return err
 	}
 	h := s.order.byNode[n]
 	if h == nil {
-		return
+		return nil
 	}
 	was := s.order.byRB.Remove(h)
 	now := n.inRB && n.rbGroup != nil
@@ -705,6 +706,7 @@ func (s *siblings) refreshRB(n *Node) {
 			opidx.AddInt(s.order.bind, &d.rb, -1)
 		}
 	}
+	return nil
 }
 
 func (s *siblings) refreshExact(n *Node, change func()) {
@@ -718,11 +720,8 @@ func (s *siblings) refreshExact(n *Node, change func()) {
 		return
 	}
 	defer s.work.unpaidIndexWrites()() // paid inside the value change's scope; validateIncomplete is exempt
-	if err := s.touch(); err != nil {
-		if s.work != nil {
-			s.work.hashErr = err // the change is skipped: its caller tests the sticky error
-		}
-		return
+	if err := s.touchSticky(); err != nil {
+		return // the change is skipped: its caller tests the sticky error
 	}
 	if _, ok := opExactValue(n); ok {
 		s.order.byExact.Remove(h)

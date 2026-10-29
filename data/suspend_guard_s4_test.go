@@ -338,3 +338,43 @@ func TestS4GuardMergeDiffCallback(t *testing.T) {
 		t.Fatal("a state outlived MergeDiff")
 	}
 }
+
+// TestS4IndexEditErrorsPropagate pins design 13 §4.5: the index edits that swallowed a refused
+// touch (orderBuild, opOrderAdd, opRemove, refreshRB) return it and make it the counter's sticky
+// error, before writing; refreshExact's skipped change stays sticky too.
+func TestS4IndexEditErrorsPropagate(t *testing.T) {
+	set := reviewDiffSet(t, s4JournalModule)
+	tr, op := s4OpTree(t, set, "5", "1", "9")
+	s := &op.kids
+	n := s4Child(op, "w", "9")
+	before := snapshotHashBudgetTree(tr)
+	edits := map[string]func() error{
+		"orderBuild": func() error { return s.orderBuild(tr) },
+		"opOrderAdd": func() error { return s.opOrderAdd(tr, newTerm(n.schema, n.value, &tr.work), 0) },
+		"opRemove": func() error {
+			_, _, err := s.opRemove(n, 0)
+			return err
+		},
+		"refreshRB": func() error { return s.refreshRB(n) },
+		"refreshExact": func() error {
+			s.refreshExact(n, func() { t.Error("refreshExact ran its change after a refusal") })
+			return tr.work.hashErr
+		},
+	}
+	for name, edit := range edits {
+		done := tr.work.beginHashWork()
+		j := beginHashTransaction(tr)
+		j.suspendDepth++ // the operation waits on user code; the edit below is another one's
+		err := edit()
+		sticky := tr.work.hashErr
+		j.suspendDepth--
+		j.end(nil)
+		done()
+		if !errors.Is(err, errInProgress) || !errors.Is(sticky, errInProgress) {
+			t.Fatalf("%s: %v (sticky %v), want the guard's refusal", name, err, sticky)
+		}
+		if !reflect.DeepEqual(snapshotHashBudgetTree(tr), before) {
+			t.Fatalf("%s wrote before refusing", name)
+		}
+	}
+}

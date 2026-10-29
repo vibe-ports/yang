@@ -567,6 +567,17 @@ func (s *siblings) touch() error {
 	return nil
 }
 
+// touchSticky is touch for an index edit that cannot return its refusal everywhere it is called:
+// the refusal also becomes the counter's sticky error, so the operation fails and its journal
+// restores (design 13 §4.5, swallowed index errors).
+func (s *siblings) touchSticky() error {
+	err := s.touch()
+	if err != nil && s.work != nil && s.work.hashErr == nil {
+		s.work.hashErr = err
+	}
+	return err
+}
+
 // touch journals s, a sibling set of t, before it changes (also before its first link binds it
 // to t).
 func (t *Tree) touch(s *siblings) error {
