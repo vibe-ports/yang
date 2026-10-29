@@ -4,133 +4,136 @@
 (parser_common.c:416-421), which `lyd_insert_node_last` implements: the node goes after the last
 sibling, whatever it is (tree_data.c:742-775). No schema-order search and no `lyds` tree is made.
 The flag means "trust the supplied order", not "sort the input". libyang calls misuse undefined
-(parser_data.h:152-157), and the port does not sort or repair the input either. Two kinds of tree
-result that sibling storage could not hold before: schema nodes out of schema order
-(`{"c":{"b":…,"a":…}}` keeps `b, a`), and a schema node after an opaque sibling
-(`a, zz, b` with `zz` unknown, parsed opaque). D-0058 loses its parse-order part. Its
-`lyd_insert_after` part stays (below). Code comments cite this document as "design 15".
+(parser_data.h:152-157), and the port does not sort or repair the input either.
+
+Two kinds of tree result that sibling storage could not hold before:
+- schema nodes out of schema order (`{"c":{"b":…,"a":…}}` keeps `b, a`);
+- a schema node after an opaque sibling (`a, zz, b` with `zz` unknown, parsed opaque).
+
+D-0058 loses its parse-order part, and its `lyd_insert_after` part stays (last section). Code
+comments cite this document as "design 15".
 
 ## Entry points
 
 `Parse` (JSON and XML) is the only entry point that takes `ParseOptions`. `ParseOp` has its own
-options, and `lyd_parse_op` takes no parse options. The port has no LYB codec. The internal
-`parseOpts.ordered` already routes `nodeInsert` to an append. That append now goes through the
-storage change below, not `insertPos`'s schema-order search.
+options, and `lyd_parse_op` takes no parse options. The port has no LYB codec. `nodeInsert`
+links an ordered node through `Tree.insert(…, insertLast)`. For a schema node that is `lastPos`,
+which is shared with `lyd_dup_r`'s copies (`dupLink`). It appends after the last sibling and does
+not search: no `insertPos`, so the old schema-order binary search for `insertLast` is gone. A
+sorted run's leader that is in an RB tree becomes unsorted (`lyd_insert_node_last` adds nothing to
+the tree). A later `lyds_insert` rebuilds the tree (`lyds_additionally_create_rb_tree`). Input
+out of schema order then switches the set to `schemaUnordered`, as copies and moves already do
+(`link`'s `markUnordered`).
 
-## Out-of-schema-order schema nodes
-
-These need no new storage state. A parsed schema node is linked at the end of the schema nodes.
-When that breaks schema order, `link` already calls `markUnordered`, the mode that copies and moves
-use for the same thing. In that mode anchors follow `lyd_insert_get_next_anchor`, runs are found by
-schema identity, and a run may come back later in the set. `insertPos` (and its `insertLast`
-binary search, which forced schema order) is bypassed, as `dupLink` already bypasses it for
-`lyd_dup_r`'s `LYD_INSERT_NODE_LAST`. A sorted run's leader that is in an RB tree becomes unsorted,
-as in `dupLink` (`lyd_insert_node_last` adds nothing to the tree). A later
-`lyds_insert` then rebuilds it (`lyds_additionally_create_rb_tree`), which the port models already.
-The two LAST paths share one helper, `Tree.linkLast`.
-
-## Schema nodes after opaque nodes: interleaved storage
+## Storage: logical positions over a document-order sequence
 
 Design 14 stores a set as one order-statistic sequence with the schema nodes in `[0, nschema)` and
-the opaque ones after them. About 300 call sites use that coordinate system: `SchemaLen`,
-`schemaSpan`, `opaqueSpan`, `opaqueAt`, `At(i)` for a schema position, `LowerBound` over the schema
-prefix, and run bounds. They are correct when they speak about the schema nodes in order, and about
-the opaque ones in order. The design keeps that coordinate system and separates it from the
-physical one.
+the opaque ones after them. That coordinate system stays: a *logical* position is a rank among the
+schema nodes, or `nschema` plus a rank among the opaque nodes. Spans, `At`, `Index`, run bounds
+and the first-instance and index structures keep using it. The physical sequence holds document
+order instead. A set is *interleaved* (`siblingStore.mixed`, journaled, never cleared) once a schema
+node follows an opaque one. Until then logical and physical positions coincide, and every read and
+write takes the code path it took before (the counted-work and scaling tests are unchanged).
 
-- **Logical positions are unchanged.** `[0, SchemaLen())` are the schema nodes in their storage
-  order, and `[SchemaLen(), Len())` are the opaque nodes in theirs. Every existing span, position,
-  run and index computation keeps its meaning.
-- **The physical sequence is document order.** It may interleave the two kinds. A set whose
-  sequence has a schema node after an opaque one is *interleaved* (`siblingStore.mixed`, a
-  journaled counter set once and never cleared). In a set that is not interleaved, logical and
-  physical positions coincide, and every read and write takes exactly the code path it takes now.
-  Work, charging and counted expectations are unchanged.
-- **opidx kind augmentation.** Every handle carries an immutable kind bit, set at creation by the
-  sequence's weigh function (schema or opaque). It also keeps a subtree count of heavy (schema)
-  handles, maintained wherever `size` is (fixNode, split, build, detach, creation) and recorded in
-  the handle's journal image. New reads: `PeekKind(rank, heavy)` (select among one kind, levels
-  counted), `PosKind(h)`, `NextKind`/`PrevKind` (the next handle of the same kind: O(1) when it is
-  adjacent, otherwise one O(log n) climb and descent) and `HeavyLen`. `CheckInvariants` verifies the
-  counts.
-- **Translation in the facade** (`siblings_access.go`), used only when `mixed` is set:
-  - `at`/`At`/`opaqueAt`: `PeekKind`.
-  - `Index` and `orderPosition`: `PosKind` (an opaque node adds `nschema`). `orderPosition`
-    keeps its read credit, since the climb is the same height.
-  - Spans, iterators and cursors walk with the logical neighbour: the next handle of the same kind,
-    and past the last schema handle the first opaque one. `LowerBound` binary-searches kind ranks
-    with `PeekKind` probes. That is O(log² n) visits, counted as sibling visits like `BoundIn`'s
-    levels.
-  - Raw neighbour reads outside the facade (the unlink plan, the op index's gap accounting,
-    `rb_remove`, leader updates, edit neighbours, `path.go` and `diff.go` run walks) go through
-    facade helpers `prevOf`/`nextOf` with the same logical meaning. In a set that is not
-    interleaved, these helpers return the physical neighbour.
-- **Physical placement of writes** follows libyang's anchors:
-  - A schema node at logical `i < SchemaLen()` goes immediately before schema node `i`.
-    `lyd_insert_node_ordby_schema` uses the anchor's `lyd_insert_before_node`, so opaque nodes
-    before the anchor stay before the new node.
-  - A schema node at `SchemaLen()` goes after the last schema node. That is "cannot insert data
-    node after opaque nodes", before the trailing opaque block (tree_data.c:785-793), and the
-    current placement.
-  - `linkLast` (LYD_INSERT_NODE_LAST) appends at the physical end. When an opaque node precedes it,
-    the set becomes interleaved.
-  - An opaque node at opaque index `j > 0` goes immediately after opaque node `j-1`. That is the XML
-    parser's `lyd_insert_after` of the last same-name opaque sibling (parser_xml.c:520-545),
-    `lydxml_get_hints_opaq`, which searches backwards over all siblings. At `j = 0` it goes before
-    the first opaque node. At the end it goes to the physical end, which is `lyd_insert_node_last`
-    for every opaque insertion.
-  - Removal removes the handle. `deleteMatching` picks the predicate by the node's kind, not its
-    position.
-  - A non-owning `view` takes its nodes in document order and is interleaved when they are.
-- **Document-order traversal** (`siblings.all`, `reverseAll`, the `siblingCursor`) walks the
-  physical sequence. That covers `Children`, `Top`, `ChildrenAny`, the printers (which take the
-  `all()` slice), XPath (`Children`), diff, compare and dup sources. Walks that iterate
-  `SchemaAll` and then `opaqueAll` and only need the set, not its order, stay as they are.
-- **Dup** keeps `lyd_dup_r`'s LAST order through `linkLast`. A copy of an interleaved parent is
-  interleaved too, and an opaque child keeps its place. For a source that is not interleaved, the
-  result is the same as now, because its children arrive schema first. A `DupSiblings` copy of the
-  next instances of a (leaf-)list into a parent with opaque children now follows the copy's physical
-  append, as libyang does.
+- **opidx.** Each handle has an immutable kind (`Seq.SetWeigh`, schema = heavy) and a subtree count
+  of heavy handles, maintained wherever `size` is and recorded in the handle's image.
+  `PeekKind`, `PosKind`, `RankKind` (charged as `Rank`), `First/LastKind` and `PeekNextOfKind` are
+  O(log n). *Kind threads* (`kprev`, `knext`, turned on by `SetKindThreads` and kept from then on)
+  make `NextKind`/`PrevKind` O(1). Every edit relinks the handles it moves: a point edit with two
+  climbs, a range edit in O(range + log n), `Keep` in one pass. The point, republication and `Keep`
+  bounds include that relinking, and `KindThreadsBound` prices the one-time pass.
+  `TestSequenceKindModel` checks the counts, threads, rollback and bounds against a slice model.
+- **Facade** (`siblings_access.go`). In an interleaved set, logical reads translate. `at` and `peek`
+  use `PeekKind`. `Index` and `orderPosition` use `PosKind`/`RankKind`. Spans, iterators and
+  cursors step with the logical neighbour, which is the kind thread, and past the last schema
+  node the first opaque one. `LowerBound` binary-searches kind ranks: O(log² n) visits, counted
+  as sibling visits. A *document-order* span (`docSpan`, `docNodes`, `docFirst`/`docLast`/`docNext`,
+  `all`, `All`, `reverseAll`) reads the physical sequence. The append that interleaves a set turns
+  its kind threads on, paid by the insertion's bound (`interleaveBound`). `TestSiblingFacadeInterleavedModel`
+  checks every read and write against a slice model.
+- **Physical placement.** `link` takes a logical position. The physical anchor is the logical
+  default (`storeAnchor`) unless the caller set a placement for that node (`setPlace`; `link` clears
+  it):
+  - a schema node at logical `i < nschema`: immediately before schema node `i`
+    (`lyd_insert_before_node` of the anchor);
+  - a schema node at `nschema`: after the last schema node, before a trailing opaque block
+    (tree_data.c:785-793);
+  - an opaque node at opaque index `j`: after opaque node `j-1`, appended when out of range
+    (`lyd_insert_node_last`);
+  - `placeEnd`: after the last sibling (`lastPos`, a payload forest);
+  - `placeAfter` / `placeBefore`: right after or before a node. This covers the XML parser's
+    `lyd_insert_after` of the last same-name opaque sibling (`lydxml_get_hints_opaq`), which may
+    lie before a schema sibling or be the last opaque node; a sorted insertion's
+    `lyds_link_data_node` after its RB predecessor (`interleavedPos`); and the next members of a
+    moved run.
+- **Anchors** (`interleavedPos`). Without a children table, or at the top level,
+  `lyd_insert_get_next_anchor` walks the siblings and stops at the first opaque one
+  (tree_data.c:546-589). When that opaque node comes before the schema anchor, it is the anchor,
+  and the logical position becomes the number of schema nodes before it. With a table the anchor is
+  the first instance of the next schema sibling (tree_data.c:520-535), the logical default.
+- **Lookups.** `lyd_find_sibling_schema` without a children table stops at the first opaque sibling
+  (tree_data_common.c:1126-1131). `schemaFind` and `schemaLookup` therefore find nothing past it
+  (`linearBound`), and neither does `runBounds`'s leader. `lyd_validate_new` stops there too
+  (validation.c:1023). `lyd_find_sibling_opaq_next` searches only the trailing opaque block
+  (`opaqTail`).
+- **Runs.** In an interleaved set an opaque node ends a run, as another schema node does
+  (`LYD_LIST_FOR_INST`, `lyds_additionally_create_rb_tree`). The set switches to the unordered
+  mode when it interleaves. There the first-instance records use document neighbours
+  (`lyd_insert_hash_add`/`lyd_unlink_hash`: `docNeighbours`), the index's run gaps count opaque
+  separators (`orderBuild`, `orderAddSchema`, `orderRemove`, `opaqueSplit`), table and record builds
+  walk document order (`logicalInterleaved`), and `runBounds`, `runEnd` and `retainedRunEnd` cut a
+  run at its first opaque node (`runPiece`, one O(log n) read).
+- **libyang's sibling list.** Code that models `lyd_child`/`next`/`prev` reads document order:
+  `firstChild`, `hasNext`, `nativeTail`, the key prefix (`positionalChildren`, `keyLinked`,
+  `checkKeys`, `listPredicate`), the validation sibling lists (`topList`, `slicesOf`) and the
+  diff/merge sibling lists.
 - **Republication** (`replaceSchema`, `publishRun`) in an interleaved set republishes the run's
-  physical extent. Opaque nodes inside it keep their physical slots, and the run's members fill the
-  schema slots in their new order. Fresh members of `publishRun` go after the extent's last
-  slot. Work is the extent's `RepublishBound`, so the opaque nodes inside it are charged.
+  physical extent. Opaque nodes keep their slots, and new members follow the extent.
+  `republishBound` prices the extent and its assembly, and `publicationIndexBound` and
+  `rbPublish`'s reservation include it. The parser never defers a run in an interleaved set
+  (`appendSorted`).
 
-### Remaining restriction (tested, not a deviation of defined behaviour)
+## Evidence
 
-`LYD_PARSE_ORDERED` input whose (leaf-)list run is split by an opaque sibling, such as
-`<ll>1</ll><zz/><ll>2</ll>` in XML, is undefined in libyang. libyang's `LYD_LIST_FOR_INST` stops at
-the opaque node there. The port's run machinery (instance counts, position predicates, sorted
-insertion) treats opaque nodes as absent, so the instances form one run. Traversal and printing still
-follow document order. A Go test pins the port's result.
+- Oracle fixtures `protocol-v2/ordered-*` (21) cover:
+  - parse order, JSON and XML;
+  - the XML opaque anchor;
+  - later insertions with and without a children table, crossing the table threshold, and a sorted
+    one after an opaque node;
+  - a run hidden past the first opaque node;
+  - split leaf-list and list runs, with and without a table;
+  - opaque appends; unlink and re-insert; merge; dup; diff; validation (implicit default, opaque
+    error and the stop of `lyd_validate_new`);
+  - XPath axes and positions; a key after an opaque child; a validated out-of-order parse.
+  The `seq/trim-*` and `ops/opidx-split-run-leader-switch` fixtures, which parse ordered, now run.
+  The request-differential `ordered-input` class runs against the live oracle.
+- Go: `TestSequenceKindModel` (opidx), `TestSiblingFacadeInterleavedModel`,
+  `TestSiblingFacadeInterleaveRollback`, `TestOrderedParseKeepsInputOrder`, `TestOrderedParseFunded`
+  (every budget limit and cancellation point of interleaving ordered parses), and
+  `TestInterleavedEditBudgetPoints` (NewPath, sorted insertion, Merge, Unlink and Dup on interleaved
+  trees, with and without a table, refused at every charge boundary). The storage invariant also
+  checks the kinds, the kind threads and the document-order run gaps.
+
+## Remaining restriction
+
+A merge keeps the leader it found for the following source instances of the same schema node
+(`lyds_insert2`'s `leader_p`, tree_data.c:2755-2760; `lyds_insert2`, tree_data_sorted.c:1256-1279).
+The port looks the leader up again per instance once the run has no RB tree (`sortedRunBatchable`).
+The two differ only in a run split into pieces, by an opaque node or, in unordered copies, by
+another schema node. There, a new run start in the first piece replaces its first-instance
+record, and a re-lookup then finds the other piece. A merge of `k0, k3` into `k2 | zz | k1` puts
+`k3` after `k1`, where libyang puts it after `k2`. `protocol-v2/ordered-split-list-hashed`
+therefore merges only `k1, k3`. The same path serves unordered copies, so this predates this
+change, and it is a follow-up.
 
 ## D-0058 after this change
 
-The row keeps its id and keeps only `lyd_insert_after`: `InsertAfter(anchor, n)` places a schema
-node `n` after the last instance of its own run. libyang links it immediately after the anchor.
-The two differ when an opaque sibling is the anchor or follows it, and when the anchor is not the
-last instance of its run. The parse-order text, the "ordered parse option is not exported" text,
-the `ordered-input` B class, the engine refusal and the engine's D-0058 allowlist entries for
-ordered parses go. The `protocol-v2/ordered-*` fixtures and `seq/trim-*` runs that parse ordered
-then run against their goldens.
+The row keeps its id and keeps only `lyd_insert_after`. libyang links the node immediately after
+the anchor. `InsertAfter` places:
+- a schema node after an opaque anchor after the last instance of its run;
+- an opaque node after a schema anchor first among the opaque nodes;
+- a schema node after a schema anchor before the next schema node, which in an interleaved set is
+  past any opaque node that follows the anchor.
 
-## Evidence plan
-
-- opidx: model tests of the kind counts under every edit and rollback, and of `PeekKind`, `PosKind`,
-  `NextKind` and `PrevKind` against a slice model, in random interleavings (extending
-  TestSequenceRandomizedTransactions and the edit-script model); `CheckInvariants` covers the
-  counts.
-- data: a facade model test over an interleaved set (logical spans, positions and walks against a
-  model, document-order `all`), and storage invariants extended to the kind counts. Go tests of
-  ordered parses in JSON and XML: out of schema order, an opaque node between schema nodes, the XML
-  opaque anchor across a schema node, an opaque-split run. Then on each result: traversal
-  (`Children`, `Top`, XPath), JSON/XML printing, a later default insertion (before an anchor and at
-  the end, with trailing opaque nodes), `InsertBefore`, `Unlink`, `Dup` (interleaving kept),
-  `Validate`, `Diff` against an ordered and an unordered tree, `Merge` into it, and the rollback of
-  each refused edit (budget sweeps).
-- Conformance: `protocol-v2/ordered-schema-order`, `ordered-opaque-between`, the `seq/trim-*`
-  ordered fixtures, and the request-differential `ordered-input` class (39 single-field requests)
-  against the live oracle. Goldens come only from the oracle tooling.
-- `TestStorageMiddleEditScaling`, the budget sweeps and the counted-work tests are unchanged for
-  sets that are not interleaved. A scaling test bounds an interleaved set's middle edits and walks
-  at O(log n) and O(log² n) per operation.
+The parse-order text, the `ordered-input` B class, the engine refusal and the engine's D-0058
+allowlist entries are gone.
