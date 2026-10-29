@@ -449,15 +449,16 @@ func (p *jsonParser) metadataFinish(parent *Node) (result error) {
 			} else if i := lc.tree.schemaIndex(sib, sn); i >= 0 {
 				// Non-operation metadata numbering uses a logarithmic start lookup,
 				// then this counted run walk, cached once per schema.
-				j := i
+				// The run is collected, so numbering an instance reads no position.
+				var nodes []*Node
 				for _, c := range sib.schemaSpan().Slice(i, sib.SchemaLen()).All() {
 					if c.schema != sn {
 						break
 					}
 					lc.tree.work.Add(1)
-					j++
+					nodes = append(nodes, c)
 				}
-				r = sib.schemaSpan().Slice(i, j)
+				r = spanOf(nodes)
 			}
 			runs[sn] = r
 		}
@@ -579,7 +580,24 @@ func (p *jsonParser) metaAttr(node *Node, idx int) (rc error) {
 		nodetype = node.schema.Kind
 	}
 	prev, instance := node, 0
-	next := func(i int) *Node { return sibAt(prev.siblingsOf(), i) }
+	// node->next: requests consecutive from the first walk the threads (a positional read is a
+	// descent); any other request, or one after the storage changed, reads by position.
+	var walk spanCursor
+	walked, nodeSibs := -1, node.siblingsOf()
+	next := func(i int) *Node {
+		sib := nodeSibs
+		if sib == nil || i >= sib.Len() {
+			return nil
+		}
+		if walked < 0 {
+			walk, walked = sib.span(i, sib.Len()).cursor(), i
+		}
+		if i != walked || walk.r.st == nil || walk.r.st.ver != walk.r.ver {
+			return sibAt(sib, i)
+		}
+		walked++
+		return walk.next()
+	}
 	var pastRun func() *Node // the sibling after a contiguous run, located on demand
 	if nodetype == schema.LeafList {
 		// parseAttribute found the first instance in document order. lydjson_meta_attr then uses
@@ -629,14 +647,14 @@ func (p *jsonParser) metaAttr(node *Node, idx int) (rc error) {
 			idx = 0
 			// The instances are read in order: a threaded walk. node is the run's first
 			// instance and both callers advance idx before next, so the cursor starts past it.
-			walk := run.cursor()
-			walk.next()
-			walked := 1
+			runWalk := run.cursor()
+			runWalk.next()
+			runWalked := 1
 			next = func(i int) *Node {
 				if i < run.Len() {
-					if i == walked {
-						walked++
-						return walk.next()
+					if i == runWalked {
+						runWalked++
+						return runWalk.next()
 					}
 					return run.At(i)
 				}
