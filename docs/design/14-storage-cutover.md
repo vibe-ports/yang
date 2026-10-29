@@ -2,71 +2,115 @@
 
 Step 5 of #240 makes the order-statistic sequence the only physical sibling storage and attaches
 the ordered index to it (contract `c240-sibling-sequence.astra.md` §5, step 5; design 13 is
-step 4). Behaviour, verdicts and libyang event order do not change; no new deviation.
+step 4). Behaviour, verdicts and libyang event order do not change; no new deviation. Code
+comments cite this document as "design 14".
 
-## What becomes authoritative
+## What is authoritative
 
-- `siblings` keeps one `*siblingStore` (allocated at its first child): an `opidx.Seq[*Node]`
-  holding the schema children in `[0, schemaLen)` and the opaque ones after them, and the one
-  `orderBinding` its hooks report to. The store is reached through a pointer, so moving or
-  capturing a `siblings` value never copies a `Seq` (handles keep their owner).
-- A linked node finds its handle in O(1) through `Node.slot`. A non-owning view (`sibsOf`, the
-  print and any-copy views) gets handles without slots and is marked as a view; building one
-  neither reparents nor re-slots the original nodes.
+- `siblings` keeps one `*siblingStore`, allocated with its first child: an `opidx.Seq[*Node]`
+  holding the schema children in `[0, nschema)` and the opaque ones after them, and the one
+  `orderBinding` its hooks (and the index's) report to. The store is reached through a pointer,
+  so moving or capturing a `siblings` value never copies a `Seq`.
+- A linked node finds its handle in O(1) through `Node.slot`, an `opidx.Slot` whose writes are
+  journal images. A non-owning view (`sibsOf`, the print view, a payload copy's source) is a
+  store marked `view`: its handles are not its nodes' slots, and building it neither reparents
+  nor re-slots anything.
+- The sequence maintains no order labels until an ordered index is built over it
+  (`SetLabeled(true)` in `orderBuild`, one unreported pass and an unpaid header image, like the
+  build itself); `Compare` falls back to ranks meanwhile. Unlabeled point edits are pure AVL
+  work, so an ordinary set pays no relabelling.
 
-## What goes away
+## What went away
 
-- `nodeDeque.list`, `siblings.opq` and the deque code (the edit.go duplicate cache keeps its own
-  local deque); spans over slices of live storage (a span is a view of the sequence, or of a
-  detached slice such as `logical()`); `cloneStorage`, `snapshotStorage`, `restoreStorage`'s
-  copy, `exposeSchema`, `retainsBase`/`retainsList`.
-- `childOrder.seq` and `childOrder.byNode`: the occurrence and rank indexes register the store's
-  handles; `orderBuild` registers existing handles and builds no second sequence; `orderReorder`
-  is folded into `replaceSchema`, which unregisters the run, republishes its handles with one
-  `ReplaceHandles`, and registers them again.
-- Position scans that existed because a slice had no positions: `indexFromEnd`, the scan
-  fallbacks of `chargedIndex`, `orderPosition` and `originIndex`, and `indexOf` become one
-  handle rank (O(log n)), charged as `orderPosition` charges it today.
-
-## Obsolete bounds
-
-`insertCost`, `opaqueInsertCost`, `linkSlots`, `runSlots`, the `2*linkSlots` recovery term and
-`work.shifts` modelled slice shifts and copies. They are replaced by the sequence's point bounds
-(`InsertBound`, `RemoveBound`, `ReplaceHandlesBound`, journal-aware), folded into the existing
-`orderAddBound`/`orderRemoveBound`/`publicationIndexBound` so `link`, the single `unlink` and the
-publications keep prepaying one total. `InsertAt`/`DeleteAt` no longer return shift counts.
+- `nodeDeque.list`, `siblings.opq` and the deque (the duplicate cache keeps its own local
+  deque); `Build`, `Splice`, `buildSchema`, `exposeSchema`, `cloneStorage`, `retainsBase`,
+  `retainsList`; `childOrder.seq` and `childOrder.byNode`; `orderReorder` (folded into
+  `replaceSchema`, which unregisters the run, republishes its handles with one `Republish` and
+  registers them again); the parser's position cache.
+- The position scans a slice needed: `indexFromEnd` over sibling storage, the scan fallbacks
+  of `chargedIndex`, `orderPosition`, `originIndex`, `prepareUnlink` and `indexOf`. Each is one
+  rank walk (`orderPosition`), paid by a read credit on a mutation path (design 13 §4.4).
+- Obsolete bounds: `insertCost`, `opaqueInsertCost`, `linkSlots`, `runSlots`, the `2*linkSlots`
+  recovery term, the parser's `3*runLen` slot pre-charge and `work.shifts`. The sequence's point
+  bounds (`InsertBound`, `RemoveBound`, `RepublishBound`, `KeepBound`, journal-aware) replace
+  them inside the existing `orderAddBound`/`orderRemoveBound`/`publicationIndexBound` totals.
 
 ## Invariants
 
-1. Every linked child of a set occurs exactly once in its store, schema before opaque;
-   `n.slot` is its handle and belongs to that store; an unlinked node has no slot.
+1. Every linked child of a set occurs once in its store, schema before opaque; its slot is its
+   handle there (`storeCheckInvariant`, run by every tree invariant and budget sweep).
 2. An ordered index registers exactly the store's handles and owns no sequence.
-3. Every store write while a state runs is journaled in that state (`bind.state`, bound by the
-   whole capture, by a narrow write or by the store's allocation under a capturer); rollback
-   restores the sequence, handles and slots by replay and allocates nothing.
-4. Every store write inside a hash-work scope is paid: by its enclosing scope's bound or by its
-   own prepay before the first write. Reads by position are uncounted (`At`, iteration); rank
-   lookups on a mutation path open a read credit.
-5. Retained-RB in-order projection (design 12) is unchanged.
+3. Every store write while a state runs is journaled in that state (`bind.state`: bound by the
+   whole capture, by a narrow write, or with the store's allocation); rollback restores the
+   sequence, handles, slots and the label mode by replay and allocates nothing.
+4. Every store write in a hash-work scope is paid: by its enclosing scope's bound or its own
+   prepay before the first write; it is charged its actual units and refunded the rest, as the
+   index is (design 13 §4.1).
+5. Spans and iterators borrow the live store. A write that moves positions bumps `ver`; a test
+   build panics on a read through an older borrow. A republication (`replaceSchema`) keeps every
+   position and bumps `moves` instead: an iterator reseeks by position, as indexing an
+   overwritten slice did. `reborrow` takes a span again after a temporary node was linked and
+   unlinked (`lyd_validate_dummy_when`).
+6. Retained-RB in-order projection (design 12) is unchanged.
 
-## Test plan
+## Attach replay (was `exposeSchema`)
 
-opidx: uncounted access, republish with fresh handles, slot cells, bounds against reported work.
-data: a store invariant checker (bijection, slots, partition, `CheckInvariants`) wired into the
-tree invariant helpers the sweeps already call; the facade model test against a slice model;
-counted scaling of middle insertions and removals in a large user-ordered run and an ordinary
-container (1K/8K/64K, logarithmic per edit); a limit sweep over a middle insert and a move that
-checks restored storage and a later edit; view builds leave slots alone; a test-build check that
-a span is not read after its store changed. Existing S4 sweeps, histories,
-`TestAstra305Round13CountedWork` and the repeated-key scaling test must stay green.
+`rbPublish` republishes its run at once and then attaches the new members one by one. While
+it does, `siblings.unattached` names the members not attached yet: the table threshold counts
+`SchemaLen() - len(unattached)`, and table construction (`logical`) skips them, so a children
+table created during the replay holds the siblings attached so far, in sibling order, and the
+later members register after them in attach order. A member's record neighbours are found by
+walking the sequence past unattached members, a walk the publication's charge already bounds
+(`usize * len(attach)`). TestRBPublishTableHistory checks the registration order around the
+threshold for several attach orders (and fails without the filter).
 
-## Risks
+## Completion funding of deferred publication
 
-- Constant factors: one handle per child and AVL work per link (memory, the `./data` race run):
-  measured before and after; heavy new tests use `raceScale`.
-- Counted-work and budget numbers move where they modelled shifts; each changed expectation is
-  justified by the replaced bound, never loosened to pass.
-- Live spans: a caller that kept a span across a mutation saw the old slice before; the stale-span
-  check finds them.
-- Binary search over a span keeps its predicate sequence (its calls are charged), so probes use
-  `At` (O(log² n) uncounted structure, O(log n) charged predicates).
+A parser run deferred for publication is funded as it grows: before linking a member,
+`payPublication` tops up its set's completion credit to `publicationNeed` (per pending run
+`RepublishBoundAny` of its members, its index re-registration when indexed, and its reads, for
+the set's length after the link, journaled). `publishDirty` opens a prepaid scope with that
+already-charged credit, so a publication charges nothing fallible and refunds the rest. Test
+builds panic if a publication refuses (`checkPublish`). An opaque XML link that grows a set with
+pending runs tops it up too. TestParserPublicationFunded sweeps every budget limit, every
+cancellation point and truncated inputs over data and operation parses.
+
+## Complexity
+
+A point edit costs O(log n + L) sequence work: L is the relabel, zero while unlabeled and
+amortized O(log n) in an indexed set (Bender et al.). `LowerBound` over storage is one bounded
+descent (`BoundIn`): O(log n) structural visits, counted as sibling visits, and at most one
+predicate call per level. A bulk removal (`Keep`) is O(n) however many go. A republished run of
+k is O(log n + k). TestStorageMiddleEditScaling measures middle insertions and removals in a
+user-ordered run of 1K and 16K, ordinary and indexed, with and without one journaled state:
+per-edit work and hash grow by about 1.3x (main grows 15x). A state's first write to a set
+still captures its compatibility records and node structs whole, O(set size) once per state;
+per-entry compat journaling is step 6.
+
+## Deviations from the plan
+
+1. **Refunded, not priced, storage charges.** Pricing every write at its bound would make a
+   limit that sufficed once suffice again, but it raised a 250K-link operation parse above the
+   default budget; the index's refund model is kept and the tests that derived a limit from a
+   probe's usage now search the smallest sufficient limit (TestMergeDiffHashWorkScope) or add
+   `storageAllowance`.
+2. **Unlabeled storage** (not in the plan): labels cost about 130 units per middle insertion and
+   no unindexed reader needs them.
+3. **Handle identity across an unjournaled relocation's forward recovery** is not kept: the
+   recovery relinks the node with a fresh handle (`restoreLink`); order, slots and index are
+   restored, and nothing outside the storage observes the handle.
+4. **Counted expectations moved** where they modelled the deque: appends and middle edits are
+   O(log n) (TestInsertWork, TestBulkWork), the bulk compaction scans all siblings once, value
+   lookups now count their descent (TestUniqueMissingDefault), and an origin lookup is a rank
+   read credit (TestSiblingLinkOriginBudgetThreshold, TestStoredHashMaxLeafListSetValueWork).
+
+## Evidence
+
+- opidx: TestRepublishModel, TestRepublishRejectsBeforeWrite, TestSlotJournal, TestKeepModel,
+  TestUnlabeledSequence, TestUnlabeledBoundsCover, TestBoundInModel.
+- data: TestSiblingFacadeModel, TestSiblingFacadeStorageRollback, TestSiblingFacadeView,
+  TestSiblingFacadeCaptureFailure, TestSiblingStorageBoundary (no storage write outside the
+  facade), TestRBPublishTableHistory, TestParserPublicationFunded,
+  TestStorageMiddleEditScaling; the storage invariant in every tree invariant check and budget
+  snapshot; every existing S4 sweep and history, TestAstra305Round13CountedWork and the
+  repeated-key scaling tests unchanged.

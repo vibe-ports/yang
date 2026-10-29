@@ -2,6 +2,8 @@
 
 package opidx
 
+import "math/bits"
+
 // Storage access (#240 step 5, design 14): a Seq is the authoritative sibling storage. Reads by
 // position and identity are uncounted (they replace slice indexing); edits charge through the
 // hooks as before.
@@ -46,6 +48,32 @@ func (s *Seq[T]) SetLabeled(on bool) {
 		h.tag = i * step
 		i++
 	}
+}
+
+// BoundIn returns the first rank in [lo, hi) whose value satisfies pred, monotone over the range
+// (false values, then true ones), or hi if none does. It is one descent: O(log n) structural
+// visits, each reported to visit (nil: none), and pred runs only on values inside the range,
+// once per visited level at most.
+func (s *Seq[T]) BoundIn(lo, hi int, pred func(T) bool, visit func()) int {
+	lo, hi = max(lo, 0), min(hi, s.length)
+	answer, base := hi, 0
+	for n := s.root; n != nil && lo < hi; {
+		if visit != nil {
+			visit()
+		}
+		rank := base + nodeSize(n.left)
+		switch {
+		case rank < lo:
+			base, n = rank+1, n.right
+		case rank >= hi:
+			n = n.left
+		case pred(n.Value):
+			answer, n = rank, n.left
+		default:
+			base, n = rank+1, n.right
+		}
+	}
+	return answer
 }
 
 // Owns reports whether h is a live handle of s.
@@ -204,6 +232,17 @@ func (s *Seq[T]) KeepBound(journaled bool) uint64 {
 		bound = saturatingAdd(bound, saturatingAdd(n, images(n, journaled)))
 	}
 	return bound
+}
+
+// RepublishBoundAny bounds Republish of the k handles of one range, none fresh, in a sequence of
+// at most length handles, labeled or not: position-free, for a reservation made before the
+// sequence reaches its final size (a deferred publication). The range's labels already fit
+// between its neighbours, so its relabel is the k handles themselves.
+func RepublishBoundAny(length, k int, journaled bool) uint64 {
+	h := 2*bits.Len(uint(length+2)) + 2
+	kk := uint64(k) //nolint:gosec // a count is nonnegative
+	bound := saturatingAdd(moveUnits(h+1, journaled), saturatingAdd(6*kk, images(3*kk+2, journaled)))
+	return saturatingAdd(bound, 3*(uint64(h)+3)) //nolint:gosec // a height is small and nonnegative
 }
 
 // Slot is a value's own reference to its handle in the sequence that holds it. Its writes are

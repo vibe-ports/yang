@@ -179,8 +179,8 @@ func TestInsertWork(t *testing.T) {
 			}
 		}
 		// rb_insert_node descends the retained tree (height up to 2*log2 n), then recolours; the
-		// storage's AVL insertion descends its own tree once more (design 14)
-		if limit := n * (6*bits.Len(uint(n)) + 4); int(tr.work.Load()) > limit {
+		// storage's AVL insertion and the run's bound searches descend the storage (design 14)
+		if limit := n * (9*bits.Len(uint(n)) + 4); int(tr.work.Load()) > limit {
 			t.Fatalf("reversed %v: %d comparisons, limit %d", reversed, int(tr.work.Load()), limit)
 		}
 	}

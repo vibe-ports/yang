@@ -5,6 +5,7 @@ package data
 import (
 	"errors"
 	"fmt"
+	"math/bits"
 	"slices"
 	"testing"
 
@@ -12,8 +13,9 @@ import (
 	"github.com/vibe-ports/yang/internal/schema"
 )
 
-// Both facade searches replace BinarySearchFunc. Preserve its complete probe
-// sequence, including the final equality probe, for bounded and empty searches.
+// Over storage both facade searches are one bounded descent: the BinarySearchFunc result with a
+// probe per level at most, all inside the range (design 14). A detached span keeps
+// BinarySearchFunc's complete probe sequence, the final equality probe included.
 func TestSiblingLowerBoundProbes(t *testing.T) {
 	for _, size := range []int{0, 1, 2, 17, 64} {
 		nodes := make([]*Node, size)
@@ -38,9 +40,16 @@ func TestSiblingLowerBoundProbes(t *testing.T) {
 					for _, search := range []func(int, int, func(*Node) bool) int{sib.LowerBound, sib.schemaSpan().LowerBound} {
 						var got []int
 						at := search(lo, hi, func(n *Node) bool { got = append(got, positions[n]); return positions[n] >= cut })
-						if at != lo+offset || !slices.Equal(got, want) {
-							t.Fatalf("size=%d [%d:%d] cut=%d: at=%d probes=%v; want at=%d probes=%v", size, lo, hi, cut, at, got, lo+offset, want)
+						// one storage descent: a probe per level at most, all inside the range
+						if at != lo+offset || len(got) > 2*bits.Len(uint(size+1))+2 ||
+							slices.ContainsFunc(got, func(p int) bool { return p < lo || p >= hi }) {
+							t.Fatalf("size=%d [%d:%d] cut=%d: at=%d probes=%v; want at=%d", size, lo, hi, cut, at, got, lo+offset)
 						}
+					}
+					var got []int // a detached span keeps BinarySearchFunc's probes
+					at := spanOf(nodes).LowerBound(lo, hi, func(n *Node) bool { got = append(got, positions[n]); return positions[n] >= cut })
+					if at != lo+offset || !slices.Equal(got, want) {
+						t.Fatalf("detached size=%d [%d:%d] cut=%d: at=%d probes=%v; want at=%d probes=%v", size, lo, hi, cut, at, got, lo+offset, want)
 					}
 				}
 			}
@@ -49,10 +58,10 @@ func TestSiblingLowerBoundProbes(t *testing.T) {
 }
 
 // A singleton's origin is its storage rank: a read credit of rbHeight(1)+1 units paid before
-// the walk (design 13 §4.4, design 14), then two upper probes. These fixed thresholds catch a
-// smaller enforced charge at the origin lookup boundary.
+// the walk (design 13 §4.4, design 14), then one upper probe (a one-level descent). These fixed
+// thresholds catch a smaller enforced charge at the origin lookup boundary.
 func TestSiblingLinkOriginBudgetThreshold(t *testing.T) {
-	need := rbHeight(1) + 1 + 2
+	need := rbHeight(1) + 1 + 1
 	for _, limit := range []uint64{need - 1, need} {
 		t.Run(fmt.Sprint(limit), func(t *testing.T) {
 			f := newFixture()

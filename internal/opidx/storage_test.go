@@ -318,3 +318,31 @@ func TestUnlabeledBoundsCover(t *testing.T) {
 		}
 	}
 }
+
+// TestBoundInModel: BoundIn finds the first true value of every bounded range in one descent,
+// probing only inside the range and visiting at most the tree's height.
+func TestBoundInModel(t *testing.T) {
+	var seq Seq[int]
+	seq.SetLabeled(false)
+	for i := range 100 {
+		seq.InsertBefore(nil, i)
+	}
+	height := nodeHeight(seq.root)
+	for lo := 0; lo <= 100; lo += 7 {
+		for hi := lo; hi <= 100; hi += 5 {
+			for cut := lo; cut <= hi; cut += 3 {
+				visits, probes := 0, 0
+				got := seq.BoundIn(lo, hi, func(v int) bool {
+					probes++
+					if v < lo || v >= hi {
+						t.Fatalf("[%d:%d] probed %d outside the range", lo, hi, v)
+					}
+					return v >= cut
+				}, func() { visits++ })
+				if got != cut || visits > height || probes > visits {
+					t.Fatalf("[%d:%d] cut %d: got %d, %d visits, %d probes (height %d)", lo, hi, cut, got, visits, probes, height)
+				}
+			}
+		}
+	}
+}

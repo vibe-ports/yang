@@ -172,8 +172,15 @@ func snapshotHashBudgetSiblings(s *siblings) string {
 	sort.Strings(unsorted)
 	sort.Strings(occurrence)
 	sort.Strings(pending)
-	return fmt.Sprintf("order=%d gen=%d seq=%d work=%p schemaUnordered=%t contexts=%v list=%v opq=%v ht=%v leaders=%v first=%v rb=%v rbOrders=%v unsorted=%v occurrences=%v pending=%v",
-		s.exactOrder, s.gen, s.leaderSeq, s.work, s.schemaUnordered, contexts, s.schemaSpan().Collect(), s.opaqueSpan().Collect(), entries, leaders, first, rb, rbOrders, unsorted, occurrence, pending)
+	// the storage (design 14): its label mode and invariant (the slots of the nodes in order).
+	// Handle identities are not compared: an unjournaled relocation's forward recovery relinks
+	// its node with a fresh handle (restoreLink), which nothing outside the storage can observe.
+	var store []string
+	if s.st != nil {
+		store = append(store, fmt.Sprintf("labeled=%t:%v", s.st.seq.Labeled(), storeCheckInvariant(s)))
+	}
+	return fmt.Sprintf("order=%d gen=%d seq=%d work=%p schemaUnordered=%t contexts=%v list=%v opq=%v store=%v ht=%v leaders=%v first=%v rb=%v rbOrders=%v unsorted=%v occurrences=%v pending=%v",
+		s.exactOrder, s.gen, s.leaderSeq, s.work, s.schemaUnordered, contexts, s.schemaSpan().Collect(), s.opaqueSpan().Collect(), store, entries, leaders, first, rb, rbOrders, unsorted, occurrence, pending)
 }
 
 // checkRecordIndex reports a chain's ordered index (AVL) that is not a balanced search tree of

@@ -599,10 +599,19 @@ func (r siblingSpan) Reverse() iter.Seq2[int, *Node] {
 	}
 }
 
-// LowerBound searches a monotone bounded range, returning its first true index. It keeps
-// BinarySearchFunc's probes, the final equality probe included: callers charge each predicate
-// call to an enforced budget. A probe is a select (O(log n), uncounted).
+// LowerBound returns the first index of the monotone bounded range [lo, hi) for which pred
+// holds, hi if none. Over storage it is one sequence descent (design 14): O(log n) structural
+// visits, counted as sibling visits, and at most one predicate call per level, which callers
+// count or charge themselves. A detached span keeps BinarySearchFunc's probes.
 func (r siblingSpan) LowerBound(lo, hi int, pred func(*Node) bool) int {
+	if r.st != nil {
+		r.check()
+		var visit func()
+		if owner := r.st.bind.owner; owner != nil {
+			visit = owner.visit
+		}
+		return r.st.seq.BoundIn(r.lo+lo, r.lo+hi, pred, visit) - r.lo
+	}
 	end := hi
 	for lo < hi {
 		mid := lo + (hi-lo)/2

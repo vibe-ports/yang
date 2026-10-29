@@ -17,6 +17,7 @@ import (
 	"github.com/vibe-ports/yang/internal/ly"
 	"github.com/vibe-ports/yang/internal/lyjson"
 	"github.com/vibe-ports/yang/internal/lyxml"
+	"github.com/vibe-ports/yang/internal/opidx"
 	"github.com/vibe-ports/yang/internal/schema"
 	"github.com/vibe-ports/yang/internal/types"
 )
@@ -161,6 +162,10 @@ type lydCtx struct {
 	dirtySet  map[dirtyRun]bool        // the runs pending in dirty, for a constant-time repeat mark
 	dirtyOrd  map[dirtyRun]*dirtyOrder // the dirty runs' trees
 	runOrd    map[dirtyRun]*dirtyOrder // aliases of retained trees used during this parse
+	// pubPaid is the completion credit of each set with pending runs: the units already charged
+	// for publishing them (payPublication), which their publication draws on and cannot refuse
+	pubPaid map[*siblings]uint64
+	pubRuns map[dirtyRun]int // the members each deferred run's credit covers
 }
 
 type dirtyRun struct {
@@ -783,6 +788,11 @@ func (lc *lydCtx) nodeInsert(parent, anchor, n *Node) error {
 		// lyd_insert_after of the XML parser's anchor (lydxml_get_hints_opaq): an opaque node
 		// right after the last opaque sibling with the same name, among the opaque nodes
 		sib := anchor.siblingsOf()
+		if len(lc.dirty[sib]) != 0 { // the set grows under its deferred runs: fund their publication
+			if err := lc.payPublication(sib, nil, 0); err != nil {
+				return err
+			}
+		}
 		return lc.tree.link(anchor.parent, sib, n, sib.indexOf(sib.opaqueSpan(), anchor)+1)
 	}
 	if anchor != nil {
@@ -876,11 +886,15 @@ func (lc *lydCtx) appendSorted(parent, n *Node) (bool, error) {
 		return false, crossContextStorageError(n)
 	}
 	// Reserve the topology node, rebalancing, physical link and eventual publication before
-	// changing the authoritative graph. Existing slots are paid once when deferral starts.
-	publication := uint64(3)
-	if sib.pending[n.schema] == nil && pred != run.At(run.Len()-1) {
-		publication += 3 * uint64(runLen) //nolint:gosec // sibling counts are nonnegative
+	// changing the authoritative graph: a deferred run's publication is paid as it grows
+	// (payPublication), so publishing it cannot refuse.
+	if sib.pending[n.schema] != nil || pred != run.At(run.Len()-1) {
+		// the run republished: its tree's members or its physical slots, whichever more, and n
+		if err := lc.payPublication(sib, n.schema, max(len(ord.nodes), runLen)+1); err != nil {
+			return false, err
+		}
 	}
+	publication := uint64(3)
 	if pred == nil {
 		publication = addHashBound(publication, sib.transferCost(leader, n))
 	}
@@ -985,14 +999,84 @@ func (lc *lydCtx) flushDirty(sib *siblings) error {
 	return nil
 }
 
+// publicationNeed bounds publishing the deferred runs of sib, sn's covering k members (sn nil:
+// none changes), once sib holds one more sibling: each run's republication with its index
+// re-registration and reads, position-free (the set may grow before it is published) and
+// journaled (design 14, completion funding).
+func (lc *lydCtx) publicationNeed(sib *siblings, sn *schema.Node, k int) uint64 {
+	length := sib.Len() + 1
+	var need uint64
+	keys := lc.dirty[sib]
+	if sn != nil && !slices.Contains(keys, sn) {
+		keys = append(slices.Clone(keys), sn)
+	}
+	for _, key := range keys {
+		members := lc.pubRuns[dirtyRun{sib, key}]
+		if key == sn {
+			members = max(members, k)
+		}
+		reads := 2 * opidx.UpdateBoundAny(length, false)
+		bound := addHashBound(opidx.RepublishBoundAny(length, members, true), reads)
+		if sib.order != nil || opChild(key) {
+			per := 2*orderCells(true) + 6*opidx.UpdateBoundAny(length, true)
+			bound = addHashBound(bound, mulHashBound(uint64(members), per)) //nolint:gosec // a count is nonnegative
+		}
+		need = addHashBound(need, bound)
+	}
+	return need
+}
+
+// payPublication tops up sib's completion credit to publicationNeed before a mutation that a
+// publication will have to cover: a refusal comes here, before the parser changes anything.
+func (lc *lydCtx) payPublication(sib *siblings, sn *schema.Node, k int) error {
+	need := lc.publicationNeed(sib, sn, k)
+	if paid := lc.pubPaid[sib]; need > paid {
+		if err := lc.tree.work.chargeHash(need - paid); err != nil {
+			return err
+		}
+		if lc.pubPaid == nil {
+			lc.pubPaid = map[*siblings]uint64{}
+		}
+		lc.pubPaid[sib] = need
+	}
+	if sn != nil {
+		if lc.pubRuns == nil {
+			lc.pubRuns = map[dirtyRun]int{}
+		}
+		key := dirtyRun{sib, sn}
+		lc.pubRuns[key] = max(lc.pubRuns[key], k)
+	}
+	return nil
+}
+
 // publishDirty is flushDirty without the cancellation check: once it starts it publishes every
 // dirty run of sib, so no run is left out of order with its state already dropped. Its work is
-// bounded, O(n log n) for a set of n siblings.
+// bounded, O(n log n) for a set of n siblings, and drawn from sib's completion credit: it
+// charges nothing fallible.
 func (lc *lydCtx) publishDirty(sib *siblings) {
 	lc.tree.work.Add(1)
 	keys := lc.dirty[sib]
 	if len(keys) == 0 {
 		return
+	}
+	w := &lc.tree.work
+	if checkPublish && w.hashErr == nil {
+		defer func() {
+			if w.hashErr != nil {
+				panic("data: a funded publication refused: " + w.hashErr.Error())
+			}
+		}()
+	}
+	credit := lc.pubPaid[sib]
+	delete(lc.pubPaid, sib)
+	for _, sn := range keys {
+		delete(lc.pubRuns, dirtyRun{sib, sn})
+	}
+	if w.prepaid {
+		w.credit += credit // already charged: the enclosing scope refunds what is left
+	} else {
+		w.prepaid, w.credit, w.readCredit = true, credit, false
+		defer w.closeCredit(false)
 	}
 	delete(lc.dirty, sib)
 	for _, sn := range keys {
@@ -1123,7 +1207,8 @@ func (lc *lydCtx) flushDirtyRun(k dirtyRun, lo int) {
 }
 
 // checkPublish turns on checkPublishedRun (tests): publication overwrites the run's slots, so
-// they must hold exactly the run's instances, none of another schema node, none missing.
+// they must hold exactly the run's instances, none of another schema node, none missing; and a
+// publication, funded by its completion credit, must not refuse.
 var checkPublish bool
 
 func checkPublishedRun(sn *schema.Node, run, ordered siblingSpan) {
