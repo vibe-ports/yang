@@ -100,8 +100,8 @@ predicate call per level. A bulk removal (`Keep`) is O(n) however many go. A rep
 k is O(log n + k). TestStorageMiddleEditScaling measures middle insertions and removals in a
 user-ordered run of 1K and 16K, ordinary and indexed, with and without one journaled state:
 per-edit work and hash grow by about 1.3x (main grows 15x). A state's first write to a set
-still captures its compatibility records and node structs whole, O(set size) once per state;
-per-entry compat journaling is step 6.
+still captures its compatibility records and node structs whole, O(set size) once per state
+level; repeated relocations in one set open no level of their own (step 6).
 
 ## Deviations from the plan
 
@@ -164,8 +164,9 @@ unlink position, run leaders and ends, a first or last sibling.
 
 **Open:** a point read by position (`At`) is an O(log n) descent counted as sibling visits but
 not charged to the enforced quota, as slice indexing was not; every remaining use reads O(1)
-positions per edit. Keeping the index across a batch publication (re-registering only the run
-instead of rebuilding it, O(N) charged) is left to step 6.
+positions per edit (the step-6 consult found no input-sized loop of them and deferred charging
+them). Rank and index reads are charged (D-0149). The index rebuild after a batch publication is
+linear since step 6; keeping the index across it is not needed for the bound.
 
 ## Step 6: complexity of the index rebuild and of per-move recovery
 
@@ -177,13 +178,20 @@ be narrowed; this section is its plan.
    rebuild after a batch publication (`rbPublish`, reserved at 8 units per sibling) was
    Θ(N log N) work charged as O(N). The build now groups the handles, which it visits in
    sequence order (ascending labels), by occurrence class and builds each class's tree balanced
-   from its ordered slice (`Occurrences.Build`): O(N) for all five classes, one unit per handle.
-   The unbound binding counts the build's work (not charged: `rbPublish` and `indexAddBound`
-   reserve it), so a test sees the real structure work. Keeping the index across the
-   publication (re-registering only the run) is not needed for the bound and is not done.
-   Evidence: TestMergeSparseBatchChargesRebuild measures counted work per charged unit for
-   growing N (flat), and a budget one unit short refuses the merge before any write; an opidx
-   model test checks `Build` against insertion one by one.
+   from its ordered slice (`Occurrences.Build`), and the operation children's rank sets from
+   their collected ranks (`Ranks.Build`: an LSD radix sort by bytes, at most eight passes, then a
+   balanced tree; one insertion per distinct schema was Θ(S log S) for a wide operation): O(N),
+   at most `orderBuildBound` = 12 units per handle. The building binding reports that work: it
+   draws from an open credit (a link that builds the index: `indexAddBound` includes
+   `orderBuildBound`, so link's refund no longer returns it), and is counted only otherwise
+   (`rbPublish` charges `orderBuildBound` with its publication, before its first write).
+   Keeping the index across the publication (re-registering only the run) is not needed for the
+   bound and is not done. Evidence: TestMergeSparseBatchChargesRebuild (counted work per charged
+   unit flat over N = 256..16K, 0.42 to 0.71 before; a budget one unit short refuses before any
+   write), TestMergeWideBatchRebuildRanks (N distinct input leaves), TestLinkBuildsIndexCharged
+   (a link that makes N siblings unordered: charged at least 3 units per handle, about 1 before;
+   flat; refused one unit short), opidx TestOccurrencesBuildModel and TestRanksBuildModel
+   (against one-by-one insertion, balanced, exact work).
 2. **Per-move recovery inside a state.** A one-node relocation inside a running state opened a
    level, and a level captures every object afresh (design 13), so each move copied the whole
    sibling set's compatibility records and node structs: an ApplyDiff of N moves before the
@@ -196,9 +204,13 @@ be narrowed; this section is its plan.
    change (journal_levels_s4_test's "successive sibling levels capture afresh" stands: a level
    that captures is still exact); per-entry compat journaling of a level stays future work.
    The forward recovery relinks the node with a fresh handle (deviation 3 above). Evidence:
-   TestApplyDiffRepeatedMoveFirstScaling (the consult's reproducer: work and charge per entry
-   flat, one whole capture) and TestApplyDiffRepeatedMoveFirstRollback (every budget limit
-   restores the tree exactly; an ordinary failure at a later entry keeps the moves before it).
+   TestApplyDiffRepeatedMoveFirstScaling (the consult's reproducer: per entry flat, one whole
+   capture; before, N=256 to 2048 charged 0.9M to 55M units with one capture per move, and 4096
+   exceeded the default budget), TestApplyDiffRepeatedMoveFirstRollback (every budget limit
+   restores the tree exactly; an ordinary failure at a later entry keeps the moves before it),
+   TestRelocationForwardRecoveryInState (a failure injected after the unlink, in a plain and an
+   indexed set: the node returns, the earlier move stays, and the state then commits that or
+   restores the original exactly).
 3. **D-0149 wording.** Rank and index reads on a mutation path are charged (read credits);
    point reads by position (`At`) are O(log n) descents counted as sibling visits but not
    charged, as slice indexing was not. The Open note is narrowed to that.
