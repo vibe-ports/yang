@@ -99,10 +99,16 @@ each is refused in the public form and the result equals a benign run's.
 A held counter places, it does not own: a subtree detached earlier retains its old counter for
 accounting only. `heldNode` is O(1) while its node's own binding is not held, and only then walks
 to the root once: the node is held if it is in the held tree, or if the waiting state captured it
-(an in-flight detachment that state restores). An empty set has no member to place it and is
-not held: user code reaches an empty set of the held tree only through that tree's entries or by
-moving a node out of a non-empty set of it, both refused. A binding that names a suspended state
-the guard did not place the node in is stale: Node.touch, siblings.touch, rebind and
+(an in-flight detachment that state restores). "Captured" means any capture map of the state,
+through one predicate (`capturedIn`): the node itself with its metas and opaque data, its link
+record (`owners`, `links`), a detached root or captured ancestor, its children's set, and the set
+it is in with that set's records, chains and dirty orders. Capturing a link owner of a detached
+tree enrolls that tree's counter, so the O(1) check sees the hold, and rebinding the ancestors of
+a captured node to another tree is refused at its set (TestS4CapturedDetachedNodeIsHeld,
+TestS4CapturedLinkOwnerIsHeld). An empty set has no member to place it and is held only when the
+state captured it: otherwise user code reaches an empty set of the held tree only through that
+tree's entries or by moving a node out of a non-empty set of it, both refused. A binding that
+names a suspended state that did not capture the node is stale: Node.touch, siblings.touch, rebind and
 joinLinkJournal capture nothing into, and lend nothing to, that state
 (TestS4DetachedNodeNotHeldByItsOldTree, TestS4EmptyDetachedInnerNotHeld,
 TestS4HeldCheckIsConstantOnTheCommonPath). The diff given to

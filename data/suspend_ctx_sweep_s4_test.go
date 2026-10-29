@@ -4,11 +4,14 @@ package data
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"sync"
 	"testing"
 
+	"github.com/vibe-ports/yang"
+	"github.com/vibe-ports/yang/internal/schema"
 	"github.com/vibe-ports/yang/internal/snap"
 )
 
@@ -359,6 +362,163 @@ func TestS4EmptyDetachedInnerNotHeld(t *testing.T) {
 		}
 		if childStorage(e).len() == 0 && e.meta == nil && e.parent == nil {
 			t.Errorf("%s: the edit did not survive the operation", name)
+		}
+	}
+}
+
+// TestS4CapturedLinkOwnerIsHeld: with links v→r→k, k's list moved into A and the subtree
+// holding r and v detached, ApplyDiff on A deleting the list captures r's link record (an
+// owner capture, not a node one). A callback editing r is refused; the callback's budget error
+// then rolls A back, and r's value and both link records are as before (astra round 7).
+func TestS4CapturedLinkOwnerIsHeld(t *testing.T) {
+	set := s4LinksSet(t)
+	b := s4ParseLinks(t, set, `{"pv2-links:c":{"l":[{"k":"a"}],"r":"a","v":"a"}}`)
+	if _, err := b.LinkLeafrefs(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	a := s4ParseLinks(t, set, `{"pv2-links:c":{"t":["y"]}}`)
+	bc := b.top.first()
+	if err := a.Insert(a.top.first(), s4Child(bc, "l", "a")); err != nil {
+		t.Fatal(err)
+	}
+	r, v := s4Child(bc, "r", "a"), s4Child(bc, "v", "a")
+	if err := bc.Unlink(); err != nil {
+		t.Fatal(err)
+	}
+	links := func() string {
+		rl, rt := r.LeafrefLinks()
+		vl, vt := v.LeafrefLinks()
+		return fmt.Sprint(r.Value(), len(rl), len(rt), len(vl), len(vt))
+	}
+	before := links()
+	free := s4ParseLinks(t, set, `{}`)
+	var editErr, moveErr error
+	called := false
+	err := a.ApplyDiff(s4Diff(t, set, a, true), ApplyDiffOptions{Callback: func(_, _ *Node) error {
+		if s4Child(a.top.first(), "l", "a") != nil {
+			return nil // the list's delete has not run yet
+		}
+		called = true
+		moveErr = free.Insert(nil, bc) // rebinding the ancestors must not lift the hold
+		_, editErr = r.SetValue("b")
+		return yang.ErrBudget
+	}})
+	if !called || !errors.Is(err, yang.ErrBudget) {
+		t.Fatalf("ApplyDiff: %v (called %t)", err, called)
+	}
+	s4PublicRefusal(t, "moving the detached root of a captured link owner", nil, moveErr, false)
+	s4PublicRefusal(t, "SetValue of a captured link owner", nil, editErr, false)
+	if bc.treeOf() != nil {
+		t.Fatal("the refused move left the detached root in a tree")
+	}
+	if got := links(); got != before {
+		t.Fatalf("after rollback: %s, want %s", got, before)
+	}
+}
+
+// TestS4CapturedDetachedNodeIsHeld: for each capture map of the journal, a node of a subtree
+// detached before the operation, captured that way by the waiting state, is held: an edit of
+// it from user code is refused. Without a capture it is a stale binding and the edit proceeds.
+func TestS4CapturedDetachedNodeIsHeld(t *testing.T) {
+	keys := make([]string, 0, 12)
+	for i := range 12 {
+		keys = append(keys, fmt.Sprint(i+1))
+	}
+	j4 := reviewDiffSet(t, s4JournalModule)
+	links := s4LinksSet(t)
+	type fixture struct{ root, entry, leaf *Node }
+	hashed := func() fixture { // a detached c whose list is hashed: entry l[k=1], leaf its p
+		tr := s4DataTree(t, j4, keys...)
+		c := tr.top.first()
+		if err := c.Unlink(); err != nil {
+			t.Fatal(err)
+		}
+		e := s4Child(c, "l", "1")
+		return fixture{c, e, s4Child(e, "p", "1")}
+	}
+	linked := func() fixture { // a detached c whose r has a link record
+		tr := s4ParseLinks(t, links, `{"pv2-links:c":{"l":[{"k":"a"}],"r":"a"}}`)
+		if _, err := tr.LinkLeafrefs(context.Background()); err != nil {
+			t.Fatal(err)
+		}
+		c := tr.top.first()
+		if err := c.Unlink(); err != nil {
+			t.Fatal(err)
+		}
+		return fixture{c, s4Child(c, "l", "a"), s4Child(c, "r", "a")}
+	}
+	setLeaf := func(f fixture) error { _, err := f.leaf.SetValue("2"); return err }
+	unlinkLeaf := func(f fixture) error { return f.leaf.Unlink() }
+	unlinkEntry := func(f fixture) error { return f.entry.Unlink() }
+	order := func(f fixture) *dirtyOrder {
+		return &dirtyOrder{nodes: map[*Node]*dirtyOrderNode{f.entry: {node: f.entry}}}
+	}
+	rows := []struct {
+		name    string
+		fix     func() fixture
+		capture func(j *hashTransaction, f fixture) error
+		edit    func(f fixture) error
+		held    bool
+	}{
+		{"none (stale binding)", hashed, func(*hashTransaction, fixture) error { return nil }, setLeaf, false},
+		{"nodes", hashed, func(j *hashTransaction, f fixture) error { return j.captureNode(f.leaf) }, setLeaf, true},
+		{"owners", hashed, func(j *hashTransaction, f fixture) error { return j.captureOwner(f.leaf) }, setLeaf, true},
+		{"links", linked, func(j *hashTransaction, f fixture) error { return j.captureLinks(f.leaf.links) }, setLeaf, true},
+		{"detached", hashed, func(j *hashTransaction, f fixture) error {
+			if j.detached == nil {
+				j.detached = map[*Node]uint32{}
+			}
+			addWhole(j, j.detached, &j.img.detached, wholeDetached, f.root, struct{}{})
+			return nil
+		}, setLeaf, true},
+		{"siblings (its set)", hashed, func(j *hashTransaction, f fixture) error { return j.captureSiblings(&f.entry.kids) }, unlinkLeaf, true},
+		{"works (its set)", hashed, func(j *hashTransaction, f fixture) error {
+			addWhole(j, j.works, &j.img.works, wholeWorks, &f.entry.kids, f.entry.kids.work)
+			return nil
+		}, unlinkLeaf, true},
+		{"records", hashed, func(j *hashTransaction, f fixture) error {
+			return j.captureRecords(f.root.kids.exactByNode[f.entry])
+		}, unlinkEntry, true},
+		{"chains", hashed, func(j *hashTransaction, f fixture) error {
+			return j.captureChain(f.root.kids.exactByNode[f.entry].chain)
+		}, unlinkEntry, true},
+		{"pending, dirty (its set)", hashed, func(j *hashTransaction, f fixture) error {
+			d := order(f)
+			f.root.kids.pending = map[*schema.Node]*dirtyOrder{f.entry.schema: d}
+			return j.captureOrder(d)
+		}, unlinkEntry, true},
+		{"pending (detachedRB)", hashed, func(j *hashTransaction, f fixture) error {
+			f.entry.detachedRB = order(f)
+			return j.captureOrder(f.entry.detachedRB)
+		}, unlinkEntry, true},
+	}
+	for _, row := range rows {
+		f := row.fix()
+		if row.name == "records" || row.name == "chains" {
+			if f.root.kids.exactByNode[f.entry] == nil {
+				t.Fatalf("%s: setup: the list is not hashed", row.name)
+			}
+		}
+		a := s4ParseLinks(t, links, `{"pv2-links:c":{"t":["y"]}}`)
+		j := beginHashTransaction(a)
+		j.maps()
+		if err := j.enroll(&f.root.kids); err != nil { // the detached tree's counter joins the state
+			t.Fatal(err)
+		}
+		if err := row.capture(j, f); err != nil {
+			t.Fatalf("%s: capture: %v", row.name, err)
+		}
+		resume := a.work.suspend()
+		err := row.edit(f)
+		resume()
+		f.root.kids.pending, f.entry.detachedRB = nil, nil
+		j.end(nil)
+		if row.held {
+			if !isGuardRefusal(err) {
+				t.Errorf("%s: edit of a captured detached node: %v, want the guard's refusal", row.name, err)
+			}
+		} else if err != nil {
+			t.Errorf("%s: %v, want success", row.name, err)
 		}
 	}
 }

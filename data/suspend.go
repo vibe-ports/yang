@@ -95,29 +95,88 @@ func heldNode(n *Node) bool {
 		heldWalkHook()
 	}
 	g := governing(n)
+	if !g.suspendedState() {
+		g = nil
+	}
+	if capturedIn(g, n) {
+		return true // the waiting state captured it: its rollback restores it
+	}
 	root := n
 	for x := n; x != nil; x = x.parent {
-		if g != nil && g.suspendedState() && g.nodes[x] != 0 {
-			return true // the waiting state captured it: its rollback restores it
+		if g != nil && (g.nodes[x] != 0 || g.detached[x] != 0) {
+			return true // a captured ancestor: its rollback restores the subtree's place
 		}
 		root = x
 	}
-	if root.tree != nil {
-		return root.tree.work.held()
+	return root.tree != nil && root.tree.work.held()
+}
+
+// capturedIn reports whether the state g (nil: none) captured anything an edit of n writes or a
+// rollback of g restores over it, in any of its capture maps: n itself (nodes, with its metas
+// and opaque data), its link record (owners, links), a detached root (detached), its children's
+// set (siblings, works), and the set n is in with its index records, chains and dirty orders
+// (siblings, works, records, chains, pending, dirty). TestS4CapturedDetachedNodeIsHeld covers
+// each kind.
+func capturedIn(g *hashTransaction, n *Node) bool {
+	if g == nil {
+		return false
 	}
-	return g.suspendedState() && g.detached[root] != 0
+	if g.nodes[n] != 0 || g.owners[n] != 0 || g.detached[n] != 0 || n.links != nil && g.links[n.links] != 0 {
+		return true
+	}
+	if s := childStorage(n); g.siblings[s] != 0 || g.works[s] != 0 {
+		return true
+	}
+	if n.detachedRB != nil && g.pending[n.detachedRB] != 0 {
+		return true
+	}
+	for _, c := range n.carriedRB {
+		if g.pending[c.order] != 0 {
+			return true
+		}
+	}
+	var in *siblings
+	switch {
+	case n.parent != nil:
+		in = childStorage(n.parent)
+	case n.tree != nil:
+		in = &n.tree.top
+	default:
+		return false
+	}
+	if g.siblings[in] != 0 || g.works[in] != 0 {
+		return true
+	}
+	for _, r := range [2]*record{in.exactByNode[n], in.leaderByNode[n]} {
+		if r != nil && (g.records[r] != 0 || r.chain != nil && g.chains[r.chain] != 0) {
+			return true
+		}
+	}
+	for _, d := range in.pending {
+		if dn := d.nodes[n]; dn != nil && (g.pending[d] != 0 || g.dirty[dn] != 0) {
+			return true
+		}
+	}
+	return false
 }
 
 // heldWalkHook, nil outside tests, observes heldNode's root walks (the common path must not walk).
 var heldWalkHook func()
 
 // heldSet reports whether the sibling set s is held: as its first member is (a set and its
-// members share their root). An empty set has no member to place it, and its held binding may be
-// one a subtree detached earlier retains, so it is not held: user code reaches an empty set of
-// the held tree only through that tree's entries (refused) or by moving a node of it out of a
-// non-empty set (refused there).
+// members share their root). An empty set has no member to place it: it is held only when the
+// waiting state captured it; otherwise its held binding may be one a subtree detached earlier
+// retains, and user code reaches an empty set of the held tree only through that tree's entries
+// (refused) or by moving a node of it out of a non-empty set (refused there).
 func heldSet(s *siblings) bool {
-	return s != nil && s.work.held() && s.len() != 0 && heldNode(s.At(0))
+	if s == nil || !s.work.held() {
+		return false
+	}
+	if s.len() == 0 {
+		g := s.journal()
+		return g.suspendedState() && (g.siblings[s] != 0 || g.works[s] != 0) // captured, though empty
+	}
+	return heldNode(s.At(0))
 }
 
 // userErr is an error returned by user code, classified while its state was still suspended.
