@@ -34,7 +34,7 @@ func (m *Meta) Value() string { return m.m.value.Canonical() }
 // Remove is lyd_free_meta_single: the instance leaves its node. Removing it again does nothing.
 // It mutates the tree and, like Node.Remove, must not run concurrently with any other call on it.
 func (m *Meta) Remove() {
-	if m.node != nil && governing(m.node).suspendedState() {
+	if m.node != nil && heldNode(m.node) {
 		return // an operation in progress governs the node: refused before its counter is used
 	}
 	_ = removeMeta(m.node, m.m) // a refused capture leaves it in place

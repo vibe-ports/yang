@@ -138,7 +138,7 @@ func ParseOp(ctx context.Context, r io.Reader, f Format, s *yang.Schema, typ OpT
 	if argErrOf != nil {
 		return fail(set, argErrOf)
 	}
-	if req != nil && governing(req).suspendedState() {
+	if req != nil && heldNode(req) {
 		return fail(set, errInProgress) // its operation waits on user code: refused before the read
 	}
 	tree, op, env, diags, err := parseOpWith(ctx, r, set, f, opType(typ), req, o.Unknown, o.Budget)
@@ -174,7 +174,11 @@ func (t *Tree) ValidateOp(ctx context.Context, typ OpType, o ValidateOpOptions) 
 	if t.work.inProgress() {                      // an operation in progress governs t: refused before its counter is used
 		return refusedEntryDiags(t.context())
 	}
-	ctx = suspending(ctx, &t.work) // its polls run the user's context suspended (design 13 §2.4)
+	if o.Operational != nil { // its polls hold the dependency too (design 13 §2.4)
+		ctx = suspending(ctx, &t.work, &o.Operational.work)
+	} else {
+		ctx = suspending(ctx, &t.work) // its polls run the user's context suspended (design 13 §2.4)
+	}
 	defer func() { err = restoreUser(err) }()
 	lg := &logger{set: t.context()}
 	fail := func(err error) ([]yang.Diagnostic, error) {

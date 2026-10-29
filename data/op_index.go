@@ -175,7 +175,7 @@ func (b *orderBinding) Work(units uint64) {
 	case w == nil:
 	case w.prepaid:
 		w.draw(units)
-	case unpaidReadPanics && w.hashDepth > 0 && !w.journal.suspendedState():
+	case unpaidReadPanics && w.hashDepth > 0 && !w.held():
 		panic("data: unpaid index read")
 	}
 }

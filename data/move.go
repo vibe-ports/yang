@@ -765,7 +765,7 @@ func (t *Tree) moveNodes(parent *Node, src *Tree) (result error) {
 		return journal.err // t's operation waits on user code
 	}
 	j := t.work.journal
-	if src.work.journal.suspendedState() {
+	if src.work.held() {
 		return refuseIn(j)
 	}
 	defer src.work.beginHashWork()()

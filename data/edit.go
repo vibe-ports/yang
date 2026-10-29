@@ -126,7 +126,7 @@ func (n *Node) Remove() (err error) {
 	if n == nil {
 		return nil
 	}
-	if governing(n).suspendedState() { // an operation in progress governs n: refused before its counter is used
+	if heldNode(n) { // an operation in progress governs n: refused before its counter is used
 		return refusedEntry(ctxOf(n))
 	}
 	done, err := n.beginHashWork()
@@ -145,7 +145,7 @@ func (n *Node) Unlink() (err error) {
 	if n == nil {
 		return nil
 	}
-	if governing(n).suspendedState() { // an operation in progress governs n: refused before its counter is used
+	if heldNode(n) { // an operation in progress governs n: refused before its counter is used
 		return refusedEntry(ctxOf(n))
 	}
 	if n.siblingsOf() == nil {

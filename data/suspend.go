@@ -51,16 +51,51 @@ func governing(n *Node) *hashTransaction {
 
 // suspend marks w's running state as waiting on user code until the returned func runs.
 func (w *workCounter) suspend() func() {
-	if w == nil || w.journal == nil {
+	if w == nil {
 		return func() {}
 	}
 	if overdraftPanics && w.prepaid {
 		panic("data: a prepaid credit spans user code")
 	}
+	// the counter itself is held, journal or not (an operation that opens none, or not yet),
+	// and so is the state on it with every counter lent to that state
+	w.suspendDepth++
 	j := w.journal
-	j.suspendDepth++
-	return func() { j.suspendDepth-- }
+	if j != nil {
+		j.suspendDepth++
+	}
+	return func() {
+		w.suspendDepth--
+		if j != nil {
+			j.suspendDepth--
+		}
+	}
 }
+
+// held reports whether w's tree is held by an operation waiting on user code: the counter is
+// suspended (whatever journal it has, if any), or the state on it is.
+func (w *workCounter) held() bool {
+	return w != nil && (w.suspendDepth > 0 || w.journal.suspendedState())
+}
+
+// heldNode reports whether n is held: its governing state is suspended, or the counter that
+// governs it is (Node.touch's resolution).
+func heldNode(n *Node) bool {
+	if n == nil {
+		return false
+	}
+	if governing(n).suspendedState() {
+		return true
+	}
+	if w := childStorage(n).work; w.held() {
+		return true
+	}
+	t := n.treeOf()
+	return t != nil && t.work.held()
+}
+
+// heldSet reports whether the sibling set s is held.
+func heldSet(s *siblings) bool { return s != nil && (s.work.held() || s.journal().suspendedState()) }
 
 // userErr is an error returned by user code, classified while its state was still suspended.
 // It has no Unwrap or As: internal code (journal.fail, parse cleanup, diffDone) reaches only
@@ -264,7 +299,7 @@ func linkGuard(n *Node, w *workCounter) error {
 		}
 		return w.chargeHash(1)
 	}
-	if governing(n).suspendedState() {
+	if heldNode(n) {
 		return errInProgress // n's own operation waits: nothing of this one is involved yet
 	}
 	var seen map[*Node]bool
@@ -280,7 +315,7 @@ func linkGuard(n *Node, w *workCounter) error {
 				if c == n || seen[c] {
 					continue
 				}
-				if governing(c).suspendedState() {
+				if heldNode(c) {
 					return refuseFor(n) // the operation editing n's records fails, and restores
 				}
 				// freeLinks recurses into a counterpart whose record it empties
@@ -300,7 +335,7 @@ func linkGuard(n *Node, w *workCounter) error {
 // inProgress reports whether w's state waits on user code: a public mutator of a tree (or node)
 // it governs is refused at entry, before it charges, touches or sets the shared counter's sticky
 // error, which would otherwise fail the waiting operation.
-func (w *workCounter) inProgress() bool { return w != nil && w.journal.suspendedState() }
+func (w *workCounter) inProgress() bool { return w.held() }
 
 // refusedEntry is that refusal, logged as LY_EINVAL in the caller's context: a *ValidationError
 // carrying the diagnostic.

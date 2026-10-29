@@ -1,0 +1,180 @@
+// SPDX-License-Identifier: BSD-3-Clause
+
+package data
+
+import (
+	"context"
+	"fmt"
+	"strings"
+	"testing"
+
+	"github.com/vibe-ports/yang/internal/snap"
+)
+
+// #240 step 4 (design 13 §2.4): every public entry that takes a context holds its trees from
+// before the first poll until after the last. The sweep counts the polls each entry makes on a
+// small fixture (N), then for every k = 1..N runs it again with a context whose Err attempts a
+// set of mutations of the held tree at poll k. Each mutation must be refused in the public form
+// (*ValidationError, LY_EINVAL, the diagnostic), nothing may panic, and the entry's result must
+// equal the benign run's (reciprocal leafref records consistent).
+
+// pollCtx counts its Err calls and runs at at poll k.
+type pollCtx struct {
+	context.Context
+	polls, k int
+	at       func()
+}
+
+func (c *pollCtx) Err() error {
+	c.polls++
+	if c.polls == c.k && c.at != nil {
+		c.at()
+	}
+	return nil
+}
+
+// s4ctxFixture is one public ctx entry on fresh trees: held is the tree it must hold, term a
+// term node in it, and run the call, its observable result returned as text.
+type s4ctxFixture struct {
+	held        *Tree
+	term        *Node
+	name, value string // a term NewTerm can create under held's first root
+	run         func(ctx context.Context) string
+}
+
+// s4LinksConsistent fails if a leafref record of tr is not reciprocated.
+func s4LinksConsistent(t *testing.T, where string, tr *Tree) {
+	t.Helper()
+	for root := range tr.Top() {
+		for n := range root.allAny() {
+			if n.links == nil {
+				continue
+			}
+			for _, l := range n.links.leafrefs {
+				if l.links == nil || !containsNode(l.links.targets, n) {
+					t.Fatalf("%s: a leafref record is not reciprocated", where)
+				}
+			}
+			for _, x := range n.links.targets {
+				if x.links == nil || !containsNode(x.links.leafrefs, n) {
+					t.Fatalf("%s: a target record is not reciprocated", where)
+				}
+			}
+		}
+	}
+}
+
+func containsNode(ns []*Node, n *Node) bool {
+	for _, x := range ns {
+		if x == n {
+			return true
+		}
+	}
+	return false
+}
+
+func TestS4CtxEntriesHoldTheirTrees(t *testing.T) {
+	lset := s4LinksSet(t)
+	jset := reviewDiffSet(t, s4JournalModule)
+	oset, oparent := s4OpsFixture(t)
+	linked := func() *Tree {
+		tr := s4ParseLinks(t, lset, `{"pv2-links:c":{"l":[{"k":"a"},{"k":"b"}],"t":["y"],"r":"a"}}`)
+		if _, err := tr.LinkLeafrefs(context.Background()); err != nil {
+			t.Fatal(err)
+		}
+		return tr
+	}
+	result := func(tr *Tree, diags any, err error) string {
+		return fmt.Sprintf("%v|%v|%v", typedDump(tr), diags, err)
+	}
+	validate := func(f func(tr *Tree, ctx context.Context) (any, error)) func() s4ctxFixture {
+		return func() s4ctxFixture {
+			tr := linked()
+			return s4ctxFixture{held: tr, term: s4Child(tr.top.first(), "r", "a"), name: "t", value: "n",
+				run: func(ctx context.Context) string { d, err := f(tr, ctx); return result(tr, d, err) }}
+		}
+	}
+	fixtures := map[string]func() s4ctxFixture{
+		"Validate": validate(func(tr *Tree, ctx context.Context) (any, error) { return tr.Validate(ctx, ValidateOptions{}) }),
+		"ValidateModule": validate(func(tr *Tree, ctx context.Context) (any, error) {
+			return tr.ValidateModule(ctx, "pv2-links", ValidateOptions{})
+		}),
+		"ValidateModuleFinal": validate(func(tr *Tree, ctx context.Context) (any, error) {
+			return tr.ValidateModuleFinal(ctx, "pv2-links", ValidateOptions{})
+		}),
+		"ValidateDiff": validate(func(tr *Tree, ctx context.Context) (any, error) {
+			diff, d, err := tr.ValidateDiff(ctx, ValidateOptions{})
+			if diff != nil {
+				return fmt.Sprint(d, typedDump(diff)), err
+			}
+			return d, err
+		}),
+		"ValidateModuleDiff": validate(func(tr *Tree, ctx context.Context) (any, error) {
+			diff, d, err := tr.ValidateModuleDiff(ctx, "pv2-links", ValidateOptions{})
+			if diff != nil {
+				return fmt.Sprint(d, typedDump(diff)), err
+			}
+			return d, err
+		}),
+		"LinkLeafrefs": validate(func(tr *Tree, ctx context.Context) (any, error) { return tr.LinkLeafrefs(ctx) }),
+		"ValidateOp": func() s4ctxFixture {
+			req, op := s4OpTree(t, jset, "5", "1", "9")
+			oper := s4DataTree(t, jset, "3", "7")
+			return s4ctxFixture{held: req, term: s4Child(op, "w", "5"), name: "w", value: "6",
+				run: func(ctx context.Context) string {
+					d, err := req.ValidateOp(ctx, OpRPC, ValidateOpOptions{Operational: oper})
+					return result(req, d, err) + typedDump(oper)[0]
+				}}
+		},
+		"ParseOp": func() s4ctxFixture {
+			tree, op := oparent()
+			return s4ctxFixture{held: tree, term: op.kids.first(), name: "al", value: "7",
+				run: func(ctx context.Context) string {
+					res, d, err := ParseOp(ctx, strings.NewReader(`{}`), FormatJSON, snap.New(oset), OpReply, ParseOpOptions{Request: op})
+					return result(tree, d, err) + fmt.Sprint(res.Op != nil)
+				}}
+		},
+	}
+	total := 0
+	for name, build := range fixtures {
+		t.Run(name, func(t *testing.T) {
+			benign := &pollCtx{Context: context.Background()}
+			f := build()
+			want := f.run(benign)
+			s4LinksConsistent(t, "benign", f.held)
+			if benign.polls == 0 {
+				t.Fatalf("%s polls no context on the fixture", name)
+			}
+			for k := 1; k <= benign.polls; k++ {
+				total++
+				f := build()
+				root := f.held.top.first()
+				scratch := newTerm(f.term.schema, f.term.value)
+				other := newTree(f.held.set)
+				mutations := map[string]func() error{
+					"SetValue":      func() error { _, err := f.term.SetValue("zz"); return err },
+					"RemoveRoot":    func() error { return root.Remove() },
+					"UnlinkRoot":    func() error { return root.Unlink() },
+					"NewTermUnder":  func() error { _, err := f.held.NewTerm(root, f.name, f.value, NewOptions{}); return err },
+					"InsertUnder":   func() error { return f.held.Insert(root, scratch) },
+					"MergeIntoHeld": func() error { return f.held.Merge(other) },
+					"NewPathInHeld": func() error { _, err := f.held.NewPath(root.Path(), "", NewPathOptions{}); return err },
+				}
+				ctx := &pollCtx{Context: context.Background(), k: k, at: func() {
+					for m, mutate := range mutations {
+						s4PublicRefusal(t, fmt.Sprintf("%s poll %d %s", name, k, m), nil, mutate(), false)
+					}
+				}}
+				got := f.run(ctx)
+				if ctx.polls < k {
+					t.Fatalf("poll %d: the entry polled only %d times", k, ctx.polls)
+				}
+				if got != want {
+					t.Fatalf("poll %d: the result differs from the benign run:\n%s\nwant\n%s", k, got, want)
+				}
+				s4LinksConsistent(t, fmt.Sprintf("poll %d", k), f.held)
+			}
+		})
+	}
+	t.Logf("%d entries, %d mutated polls", len(fixtures), total)
+}

@@ -133,27 +133,30 @@ type Tree struct {
 // private counter rather than changing the queried tree's quota.
 type workCounter struct {
 	atomic.Int64
-	visits      bool                      // count sibling/link-record visits too (tests only; set before measured calls)
-	shifts      bool                      // count the sibling slots moved by insertions too (tests only)
-	hashUsed    uint64                    // cumulative reserved hash transitions in the current mutation
-	hashLimit   uint64                    // zero takes the internal default; tests may lower it
-	hashErr     error                     // the first hash budget error, propagated at the operation boundary
-	unlinkPlan  *unlinkPlan               // one prepaid removal in the current mutation scope
-	forestMove  bool                      // whole-forest membership publication is finalized once
-	hashDepth   int                       // nested mutation helpers share their enclosing operation's quota
-	prepaid     bool                      // a prepaid scope is open (prepay): charges draw from credit
-	readCredit  bool                      // the open credit pays reads: it is not refunded
-	credit      uint64                    // what is left of the open credit
-	hashTrace   *[]uint64                 // optional charge/check thresholds for exhaustive budget tests
-	hashNames   map[*schema.Node]uint32   // immutable module/name prefix, once per schema node in this tree
-	indexNames  map[*schema.Node][32]byte // immutable positional-index name digest for hand-built schemas
-	journal     *hashTransaction          // the running operation's undo journal (beginHashTransaction)
-	spare       *hashTransaction          // a finished narrow journal, its entries cleared, reused by NewPath
-	lookupUsed  uint64                    // cross-context schema-index work in the current diff
-	lookupLimit uint64                    // zero takes the internal default; tests may lower it
-	lookupErr   error                     // first lookup budget error, propagated at the diff boundary
-	lookupDepth int                       // recursive diff helpers share one lookup quota
-	sortKeys    map[[2]*schema.Node]bool  // immutable ordered key-name profiles, only during a mutation
+	visits     bool        // count sibling/link-record visits too (tests only; set before measured calls)
+	shifts     bool        // count the sibling slots moved by insertions too (tests only)
+	hashUsed   uint64      // cumulative reserved hash transitions in the current mutation
+	hashLimit  uint64      // zero takes the internal default; tests may lower it
+	hashErr    error       // the first hash budget error, propagated at the operation boundary
+	unlinkPlan *unlinkPlan // one prepaid removal in the current mutation scope
+	forestMove bool        // whole-forest membership publication is finalized once
+	hashDepth  int         // nested mutation helpers share their enclosing operation's quota
+	prepaid    bool        // a prepaid scope is open (prepay): charges draw from credit
+	readCredit bool        // the open credit pays reads: it is not refunded
+	credit     uint64      // what is left of the open credit
+	// suspendDepth counts the user-code sites the operation running on this counter waits on
+	// (suspend): it holds the counter's tree even when no journal is open (design 13 §2.4)
+	suspendDepth int
+	hashTrace    *[]uint64                 // optional charge/check thresholds for exhaustive budget tests
+	hashNames    map[*schema.Node]uint32   // immutable module/name prefix, once per schema node in this tree
+	indexNames   map[*schema.Node][32]byte // immutable positional-index name digest for hand-built schemas
+	journal      *hashTransaction          // the running operation's undo journal (beginHashTransaction)
+	spare        *hashTransaction          // a finished narrow journal, its entries cleared, reused by NewPath
+	lookupUsed   uint64                    // cross-context schema-index work in the current diff
+	lookupLimit  uint64                    // zero takes the internal default; tests may lower it
+	lookupErr    error                     // first lookup budget error, propagated at the diff boundary
+	lookupDepth  int                       // recursive diff helpers share one lookup quota
+	sortKeys     map[[2]*schema.Node]bool  // immutable ordered key-name profiles, only during a mutation
 }
 
 // newTree returns an empty tree over the compiled schema s (the public constructor over a

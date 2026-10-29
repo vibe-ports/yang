@@ -277,7 +277,7 @@ func parseOpWith(ctx context.Context, r io.Reader, s *schema.Set, f Format, t op
 	o := parseOpts{ParseOptions: ParseOptions{Unknown: unknown, ParseOnly: true, Budget: b}}
 	var detachedTree *Tree
 	if parent != nil {
-		if governing(parent).suspendedState() {
+		if heldNode(parent) {
 			return nil, nil, nil, nil, errInProgress // its operation waits on user code
 		}
 		if owner := parent.treeOf(); owner != nil {

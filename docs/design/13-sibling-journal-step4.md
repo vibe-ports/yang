@@ -88,6 +88,14 @@ from an enclosing scope's credit (a nested prepay opens nothing):
 
 ## Suspension guard
 
+Suspension marks the **work counter** as well as the state on it (`workCounter.suspendDepth`,
+`held`, `heldNode`, `heldSet`): an entry that opens no journal (LinkLeafrefs, a validation before
+its journal opens, the dependency of ValidateOp) still holds its trees from its first user call to
+its last, and every guard tests the one predicate. TestS4CtxEntriesHoldTheirTrees sweeps every
+public ctx-taking entry: at each of its polls on a small fixture the context's Err attempts
+SetValue, Remove and Unlink of the root, NewTerm, Insert, Merge and NewPath into the held tree;
+each is refused in the public form and the result equals a benign run's.
+
 User code runs during a mutation only in the diff callbacks, the Reader of a ParseOp with a
 parent, and the methods of a context (and of the errors they all return). Around each the
 operation raises its state's `suspendDepth` and lowers it in a defer (`callUser`, `readUser`,

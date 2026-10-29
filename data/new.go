@@ -685,8 +685,8 @@ func (t *Tree) NewOpaque(parent *Node, name, value string, o OpaqueOptions) (_ *
 // Default flag of a default node and of its non-presence container parents (LY_EEXIST), or
 // changes nothing (LY_ENOT). An opaque or non-term n is an LY_EINVAL *ValidationError.
 func (n *Node) SetValue(value string) (changed bool, err error) {
-	defer normalizeRefusal(ctxOf(n), &err, nil)    // the guard's refusal in its one public form, after the journal ended
-	if n != nil && governing(n).suspendedState() { // an operation in progress governs n: refused before its counter is used
+	defer normalizeRefusal(ctxOf(n), &err, nil) // the guard's refusal in its one public form, after the journal ended
+	if n != nil && heldNode(n) {                // an operation in progress governs n: refused before its counter is used
 		return false, refusedEntry(ctxOf(n))
 	}
 	return n.setValue(value, false)
@@ -697,8 +697,8 @@ func (n *Node) SetValue(value string) (changed bool, err error) {
 // canonical form. As with SetValue, changed is true only for an actual value change; clearing a
 // Default flag without changing the value returns false, nil.
 func (n *Node) SetValueCanonical(value string) (changed bool, err error) {
-	defer normalizeRefusal(ctxOf(n), &err, nil)    // the guard's refusal in its one public form, after the journal ended
-	if n != nil && governing(n).suspendedState() { // an operation in progress governs n: refused before its counter is used
+	defer normalizeRefusal(ctxOf(n), &err, nil) // the guard's refusal in its one public form, after the journal ended
+	if n != nil && heldNode(n) {                // an operation in progress governs n: refused before its counter is used
 		return false, refusedEntry(ctxOf(n))
 	}
 	return n.setValue(value, true)

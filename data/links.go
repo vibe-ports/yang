@@ -43,7 +43,7 @@ func linksOf(set *schema.Set, n *Node) (*leafrefLinks, error) {
 // linkLeafrefNode is lyd_link_leafref_node: lref points to target. Like libyang it stops early
 // when lref is already among target's leafref nodes.
 func linkLeafrefNode(target, lref *Node) error {
-	if governing(target).suspendedState() || governing(lref).suspendedState() {
+	if heldNode(target) || heldNode(lref) {
 		return refuseIn(governing(target), governing(lref)) // before either record changes (design 13 §2.4)
 	}
 	if err := target.touch(); err != nil {

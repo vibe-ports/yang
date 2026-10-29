@@ -221,10 +221,10 @@ func (j *hashTransaction) endLevel(sp int, result error) {
 // enclosing transaction records the changes and restores them, a budget error being sticky for
 // the whole operation. The caller ends it with end.
 func beginHashTransaction(t *Tree) *hashTransaction {
+	if t.work.held() {
+		return refusingState(t)
+	}
 	if t.work.journal != nil {
-		if t.work.journal.suspendedState() {
-			return refusingState(t)
-		}
 		return nil
 	}
 	j := &hashTransaction{tree: t, done: t.work.beginHashWork(), rank: t.rank, orders: t.orders, set: t.set,
@@ -272,7 +272,7 @@ func beginJointTransaction(trees ...*Tree) (*hashTransaction, error) {
 		}
 		switch w := &t.work; {
 		case w.journal == running:
-		case w.journal.suspendedState():
+		case w.held():
 			return j, refuseIn(running)
 		case w.journal == nil:
 			if err := running.charge(1); err != nil {
@@ -289,10 +289,10 @@ func beginJointTransaction(trees ...*Tree) (*hashTransaction, error) {
 // beginHashTransaction). The schema-derived caches t.rank and t.orders keep their identity: an
 // entry they gain is the same for any later call, so nothing is copied up front.
 func beginNarrowTransaction(t *Tree) *hashTransaction {
+	if t.work.held() {
+		return refusingState(t)
+	}
 	if t.work.journal != nil {
-		if t.work.journal.suspendedState() {
-			return refusingState(t)
-		}
 		return nil
 	}
 	j := t.work.spare
@@ -340,7 +340,7 @@ func (j *hashTransaction) maps() {
 // image of s, so s gets entries again.
 func (s *siblings) narrow() *hashTransaction {
 	j := s.journal()
-	if j == nil || !j.narrow || j.suspendedState() {
+	if j == nil || !j.narrow || j.suspendedState() || s.work.held() {
 		return nil // a suspended state's objects refuse at touch
 	}
 	if _, whole := j.siblings[s]; whole {
@@ -626,10 +626,10 @@ func (s *siblings) journal() *hashTransaction {
 
 // touch journals s before it changes: its indexes and the structs of the nodes in it.
 func (s *siblings) touch() error {
+	if heldSet(s) {
+		return errInProgress
+	}
 	if j := s.journal(); j != nil {
-		if j.suspendedState() {
-			return errInProgress
-		}
 		return j.captureSiblings(s)
 	}
 	return nil
@@ -650,12 +650,12 @@ func (s *siblings) touchSticky() error {
 // to t).
 func (t *Tree) touch(s *siblings) error {
 	if j := t.work.journal; j != nil {
-		if j.suspendedState() || s.journal().suspendedState() {
+		if j.suspendedState() || heldSet(s) {
 			return errInProgress
 		}
 		return j.captureSiblings(s)
 	}
-	if s.journal().suspendedState() {
+	if heldSet(s) || t.work.held() {
 		return errInProgress
 	}
 	return nil
@@ -663,6 +663,9 @@ func (t *Tree) touch(s *siblings) error {
 
 // touch journals n before its own fields (value, flags, metadata, links, stored hash) change.
 func (n *Node) touch() error {
+	if heldNode(n) {
+		return errInProgress
+	}
 	j := childStorage(n).journal()
 	if j == nil {
 		if t := n.treeOf(); t != nil {
@@ -702,12 +705,12 @@ func joinLinkJournal(t *Tree, n *Node) error {
 	if from == nil && source != nil {
 		from = source.work.journal
 	}
-	if from.suspendedState() || t.work.journal.suspendedState() {
+	if from.suspendedState() || t.work.held() || source != nil && source.work.held() {
 		return refuseIn(from, t.work.journal) // a lend into, or from, an operation waiting on user code
 	}
 	lend := func(j *hashTransaction, w *workCounter) error {
 		if w.journal != nil {
-			if w.journal.suspendedState() {
+			if w.held() {
 				return errInProgress
 			}
 			return nil
@@ -755,7 +758,7 @@ func (s *siblings) rebind(work *workCounter) error {
 	if s.work == work {
 		return nil
 	}
-	if s.journal().suspendedState() || work.journal.suspendedState() {
+	if heldSet(s) || work.held() {
 		return refuseIn(s.journal(), work.journal)
 	}
 	if from := s.journal(); from != nil && work.journal == nil {
@@ -883,7 +886,7 @@ func (j *hashTransaction) captureNode(n *Node) error {
 		}
 		for _, side := range [2][]*Node{n.links.leafrefs, n.links.targets} {
 			for _, c := range side {
-				if governing(c).suspendedState() {
+				if heldNode(c) {
 					return j.refuse() // freeLinks, the bulk cleaner or a link edit would reach it
 				}
 			}
@@ -921,7 +924,7 @@ func (j *hashTransaction) captureOwner(c *Node) error {
 		return nil
 	}
 	g := governing(c)
-	if g.suspendedState() {
+	if heldNode(c) {
 		return j.refuse()
 	}
 	if err := j.charge(1); err != nil {
