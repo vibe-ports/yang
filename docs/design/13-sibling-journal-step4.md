@@ -108,10 +108,17 @@ a captured node to another tree is refused at its set (TestS4CapturedDetachedNod
 TestS4CapturedLinkOwnerIsHeld). An empty set has no member to place it and is held only when the
 state captured it: otherwise user code reaches an empty set of the held tree only through that
 tree's entries or by moving a node out of a non-empty set of it, both refused. A binding that
-names a suspended state that did not capture the node is stale: Node.touch, siblings.touch, rebind and
-joinLinkJournal capture nothing into, and lend nothing to, that state
-(TestS4DetachedNodeNotHeldByItsOldTree, TestS4EmptyDetachedInnerNotHeld,
-TestS4HeldCheckIsConstantOnTheCommonPath). The diff given to
+names a suspended state that did not capture the node is stale. Every decision that reads a
+binding to settle ownership, enrollment, capture or lending resolves it through one function,
+`siblings.owner` (and `ownerOf` for a node's own fields): the bound journal, or none when that
+binding is stale. Node.touch, siblings.touch, narrow, rebind, joinLinkJournal, captureOwner,
+enroll, capturer and indexJournaled all go through it; the begin functions read only the
+receiving tree's own counter. A set enroll finds stale is bound to the enrolling state's
+temporary counter for its duration and gets its previous binding back at end, so an operation
+started from user code (a ParseOp on a request detached from the waiting tree) holds what it
+captured (TestS4DetachedNodeNotHeldByItsOldTree, TestS4EmptyDetachedInnerNotHeld,
+TestS4HeldCheckIsConstantOnTheCommonPath, TestS4NestedParseOpOnStaleRequest, and the nesting
+matrix TestS4NestedOperationsHoldTheirOwn). The diff given to
 ApplyDiff and the source of MergeDiff are not held: they are read-only arguments, possibly shared
 by concurrent operations (doc.go), and changing one during the operation is a caller contract
 violation, as in libyang (TestS4SharedDiffSourceIsNotHeld runs concurrent applies and merges of

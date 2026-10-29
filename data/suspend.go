@@ -49,6 +49,28 @@ func governing(n *Node) *hashTransaction {
 	return nil
 }
 
+// owner is the state that owns s, the one every ownership, enrollment, capture and lending
+// decision on s resolves (touch, narrow, enroll, rebind, capturer, indexJournaled): the journal
+// its binding names, unless that state waits on user code without holding s. That binding is
+// stale, one a subtree detached before the state retains, and s has no owner (nil).
+func (s *siblings) owner() *hashTransaction {
+	j := s.journal()
+	if j.suspendedState() && !heldSet(s) {
+		return nil
+	}
+	return j
+}
+
+// ownerOf is owner for n's own fields (governing, with the same stale rule through heldNode):
+// Node.touch, captureOwner and joinLinkJournal resolve n's state through it.
+func ownerOf(n *Node) *hashTransaction {
+	g := governing(n)
+	if g.suspendedState() && !heldNode(n) {
+		return nil
+	}
+	return g
+}
+
 // suspend marks w's running state as waiting on user code until the returned func runs.
 func (w *workCounter) suspend() func() {
 	if w == nil {

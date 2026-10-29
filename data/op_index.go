@@ -815,7 +815,7 @@ func orderCells(journaled bool) uint64 {
 // indexJournaled reports whether s's index edits are recorded: s is captured, or will be at the
 // edit's touch, by a running state (w's, or the one its own counter has).
 func (s *siblings) indexJournaled(w *workCounter) bool {
-	return w != nil && w.journal != nil || s.journal() != nil || s.order != nil && s.order.bind.state != nil
+	return w != nil && w.journal != nil || s.owner() != nil || s.order != nil && s.order.bind.state != nil
 }
 
 // orderAddBound bounds placing n at position at of its partition (an opaque n: of the opaque
