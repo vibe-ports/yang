@@ -144,7 +144,7 @@ func (s *Seq[T]) Republish(lo, hi int, values []T, handleOf func(T) *Handle[T]) 
 	}
 	for i, v := range values {
 		if handles[i] == nil {
-			h := &Handle[T]{Value: v, owner: s, height: 1, size: 1}
+			h := s.newHandle(v)
 			s.trackCreated(h)
 			s.created(h)
 			handles[i] = h
@@ -158,6 +158,11 @@ func (s *Seq[T]) Republish(lo, hi int, values []T, handleOf func(T) *Handle[T]) 
 		next = s.Select(hi)
 	}
 	s.touchHeader()
+	if s.kinds {
+		for h, remaining := s.Peek(lo), hi-lo; remaining > 0; h, remaining = h.next, remaining-1 {
+			s.unlinkKind(h)
+		}
+	}
 	left, tail := s.split(s.root, lo)
 	_, right := s.split(tail, hi-lo)
 	middle := s.build(handles, 0, len(handles), nil)
@@ -181,6 +186,9 @@ func (s *Seq[T]) Republish(lo, hi int, values []T, handleOf func(T) *Handle[T]) 
 		next.prev = handles[len(handles)-1]
 	}
 	s.length += fresh
+	if s.kinds {
+		s.relinkKinds(handles[0], handles[len(handles)-1])
+	}
 	s.adjustScale()
 	s.labelRange(handles[0], handles[len(handles)-1], len(handles))
 	return handles, true
@@ -205,6 +213,7 @@ func (s *Seq[T]) RepublishBound(lo, hi, fresh int, journaled bool, pay Pay) uint
 	kk := uint64(k) //nolint:gosec // a count is nonnegative
 	bound := saturatingAdd(moveUnits(nodeHeight(s.root)+1, journaled), saturatingAdd(5*kk, images(2*kk+2, journaled)))
 	bound = saturatingAdd(bound, 3*(s.SelectBound()+1))
+	bound = saturatingAdd(bound, s.kindLinkBound(k, hi-lo, journaled))
 	if s.unlabeled {
 		return bound
 	}
@@ -248,6 +257,9 @@ func (s *Seq[T]) Keep(keep func(T) bool) []*Handle[T] {
 	}
 	s.first, s.last = valueAtHandle(kept, 0, nil), valueAtHandle(kept, len(kept)-1, nil)
 	s.length = len(kept)
+	if s.kinds {
+		s.threadKinds()
+	}
 	s.adjustScale()
 	return gone
 }
@@ -257,6 +269,9 @@ func (s *Seq[T]) Keep(keep func(T) bool) []*Handle[T] {
 func (s *Seq[T]) KeepBound(journaled bool) uint64 {
 	n := uint64(s.length) //nolint:gosec // a length is nonnegative
 	bound := saturatingAdd(2*n, images(n+1, journaled))
+	if s.kinds {
+		bound = saturatingAdd(bound, saturatingAdd(n, images(2*n, journaled)))
+	}
 	if !s.unlabeled {
 		bound = saturatingAdd(bound, saturatingAdd(n, images(n, journaled)))
 	}

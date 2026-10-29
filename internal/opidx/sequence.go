@@ -25,8 +25,14 @@ type Handle[T any] struct {
 	owner       *Seq[T]
 	height      int
 	size        int
-	tag         uint64
-	stamp       uint64 // the journal epoch of its last recorded image
+	// heavy is the handle's kind (the sequence's weigh function, fixed at creation); hsize counts
+	// the heavy handles of its subtree, maintained with size (design 15)
+	heavy bool
+	hsize int
+	// kprev, knext thread the handles of one kind, maintained once kind threads are on
+	kprev, knext *Handle[T]
+	tag          uint64
+	stamp        uint64 // the journal epoch of its last recorded image
 }
 
 type seqHeader[T any] struct {
@@ -34,6 +40,7 @@ type seqHeader[T any] struct {
 	length            int
 	scale             int
 	unlabeled         bool
+	kinds             bool
 }
 
 type seqCheckpoint[T any] struct {
@@ -61,7 +68,11 @@ type Seq[T any] struct {
 	scale             int
 	// unlabeled: the order labels are not maintained (Compare falls back to ranks); a sequence
 	// without an ordered index over it does not pay for them (#240 step 5)
-	unlabeled    bool
+	unlabeled bool
+	// kinds: the kind threads (kprev, knext) are maintained (SetKindThreads)
+	kinds bool
+	// weigh is the kind of a new handle's value (nil: every handle is light)
+	weigh        func(T) bool
 	work         func(uint64)
 	hooks        Hooks
 	stamp        uint64 // the journal epoch of the last recorded header
@@ -73,6 +84,19 @@ type Seq[T any] struct {
 // joins, relabels, and journal before-images. It must not mutate this sequence.
 // Nil disables counting.
 func (s *Seq[T]) SetWorkHook(hook func(uint64)) { s.work = hook }
+
+// SetWeigh sets the kind of every handle created later: heavy when weigh reports true. Handles
+// keep their kind; set it before the first insertion.
+func (s *Seq[T]) SetWeigh(weigh func(T) bool) { s.weigh = weigh }
+
+// newHandle is a fresh handle of value, not yet in the tree.
+func (s *Seq[T]) newHandle(value T) *Handle[T] {
+	h := &Handle[T]{Value: value, owner: s, height: 1, size: 1}
+	if s.weigh != nil && s.weigh(value) {
+		h.heavy, h.hsize = true, 1
+	}
+	return h
+}
 
 // SetHooks connects s to its owner's work counter and journal; they replace the work hook.
 func (s *Seq[T]) SetHooks(h Hooks) { s.hooks = h }
@@ -95,7 +119,11 @@ func (s *Seq[T]) journal() *Journal {
 // touchHeader records the header before a mutation that may change it.
 func (s *Seq[T]) touchHeader() {
 	if j := s.journal(); j != nil && j.first(&s.stamp) {
-		j.image(Entry{obj: s, ptr: [6]any{s.root, s.first, s.last}, num: [3]uint64{uint64(s.length), uint64(s.scale)}, had: s.unlabeled}, s.hooks) //nolint:gosec // restored bit for bit
+		var kinds uint64
+		if s.kinds {
+			kinds = 1
+		}
+		j.image(Entry{obj: s, ptr: [6]any{s.root, s.first, s.last}, num: [3]uint64{uint64(s.length), uint64(s.scale), kinds}, had: s.unlabeled}, s.hooks) //nolint:gosec // restored bit for bit
 	}
 }
 
@@ -105,6 +133,7 @@ func (s *Seq[T]) undo(e *Entry) {
 	s.last, _ = e.ptr[2].(*Handle[T])
 	s.length, s.scale = int(e.num[0]), int(e.num[1]) //nolint:gosec // the recorded ints themselves
 	s.unlabeled = e.had
+	s.kinds = e.num[2] != 0
 }
 
 func (s *Seq[T]) purge(*Entry) {}
@@ -116,14 +145,26 @@ func (h *Handle[T]) undo(e *Entry) {
 	h.prev, _ = e.ptr[3].(*Handle[T])
 	h.next, _ = e.ptr[4].(*Handle[T])
 	h.owner, _ = e.ptr[5].(*Seq[T])
-	h.height, h.size, h.tag = int(e.num[0]), int(e.num[1]), e.num[2] //nolint:gosec // the recorded ints themselves
+	h.height, h.hsize = int(e.num[0]&0xff), int(e.num[0]>>8) //nolint:gosec // the recorded ints themselves
+	h.size, h.tag = int(e.num[1]), e.num[2]                  //nolint:gosec // the recorded int itself
+	h.kprev, h.knext = nil, nil
+	if l, ok := e.key.(kindLinks[T]); ok {
+		h.kprev, h.knext = l.prev, l.next
+	}
 }
+
+// kindLinks is a handle image's kind threads (absent: both nil, no allocation).
+type kindLinks[T any] struct{ prev, next *Handle[T] }
 
 func (h *Handle[T]) purge(*Entry) {}
 
 func handleImage[T any](h *Handle[T]) Entry {
-	return Entry{obj: h, ptr: [6]any{h.left, h.right, h.parent, h.prev, h.next, h.owner},
-		num: [3]uint64{uint64(h.height), uint64(h.size), h.tag}} //nolint:gosec // restored bit for bit
+	e := Entry{obj: h, ptr: [6]any{h.left, h.right, h.parent, h.prev, h.next, h.owner},
+		num: [3]uint64{uint64(h.height) | uint64(h.hsize)<<8, uint64(h.size), h.tag}} //nolint:gosec // restored bit for bit; a height is below 256
+	if h.kprev != nil || h.knext != nil {
+		e.key = kindLinks[T]{h.kprev, h.knext}
+	}
+	return e
 }
 
 // created records a handle allocated under a journal as detached: rollback leaves it as a
@@ -136,11 +177,11 @@ func (s *Seq[T]) created(h *Handle[T]) {
 }
 
 func (s *Seq[T]) header() seqHeader[T] {
-	return seqHeader[T]{s.root, s.first, s.last, s.length, s.scale, s.unlabeled}
+	return seqHeader[T]{s.root, s.first, s.last, s.length, s.scale, s.unlabeled, s.kinds}
 }
 
 func (s *Seq[T]) restoreHeader(h seqHeader[T]) {
-	s.root, s.first, s.last, s.length, s.scale, s.unlabeled = h.root, h.first, h.last, h.length, h.scale, h.unlabeled
+	s.root, s.first, s.last, s.length, s.scale, s.unlabeled, s.kinds = h.root, h.first, h.last, h.length, h.scale, h.unlabeled, h.kinds
 }
 
 // touch records h before its first mutation after every active checkpoint.
@@ -219,7 +260,8 @@ func (s *Seq[T]) Rollback(checkpoint *Checkpoint[T]) bool {
 	}
 	for _, h := range top.created {
 		h.left, h.right, h.parent, h.prev, h.next, h.owner = nil, nil, nil, nil, nil, nil
-		h.height, h.size, h.tag = 0, 0, 0
+		h.height, h.size, h.hsize, h.tag = 0, 0, 0, 0
+		h.kprev, h.knext = nil, nil
 		s.charge()
 	}
 	s.restoreHeader(top.header)
@@ -390,7 +432,8 @@ func (s *Seq[T]) InsertAfter(anchor *Handle[T], value T) *Handle[T] {
 }
 
 func (s *Seq[T]) insert(rank int, prev, next *Handle[T], value T) *Handle[T] {
-	h := &Handle[T]{Value: value, owner: s, height: 1, size: 1, prev: prev, next: next}
+	h := s.newHandle(value)
+	h.prev, h.next = prev, next
 	s.trackCreated(h)
 	s.created(h)
 	s.touchHeader()
@@ -408,6 +451,9 @@ func (s *Seq[T]) insert(rank int, prev, next *Handle[T], value T) *Handle[T] {
 	}
 	s.root = s.insertAt(s.root, rank, h)
 	s.setParent(s.root, nil)
+	if s.kinds {
+		s.relinkKinds(h, h)
+	}
 	s.length++
 	if s.scale == 0 {
 		s.scale = 1
@@ -431,6 +477,7 @@ func (s *Seq[T]) Remove(h *Handle[T]) bool {
 	s.root = s.removeAt(s.root, rank)
 	s.setParent(s.root, nil)
 	s.unlink(h)
+	s.unlinkKind(h)
 	s.detach(h)
 	s.length--
 	if s.length == 0 {
@@ -466,7 +513,7 @@ func (s *Seq[T]) Splice(lo, deleteCount int, values []T) ([]*Handle[T], bool) {
 	}
 	inserted := make([]*Handle[T], len(values))
 	for i, value := range values {
-		inserted[i] = &Handle[T]{Value: value, owner: s, height: 1, size: 1}
+		inserted[i] = s.newHandle(value)
 		s.trackCreated(inserted[i])
 		s.created(inserted[i])
 	}
@@ -520,6 +567,9 @@ func (s *Seq[T]) ReplaceHandles(lo, hi int, handles []*Handle[T]) bool {
 		next = s.Select(hi)
 	}
 	s.touchHeader()
+	for _, h := range handles {
+		s.unlinkKind(h)
+	}
 	left, tail := s.split(s.root, lo)
 	_, right := s.split(tail, hi-lo)
 	middle := s.build(handles, 0, len(handles), nil)
@@ -541,6 +591,9 @@ func (s *Seq[T]) ReplaceHandles(lo, hi int, handles []*Handle[T]) bool {
 	} else {
 		s.touch(next)
 		next.prev = handles[len(handles)-1]
+	}
+	if s.kinds {
+		s.relinkKinds(handles[0], handles[len(handles)-1])
 	}
 	s.labelRange(handles[0], handles[len(handles)-1], len(handles))
 	return true
@@ -579,7 +632,11 @@ func (s *Seq[T]) spliceHandles(lo, deleteCount int, inserted []*Handle[T]) {
 		h.next = valueAtHandle(inserted, i+1, next)
 	}
 	for _, h := range removedHandles {
+		s.unlinkKind(h)
 		s.detach(h)
+	}
+	if s.kinds && len(inserted) != 0 {
+		s.relinkKinds(inserted[0], inserted[len(inserted)-1])
 	}
 	s.length += len(inserted) - deleteCount
 	s.adjustScale()
@@ -601,6 +658,14 @@ func (s *Seq[T]) MoveRange(lo, hi, before int) bool {
 	left, tail := s.split(s.root, lo)
 	run, right := s.split(tail, count)
 	runFirst, runLast := s.minimum(run), s.maximum(run)
+	if s.kinds {
+		for h := runFirst; ; h = h.next {
+			s.unlinkKind(h)
+			if h == runLast {
+				break
+			}
+		}
+	}
 	oldPrev, oldNext := runFirst.prev, runLast.next
 	remainder := s.join(left, right)
 	s.setParent(remainder, nil)
@@ -639,6 +704,9 @@ func (s *Seq[T]) MoveRange(lo, hi, before int) bool {
 		s.touch(next)
 		next.prev = runLast
 	}
+	if s.kinds {
+		s.relinkKinds(runFirst, runLast)
+	}
 	s.labelRange(runFirst, runLast, count)
 	return true
 }
@@ -655,6 +723,20 @@ func nodeSize[T any](n *Handle[T]) int {
 		return 0
 	}
 	return n.size
+}
+
+func nodeHeavy[T any](n *Handle[T]) int {
+	if n == nil {
+		return 0
+	}
+	return n.hsize
+}
+
+func selfHeavy[T any](n *Handle[T]) int {
+	if n.heavy {
+		return 1
+	}
+	return 0
 }
 
 func nodeHeight[T any](n *Handle[T]) int {
@@ -674,6 +756,7 @@ func (s *Seq[T]) setParent(n, parent *Handle[T]) {
 func (s *Seq[T]) fixNode(n *Handle[T]) {
 	s.touch(n)
 	n.size = 1 + nodeSize(n.left) + nodeSize(n.right)
+	n.hsize = selfHeavy(n) + nodeHeavy(n.left) + nodeHeavy(n.right)
 	n.height = 1 + max(nodeHeight(n.left), nodeHeight(n.right))
 	s.setParent(n.left, n)
 	s.setParent(n.right, n)
@@ -818,7 +901,7 @@ func (s *Seq[T]) split(root *Handle[T], rank int) (*Handle[T], *Handle[T]) {
 		right := root.right
 		s.touch(root)
 		root.left, root.right, root.parent = nil, nil, nil
-		root.height, root.size = 1, 1
+		root.height, root.size, root.hsize = 1, 1, selfHeavy(root)
 		result := s.joinRoot(middle, root, right)
 		s.setParent(left, nil)
 		s.setParent(result, nil)
@@ -828,7 +911,7 @@ func (s *Seq[T]) split(root *Handle[T], rank int) (*Handle[T], *Handle[T]) {
 	left := root.left
 	s.touch(root)
 	root.left, root.right, root.parent = nil, nil, nil
-	root.height, root.size = 1, 1
+	root.height, root.size, root.hsize = 1, 1, selfHeavy(root)
 	result := s.joinRoot(left, root, middle)
 	s.setParent(result, nil)
 	s.setParent(right, nil)
@@ -847,6 +930,7 @@ func (s *Seq[T]) build(handles []*Handle[T], lo, hi int, parent *Handle[T]) *Han
 	h.left = s.build(handles, lo, mid, h)
 	h.right = s.build(handles, mid+1, hi, h)
 	h.size = hi - lo
+	h.hsize = selfHeavy(h) + nodeHeavy(h.left) + nodeHeavy(h.right)
 	h.height = 1 + max(nodeHeight(h.left), nodeHeight(h.right))
 	return h
 }
@@ -901,7 +985,8 @@ func (s *Seq[T]) unlink(h *Handle[T]) {
 func (s *Seq[T]) detach(h *Handle[T]) {
 	s.touch(h)
 	h.left, h.right, h.parent, h.prev, h.next, h.owner = nil, nil, nil, nil, nil, nil
-	h.height, h.size, h.tag = 0, 0, 0
+	h.height, h.size, h.hsize, h.tag = 0, 0, 0, 0
+	h.kprev, h.knext = nil, nil
 }
 
 func (s *Seq[T]) adjustScale() {
@@ -1076,6 +1161,9 @@ func (s *Seq[T]) CheckInvariants() error {
 		if n.size != ls+rs+1 {
 			return 0, 0, fmt.Errorf("subtree size is %d, want %d", n.size, ls+rs+1)
 		}
+		if want := selfHeavy(n) + nodeHeavy(n.left) + nodeHeavy(n.right); n.hsize != want {
+			return 0, 0, fmt.Errorf("subtree heavy count is %d, want %d", n.hsize, want)
+		}
 		height := 1 + max(lh, rh)
 		if n.height != height || absInt(lh-rh) > 1 {
 			return 0, 0, fmt.Errorf("AVL height or balance is invalid")
@@ -1115,7 +1203,7 @@ func (s *Seq[T]) CheckInvariants() error {
 	if len(thread) != len(tree) {
 		return fmt.Errorf("tree/thread handle sets differ")
 	}
-	return nil
+	return s.checkKindThreads()
 }
 
 func absInt(value int) int {
