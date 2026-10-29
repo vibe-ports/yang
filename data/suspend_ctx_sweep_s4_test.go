@@ -183,10 +183,11 @@ func TestS4CtxEntriesHoldTheirTrees(t *testing.T) {
 	t.Logf("%d entries, %d mutated polls", len(fixtures), total)
 }
 
-// TestS4DetachedNodeNotHeldByItsOldTree: a node unlinked before an operation keeps its old
-// counter only as accounting: user code of a LinkLeafrefs or ApplyDiff on that tree may still
-// edit it (snapshot review 4, finding 1).
-func TestS4DetachedNodeNotHeldByItsOldTree(t *testing.T) {
+// TestS4DetachedNodeHeldByItsOldTree: the hold is counter-wide (v0.5.0 policy, D-0148): a node
+// unlinked before an operation still keeps its old tree's counter, so user code of a
+// LinkLeafrefs or ApplyDiff on that tree cannot edit it; the edit works once the operation
+// returned, and from user code of an operation on an independent tree (positive control).
+func TestS4DetachedNodeHeldByItsOldTree(t *testing.T) {
 	set := s4LinksSet(t)
 	tr := s4ParseLinks(t, set, `{"pv2-links:c":{"l":[{"k":"a"}],"t":["y","x"],"r":"a"}}`)
 	detached := s4Child(tr.top.first(), "t", "y")
@@ -198,51 +199,82 @@ func TestS4DetachedNodeNotHeldByItsOldTree(t *testing.T) {
 	if _, err := tr.LinkLeafrefs(ctx); err != nil {
 		t.Fatal(err)
 	}
-	if editErr != nil || detached.Value() != "z" {
-		t.Fatalf("editing a node detached earlier: %v (value %q), want success", editErr, detached.Value())
-	}
-	other := s4ParseLinks(t, set, `{"pv2-links:c":{"t":["q"]}}`)
-	err := other.ApplyDiff(s4Diff(t, set, other, false), ApplyDiffOptions{Callback: func(_, _ *Node) error {
-		_, err := detached.SetValue("w")
-		return err
+	s4PublicRefusal(t, "a node detached earlier, from LinkLeafrefs' ctx", nil, editErr, false)
+	err := tr.ApplyDiff(s4Diff(t, set, tr, false), ApplyDiffOptions{Callback: func(_, _ *Node) error {
+		_, editErr = detached.SetValue("v")
+		return nil
 	}})
 	if err != nil {
-		t.Fatalf("ApplyDiff whose callback edits an unrelated detached node: %v", err)
+		t.Fatal(err)
 	}
-	// inside ApplyDiff on its former tree, whose journal its retained binding still names
-	err = tr.ApplyDiff(s4Diff(t, set, tr, false), ApplyDiffOptions{Callback: func(_, _ *Node) error {
-		_, err := detached.SetValue("v")
+	s4PublicRefusal(t, "a node detached earlier, from ApplyDiff's callback", nil, editErr, false)
+	if detached.Value() != "y" {
+		t.Fatalf("refused edits changed the node: %q", detached.Value())
+	}
+	if _, err := detached.SetValue("w"); err != nil || detached.Value() != "w" {
+		t.Fatalf("the deferred edit: %v (value %q)", err, detached.Value())
+	}
+	other := s4ParseLinks(t, set, `{"pv2-links:c":{"t":["q"]}}`)
+	err = other.ApplyDiff(s4Diff(t, set, other, false), ApplyDiffOptions{Callback: func(_, _ *Node) error {
+		_, err := detached.SetValue("u")
 		return err
 	}})
-	if err != nil || detached.Value() != "v" {
-		t.Fatalf("ApplyDiff on its former tree whose callback edits the detached node: %v (value %q)", err, detached.Value())
+	if err != nil || detached.Value() != "u" {
+		t.Fatalf("ApplyDiff on an independent tree whose callback edits the node: %v (value %q)", err, detached.Value())
 	}
 }
 
-// TestS4HeldCheckIsConstantOnTheCommonPath: touching every node of a journaled deep chain,
-// whose state waits on nothing, makes no guard root walk (snapshot review 4, finding 2).
+// TestS4HeldCheckIsConstantOnTheCommonPath: the guard is counter-wide, so editing a leaf of an
+// independent tree from a callback counts the same work at depth 48 as at depth 1 (positive
+// control: no walk to the root; snapshot review 4, finding 2).
 func TestS4HeldCheckIsConstantOnTheCommonPath(t *testing.T) {
-	set := reviewDiffSet(t, s4JournalModule)
-	tr, op := s4OpTree(t, set, "5", "1", "9")
-	var nodes []*Node
-	for n := range op.allAny() {
-		nodes = append(nodes, n)
+	const depth = 48
+	var mod, in strings.Builder
+	mod.WriteString(`module s4deep {yang-version 1.1;namespace "urn:s4deep";prefix d;leaf top {type string;}`)
+	in.WriteString(`<top xmlns="urn:s4deep">1</top>`)
+	for i := range depth {
+		fmt.Fprintf(&mod, "container c%d {", i)
+		fmt.Fprintf(&in, "<c%d xmlns=\"urn:s4deep\">", i)
 	}
-	j := beginHashTransaction(tr)
-	walks := 0
-	heldWalkHook = func() { walks++ }
-	defer func() { heldWalkHook = nil }()
-	for _, n := range nodes {
-		if err := n.touch(); err != nil {
-			t.Fatal(err)
-		}
-		if err := childStorage(n).touch(); err != nil {
-			t.Fatal(err)
+	mod.WriteString("leaf x {type string;}")
+	in.WriteString("<x>1</x>")
+	for i := depth - 1; i >= 0; i-- {
+		mod.WriteString("}")
+		fmt.Fprintf(&in, "</c%d>", i)
+	}
+	mod.WriteString("}")
+	set := reviewDiffSet(t, mod.String())
+	tr := parseOnlyXML(t, set, in.String())
+	var shallow, deep *Node
+	for n := range tr.Top() {
+		for m := range n.allAny() {
+			switch m.schema.Name {
+			case "top":
+				shallow = m
+			case "x":
+				deep = m
+			}
 		}
 	}
-	j.end(nil)
-	if walks != 0 {
-		t.Fatalf("%d guard root walks on the common path", walks)
+	links := s4LinksSet(t)
+	other := s4ParseLinks(t, links, `{"pv2-links:c":{"t":["q"]}}`)
+	var costs [2]int64
+	edit := s4Once(func() error {
+		for i, n := range [2]*Node{shallow, deep} {
+			before := tr.work.Load()
+			if _, err := n.SetValue("2"); err != nil {
+				return err
+			}
+			costs[i] = tr.work.Load() - before
+		}
+		return nil
+	})
+	err := other.ApplyDiff(s4Diff(t, links, other, false), ApplyDiffOptions{Callback: func(_, _ *Node) error { return edit() }})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if costs[0] != costs[1] {
+		t.Fatalf("SetValue work at depth 1 %d, at depth %d %d", costs[0], depth, costs[1])
 	}
 }
 
@@ -289,10 +321,11 @@ const s4DetachedModule = `module s4d {yang-version 1.1;namespace "urn:s4d";prefi
   leaf t {type string;}
  }}`
 
-// TestS4EmptyDetachedInnerNotHeld: an empty inner node unlinked before an operation keeps its
-// old counter only as accounting: a callback of ApplyDiff on its former tree may build under it,
-// insert next to it and annotate it, through another tree of the snapshot.
-func TestS4EmptyDetachedInnerNotHeld(t *testing.T) {
+// TestS4EmptyDetachedInnerHeldByItsOldTree: an empty inner node unlinked before an operation
+// keeps its old tree's counter, so a callback of ApplyDiff on that tree cannot build under it,
+// move it or annotate it through another tree of the snapshot (the counter-wide hold), and
+// nothing changes; each edit works once the operation returned.
+func TestS4EmptyDetachedInnerHeldByItsOldTree(t *testing.T) {
 	set := reviewDiffSet(t, s4DetachedModule)
 	edits := map[string]func(free *Tree, e *Node) error{
 		"NewTerm":  func(free *Tree, e *Node) error { _, err := free.NewTerm(e, "a", "1", NewOptions{}); return err },
@@ -356,12 +389,15 @@ func TestS4EmptyDetachedInnerNotHeld(t *testing.T) {
 		if err != nil || !called {
 			t.Fatalf("%s: ApplyDiff %v (called %t)", name, err, called)
 		}
-		if editErr != nil {
-			t.Errorf("%s under a node detached earlier, from a callback on its former tree: %v", name, editErr)
+		if !s4Refused(editErr) {
+			t.Errorf("%s under a node detached earlier, from a callback on its former tree: %v, want the refusal", name, editErr)
 			continue
 		}
-		if childStorage(e).len() == 0 && e.meta == nil && e.parent == nil {
-			t.Errorf("%s: the edit did not survive the operation", name)
+		if childStorage(e).len() != 0 || e.meta != nil || e.parent != nil {
+			t.Errorf("%s: a refused edit changed the node", name)
+		}
+		if err := edit(free, e); err != nil {
+			t.Errorf("%s after the operation returned: %v", name, err)
 		}
 	}
 }
@@ -418,7 +454,8 @@ func TestS4CapturedLinkOwnerIsHeld(t *testing.T) {
 
 // TestS4CapturedDetachedNodeIsHeld: for each capture map of the journal, a node of a subtree
 // detached before the operation, captured that way by the waiting state, is held: an edit of
-// it from user code is refused. Without a capture it is a stale binding and the edit proceeds.
+// it from user code is refused. Enrolled without any capture, it is held all the same (the hold
+// is counter-wide).
 func TestS4CapturedDetachedNodeIsHeld(t *testing.T) {
 	keys := make([]string, 0, 12)
 	for i := range 12 {
@@ -460,7 +497,7 @@ func TestS4CapturedDetachedNodeIsHeld(t *testing.T) {
 		edit    func(f fixture) error
 		held    bool
 	}{
-		{"none (stale binding)", hashed, func(*hashTransaction, fixture) error { return nil }, setLeaf, false},
+		{"enrolled only", hashed, func(*hashTransaction, fixture) error { return nil }, setLeaf, true},
 		{"nodes", hashed, func(j *hashTransaction, f fixture) error { return j.captureNode(f.leaf) }, setLeaf, true},
 		{"owners", hashed, func(j *hashTransaction, f fixture) error { return j.captureOwner(f.leaf) }, setLeaf, true},
 		{"links", linked, func(j *hashTransaction, f fixture) error { return j.captureLinks(f.leaf.links) }, setLeaf, true},

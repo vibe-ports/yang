@@ -560,7 +560,7 @@ func (t *Tree) placed(b newBuilder, parent, n *Node, err error) (*Node, error) {
 // value restriction checks; combining it with o.Canonical is LY_EINVAL.
 func (t *Tree) NewTerm(parent *Node, name, value string, o NewOptions) (_ *Node, err error) {
 	defer normalizeRefusal(t.context(), &err, nil) // the guard's refusal in its one public form, after the journal ended
-	if t.work.inProgress() {                       // an operation in progress governs t: refused before its counter is used
+	if t.work.inProgress() || heldNode(parent) {   // t, or a node argument, is held by an operation waiting on user code: refused before any counter is used
 		return nil, refusedEntry(t.context())
 	}
 	defer t.work.beginHashWork()()
@@ -579,7 +579,7 @@ func (t *Tree) NewTerm(parent *Node, name, value string, o NewOptions) (_ *Node,
 // inner nodes and are ignored.
 func (t *Tree) NewInner(parent *Node, name string, o NewOptions) (_ *Node, err error) {
 	defer normalizeRefusal(t.context(), &err, nil) // the guard's refusal in its one public form, after the journal ended
-	if t.work.inProgress() {                       // an operation in progress governs t: refused before its counter is used
+	if t.work.inProgress() || heldNode(parent) {   // t, or a node argument, is held by an operation waiting on user code: refused before any counter is used
 		return nil, refusedEntry(t.context())
 	}
 	defer t.work.beginHashWork()()
@@ -599,7 +599,7 @@ func (t *Tree) NewInner(parent *Node, name string, o NewOptions) (_ *Node, err e
 // keys an LY_EINVAL argument error, "keys".
 func (t *Tree) NewList(parent *Node, name string, keys []string, o NewOptions) (_ *Node, err error) {
 	defer normalizeRefusal(t.context(), &err, nil) // the guard's refusal in its one public form, after the journal ended
-	if t.work.inProgress() {                       // an operation in progress governs t: refused before its counter is used
+	if t.work.inProgress() || heldNode(parent) {   // t, or a node argument, is held by an operation waiting on user code: refused before any counter is used
 		return nil, refusedEntry(t.context())
 	}
 	defer t.work.beginHashWork()()
@@ -619,7 +619,7 @@ func (t *Tree) NewList(parent *Node, name string, keys []string, o NewOptions) (
 // StoreOnly apply; Canonical is ignored, including when StoreOnly is also set.
 func (t *Tree) NewList2(parent *Node, name, keys string, o NewOptions) (_ *Node, err error) {
 	defer normalizeRefusal(t.context(), &err, nil) // the guard's refusal in its one public form, after the journal ended
-	if t.work.inProgress() {                       // an operation in progress governs t: refused before its counter is used
+	if t.work.inProgress() || heldNode(parent) {   // t, or a node argument, is held by an operation waiting on user code: refused before any counter is used
 		return nil, refusedEntry(t.context())
 	}
 	defer t.work.beginHashWork()()
@@ -655,7 +655,7 @@ type OpaqueOptions struct {
 // A leaf or leaf-list parent (D-0113) and a NUL byte in any string (D-0111) are refused.
 func (t *Tree) NewOpaque(parent *Node, name, value string, o OpaqueOptions) (_ *Node, err error) {
 	defer normalizeRefusal(t.context(), &err, nil) // the guard's refusal in its one public form, after the journal ended
-	if t.work.inProgress() {                       // an operation in progress governs t: refused before its counter is used
+	if t.work.inProgress() || heldNode(parent) {   // t, or a node argument, is held by an operation waiting on user code: refused before any counter is used
 		return nil, refusedEntry(t.context())
 	}
 	defer t.work.beginHashWork()()

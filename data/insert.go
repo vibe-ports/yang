@@ -2394,7 +2394,7 @@ func bindSubtreeWork(root *Node, work *workCounter) error {
 		if err := work.chargeHash(1 + uint64(sib.SchemaLen()+sib.OpaqueLen()+len(sib.rbOrders)+len(sib.pending))); err != nil { //nolint:gosec // sibling counts are nonnegative
 			return err
 		}
-		if err := sib.rebind(n, work); err != nil {
+		if err := sib.rebind(work); err != nil {
 			work.hashErr = err
 			return err
 		}

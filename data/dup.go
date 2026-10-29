@@ -688,7 +688,7 @@ func (o DupOptions) opts() dupOpts {
 // keep metadata and only the Default flag (plus New), independently of o.
 func (t *Tree) Dup(n, parent *Node, o DupOptions) (_ *Node, d []yang.Diagnostic, err error) {
 	defer normalizeRefusal(t.context(), &err, &d) // the guard's refusal in its one public form, after the journal ended
-	if t.work.inProgress() {                      // an operation in progress governs t: refused before its counter is used
+	if t.work.inProgress() || heldNode(parent) {  // t, or a node argument, is held by an operation waiting on user code: refused before any counter is used
 		d, err := refusedEntryDiags(t.context())
 		return nil, d, err
 	}
@@ -700,7 +700,7 @@ func (t *Tree) Dup(n, parent *Node, o DupOptions) (_ *Node, d []yang.Diagnostic,
 // instance of n's schema parent (D-0124).
 func (t *Tree) DupSiblings(n, parent *Node, o DupOptions) (_ *Node, d []yang.Diagnostic, err error) {
 	defer normalizeRefusal(t.context(), &err, &d) // the guard's refusal in its one public form, after the journal ended
-	if t.work.inProgress() {                      // an operation in progress governs t: refused before its counter is used
+	if t.work.inProgress() || heldNode(parent) {  // t, or a node argument, is held by an operation waiting on user code: refused before any counter is used
 		d, err := refusedEntryDiags(t.context())
 		return nil, d, err
 	}

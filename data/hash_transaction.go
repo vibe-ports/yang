@@ -87,14 +87,7 @@ type hashTransaction struct {
 	refused bool
 	// unbound is the counter enroll binds counterless detached sets to (unboundSets) until end
 	unbound     *workCounter
-	unboundSets []unboundSet
-}
-
-// unboundSet is a set enroll bound to the state's temporary counter, with the binding it had:
-// none, or a stale one (a subtree detached before a suspended state that did not capture it).
-type unboundSet struct {
-	s    *siblings
-	prev *workCounter
+	unboundSets []*siblings
 }
 
 // refusingState is what a begin returns inside a suspended state: the operation is refused
@@ -277,16 +270,8 @@ func beginJointTransaction(trees ...*Tree) (*hashTransaction, error) {
 			running = t.work.journal
 			continue
 		}
-		switch w := &t.work; {
-		case w.journal == running:
-		case w.held():
-			return j, refuseIn(running)
-		case w.journal == nil:
-			if err := running.charge(1); err != nil {
-				return j, err
-			}
-			w.journal = running
-			running.lent = append(running.lent, w)
+		if err := running.adopt(&t.work); err != nil {
+			return j, err
 		}
 	}
 	return j, nil
@@ -346,7 +331,7 @@ func (j *hashTransaction) maps() {
 // a whole capture would restore over it; see rollbackTo). A rolled-back first capture leaves no
 // image of s, so s gets entries again.
 func (s *siblings) narrow() *hashTransaction {
-	j := s.owner()
+	j := s.journal()
 	if j == nil || !j.narrow || j.suspendedState() || s.work.held() {
 		return nil // a suspended state's objects refuse at touch
 	}
@@ -636,7 +621,7 @@ func (s *siblings) touch() error {
 	if heldSet(s) {
 		return errInProgress
 	}
-	if j := s.owner(); j != nil {
+	if j := s.journal(); j != nil {
 		return j.captureSiblings(s)
 	}
 	return nil
@@ -673,9 +658,12 @@ func (n *Node) touch() error {
 	if heldNode(n) {
 		return errInProgress
 	}
-	j := ownerOf(n)
+	j := governing(n)
 	if j == nil {
 		return nil
+	}
+	if j.suspendedState() {
+		return errInProgress
 	}
 	if j.fresh[n] {
 		return j.err // NewPath's own new nodes: a refusal leaves no reference to them
@@ -699,33 +687,19 @@ func (w *workCounter) created(n *Node) {
 // joinLinkJournal associates both sides before either a linked or detached source changes.
 // A detached subtree can still belong to an outer transaction through its work binding.
 func joinLinkJournal(t *Tree, n *Node) error {
-	from := ownerOf(n)
+	from := governing(n)
 	source := n.treeOf()
-	if from.suspendedState() || t.work.held() || source != nil && source.work.held() {
+	if from.suspendedState() || heldNode(n) || t.work.held() || source != nil && source.work.held() {
 		return refuseIn(from, t.work.journal) // a lend into, or from, an operation waiting on user code
 	}
-	lend := func(j *hashTransaction, w *workCounter) error {
-		if w.journal != nil {
-			if w.held() {
-				return errInProgress
-			}
-			return nil
-		}
-		if err := j.charge(1); err != nil {
-			return err
-		}
-		w.journal = j
-		j.lent = append(j.lent, w)
-		return nil
-	}
 	if t.work.journal == nil && from != nil {
-		if err := lend(from, &t.work); err != nil {
+		if err := from.adopt(&t.work); err != nil {
 			return err
 		}
 	}
 	if j := t.work.journal; j != nil {
 		if source != nil {
-			if err := lend(j, &source.work); err != nil {
+			if err := j.adopt(&source.work); err != nil {
 				return err
 			}
 		} else if err := j.captureDetachedParent(n.parent); err != nil {
@@ -749,24 +723,20 @@ func (s *siblings) setWork(work *workCounter) {
 	}
 }
 
-// rebind records the work counter of s before bindSubtreeWork moves it to another tree.
-// owner is the node s holds the children of. A held binding of a subtree detached before the
-// waiting operation is accounting only: the subtree is not held (heldNode places it by its
-// root), and nothing of it goes to the waiting state.
-func (s *siblings) rebind(owner *Node, work *workCounter) error {
+// rebind records the work counter of s before bindSubtreeWork moves it to another tree. A held
+// binding refuses: it cannot be discarded to make an edit permissible.
+func (s *siblings) rebind(work *workCounter) error {
 	if s.work == work {
 		return nil
 	}
-	if heldNode(owner) || work.held() {
+	if heldSet(s) || work.held() {
 		return refuseIn(s.journal(), work.journal)
 	}
-	from := s.owner()
-	if from != nil && work.journal == nil {
-		if err := from.charge(1); err != nil {
+	from := s.journal()
+	if from != nil {
+		if err := from.adopt(work); err != nil {
 			return err
 		}
-		work.journal = from
-		from.lent = append(from.lent, work)
 	}
 	for _, j := range [2]*hashTransaction{from, work.journal} {
 		if j == nil {
@@ -923,19 +893,16 @@ func (j *hashTransaction) captureOwner(c *Node) error {
 	if captured(j, j.owners, c) {
 		return nil
 	}
-	g := ownerOf(c)
 	if heldNode(c) {
 		return j.refuse()
 	}
 	if err := j.charge(1); err != nil {
 		return err
 	}
-	if g == nil {
-		// enrollment (design 13 §2.4 (4)): c's tree joins this state until end, so a callback
-		// that later reaches it meets this state, suspended, even after the link is gone
-		if err := j.enroll(childStorage(c)); err != nil {
-			return err
-		}
+	// enrollment (design 13 §2.4 (4)): c's counter joins this state until end, so a callback
+	// that later reaches it meets this state, suspended, even after the link is gone
+	if err := j.enroll(childStorage(c)); err != nil {
+		return err
 	}
 	addWhole(j, j.owners, &j.img.owners, wholeOwner, c, c.links)
 	if c.links != nil {
@@ -1199,7 +1166,7 @@ func (j *hashTransaction) rollbackTo(l level) {
 // capturer returns the running state that has captured s whole (orderBuild's new index reports
 // to it), nil when none has.
 func capturer(t *Tree, s *siblings) *hashTransaction {
-	for _, j := range [2]*hashTransaction{s.owner(), t.work.journal} {
+	for _, j := range [2]*hashTransaction{s.journal(), t.work.journal} {
 		if j == nil {
 			continue
 		}
@@ -1243,20 +1210,12 @@ func refuseFor(n *Node) error {
 	return errInProgress
 }
 
-// enroll makes this state govern s until it ends (design 13 §2.4): s's counter is lent to it,
+// enroll makes this state govern s until it ends (design 13 §2.4): s's counter is adopted,
 // or, for a set without a counter (an unbound detached set), s is bound to the state's
 // temporary counter, recorded as a works entry (a rollback restores it) and unbound at end.
 func (j *hashTransaction) enroll(s *siblings) error {
-	switch w := s.work; {
-	case s.owner() != nil:
-		return nil // governed already: this state, or another one (refused when suspended)
-	case w != nil && w.journal == nil:
-		if err := j.charge(1); err != nil {
-			return err
-		}
-		w.journal = j
-		j.lent = append(j.lent, w)
-		return nil
+	if s.work != nil {
+		return j.adopt(s.work)
 	}
 	if err := j.charge(1); err != nil {
 		return err
@@ -1269,16 +1228,35 @@ func (j *hashTransaction) enroll(s *siblings) error {
 	if !captured(j, j.works, s) && !captured(j, j.siblings, s) {
 		addWhole(j, j.works, &j.img.works, wholeWorks, s, s.work)
 	}
-	j.unboundSets = append(j.unboundSets, unboundSet{s, s.work}) // nil, or a stale binding
 	s.setWork(j.unbound)
+	j.unboundSets = append(j.unboundSets, s)
+	return nil
+}
+
+// adopt brings the counter w into j's recovery state, the one rule for enrollment and lending
+// (design 13 §2.4): w already in j is idempotent; an unowned counter is lent to j until end; a
+// held counter refuses, and so does one another running state owns: no state accepts another's
+// objects as its own.
+func (j *hashTransaction) adopt(w *workCounter) error {
+	switch {
+	case w.journal == j:
+		return nil
+	case w.held() || w.journal != nil:
+		return refuseIn(j)
+	}
+	if err := j.charge(1); err != nil {
+		return err
+	}
+	w.journal = j
+	j.lent = append(j.lent, w)
 	return nil
 }
 
 // release unbinds the sets enroll bound that still use the temporary counter.
 func (j *hashTransaction) release() {
-	for _, u := range j.unboundSets {
-		if u.s.work == j.unbound {
-			u.s.setWork(u.prev)
+	for _, s := range j.unboundSets {
+		if s.work == j.unbound {
+			s.setWork(nil)
 		}
 	}
 	clear(j.unboundSets)

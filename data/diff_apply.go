@@ -21,7 +21,8 @@ type ApplyDiffOptions struct {
 	Module string
 	// Callback, when set, is called after every diff node is applied, with the data node it
 	// created or changed (not for a delete); an error stops the application and is returned
-	// (lyd_diff_cb). It must not modify the tree being changed or the diff.
+	// (lyd_diff_cb). It must not modify the tree being changed or the diff: a change of t, or
+	// of a node detached from t that still keeps its counter, is refused (see the package doc).
 	Callback func(diff, node *Node) error
 }
 

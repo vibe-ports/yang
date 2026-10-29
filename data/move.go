@@ -80,8 +80,8 @@ func sibList(n *Node) *Tree {
 // the sequence step insert, seq/insert-*; Go tests TestTreeBuild, TestInsertChild,
 // TestInsertSibling and TestInsertIntoItself.
 func (t *Tree) Insert(parent, n *Node) (err error) {
-	defer normalizeRefusal(t.context(), &err, nil) // the guard's refusal in its one public form, after the journal ended
-	if t.work.inProgress() {                       // an operation in progress governs t: refused before its counter is used
+	defer normalizeRefusal(t.context(), &err, nil)              // the guard's refusal in its one public form, after the journal ended
+	if t.work.inProgress() || heldNode(parent) || heldNode(n) { // t, or a node argument, is held by an operation waiting on user code: refused before any counter is used
 		return refusedEntry(t.context())
 	}
 	defer t.work.beginHashWork()()

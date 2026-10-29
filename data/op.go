@@ -78,6 +78,10 @@ type OpResult struct {
 // frees its parsed set, which for JSON holds only the last instance of each member (earlier
 // instances of a leaf-list or list stay in Request's tree) and for XML each top-level element,
 // so Request's tree may stay modified after a failure.
+// While the Reader or a context method runs, Request's tree (or Request, detached, with every
+// node that keeps its counter) is held: a change of it is refused (see the package doc). A
+// Request that still keeps the counter of a tree whose operation waits on user code is refused
+// before anything is read.
 func ParseOp(ctx context.Context, r io.Reader, f Format, s *yang.Schema, typ OpType, o ParseOpOptions) (_ OpResult, d []yang.Diagnostic, err error) {
 	var publicSet *schema.Set
 	if s != nil {

@@ -64,7 +64,8 @@ type MergeDiffOptions struct {
 	// Callback, when set, is called after every source node is merged with the diff node it
 	// changed, and with a nil source for a node copied into the diff whole (lyd_diff_cb). An
 	// error stops the merge and is returned. It must not modify the diff being merged into or the
-	// source diff.
+	// source diff: a change of the diff merged into, or of a node detached from it that still
+	// keeps its counter, is refused (see the package doc).
 	Callback func(src, diff *Node) error
 }
 
@@ -138,7 +139,7 @@ func (t *Tree) mergeDiffWithModule(src *Tree, o MergeDiffOptions, mod *schema.Mo
 // and are accepted in that stored order, as in libyang.
 func (t *Tree) MergeDiffTree(parent, src *Node, o MergeDiffOptions) (result error) {
 	defer normalizeRefusal(t.context(), &result, nil) // the guard's refusal in its one public form, after the journal ended
-	if t.work.inProgress() {                          // an operation in progress governs t: refused before its counter is used
+	if t.work.inProgress() || heldNode(parent) {      // t, or a node argument, is held by an operation waiting on user code: refused before any counter is used
 		return refusedEntry(t.context())
 	}
 	defer func() { result = restoreUser(result) }() // a callback's own error, after the state ended

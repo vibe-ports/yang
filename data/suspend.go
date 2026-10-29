@@ -49,28 +49,6 @@ func governing(n *Node) *hashTransaction {
 	return nil
 }
 
-// owner is the state that owns s, the one every ownership, enrollment, capture and lending
-// decision on s resolves (touch, narrow, enroll, rebind, capturer, indexJournaled): the journal
-// its binding names, unless that state waits on user code without holding s. That binding is
-// stale, one a subtree detached before the state retains, and s has no owner (nil).
-func (s *siblings) owner() *hashTransaction {
-	j := s.journal()
-	if j.suspendedState() && !heldSet(s) {
-		return nil
-	}
-	return j
-}
-
-// ownerOf is owner for n's own fields (governing, with the same stale rule through heldNode):
-// Node.touch, captureOwner and joinLinkJournal resolve n's state through it.
-func ownerOf(n *Node) *hashTransaction {
-	g := governing(n)
-	if g.suspendedState() && !heldNode(n) {
-		return nil
-	}
-	return g
-}
-
 // suspend marks w's running state as waiting on user code until the returned func runs.
 func (w *workCounter) suspend() func() {
 	if w == nil {
@@ -100,106 +78,14 @@ func (w *workCounter) held() bool {
 	return w != nil && (w.suspendDepth > 0 || w.journal.suspendedState())
 }
 
-// heldNode reports whether n is held by an operation waiting on user code. The common case is
-// O(1): n's own binding (its children's counter and the state on it) is not held. Only when it
-// is does the check walk to n's root, once, on the refusal path: the hold applies to a node of
-// the held tree, or to a detached subtree the waiting state itself captured (an in-flight
-// detachment it restores); a subtree detached earlier keeps its old counter only as accounting,
-// and is not held by it.
-func heldNode(n *Node) bool {
-	if n == nil {
-		return false
-	}
-	if !childStorage(n).work.held() {
-		return false // n's binding: the tree's counter, or one lent to the state on it
-	}
-	if heldWalkHook != nil {
-		heldWalkHook()
-	}
-	g := governing(n)
-	if !g.suspendedState() {
-		g = nil
-	}
-	if capturedIn(g, n) {
-		return true // the waiting state captured it: its rollback restores it
-	}
-	root := n
-	for x := n; x != nil; x = x.parent {
-		if g != nil && (g.nodes[x] != 0 || g.detached[x] != 0) {
-			return true // a captured ancestor: its rollback restores the subtree's place
-		}
-		root = x
-	}
-	return root.tree != nil && root.tree.work.held()
-}
+// heldNode reports whether n is held by an operation waiting on user code: its binding (its
+// children's counter, or the state on it) is held. The hold is counter-wide, whatever n's
+// topology: a node detached from a held tree that still keeps its counter is held too (design 13,
+// "Suspension guard"). O(1).
+func heldNode(n *Node) bool { return n != nil && childStorage(n).work.held() }
 
-// capturedIn reports whether the state g (nil: none) captured anything an edit of n writes or a
-// rollback of g restores over it, in any of its capture maps: n itself (nodes, with its metas
-// and opaque data), its link record (owners, links), a detached root (detached), its children's
-// set (siblings, works), and the set n is in with its index records, chains and dirty orders
-// (siblings, works, records, chains, pending, dirty). TestS4CapturedDetachedNodeIsHeld covers
-// each kind.
-func capturedIn(g *hashTransaction, n *Node) bool {
-	if g == nil {
-		return false
-	}
-	if g.nodes[n] != 0 || g.owners[n] != 0 || g.detached[n] != 0 || n.links != nil && g.links[n.links] != 0 {
-		return true
-	}
-	if s := childStorage(n); g.siblings[s] != 0 || g.works[s] != 0 {
-		return true
-	}
-	if n.detachedRB != nil && g.pending[n.detachedRB] != 0 {
-		return true
-	}
-	for _, c := range n.carriedRB {
-		if g.pending[c.order] != 0 {
-			return true
-		}
-	}
-	var in *siblings
-	switch {
-	case n.parent != nil:
-		in = childStorage(n.parent)
-	case n.tree != nil:
-		in = &n.tree.top
-	default:
-		return false
-	}
-	if g.siblings[in] != 0 || g.works[in] != 0 {
-		return true
-	}
-	for _, r := range [2]*record{in.exactByNode[n], in.leaderByNode[n]} {
-		if r != nil && (g.records[r] != 0 || r.chain != nil && g.chains[r.chain] != 0) {
-			return true
-		}
-	}
-	for _, d := range in.pending {
-		if dn := d.nodes[n]; dn != nil && (g.pending[d] != 0 || g.dirty[dn] != 0) {
-			return true
-		}
-	}
-	return false
-}
-
-// heldWalkHook, nil outside tests, observes heldNode's root walks (the common path must not walk).
-var heldWalkHook func()
-
-// heldSet reports whether the sibling set s is held: as its first member is (a set and its
-// members share their root). An empty set has no member to place it: it is held only when the
-// waiting state captured it; otherwise its held binding may be one a subtree detached earlier
-// retains, and user code reaches an empty set of the held tree only through that tree's entries
-// (refused) or by moving a node of it out of a non-empty set (refused there).
-func heldSet(s *siblings) bool {
-	if s == nil || !s.work.held() {
-		return false
-	}
-	if s.len() == 0 {
-		g := s.journal()
-		return g.suspendedState() && (g.siblings[s] != 0 || g.works[s] != 0) // captured, though empty
-	}
-	return heldNode(s.At(0))
-}
+// heldSet reports whether the sibling set s is held: its binding is, empty or not.
+func heldSet(s *siblings) bool { return s != nil && s.work.held() }
 
 // userErr is an error returned by user code, classified while its state was still suspended.
 // It has no Unwrap or As: internal code (journal.fail, parse cleanup, diffDone) reaches only

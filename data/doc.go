@@ -50,4 +50,13 @@
 // Leafref link records (yang.Options.LeafrefLinking) join the trees whose nodes they link: once
 // trees are linked, a mutation of any of them needs exclusive access to all of them, and a read
 // of one must not run with a mutation of another (design 07 §6.1).
+//
+// User code an operation calls while it runs (an ApplyDiff or MergeDiff callback, the Reader of
+// ParseOp with a Request, the methods of a context and of the errors they return) may read
+// anything, but it cannot change what the operation holds: the trees the operation works on, and
+// every node that still keeps one of their work counters, including nodes detached from such a
+// tree before the operation began. Such a change is refused with an LY_EINVAL *ValidationError
+// ("Object owned by an operation in progress.") and changes nothing; make it after the
+// operation returns. Trees the operation does not hold, and their nodes, attached or detached,
+// can be changed (design 13, "Suspension guard"; D-0148).
 package data

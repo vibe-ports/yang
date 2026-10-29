@@ -138,7 +138,7 @@ func (n *Node) FindMeta(name string) (*Meta, error) {
 // flags of n and its parents are kept.
 func (t *Tree) NewMeta(n *Node, name, value string) (_ *Meta, err error) {
 	defer normalizeRefusal(t.context(), &err, nil) // the guard's refusal in its one public form, after the journal ended
-	if t.work.inProgress() {                       // an operation in progress governs t: refused before its counter is used
+	if t.work.inProgress() || heldNode(n) {        // t, or a node argument, is held by an operation waiting on user code: refused before any counter is used
 		return nil, refusedEntry(t.context())
 	}
 	set := t.context()

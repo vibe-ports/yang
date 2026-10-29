@@ -96,33 +96,33 @@ public ctx-taking entry: at each of its polls on a small fixture the context's E
 SetValue, Remove and Unlink of the root, NewTerm, Insert, Merge and NewPath into the held tree;
 each is refused in the public form and the result equals a benign run's.
 
-A held counter places, it does not own: a subtree detached earlier retains its old counter for
-accounting only. `heldNode` is O(1) while its node's own binding is not held, and only then walks
-to the root once: the node is held if it is in the held tree, or if the waiting state captured it
-(an in-flight detachment that state restores). "Captured" means any capture map of the state,
-through one predicate (`capturedIn`): the node itself with its metas and opaque data, its link
-record (`owners`, `links`), a detached root or captured ancestor, its children's set, and the set
-it is in with that set's records, chains and dirty orders. Capturing a link owner of a detached
-tree enrolls that tree's counter, so the O(1) check sees the hold, and rebinding the ancestors of
-a captured node to another tree is refused at its set (TestS4CapturedDetachedNodeIsHeld,
-TestS4CapturedLinkOwnerIsHeld). An empty set has no member to place it and is held only when the
-state captured it: otherwise user code reaches an empty set of the held tree only through that
-tree's entries or by moving a node out of a non-empty set of it, both refused. A binding that
-names a suspended state that did not capture the node is stale. Every decision that reads a
-binding to settle ownership, enrollment, capture or lending resolves it through one function,
-`siblings.owner` (and `ownerOf` for a node's own fields): the bound journal, or none when that
-binding is stale. Node.touch, siblings.touch, narrow, rebind, joinLinkJournal, captureOwner,
-enroll, capturer and indexJournaled all go through it; the begin functions read only the
-receiving tree's own counter. A set enroll finds stale is bound to the enrolling state's
-temporary counter for its duration and gets its previous binding back at end, so an operation
-started from user code (a ParseOp on a request detached from the waiting tree) holds what it
-captured (TestS4DetachedNodeNotHeldByItsOldTree, TestS4EmptyDetachedInnerNotHeld,
-TestS4HeldCheckIsConstantOnTheCommonPath, TestS4NestedParseOpOnStaleRequest, and the nesting
-matrix TestS4NestedOperationsHoldTheirOwn). The diff given to
-ApplyDiff and the source of MergeDiff are not held: they are read-only arguments, possibly shared
-by concurrent operations (doc.go), and changing one during the operation is a caller contract
-violation, as in libyang (TestS4SharedDiffSourceIsNotHeld runs concurrent applies and merges of
-one diff under -race).
+The hold is **counter-wide** (v0.5.0): suspension holds a work counter and every mutable object
+bound to it, whatever its current topology. A node or set is held exactly when its binding is
+(`heldNode`, `heldSet`: O(1), empty sets included); there is no placement by root, no capture
+lookup, and no "stale binding" exception. A node detached from a tree before an operation on that
+tree still keeps the tree's counter, so while the operation waits on user code it is refused like
+the tree itself. This is a deliberate restriction, justified by the Go recovery contract rather
+than by libyang (whose v5.8.6 callback takes a mutable node): every recovery capture must be
+discoverable from its recovery state before user code runs, and a binding cannot be discarded to
+make an edit permissible. Callers defer such edits until the operation returns; nodes of other
+trees, and of no tree's counter, stay editable (TestS4DetachedNodeHeldByItsOldTree,
+TestS4EmptyDetachedInnerHeldByItsOldTree, TestS4Lifecycle).
+
+Enrollment and lending go through one rule, `adopt`: a counter already in this state is
+idempotent; an unowned counter is lent to it until end; a held counter, or one another running
+state owns, refuses: no state accepts another's objects as its own. enroll (the capture of a
+detached parent, of a ParseOp request, of a link owner), rebind, joinLinkJournal and joint
+transactions all use it; a counterless detached set still gets the state's temporary counter until
+end. A public entry refuses a held node argument (a parent, a moved node, an annotated node) before
+it opens any counter's accounting scope. So a ParseOp on a request detached from a waiting tree
+refuses before it reads, and one on a request whose counter is free enrolls it and its Reader meets
+ParseOp's own hold (TestS4NestedParseOpOnStaleRequest, the nesting matrix
+TestS4NestedOperationsHoldTheirOwn, TestS4CapturedLinkOwnerIsHeld,
+TestS4CapturedDetachedNodeIsHeld, TestS4SavepointRollbackKeepsTheHold). The diff given to
+ApplyDiff and the source of MergeDiff are read-only arguments, possibly shared by concurrent
+operations (doc.go): they are not enrolled and nothing is written to them, and changing one
+during the operation is a caller contract violation (TestS4SharedDiffSourceIsNotHeld runs
+concurrent applies and merges of one diff under -race).
 
 User code runs during a mutation only in the diff callbacks, the Reader of a ParseOp with a
 parent, and the methods of a context (and of the errors they all return). Around each the
