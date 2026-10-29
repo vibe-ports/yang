@@ -345,13 +345,21 @@ func (t *Tree) insertAfter(sibling, n *Node) (err error) {
 }
 
 // journaledRelocation reports whether a relocation from src into dst rolls back through a
-// journal (relocation): inside a running state, or when a set keeps an ordered index.
+// journal (relocation): inside a running state, or when a set keeps an ordered index. A move
+// within one set of t that the running state's current level holds whole already rolls forward
+// instead (design 14, step 6): a level of its own would capture the set afresh, so N moves in one
+// operation (an ApplyDiff of N moves) copied the set N times. Its forward recovery is reserved
+// like an unjournaled one, and the state still restores a budget or guard refusal.
 func (t *Tree) journaledRelocation(src, dst *siblings) bool {
-	return t.work.journal != nil || src.order != nil || dst.order != nil
+	if j := t.work.journal; j != nil {
+		return src != dst || src.work != &t.work || !captured(j, j.siblings, src)
+	}
+	return src.order != nil || dst.order != nil
 }
 
 // relocation opens the recovery scope of a one-node relocation of n into dst, right before the
-// unlink (design 13 §2.1, §3.4): a level of the running state, or, when no owner has one and a
+// unlink (design 13 §2.1, §3.4): a level of the running state (none for a move within a set the
+// state's current level holds: journaledRelocation), or, when no owner has one and a
 // set involved keeps an ordered index (the only place a node has a handle), an
 // operation-local transaction that first captures both sets whole (charged, before any write).
 // finish rolls the scope back on any failure, which revives n's source handle and position, and

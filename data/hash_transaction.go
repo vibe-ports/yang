@@ -979,7 +979,9 @@ func (j *hashTransaction) captureOrder(d *dirtyOrder) error {
 // (index changes update their hashes and RB-tree state), not their children. Its storage and
 // ordered index journal entry by entry from here on (bindStore).
 // ponytail: the compatibility records and node structs are copied whole, O(the set's size) on the
-// first change; per-entry compat journaling (#240 step 6) makes a change in a huge set O(1).
+// first change of each level that changes it. A relocation within a set its state's current level
+// holds opens no level of its own (journaledRelocation, design 14 step 6), so repeated moves copy
+// the set once; per-entry compat journaling would make a level's first change in a huge set O(1).
 // captureHook observes every whole sibling-set capture (tests only; nil otherwise).
 var captureHook func(*siblings)
 
