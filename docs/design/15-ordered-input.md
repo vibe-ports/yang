@@ -119,7 +119,7 @@ write takes the code path it took before (the counted-work and scaling tests are
 
 ## Evidence
 
-- Oracle fixtures `protocol-v2/ordered-*` (44; `ordered-split-list-merge-destruct` is unsupported,
+- Oracle fixtures `protocol-v2/ordered-*` (45; `ordered-split-list-merge-destruct` is unsupported,
 U-0113) cover:
   - parse order, JSON and XML;
   - the XML opaque anchor;
@@ -142,6 +142,7 @@ U-0113) cover:
     alone leader unlinked and re-inserted; sorted insertions into a split run across the table
     threshold; a local insertion whose first sibling is opaque while the first schema node is
     foreign.
+  - a Merge into a list run split by a schema node.
   The `seq/trim-*` and `ops/opidx-split-run-leader-switch` fixtures, which parse ordered, now run.
   The request-differential `ordered-input` class runs against the live oracle.
 - Go: `TestSequenceKindModel` (opidx), `TestSiblingFacadeInterleavedModel`,
@@ -151,6 +152,8 @@ U-0113) cover:
   trees, with and without a table, refused at every charge boundary). The storage invariant also
   checks the kinds, the kind threads and the document-order run gaps. `TestAloneLeaderUnlink` compares single and batch
   unlink and reinsertion, and `TestForeignFirstSchemaHashed` covers the physical first sibling's context.
+  `TestForwardMetadataScaling` and `TestForwardMetadataCancel` cover the metadata index, and
+  `TestSchemaSplitMergeUnbatched` covers a Merge after an insertion into a split run.
 
 ## Sweep of sibling reads (gate rounds 3 and 4)
 
@@ -170,12 +173,16 @@ Read in document order (fixed):
   - JSON metadata selects its target among schema and opaque matches in document order
     (`parseAttribute`);
   - JSON metadata before the data numbers schema and opaque matches together
-    (`metadataFinish`);
+    (`metadataFinish`). The siblings are indexed once in document order. That pass is charged
+    to the parse's enforced budget and polls its context;
   - `LYD_CTX(first_sibling)` and `LYD_CTX(siblings)` read the physical first sibling, which may
     be opaque (`crossContextInsertPos`, `unorderedAnchor`, the foreign branches of
     `lyd_find_sibling_first`);
   - the cross-context table probe returns the bucket's first record (`leaderFirstMixed`);
   - `runBounds` cuts a gap-free operation or unordered run at its piece;
+- round 5: Merge does not batch copies into a run that has several pieces, even when the
+  pieces are split by schema nodes only (`sortedRunBatchable`, the run's gaps). An insertion
+  can move a piece's first-instance record, and the next copy then selects its leader again;
 - earlier rounds: run bounds and walks (`runPiece`, `runPieceStart`), first-instance records and
   index gaps (`docNeighbours`, `opaqueSplit`), lookups (`linearBound`, `foreignScan`),
   predicates, the printers' sibling lists and every `lyd_first_sibling` read (`docSpan`, `all`).

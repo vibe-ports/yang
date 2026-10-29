@@ -801,3 +801,122 @@ func TestForeignFirstSchemaHashed(t *testing.T) {
 		t.Fatalf("after the insertion: %v", got)
 	}
 }
+
+// forwardMetaInput is an interleaved level with n metadata containers ahead of their opaque
+// targets (the first n) and, after the data, m more opaque siblings that no container names.
+func forwardMetaInput(n, m int, before bool) string {
+	var b strings.Builder
+	b.WriteString(`{"m:c":{"zz":"u","a":"x"`)
+	meta := func() {
+		for i := range n {
+			fmt.Fprintf(&b, `,"@o%d":{"m:q":"1"}`, i)
+		}
+	}
+	if before {
+		meta()
+	}
+	for i := range n + m {
+		fmt.Fprintf(&b, `,"o%d":"v"`, i)
+	}
+	if !before {
+		meta()
+	}
+	b.WriteString(`}}`)
+	return b.String()
+}
+
+// TestForwardMetadataScaling: lydjson_metadata_finish's document-order matching (design 15)
+// indexes the siblings once, so the work per forward metadata container stays flat as their
+// number grows; the walk is charged to the parse's enforced budget.
+func TestForwardMetadataScaling(t *testing.T) {
+	set := opIndexSet(t, orderedSchema)
+	work := func(n int) float64 {
+		var tr *Tree
+		if _, err := parseOrdered(t, set, false, forwardMetaInput(n, 0, true), func(lc *lydCtx) { tr = lc.tree }); err != nil {
+			t.Fatal(err)
+		}
+		var c *Node
+		for c = range tr.Top() {
+			break
+		}
+		for o := range c.Children() {
+			if o.schema == nil && o.Name() != "zz" && len(o.Attrs()) != 1 {
+				t.Fatalf("%s: attributes %v", o.Name(), o.Attrs())
+			}
+		}
+		return float64(tr.work.Load()+int64(tr.work.hashUsed)) / float64(n) //nolint:gosec // small counts
+	}
+	small, large := work(256), work(2048)
+	if large > 2*small {
+		t.Fatalf("work per container: %.1f at 256, %.1f at 2048", small, large)
+	}
+	// refused when the enforced budget is short, with every limit
+	_, err := parseOrdered(t, set, false, forwardMetaInput(64, 0, true), func(lc *lydCtx) { lc.tree.work.hashLimit = 1 })
+	if !errors.Is(err, yang.ErrBudget) {
+		t.Fatalf("budget: %v", err)
+	}
+}
+
+// TestForwardMetadataCancel: the document-order index polls the parse's context, and a parse
+// cancelled at any check, that one included, leaves a consistent tree.
+func TestForwardMetadataCancel(t *testing.T) {
+	set := opIndexSet(t, orderedSchema)
+	polls := func(before bool, m int) (total int) {
+		ctx := &cancelAtContext{Context: context.Background()}
+		o := parseOpts{ParseOptions: ParseOptions{Unknown: Opaque, ParseOnly: true, Ordered: true}, ordered: true}
+		if _, _, err := parseWith(ctx, strings.NewReader(forwardMetaInput(4, m, before)), set, o, parseJSON, nil); err != nil {
+			t.Fatal(err)
+		}
+		return ctx.calls
+	}
+	// 3000 more siblings: the index polls about every 1k of them on top of the parse's own checks
+	if forward, after := polls(true, 3000)-polls(true, 0), polls(false, 3000)-polls(false, 0); forward < after+2 {
+		t.Fatalf("the metadata index does not poll: %d more checks, %d without forward metadata", forward, after)
+	}
+	eachCancelPoint(t, func(ctx *cancelAtContext) {
+		var tr *Tree
+		o := parseOpts{ParseOptions: ParseOptions{Unknown: Opaque, ParseOnly: true, Ordered: true}, ordered: true}
+		_, _, err := parseWith(ctx, strings.NewReader(forwardMetaInput(4, 3000, true)), set, o, parseJSON, func(lc *lydCtx) { tr = lc.tree })
+		if err != nil && !errors.Is(err, context.Canceled) {
+			t.Fatalf("cancel at %d: %v", ctx.at, err)
+		}
+		opidxAssertTreeInvariant(t, tr)
+	})
+}
+
+// TestSchemaSplitMergeUnbatched: Merge into a list run that another schema node splits looks each
+// new instance's leader up again (lyd_insert_node): k0 takes over the first piece's record, so
+// k5 joins the piece after b. The copies are not batched into the first piece's RB tree
+// (oracle, with the source in input order: protocol-v2/ordered-schema-split-merge-into).
+func TestSchemaSplitMergeUnbatched(t *testing.T) {
+	set := ordered2Set(t)
+	tr, err := parseOrdered(t, set, false, `{"pv2-ordered2:c":{"a":"x","l":[{"k":"k2"},{"k":"k4"}],"b":"y","l":[{"k":"k6"}],"c":"z"}}`, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, in := range []string{`{"pv2-ordered2:c":{"l":[{"k":"k3"}]}}`, `{"pv2-ordered2:c":{"l":[{"k":"k0"},{"k":"k5"}]}}`} {
+		src, _, err := parseJSONString(set, in, Reject, false)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := tr.Merge(src); err != nil {
+			t.Fatal(err)
+		}
+	}
+	opidxAssertTreeInvariant(t, tr)
+	var c *Node
+	for c = range tr.Top() {
+		break
+	}
+	var got []string
+	for n := range c.Children() {
+		if n.Name() == "l" {
+			got = append(got, "l="+n.kids.At(0).Value())
+		} else {
+			got = append(got, n.Name())
+		}
+	}
+	if want := []string{"a", "l=k0", "l=k2", "l=k3", "l=k4", "b", "l=k5", "l=k6", "c"}; !slices.Equal(got, want) {
+		t.Fatalf("%v, want %v", got, want)
+	}
+}

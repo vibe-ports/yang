@@ -1,0 +1,17 @@
+# lyd_merge_siblings without LYD_MERGE_DESTRUCT into a list run that another schema node splits (ordered input): the first new instance (k3, the source keeps its input order) builds the first piece's RB tree, the next one (k0) takes over that piece's first-instance record, so the last one's lookup (lyd_insert_node) may select the other piece; the copies are not batched into one tree
+fixtures:
+  - id: protocol-v2/ordered-schema-split-merge-into
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#7.5.7"]
+    areas: [codecs]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      context_options: ["no_yanglibrary"]
+      modules: [{name: "pv2-ordered2"}]
+      steps:
+        - {do: parse, format: json, data_type: get, parse_options: [ordered], data: '{"pv2-ordered2:c": {"l": [{"k": "k3"}, {"k": "k0"}, {"k": "k5"}]}}'}
+        - {do: edit, merge_into: '{"pv2-ordered2:c": {"a": "x", "l": [{"k": "k2"}, {"k": "k4"}], "b": "y", "l": [{"k": "k6"}], "c": "z"}}', format: json, data_type: get, parse_options: [ordered]}
+        - {do: dump}
+    golden: golden/ordered-schema-split-merge-into.json

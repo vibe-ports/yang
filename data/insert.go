@@ -1287,6 +1287,17 @@ func (t *Tree) sortedRunBatchable(sib *siblings, n *Node) bool {
 		// may change the record the next selects (design 15)
 		return false
 	}
+	if sib.schemaUnordered || opChild(n.schema) {
+		// a run split by another schema node (ordered input, copies) has several pieces: an
+		// insertion before a piece's first instance moves its record, and the next copy's
+		// lookup may select another piece
+		if sib.order == nil {
+			return false
+		}
+		if d := sib.order.entries[n.schema]; d == nil || d.gaps != 0 {
+			return false
+		}
+	}
 	_, rb, unsorted := t.sortedLeader(sib, n)
 	return rb && !unsorted
 }

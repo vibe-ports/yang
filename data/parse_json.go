@@ -414,11 +414,8 @@ func (p *jsonParser) metadataFinish(parent *Node) (result error) {
 	}
 	runs := map[*schema.Node]siblingSpan{} // the instances of a schema node in sibling order
 	firstList := map[string]int{}          // index of the first list-hinted opaque node of a name, -1: none
-	type docMatch struct {
-		nodes []*Node // schema and opaque matches in document order
-		list  int     // index of the first list-hinted opaque match, -1: none
-	}
-	docMatches := map[string]docMatch{} // interleaved sets, by container name
+	docMatches := map[string]docMatch{}    // interleaved sets, by container name
+	var docIndex metaDocIndex
 	var done []*Node
 	// libyang frees each one when it is attached; none of them is a target of another (their
 	// names start with '@'), except for a "@@name" member
@@ -450,16 +447,9 @@ func (p *jsonParser) metadataFinish(parent *Node) (result error) {
 			// and opaque matches together (design 15)
 			mx, ok := docMatches[at.opaq.Name]
 			if !ok {
-				mx = docMatch{list: -1}
-				for _, c := range sib.docSpan().All() {
-					lc.tree.work.Add(1)
-					if c.schema != nil && (sn == nil || c.schema != sn) || c.schema == nil && c.opaq.Name != at.opaq.Name[1:] {
-						continue
-					}
-					if c.schema == nil && c.opaq.Hints&hintList != 0 && mx.list < 0 {
-						mx.list = len(mx.nodes)
-					}
-					mx.nodes = append(mx.nodes, c)
+				var err error
+				if mx, err = docIndex.match(lc, sib, sn, at.opaq.Name[1:]); err != nil {
+					return err
 				}
 				docMatches[at.opaq.Name] = mx
 			}
@@ -539,6 +529,68 @@ func (p *jsonParser) metadataFinish(parent *Node) (result error) {
 		done = append(done, at)
 	}
 	return rc
+}
+
+// docMatch is the data siblings a metadata container name couples with in an interleaved set.
+type docMatch struct {
+	nodes []*Node // schema and opaque matches in document order
+	list  int     // index of the first list-hinted opaque match, -1: none
+}
+
+type docEntry struct {
+	n  *Node
+	at int // document position
+}
+
+// metaDocIndex is lydjson_metadata_finish's sibling walk for an interleaved set, built once: the
+// schema instances and the opaque nodes by name, each in document order. A container's matches
+// merge one schema list with one name list, each list merged for at most the two spellings of
+// its name, so numbering every container stays linear in the siblings.
+type metaDocIndex struct {
+	bySchema map[*schema.Node][]docEntry
+	byName   map[string][]docEntry
+}
+
+func (x *metaDocIndex) match(lc *lydCtx, sib *siblings, sn *schema.Node, name string) (docMatch, error) {
+	w := &lc.tree.work
+	if x.bySchema == nil {
+		x.bySchema, x.byName = map[*schema.Node][]docEntry{}, map[string][]docEntry{}
+		for i, c := range sib.docSpan().All() {
+			if err := w.chargeHash(1); err != nil {
+				return docMatch{}, err
+			}
+			if i%1024 == 1023 {
+				if err := poll(lc.ctx); err != nil {
+					return docMatch{}, err
+				}
+			}
+			if c.schema != nil {
+				x.bySchema[c.schema] = append(x.bySchema[c.schema], docEntry{c, i})
+			} else {
+				x.byName[c.opaq.Name] = append(x.byName[c.opaq.Name], docEntry{c, i})
+			}
+		}
+	}
+	var a []docEntry
+	if sn != nil {
+		a = x.bySchema[sn]
+	}
+	b := x.byName[name]
+	if err := w.chargeHash(uint64(len(a)+len(b)) + 1); err != nil {
+		return docMatch{}, err
+	}
+	mx := docMatch{nodes: make([]*Node, 0, len(a)+len(b)), list: -1}
+	for len(a) > 0 || len(b) > 0 {
+		if len(b) == 0 || len(a) > 0 && a[0].at < b[0].at {
+			mx.nodes, a = append(mx.nodes, a[0].n), a[1:]
+			continue
+		}
+		if b[0].n.opaq.Hints&hintList != 0 && mx.list < 0 {
+			mx.list = len(mx.nodes)
+		}
+		mx.nodes, b = append(mx.nodes, b[0].n), b[1:]
+	}
+	return mx, nil
 }
 
 // attachMeta turns the members of the opaque metadata container at into metadata of n.
