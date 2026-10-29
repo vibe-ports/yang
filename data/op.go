@@ -195,15 +195,18 @@ func (t *Tree) ValidateOp(ctx context.Context, typ OpType, o ValidateOpOptions) 
 	if first == nil {
 		return fail(argErr("op_tree", "lyd_validate_op"))
 	}
-	journal := beginHashTransaction(t)
-	var dependency *hashTransaction
+	// one recovery state over both trees (design 13 §3.2): the operation's, the dependency's
+	// counter lent to it
 	if o.Operational != nil {
-		dependency = beginHashTransaction(o.Operational)
+		defer o.Operational.work.beginHashWork()()
+	}
+	journal, err := beginJointTransaction(t, o.Operational)
+	if err != nil {
+		journal.end(&err)
+		return nil, err
 	}
 	diags, err := validateOp(ctx, t.context(), first, o.Operational, vt, o.Budget)
-	// a failed journal charge of either tree fails the operation, and both roll back
-	journal.fail(&err)
-	dependency.end(&err)
+	// a failed journal charge fails the operation, and both trees roll back
 	journal.end(&err)
 	return diags, err
 }

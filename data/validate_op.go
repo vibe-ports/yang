@@ -95,14 +95,18 @@ func (l *logger) finish(err error) error {
 // operation stays detached). Implicit nodes count against b.MaxNodes, as for Validate.
 func validateOpNode(ctx context.Context, set *schema.Set, opNode *Node, dep *Tree, oo opOpts, b Budget) (_ []yang.Diagnostic, err error) {
 	opTree := opNode.treeOf() // nil: a detached operation
-	// A budget failure leaves the moved subtree for the journals of both trees to restore
-	// (restore below). ValidateOp opens them; any other caller gets its own here.
-	for _, owner := range []*Tree{opTree, dep} {
-		if owner != nil {
-			if j := beginHashTransaction(owner); j != nil {
-				defer j.end(&err)
-			}
-		}
+	// A budget failure leaves the moved subtree for the one state over both trees to restore
+	// (restore below). ValidateOp opens it; any other caller gets its own here.
+	if opTree != nil {
+		defer opTree.work.beginHashWork()()
+	}
+	if dep != nil {
+		defer dep.work.beginHashWork()()
+	}
+	j, err := beginJointTransaction(opTree, dep)
+	defer j.end(&err)
+	if err != nil {
+		return nil, err
 	}
 	t := dep
 	if t == nil {

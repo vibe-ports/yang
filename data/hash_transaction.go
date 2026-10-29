@@ -245,6 +245,40 @@ func beginHashTransaction(t *Tree) *hashTransaction {
 	return j
 }
 
+// beginJointTransaction opens one recovery state for an operation over several trees (design
+// 13 §3.2, ValidateOp): on the first tree, the others' counters lent to it as moveNodes does.
+// The caller ends the returned transaction (nil inside an enclosing state, which then lends the
+// other trees); a tree whose state waits on user code refuses.
+func beginJointTransaction(trees ...*Tree) (*hashTransaction, error) {
+	var j *hashTransaction
+	var running *hashTransaction
+	for _, t := range trees {
+		if t == nil {
+			continue
+		}
+		if running == nil {
+			j = beginHashTransaction(t)
+			if j != nil && j.refusing {
+				return j, j.err
+			}
+			running = t.work.journal
+			continue
+		}
+		switch w := &t.work; {
+		case w.journal == running:
+		case w.journal.suspendedState():
+			return j, errInProgress
+		case w.journal == nil:
+			if err := running.charge(1); err != nil {
+				return j, err
+			}
+			w.journal = running
+			running.lent = append(running.lent, w)
+		}
+	}
+	return j, nil
+}
+
 // beginNarrowTransaction starts NewPath's journal (nil inside an enclosing transaction, as
 // beginHashTransaction). The schema-derived caches t.rank and t.orders keep their identity: an
 // entry they gain is the same for any later call, so nothing is copied up front.

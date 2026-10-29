@@ -301,3 +301,40 @@ func TestS4GuardNesting(t *testing.T) {
 		t.Fatalf("ApplyDiff: %v, depth after %v", err, j)
 	}
 }
+
+// TestS4GuardMergeDiffCallback is G1's MergeDiff variant: a MergeDiff callback that moves the
+// diff's top level into another tree is refused with both trees unchanged; each tree is then
+// mutated independently.
+func TestS4GuardMergeDiffCallback(t *testing.T) {
+	set := reviewDiffSet(t, s4JournalModule)
+	d1, err := Diff(s4DataTree(t, set, "3", "7"), s4DataTree(t, set, "3", "9"), DiffOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	d2, err := Diff(s4DataTree(t, set, "3", "9"), s4DataTree(t, set, "3", "9", "11"), DiffOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	other := newTree(set)
+	refused := false
+	err = d1.MergeDiff(d2, MergeDiffOptions{Callback: func(_, _ *Node) error {
+		if refused {
+			return nil
+		}
+		snapD, snapO := snapshotHashBudgetTree(d1), snapshotHashBudgetTree(other)
+		refused = s4Refused(other.Insert(nil, d1.top.first()))
+		if !reflect.DeepEqual(snapshotHashBudgetTree(d1), snapD) || !reflect.DeepEqual(snapshotHashBudgetTree(other), snapO) {
+			t.Error("the refused move changed a tree")
+		}
+		return nil
+	}})
+	if err != nil || !refused {
+		t.Fatalf("MergeDiff: %v, refused %t", err, refused)
+	}
+	if _, err := other.NewTerm(nil, "s4j:t", "y", NewOptions{}); err != nil {
+		t.Fatal(err)
+	}
+	if d1.work.journal != nil || other.work.journal != nil {
+		t.Fatal("a state outlived MergeDiff")
+	}
+}

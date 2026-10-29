@@ -3,6 +3,7 @@
 package data
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"reflect"
@@ -418,4 +419,48 @@ func TestS4RefusedLocalMoveRevivesHandle(t *testing.T) {
 		t.Fatal("no limit refused the move")
 	}
 	_ = src
+}
+
+// TestS4ValidateOpOneState is G1's ValidateOp history: one recovery state over the operation's
+// tree and the dependency, whichever is touched first (design 13 §3.2). Every capture during the
+// operation sees both trees on the same state; the every-limit refusals of op/validate in
+// TestS4JournalRefusalHistories restore both.
+func TestS4ValidateOpOneState(t *testing.T) {
+	set := reviewDiffSet(t, s4JournalModule)
+	for _, depFirst := range []bool{false, true} {
+		req, _ := s4OpTree(t, set, "5", "1", "9")
+		oper := s4DataTree(t, set, "3", "7", "11", "15", "19")
+		captures, split := 0, 0
+		captureHook = func(*siblings) {
+			captures++
+			if req.work.journal == nil || req.work.journal != oper.work.journal {
+				split++
+			}
+		}
+		if depFirst { // the dependency's set touched before the operation's
+			done := oper.work.beginHashWork()
+			j, err := beginJointTransaction(oper, req)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := oper.top.touch(); err != nil {
+				t.Fatal(err)
+			}
+			if _, err := req.ValidateOp(context.Background(), OpRPC, ValidateOpOptions{Operational: oper}); err != nil {
+				t.Fatal(err)
+			}
+			j.end(nil)
+			done()
+		} else if _, err := req.ValidateOp(context.Background(), OpRPC, ValidateOpOptions{Operational: oper}); err != nil {
+			t.Fatal(err)
+		}
+		captureHook = nil
+		if captures == 0 || split != 0 {
+			t.Fatalf("depFirst=%t: %d captures, %d on split states", depFirst, captures, split)
+		}
+		if req.work.journal != nil || oper.work.journal != nil {
+			t.Fatal("a state outlived the operation")
+		}
+		s4Check(t, "validate", []*Tree{req, oper})
+	}
 }
