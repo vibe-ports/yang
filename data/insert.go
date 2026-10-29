@@ -25,8 +25,8 @@ type insertOrder uint8
 const (
 	// insertDefault keeps schema order and sorts system-ordered lists and leaf-lists by value.
 	insertDefault insertOrder = iota
-	// insertLast appends (LYD_PARSE_ORDERED input); a node that would break schema order is
-	// placed by schema instead, and schema nodes stay before opaque ones (see insertPos).
+	// insertLast appends after the last sibling, whatever it is (LYD_INSERT_NODE_LAST: ordered
+	// input, copied children; lastPos, design 15).
 	insertLast
 	// insertLastBySchema keeps schema order, the node after the instances of its schema node.
 	insertLastBySchema
@@ -280,16 +280,8 @@ func sortKeyProfile(w *workCounter, a, b *schema.Node) bool {
 	return result
 }
 
-// firstChild is lyd_node_inner.child: the first schema child, else the first opaque one.
-func firstChild(n *Node) *Node {
-	switch {
-	case n.kids.SchemaLen() != 0:
-		return n.kids.At(0)
-	case n.kids.OpaqueLen() != 0:
-		return n.kids.opaqueAt(0)
-	}
-	return nil
-}
+// firstChild is lyd_node_inner.child: the first child in document order.
+func firstChild(n *Node) *Node { return n.kids.docFirst() }
 
 func isTermNode(n *Node) bool {
 	return n != nil && n.schema != nil && (n.schema.Kind == schema.Leaf || n.schema.Kind == schema.LeafList)
@@ -373,12 +365,74 @@ func (t *Tree) upper(l siblingSpan, lo int, after func(*Node) bool) int {
 	return l.LowerBound(lo, l.Len(), func(n *Node) bool { t.work.Add(1); return after(n) })
 }
 
-// insertPos is where lyd_insert_node links the schema node n among sib.schemaSpan() (opaque nodes are
-// kept apart, always last).
+// insertPos is where lyd_insert_node links the schema node n among sib.schemaSpan() (opaque nodes
+// are logically after them) for insertDefault and insertLastBySchema; insertLast is lastPos.
 // Monotone siblings use binary searches. Copies may retain a different schema order, so their
-// anchors follow lyd_insert_get_next_anchor and their runs are found by schema identity.
-// insertLast still constrains LYD_PARSE_ORDERED input to schema order (D-0058).
+// anchors follow lyd_insert_get_next_anchor and their runs are found by schema identity. In an
+// interleaved set the physical anchor is set as sib's placement (interleavedPos).
 func (t *Tree) insertPos(sib *siblings, n *Node, order insertOrder) int {
+	t.sortedAt = false
+	at := t.schemaPos(sib, n, order)
+	if sib.st == nil || !sib.st.interleaved() {
+		return at
+	}
+	return t.interleavedPos(sib, n, at)
+}
+
+// interleavedPos places n physically in an interleaved set (design 15), at being its logical
+// position. A sorted insertion (lyds_link_data_node) goes right after its RB predecessor, else
+// before the leader (the logical default). lyd_insert_node_find_anchor uses the children table
+// only for a child of a schema parent in the table's context; otherwise its walk
+// (lyd_insert_get_next_anchor without hashes) stops at the first opaque sibling, which becomes
+// the anchor when it comes first, and n's logical position follows it.
+func (t *Tree) interleavedPos(sib *siblings, n *Node, at int) int {
+	if t.sortedAt {
+		if at > 0 && sib.At(at-1).schema == n.schema {
+			sib.setPlace(placement{mode: placeAfter, node: sib.At(at - 1), target: n})
+		}
+		return at
+	}
+	first := sib.docFirst()
+	if parent := first.parent; sib.ht != nil && parent != nil && parent.schema != nil && sameSet(ctxOf(first), ctxOf(n)) {
+		return at // the hash path: before the first instance of a following schema sibling
+	}
+	if before := sib.beforeOpaque(); at >= before { // the opaque node comes first
+		sib.setPlace(placement{mode: placeBefore, node: sib.st.seq.FirstKind(false).Value, target: n})
+		return before
+	}
+	return at
+}
+
+// lastPos is LYD_INSERT_NODE_LAST for the schema node n (lyd_insert_node_last, design 15):
+// appended after the last sibling, whatever it is, with no schema-order search and no RB-tree
+// insertion. The run it extends no longer has all its instances in its RB tree (markUnsorted,
+// visible: the whole link is reserved first). It returns n's logical position.
+func (t *Tree) lastPos(parent *Node, sib *siblings, n *Node) (int, error) {
+	at := sib.SchemaLen()
+	sib.setPlace(placement{mode: placeEnd, target: n})
+	amount, err := t.linkBound(parent, sib, n, at)
+	if err != nil {
+		return 0, err
+	}
+	if err := t.reserveHash(amount); err != nil {
+		return 0, err
+	}
+	if sortedSupported(n) && at > 0 && sib.At(at-1).schema == n.schema && sib.At(at-1).inRB {
+		leader := sib.At(at - 1)
+		for _, c := range sib.schemaSpan().Slice(0, at-1).Reverse() {
+			if c.schema != n.schema {
+				break
+			}
+			t.work.Add(1)
+			leader = c
+		}
+		markUnsorted(sib, leader)
+	}
+	return at, nil
+}
+
+// schemaPos is insertPos's logical position.
+func (t *Tree) schemaPos(sib *siblings, n *Node, order insertOrder) int {
 	if err := sib.touchLazy(); err != nil {
 		return 0
 	}
@@ -396,7 +450,7 @@ func (t *Tree) insertPos(sib *siblings, n *Node, order insertOrder) int {
 			return 0
 		}
 	}
-	if order != insertLast {
+	{
 		newCtx, firstCtx := ctxOf(n), ctxOf(l.At(0))
 		mixedHere := firstCtx != nil && firstCtx != newCtx || len(sib.contexts) > 1
 		foreignParent := l.At(0).parent != nil && ctxOf(l.At(0).parent) != nil && ctxOf(l.At(0).parent) != newCtx
@@ -441,9 +495,6 @@ func (t *Tree) insertPos(sib *siblings, n *Node, order insertOrder) int {
 	at := l.Len()
 	t.work.Add(1)
 	switch {
-	case opChild(n.schema) && order == insertLast:
-		// LYD_INSERT_NODE_LAST appends: an operation's children keep the order they are copied in
-		// (lyd_dup), however the anchor split them
 	case opChild(n.schema):
 		at = t.opAnchor(sib, n)
 	case sib.schemaUnordered:
@@ -792,6 +843,7 @@ func (t *Tree) rbAdd(d *dirtyOrder, n *Node, compare func(*Node, *Node) (int, bo
 // reserved before the run is reordered or the topology changes. It returns where link puts n;
 // false means a refused comparison (t.work.hashErr is set when the quota refused it).
 func (t *Tree) rbPos(sib *siblings, n *Node, lo, hi int, compare func(*Node, *Node) (int, bool)) (int, bool) {
+	t.sortedAt = true
 	// lyds_insert frees only the incoming first metadata slot: detachedRB when present,
 	// otherwise the first carried one. Both are dropped below, after every reservation, so a
 	// refused insertion leaves the (possibly detached, unjournaled) node unchanged.
@@ -1000,8 +1052,8 @@ func (t *Tree) linkBuildsIndex(parent *Node, sib *siblings, n *Node, at int) boo
 	case sib.order != nil:
 		return false
 	case n.schema == nil:
-		return isOp(schemaOf(parent))
-	case opChild(n.schema) || sib.schemaUnordered || t.mixedSwitch(sib, parent, n):
+		return isOp(schemaOf(parent)) || sib.schemaUnordered || sib.linkMixes(n, at)
+	case opChild(n.schema) || sib.schemaUnordered || t.mixedSwitch(sib, parent, n) || sib.linkMixes(n, at):
 		return true
 	}
 	at = min(max(at, 0), sib.SchemaLen())
@@ -1030,6 +1082,18 @@ func (s *siblings) opRebuild() {
 // split by the kept input ([before, v1, v2, in, v3]) keeps its anchor order
 // (TestParseOpDupKeepsOrder, ops/parse-json-reply-keep-order-split).
 func (t *Tree) runBounds(sib *siblings, n *Node) (lo, hi int) {
+	lo, hi = t.logicalRunBounds(sib, n)
+	if lo < hi && sib.st != nil && sib.st.interleaved() {
+		if lo >= sib.linearBound() {
+			return lo, lo // the run lies past the first opaque sibling: lyd_find_sibling_schema misses it
+		}
+		hi = sib.runPiece(lo, hi)
+	}
+	return lo, hi
+}
+
+// logicalRunBounds is runBounds over the schema nodes, opaque siblings disregarded.
+func (t *Tree) logicalRunBounds(sib *siblings, n *Node) (lo, hi int) {
 	l := sib.schemaSpan()
 	if !opChild(n.schema) && l.Len() > 0 && (len(sib.contexts) > 1 || !sameSet(ctxOf(l.At(0)), ctxOf(n))) {
 		// lyd_find_sibling_schema can match a system-ordered run from another
@@ -1183,8 +1247,13 @@ func (t *Tree) sortedRunBatchable(sib *siblings, n *Node) bool {
 	return rb && !unsorted
 }
 
-// runEnd stops at the first different schema, even when another run follows later.
+// runEnd stops at the first different schema, even when another run follows later, and at an
+// opaque sibling (runPiece).
 func (t *Tree) runEnd(sib *siblings, lo int) int {
+	return sib.runPiece(lo, t.logicalRunEnd(sib, lo))
+}
+
+func (t *Tree) logicalRunEnd(sib *siblings, lo int) int {
 	sn := sib.At(lo).schema
 	if sib.order != nil {
 		if d := sib.order.entries[sn]; d != nil && d.gaps == 0 {
@@ -1213,6 +1282,10 @@ func (t *Tree) retainedRunEnd(sib *siblings, lo int) int {
 	if lo < 0 || lo >= sib.SchemaLen() {
 		return lo
 	}
+	return sib.runPiece(lo, t.logicalRetainedRunEnd(sib, lo))
+}
+
+func (t *Tree) logicalRetainedRunEnd(sib *siblings, lo int) int {
 	leader := sib.At(lo)
 	group := leader.rbGroup
 	if selected := sib.rbGroups[leader]; selected != nil {
@@ -1748,8 +1821,15 @@ func (t *Tree) insertNode(parent, n *Node, order insertOrder) (err error) {
 	if err := t.preflightInsertPosition(sib, n, order); err != nil {
 		return err
 	}
-	at := -1 // opaque: appended to the opaque nodes
-	if n.schema != nil {
+	defer sib.clearPlace() // also when link is not reached
+
+	at := -1 // opaque: appended (lyd_insert_node_last)
+	switch {
+	case n.schema != nil && order == insertLast:
+		if at, err = t.lastPos(parent, sib, n); err != nil {
+			return err
+		}
+	case n.schema != nil:
 		at = t.insertPos(sib, n, order)
 	}
 	return t.link(parent, sib, n, at)
@@ -1989,6 +2069,7 @@ func (t *Tree) childrenOf(parent *Node) *siblings {
 // at is -1) under parent, and updates the children index and the default flags of the NP-container
 // ancestors.
 func (t *Tree) link(parent *Node, sib *siblings, n *Node, at int) error {
+	defer sib.clearPlace()
 	// A schema lookup performed while finding at may already have exhausted the
 	// operation quota. Do not publish this child after that failed preflight.
 	if t.work.hashErr != nil {
@@ -2065,6 +2146,11 @@ func (t *Tree) link(parent *Node, sib *siblings, n *Node, at int) error {
 		n.detachedRB, n.detachedGroup = nil, nil
 	}
 	hadHT := sib.ht != nil
+	if !sib.schemaUnordered && sib.linkMixes(n, at) {
+		// an interleaved set takes the anchor and first-instance lookups of unordered siblings,
+		// in which an opaque node ends a run (design 15)
+		t.markUnordered(sib)
+	}
 	switch {
 	case n.schema == nil && (at < 0 || at >= sib.OpaqueLen()):
 		at = sib.OpaqueLen()
@@ -2558,6 +2644,9 @@ func (t *Tree) rbPublish(parent *Node, sib *siblings, lo, hi int, group *rbGroup
 	usize := uint64(size)                                    //nolint:gosec // slice lengths are nonnegative
 	members := uint64(hi - lo + len(attach))                 //nolint:gosec // slice lengths are nonnegative
 	pub := addHashBound(8*members+8*uint64(len(d.nodes)), 8) // the run's republication and attach replay
+	if sib.st != nil {
+		pub = addHashBound(pub, 8*uint64(sib.extentGap(lo, hi))) //nolint:gosec // a count is nonnegative; the opaque nodes inside the run's extent (design 15)
+	}
 	sn := attach[0].schema
 	canTable := sib.ht == nil && parent != nil && parent.schema != nil && !isAny(parent.schema)
 	records := sib.firstRecordSchema(sn) && (sib.ht != nil || canTable)

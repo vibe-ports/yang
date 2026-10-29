@@ -252,7 +252,7 @@ func checkFindAgainstLinear(t *testing.T, tr *Tree) {
 	duplicates := map[string]bool{}
 	for _, root := range tr.top.nodes() {
 		for n := range root.All() {
-			if n.schema == nil {
+			if n.schema == nil || hiddenFromLookup(n) {
 				continue
 			}
 			path := lydPath(tr.set, n, false)
@@ -271,6 +271,17 @@ func checkFindAgainstLinear(t *testing.T, tr *Tree) {
 			t.Fatalf("Find(%q) = %p, %v; linear scan found %p", path, got, err, want)
 		}
 	}
+}
+
+// hiddenFromLookup reports whether n or an ancestor lies past the first opaque sibling of a set
+// without a children table, where lyd_find_sibling_schema's walk stops (design 15).
+func hiddenFromLookup(n *Node) bool {
+	for ; n != nil; n = n.parent {
+		if sib := n.siblingsOf(); sib != nil && n.schema != nil && sib.Index(n) >= sib.linearBound() {
+			return true
+		}
+	}
+	return false
 }
 
 // Every successful charge and preflight threshold is retried one unit below

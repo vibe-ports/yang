@@ -249,7 +249,7 @@ func fromNode(n *Node) []*Node {
 	if sib == nil {
 		return []*Node{n}
 	}
-	all := sib.CollectRange(0, sib.Len())
+	all := sib.docNodes()
 	return all[slices.Index(all, n):]
 }
 

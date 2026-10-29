@@ -535,15 +535,10 @@ type idxKey struct {
 	hash uint32
 }
 
+// all walks the set in document order (design 15).
 func (s *siblings) all() iter.Seq[*Node] {
 	return func(yield func(*Node) bool) {
-		for _, n := range s.SchemaAll() {
-			s.visit()
-			if !yield(n) {
-				return
-			}
-		}
-		for _, n := range s.opaqueAll() {
+		for _, n := range s.docSpan().All() {
 			s.visit()
 			if !yield(n) {
 				return
@@ -760,7 +755,7 @@ func indexAfterRemovedBound(list *Node, removed map[*Node]bool, work *workCounte
 
 // positionalChildren follows lyd_child/next along the storage threads, including an opaque
 // child exposed by internal key removal. Both the discriminator and comparison must see it.
-func positionalChildren(n *Node) spanCursor { return n.kids.span(0, n.kids.Len()).cursor() }
+func positionalChildren(n *Node) spanCursor { return n.kids.docSpan().cursor() }
 
 // writeKeyPosition encodes the schema and data gates of the positional comparison
 // (tree_data.c:1775-1778). Names, not pointers, permit probes from another context.
@@ -884,6 +879,9 @@ func (s *siblings) hashAdd(parent, n *Node) {
 // slot in its tree order. A node linked by another insertion path while the parser defers that
 // run is not in its RB tree; keep it in its physical slot so table construction sees it too.
 func (s *siblings) logical() siblingSpan {
+	if s.st != nil && s.st.interleaved() {
+		return s.logicalInterleaved()
+	}
 	if len(s.pending) == 0 && len(s.unattached) == 0 {
 		return s.schemaSpan()
 	}
@@ -912,6 +910,22 @@ func (s *siblings) logical() siblingSpan {
 		}
 		out = append(out, r.ordered[r.next])
 		r.next++
+	}
+	return spanOf(out)
+}
+
+// logicalInterleaved is logical() of an interleaved set (design 15): document order, its opaque
+// nodes included so that they end runs for the record builds (no parser run is deferred in such a
+// set: appendSorted).
+func (s *siblings) logicalInterleaved() siblingSpan {
+	out := make([]*Node, 0, s.Len())
+	for _, n := range s.docSpan().All() {
+		if s.work != nil {
+			s.work.Add(1)
+		}
+		if !s.unattached[n] {
+			out = append(out, n)
+		}
 	}
 	return spanOf(out)
 }
@@ -1451,20 +1465,29 @@ func (s *siblings) leaderInsert(n *Node, at int) {
 	if err := s.touchLazy(); err != nil {
 		return
 	}
-	if s.ht == nil || !s.firstRecordSchema(n.schema) || at < 0 || at >= s.SchemaLen() ||
-		at > 0 && s.At(at-1).schema == n.schema {
+	if s.ht == nil || !s.firstRecordSchema(n.schema) || at < 0 || at >= s.SchemaLen() {
+		return
+	}
+	prev, next := s.docNeighbours(n) // node->prev, node->next: an opaque sibling ends a run
+	if prev != nil && prev.schema == n.schema {
 		return
 	}
 	if err := s.touchWhole(); err != nil { // first-instance records are not narrow-aware
 		return
 	}
-	if at+1 < s.SchemaLen() && s.At(at+1).schema == n.schema {
-		if !s.leaderReplace(n.schema, s.At(at+1), n) {
+	if next != nil && next.schema == n.schema {
+		if !s.leaderReplace(n.schema, next, n) {
 			return
 		}
 		return
 	}
 	s.leaderAppend(n.schema, n)
+}
+
+// docNeighbours are the linked n's neighbours in document order, nil at an end.
+func (s *siblings) docNeighbours(n *Node) (prev, next *Node) {
+	h := s.handle(n)
+	return handleValue(s.st.seq.Prev(h)), handleValue(s.st.seq.Next(h))
 }
 
 // leaderInsertBetween is leaderInsert with already-known neighbours.
@@ -1531,13 +1554,7 @@ func (s *siblings) leaderUnlink(n *Node, at int, removing bool) {
 	if s.ht == nil || !s.firstRecordSchema(n.schema) || at < 0 || at >= s.SchemaLen() {
 		return
 	}
-	var prev, next *Node
-	if at > 0 {
-		prev = s.At(at - 1)
-	}
-	if at+1 < s.SchemaLen() {
-		next = s.At(at + 1)
-	}
+	prev, next := s.docNeighbours(n) // an opaque sibling ends a run (design 15)
 	s.leaderUnlinkBetween(n, prev, next, removing)
 }
 
@@ -1635,10 +1652,36 @@ func (t *Tree) schemaLookup(s *siblings, sn *schema.Node) *Node {
 	mixed := s.mixedContexts()
 	if (opChild(sn) || s.schemaUnordered) && !mixed &&
 		(s.SchemaLen() == 0 || sn.Module.Owner == nil || ctxOf(s.At(0)) == sn.Module.Owner) {
-		return t.schemaLookupOperation(s, sn)
+		n := t.schemaLookupOperation(s, sn)
+		if n != nil && s.linearBound() < s.SchemaLen() && s.orderPosition(n) >= s.linearBound() {
+			return nil // past the first opaque sibling (linearBound)
+		}
+		return n
 	}
 	_, n := t.schemaFind(s, sn)
 	return n
+}
+
+// linearBound is how many schema nodes lyd_find_sibling_schema can find: without a children
+// table its walk stops at the first opaque sibling (tree_data_common.c:1126-1131), which in an
+// interleaved set may precede schema nodes (design 15); all of them otherwise.
+func (s *siblings) linearBound() int {
+	if s.ht != nil {
+		return s.SchemaLen()
+	}
+	return s.beforeOpaque()
+}
+
+// beforeOpaque is the number of schema nodes before the first opaque sibling: all of them unless
+// the set is interleaved.
+func (s *siblings) beforeOpaque() int {
+	if s.st == nil || !s.st.interleaved() {
+		return s.SchemaLen()
+	}
+	h := s.st.seq.FirstKind(false)
+	at, _ := s.st.seq.Pos(h)
+	light, _ := s.st.seq.PosKind(h)
+	return at - light
 }
 
 // A diff create can leave sibling roots compiled in different contexts. The
@@ -1671,6 +1714,14 @@ func (t *Tree) schemaIndex(s *siblings, sn *schema.Node) int {
 // schemaFind is schemaIndex with the node found (nil: none), so a caller needs no second
 // positional read.
 func (t *Tree) schemaFind(s *siblings, sn *schema.Node) (int, *Node) {
+	at, n := t.schemaFindAll(s, sn)
+	if n != nil && at >= s.linearBound() {
+		return -1, nil // past the first opaque sibling (linearBound)
+	}
+	return at, n
+}
+
+func (t *Tree) schemaFindAll(s *siblings, sn *schema.Node) (int, *Node) {
 	if s.SchemaLen() == 0 {
 		return -1, nil
 	}

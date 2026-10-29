@@ -1682,7 +1682,7 @@ func (t *Tree) runSlot(sib *siblings, run []*Node, n *Node, k idxKey) int {
 		if b < 0 {
 			return 0 // none before n
 		}
-		fh, bh = sib.st.seq.Next(fh), sib.st.seq.Prev(bh)
+		fh, bh = sib.st.nextL(fh), sib.st.prevL(bh)
 		if i := member(fh.Value); i >= 0 {
 			return i
 		}
@@ -2044,7 +2044,16 @@ func (t *Tree) flushMerge(lv *mergeLevel) error {
 // opaqNext is lyd_find_sibling_opaq_next from the first opaque sibling: the first opaque node
 // named name.
 func opaqNext(s *siblings, name string) *Node {
-	return s.opaqueFirst(name)
+	if s.st == nil || !s.st.interleaved() {
+		return s.opaqueFirst(name)
+	}
+	for _, n := range s.opaqTail().All() { // only the trailing opaque nodes (design 15)
+		s.visit()
+		if n.opaq.Name == name {
+			return n
+		}
+	}
+	return nil
 }
 
 // dup is lyd_dup_single with LYD_DUP_RECURSIVE | LYD_DUP_WITH_FLAGS: an unlinked copy of n and

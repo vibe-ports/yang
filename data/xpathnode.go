@@ -113,7 +113,7 @@ func (x xn) LookupPrepared(prepared xpath.InstanceProbe) ([]xpath.Node, bool, er
 		if err != nil || mapped == nil || !compareSchemaEqual(mapped, p.node.schema, true) {
 			// LY_ENOTFOUND, then lyd_find_sibling_opaq_next. Not a decline: the
 			// evaluator's scan would match the unequal node by module and name.
-			for _, c := range sib.opaqueAll() {
+			for _, c := range sib.opaqTail().All() {
 				if err := p.work(1); err != nil {
 					return nil, false, err
 				}

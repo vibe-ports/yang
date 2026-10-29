@@ -42,13 +42,13 @@ func ownerModule(set *schema.Set, n *Node) *schema.Module {
 	return s.Module
 }
 
-// topList is the top level as libyang's sibling list: the schema nodes, then the opaque nodes.
+// topList is the top level as libyang's sibling list, in document order.
 func (vc *valCtx) topList() siblingSpan {
 	t := &vc.t.top
 	if t.OpaqueLen() == 0 {
 		return t.schemaSpan()
 	}
-	return spanOf(t.CollectRange(0, t.Len()))
+	return spanOf(t.docNodes())
 }
 
 // firstModuleSibling is lyd_first_module_sibling: the index of the first top-level node of mod,
@@ -411,12 +411,12 @@ func (vc *valCtx) setContainerDefault(p *Node) error {
 	return nil
 }
 
-// slicesOf is the sibling list of s as libyang links it: schema nodes, then opaque nodes.
+// slicesOf is the sibling list of s as libyang links it, in document order.
 func slicesOf(s *siblings) siblingSpan {
 	if s.OpaqueLen() == 0 {
 		return s.schemaSpan()
 	}
-	return spanOf(s.CollectRange(0, s.Len()))
+	return spanOf(s.docNodes())
 }
 
 // unexpected is the "no state/input/output/op data" check of lyd_validate_final_r: the kind of

@@ -269,10 +269,10 @@ func (t *Tree) insertSibling(sibling, n *Node) (err error) {
 }
 
 // insertAfter is lyd_insert_after: the user-ordered instance n goes right after sibling, an
-// instance of the same schema node. Go keeps schema nodes in schema order and before opaque
-// ones, so a schema node after an opaque sibling goes after the last instance of its own run
-// (insertLastBySchema) and an opaque node after a schema sibling becomes the first opaque one
-// (libyang links them where asked; D-0058).
+// instance of the same schema node. A schema node after an opaque sibling goes after the last
+// instance of its own run (insertLastBySchema), an opaque node after a schema sibling becomes
+// the first opaque one, and a schema node after a schema sibling goes before the next schema node
+// (libyang links them right after sibling; D-0058).
 func (t *Tree) insertAfter(sibling, n *Node) (err error) {
 	switch {
 	case sibling == nil:
@@ -940,6 +940,7 @@ func (t *Tree) moveNodes(parent *Node, src *Tree) (result error) {
 		if s != nil {
 			at = t.insertPos(dst, run[0], insertLastBySchema)
 			if t.work.hashErr != nil {
+				dst.clearPlace()
 				return t.work.hashErr
 			}
 		}
@@ -949,6 +950,10 @@ func (t *Tree) moveNodes(parent *Node, src *Tree) (result error) {
 					return err
 				}
 			} else {
+				if i > 0 {
+					// the run stays together after its anchor, past an opaque one too (design 15)
+					dst.setPlace(placement{mode: placeAfter, node: run[i-1], target: n})
+				}
 				if err := t.link(parent, dst, n, at+i); err != nil {
 					return err
 				}

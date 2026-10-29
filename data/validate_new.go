@@ -33,7 +33,9 @@ func (vc *valCtx) validateNew(parent *Node, sparent *schema.Node, mod *schema.Mo
 			return rc
 		}
 	}
-	nodes := sib.schemaSpan().Collect() // autodelete only removes; removed nodes are skipped below
+	// up to the first opaque sibling (validation.c:1023); autodelete only removes, removed nodes
+	// are skipped below
+	nodes := sib.schemaSpan().Slice(0, sib.beforeOpaque()).Collect()
 	if mod != nil {
 		// lyd_owner_module: an augment's node in mod's top-level choice is mod's data
 		kept := nodes[:0]

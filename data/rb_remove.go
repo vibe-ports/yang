@@ -239,12 +239,5 @@ func (s *siblings) removalOrder(n, prev, next, tail *Node, around func(*Node) (*
 	return d, leader, nil
 }
 
-func (s *siblings) nativeTail() *Node {
-	if s.OpaqueLen() > 0 {
-		return s.opaqueAt(s.OpaqueLen() - 1)
-	}
-	if s.SchemaLen() > 0 {
-		return s.At(s.SchemaLen() - 1)
-	}
-	return nil
-}
+// nativeTail is the first sibling's prev in libyang: the last one in document order.
+func (s *siblings) nativeTail() *Node { return s.docLast() }

@@ -148,7 +148,7 @@ func (t *Tree) keyLinked(list, child *Node) {
 		reindexComparedParent(child)
 		return
 	}
-	prefix := list.kids.schemaSpan().cursor()
+	prefix := positionalChildren(list) // lyd_child: the first children in document order
 	for _, key := range list.schema.Keys {
 		t.work.Add(1)
 		if c := prefix.next(); c == nil || c.schema != key {

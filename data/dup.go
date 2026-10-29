@@ -319,31 +319,14 @@ func (t *Tree) dupLink(f dupFrame) error {
 	}
 	var err error
 	if f.order == insertLast && d.schema != nil {
-		// lyd_dup_r uses LYD_INSERT_NODE_LAST for copied children, including
-		// across contexts whose key/schema order differs. Bypass insertPos's
-		// schema-order constraint (D-0058 applies to ordered parsing).
+		// lyd_dup_r uses LYD_INSERT_NODE_LAST for copied children, including across contexts
+		// whose key/schema order differs: appended after the last sibling (lastPos)
 		sib := t.childrenOf(f.parent)
-		// markUnsorted is visible: reserve the whole link before it.
-		amount, boundErr := t.linkBound(f.parent, sib, d, sib.SchemaLen())
-		if boundErr != nil {
-			return boundErr
+		var at int
+		if at, err = t.lastPos(f.parent, sib, d); err == nil {
+			err = t.link(f.parent, sib, d, at)
 		}
-		if err := t.reserveHash(amount); err != nil {
-			return err
-		}
-		if sortedSupported(d) && sib.SchemaLen() > 0 &&
-			sib.At(sib.SchemaLen()-1).schema == d.schema && sib.At(sib.SchemaLen()-1).inRB {
-			leader := sib.At(sib.SchemaLen() - 1)
-			for _, c := range sib.schemaSpan().Slice(0, sib.SchemaLen()-1).Reverse() {
-				if c.schema != d.schema {
-					break
-				}
-				t.work.Add(1)
-				leader = c
-			}
-			markUnsorted(sib, leader)
-		}
-		err = t.link(f.parent, sib, d, sib.SchemaLen())
+		sib.clearPlace()
 	} else {
 		err = t.insert(f.parent, d, f.order)
 	}
@@ -610,13 +593,7 @@ func (t *Tree) dupNodes(n, parent *Node, opts dupOpts, siblings bool) (*Node, er
 // hasNext reports whether the linked node d has a next sibling (lyd_node.next).
 func hasNext(d *Node) bool {
 	sib := d.siblingsOf()
-	if sib == nil {
-		return false
-	}
-	if d.schema == nil {
-		return sib.opaqueAt(sib.OpaqueLen()-1) != d
-	}
-	return sib.At(sib.SchemaLen()-1) != d || sib.OpaqueLen() > 0
+	return sib != nil && sib.docNext(d) != nil
 }
 
 // dupTo is lyd_dup_single / lyd_dup_siblings (trg nil: the context of n) and their _to_ctx
