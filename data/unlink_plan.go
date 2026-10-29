@@ -2,6 +2,8 @@
 
 package data
 
+import "github.com/vibe-ports/yang/internal/schema"
+
 // unlinkPlan reserves a single unlink before a relocation can remove hash records. It also
 // avoids locating the node again after native lookup and recovery preparation. Bulk unlink uses
 // its own virtual links and one charged compaction instead.
@@ -63,19 +65,30 @@ func prepareUnlink(n *Node) (*unlinkPlan, error) {
 	if n.schema != nil && prev != nil && next != nil && n.schema != prev.schema &&
 		prev.schema == next.schema && len(sib.rbTree) != 0 {
 		// removing a separator joins two runs: unlink marks the left run's tree unsorted
-		h = sib.st.seq.Prev(h) // prev, walked back to its run's first member, a charged step each
+		l := sib.st.seq.Prev(h) // prev, walked back to its run's first member, a charged step each
 		for {
 			if err := w.chargeHash(1); err != nil {
 				return nil, err
 			}
 			sib.visit()
-			p := sib.st.seq.Prev(h)
+			p := sib.st.seq.Prev(l)
 			if p == nil || p.Value.schema != prev.schema {
 				break
 			}
-			h = p
+			l = p
 		}
-		left = h.Value
+		left = l.Value
+	}
+	if p := n.parent; n.schema != nil && !n.isKey() && p != nil && p.schema != nil &&
+		p.schema.Kind == schema.List && at == p.keyN {
+		// detach exposes the keys n preceded (exposeListKeys), however many repeat: this walk
+		// pays for itself and for that one, before any write
+		for c := sib.st.seq.Next(h); c != nil && c.Value.isKey(); c = sib.st.seq.Next(c) {
+			if err := w.chargeHash(2); err != nil {
+				return nil, err
+			}
+			sib.visit()
+		}
 	}
 	tail := sib.nativeTail()
 	order, leader, err := sib.removalOrder(n, prev, next, tail, nil)

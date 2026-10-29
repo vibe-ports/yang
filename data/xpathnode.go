@@ -161,11 +161,12 @@ func (x xn) HashKeyValuesEqual(sn xpath.SchemaNode, vals []string) bool {
 		len(s.s.Keys) < len(vals) || x.n.kids.SchemaLen() < len(vals) {
 		return false
 	}
+	prefix := x.n.kids.schemaSpan().cursor()
 	for i, text := range vals {
 		key := s.s.Keys[i]
 		value, diag := types.StoreOnly(key.Type, text, types.FormatCanon, types.HintData,
 			types.ModuleNames{Set: s.set}, key)
-		if diag != nil || !hashValueEqual(x.n.kids.At(i).value, value) {
+		if diag != nil || !hashValueEqual(prefix.next().value, value) {
 			return false
 		}
 	}

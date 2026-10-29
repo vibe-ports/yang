@@ -587,7 +587,7 @@ func TestHashBudgetComparedParentSetValue(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if root.kids.ht == nil || !list.lkeyOK || positionalChild(list, 1) != n {
+		if root.kids.ht == nil || !list.lkeyOK || list.kids.At(1) != n {
 			t.Fatal("fixture needs an indexed incomplete list")
 		}
 		return []*Tree{dst}, func() error { _, err := n.SetValue("new value"); return err }

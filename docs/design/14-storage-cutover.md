@@ -154,9 +154,12 @@ one charged unit per member, its leader cached in the plan (TestUnlinkSeparatorL
 linear, and a budget one unit short refuses before any write). A sweep of every remaining
 positional read outside tests left no per-element loop over positions: the dup-cache run slot
 (`runSlot`) and `firstModuleSibling` walk the threads, the unlink plan reads its neighbours from
-the handle, and the key-prefix loops (`keyLinked`, `checkKeys`, `positionalChild`,
-`termHashBound`, `exposeListKeys`, `HashKeyValuesEqual`) read positions below the key count,
-which `At` walks from the front. The rest are O(1) point reads per edit: neighbours of a link or
+the handle, and the key-prefix loops (`keyLinked`, `checkKeys`, `termHashBound`,
+`HashKeyValuesEqual` and the `positionalChildren` users) walk a cursor. A repeated-key prefix is
+not bounded by the key count: removing the non-key in front of it exposes all of it
+(`exposeListKeys`), so the unlink preflight walks the prefix, two charged units per key
+(TestUnlinkExposesRepeatedKeysCharged: linear, refused before any write one unit short); a
+batch removal's per-set charge covers it. The rest are O(1) point reads per edit: neighbours of a link or
 unlink position, run leaders and ends, a first or last sibling.
 
 **Open:** a point read by position (`At`) is an O(log n) descent counted as sibling visits but

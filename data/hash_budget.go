@@ -194,19 +194,18 @@ func (w *workCounter) termHashBound(parent *Node, sn *schema.Node, value types.V
 	}
 	// Inspect only the declared positional prefix before considering hash inputs.
 	// In particular, repeated first keys must not rescan the entire incomplete run.
+	prefix := parent.kids.schemaSpan().cursor() // position i, then i-1 past at
 	for i, key := range parent.schema.Keys {
 		w.Add(1)
 		if err := w.chargeHash(1); err != nil {
 			return 0, err
 		}
-		var current *schema.Node
-		switch {
-		case i == at:
-			current = sn
-		case i < parent.kids.SchemaLen() && i < at:
-			current = parent.kids.At(i).schema
-		case i > at && i-1 < parent.kids.SchemaLen():
-			current = parent.kids.At(i - 1).schema
+		current := sn
+		if i != at {
+			current = nil
+			if c := prefix.next(); c != nil {
+				current = c.schema
+			}
 		}
 		if current != key {
 			return 0, nil
@@ -252,9 +251,10 @@ func (w *workCounter) termHashBound(parent *Node, sn *schema.Node, value types.V
 	if gp := parent.parent; gp != nil && gp.schema != nil && gp.schema.Kind == schema.List &&
 		gp.keyN < len(gp.schema.Keys) {
 		if gs := gp.siblingsOf(); gs != nil && gs.ht != nil {
-			for i := range gp.schema.Keys {
+			children := positionalChildren(gp)
+			for range gp.schema.Keys {
 				w.Add(1)
-				if positionalChild(gp, i) == parent {
+				if children.next() == parent {
 					amount = addHashBound(amount, indexWorkBound(gp, nil, nil, w))
 					break
 				}
@@ -331,8 +331,9 @@ func (w *workCounter) changedIndexAmount(target, changed *Node, value *types.Val
 	}
 	if parent := target.parent; parent != nil && parent.schema != nil && parent.schema.Kind == schema.List {
 		if ps := parent.siblingsOf(); ps != nil && ps.ht != nil {
-			for i := range parent.schema.Keys {
-				if positionalChild(parent, i) == target {
+			children := positionalChildren(parent)
+			for range parent.schema.Keys {
+				if children.next() == target {
 					amount = addHashBound(amount, indexWorkBound(parent, changed, value, w))
 					break
 				}

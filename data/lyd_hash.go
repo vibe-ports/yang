@@ -148,9 +148,10 @@ func (t *Tree) keyLinked(list, child *Node) {
 		reindexComparedParent(child)
 		return
 	}
-	for i, key := range list.schema.Keys {
+	prefix := list.kids.schemaSpan().cursor()
+	for _, key := range list.schema.Keys {
 		t.work.Add(1)
-		if i >= list.kids.SchemaLen() || list.kids.At(i).schema != key {
+		if c := prefix.next(); c == nil || c.schema != key {
 			// No native hash or registration event, but positional equality has
 			// changed. Keep the existing record's place in its native chain.
 			reindexList(list)
@@ -190,11 +191,12 @@ func reindexComparedParent(child *Node) {
 	if !child.isKey() && list.keyN >= len(list.schema.Keys) {
 		return
 	}
-	for i := range list.schema.Keys {
+	children := positionalChildren(list)
+	for range list.schema.Keys {
 		if list.kids.work != nil {
 			list.kids.work.Add(1)
 		}
-		if positionalChild(list, i) == child {
+		if children.next() == child {
 			reindexList(list)
 			return
 		}
@@ -266,11 +268,11 @@ func exposeListKeys(work *workCounter, list *Node) {
 	if err := list.touch(); err != nil {
 		return
 	}
-	for list.keyN < list.kids.SchemaLen() {
+	// a removal reserves the walk: prepareUnlink, or a batch's charge per sibling set
+	for _, key := range list.kids.Range(list.keyN, list.kids.SchemaLen()) {
 		if work != nil {
 			work.Add(1)
 		}
-		key := list.kids.At(list.keyN)
 		if !key.isKey() {
 			break
 		}

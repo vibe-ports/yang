@@ -579,11 +579,12 @@ func hashOfWork(n *Node, work *workCounter) (k idxKey, ok bool) {
 			return k, false
 		}
 		h := sha256.New()
-		for i := range n.schema.Keys {
+		children := positionalChildren(n)
+		for range n.schema.Keys {
 			if work != nil {
 				work.Add(1)
 			}
-			child := positionalChild(n, i)
+			child := children.next()
 			if child == nil {
 				break // early end is part of positional equality, not lost registration
 			}
@@ -623,8 +624,9 @@ func indexWorkBound(n, changed *Node, value *types.Value, work *workCounter) uin
 		return 0
 	}
 	var amount uint64
-	for i := range n.schema.Keys {
-		child := positionalChild(n, i)
+	children := positionalChildren(n)
+	for range n.schema.Keys {
+		child := children.next()
 		if child == nil {
 			break
 		}
@@ -646,15 +648,11 @@ func indexInsertedBound(list, inserted *Node, at int, work *workCounter) uint64 
 		return 0
 	}
 	var amount uint64
+	children := positionalChildren(list) // position i, then i-1 past at
 	for i := range list.schema.Keys {
-		var child *Node
-		switch {
-		case i == at:
-			child = inserted
-		case i < at:
-			child = positionalChild(list, i)
-		default:
-			child = positionalChild(list, i-1)
+		child := inserted
+		if i != at {
+			child = children.next()
 		}
 		if child == nil {
 			break
@@ -736,25 +734,21 @@ func indexAfterRemovedBound(list *Node, removed map[*Node]bool, work *workCounte
 		return 0
 	}
 	var amount uint64
-	position := 0
-	for i := 0; i < len(list.schema.Keys); i++ {
-		for {
-			if work != nil {
-				work.Add(1)
-			}
-			if !removed[positionalChild(list, position)] {
-				break
-			}
-			position++
-		}
+	children := positionalChildren(list)
+	for range list.schema.Keys {
 		if work != nil {
 			work.Add(1)
 		}
-		child := positionalChild(list, position)
+		child := children.next()
+		for removed[child] {
+			if work != nil {
+				work.Add(1)
+			}
+			child = children.next()
+		}
 		if child == nil {
 			break
 		}
-		position++
 		if child.schema != nil {
 			indexNameDigest(child.schema, work)
 			amount = addHashBound(amount, 32)
@@ -764,18 +758,9 @@ func indexAfterRemovedBound(list *Node, removed map[*Node]bool, work *workCounte
 	return amount
 }
 
-// positionalChild follows lyd_child/next, including an opaque child exposed by
-// internal key removal. Both the discriminator and comparison must see it.
-func positionalChild(n *Node, i int) *Node {
-	if i < n.kids.SchemaLen() {
-		return n.kids.At(i)
-	}
-	i -= n.kids.SchemaLen()
-	if i < n.kids.OpaqueLen() {
-		return n.kids.opaqueAt(i)
-	}
-	return nil
-}
+// positionalChildren follows lyd_child/next along the storage threads, including an opaque
+// child exposed by internal key removal. Both the discriminator and comparison must see it.
+func positionalChildren(n *Node) spanCursor { return n.kids.span(0, n.kids.Len()).cursor() }
 
 // writeKeyPosition encodes the schema and data gates of the positional comparison
 // (tree_data.c:1775-1778). Names, not pointers, permit probes from another context.
@@ -2417,8 +2402,9 @@ func compareDataStack(t *Tree, work *workCounter, stack []compareFrame) (bool, e
 			if a.schema.Keyless() {
 				continue
 			}
-			for i := range a.schema.Keys {
-				x, y := positionalChild(a, i), positionalChild(b, i)
+			xs, ys := positionalChildren(a), positionalChildren(b)
+			for range a.schema.Keys {
+				x, y := xs.next(), ys.next()
 				if x == nil || y == nil {
 					if x != y {
 						return false, nil

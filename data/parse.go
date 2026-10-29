@@ -741,9 +741,10 @@ func nodetypeStr(k schema.Kind) string {
 
 // checkKeys is lyd_parser_check_keys: the keys are the first children, in key order.
 func (lc *lydCtx) checkKeys(list *Node) error {
-	for i, k := range list.schema.Keys {
+	prefix := list.kids.schemaSpan().cursor()
+	for _, k := range list.schema.Keys {
 		lc.tree.work.Add(1)
-		if i >= list.kids.SchemaLen() || list.kids.At(i).schema != k {
+		if c := prefix.next(); c == nil || c.schema != k {
 			return lc.log.val(list, "", ly.Data, "List instance is missing its key \"%s\".", k.Name)
 		}
 	}
