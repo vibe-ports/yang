@@ -277,3 +277,88 @@ func TestS4SharedDiffSourceIsNotHeld(t *testing.T) {
 		}
 	}
 }
+
+const s4DetachedModule = `module s4d {yang-version 1.1;namespace "urn:s4d";prefix d;
+ import ietf-yang-metadata {prefix md;}
+ md:annotation ann {type string;}
+ container c {
+  container e {presence "p";leaf a {type string;}container i {presence "p";}list m {key k;leaf k {type string;}}}
+  leaf t {type string;}
+ }}`
+
+// TestS4EmptyDetachedInnerNotHeld: an empty inner node unlinked before an operation keeps its
+// old counter only as accounting: a callback of ApplyDiff on its former tree may build under it,
+// insert next to it and annotate it, through another tree of the snapshot.
+func TestS4EmptyDetachedInnerNotHeld(t *testing.T) {
+	set := reviewDiffSet(t, s4DetachedModule)
+	edits := map[string]func(free *Tree, e *Node) error{
+		"NewTerm":  func(free *Tree, e *Node) error { _, err := free.NewTerm(e, "a", "1", NewOptions{}); return err },
+		"NewInner": func(free *Tree, e *Node) error { _, err := free.NewInner(e, "i", NewOptions{}); return err },
+		"NewList": func(free *Tree, e *Node) error {
+			_, err := free.NewList(e, "m", []string{"x"}, NewOptions{})
+			return err
+		},
+		"Insert": func(free *Tree, e *Node) error {
+			c, err := free.NewInner(nil, "s4d:c", NewOptions{})
+			if err != nil {
+				return err
+			}
+			e2, err := free.NewInner(c, "e", NewOptions{})
+			if err != nil {
+				return err
+			}
+			a, err := free.NewTerm(e2, "a", "2", NewOptions{})
+			if err != nil {
+				return err
+			}
+			return free.Insert(e, a)
+		},
+		"Dup": func(_ *Tree, e *Node) error {
+			src := parseOnlyXML(t, set, `<c xmlns="urn:s4d"><e><a>3</a></e></c>`)
+			a := childStorage(childStorage(src.top.first()).At(0)).At(0)
+			_, _, err := src.Dup(a, e, DupOptions{})
+			return err
+		},
+		"Insert itself": func(free *Tree, e *Node) error { return free.Insert(free.top.first(), e) }, // next to free's t
+		"NewMeta":       func(free *Tree, e *Node) error { _, err := free.NewMeta(e, "s4d:ann", "v"); return err },
+	}
+	for name, edit := range edits {
+		tr := parseOnlyXML(t, set, `<c xmlns="urn:s4d"><e/><t>1</t></c>`)
+		var e *Node
+		for n := range tr.top.first().allAny() {
+			if n.schema != nil && n.schema.Name == "e" {
+				e = n
+			}
+		}
+		if e == nil || childStorage(e).len() != 0 {
+			t.Fatal("setup: no empty e")
+		}
+		if err := e.Unlink(); err != nil {
+			t.Fatal(err)
+		}
+		free := parseOnlyXML(t, set, `<c xmlns="urn:s4d"><t>9</t></c>`)
+		diff, err := Diff(tr, parseOnlyXML(t, set, `<c xmlns="urn:s4d"><t>2</t></c>`), DiffOptions{})
+		if err != nil {
+			t.Fatal(err)
+		}
+		var editErr error
+		called := false
+		err = tr.ApplyDiff(diff, ApplyDiffOptions{Callback: func(_, _ *Node) error {
+			if !called {
+				called = true
+				editErr = edit(free, e)
+			}
+			return nil
+		}})
+		if err != nil || !called {
+			t.Fatalf("%s: ApplyDiff %v (called %t)", name, err, called)
+		}
+		if editErr != nil {
+			t.Errorf("%s under a node detached earlier, from a callback on its former tree: %v", name, editErr)
+			continue
+		}
+		if childStorage(e).len() == 0 && e.meta == nil && e.parent == nil {
+			t.Errorf("%s: the edit did not survive the operation", name)
+		}
+	}
+}

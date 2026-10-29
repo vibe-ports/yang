@@ -99,11 +99,13 @@ each is refused in the public form and the result equals a benign run's.
 A held counter places, it does not own: a subtree detached earlier retains its old counter for
 accounting only. `heldNode` is O(1) while its node's own binding is not held, and only then walks
 to the root once: the node is held if it is in the held tree, or if the waiting state captured it
-(an in-flight detachment that state restores). An empty set has no member to place it and is held
-only by a waiting state bound to it; a node entering an empty set of the held tree is refused by
-its rebinding to the held counter or by the entry guard of the tree it enters
-(TestS4DetachedNodeNotHeldByItsOldTree, TestS4HeldCheckIsConstantOnTheCommonPath). Rebinding
-such a subtree lends nothing to the waiting state its stale binding names. The diff given to
+(an in-flight detachment that state restores). An empty set has no member to place it and is
+not held: user code reaches an empty set of the held tree only through that tree's entries or by
+moving a node out of a non-empty set of it, both refused. A binding that names a suspended state
+the guard did not place the node in is stale: Node.touch, siblings.touch, rebind and
+joinLinkJournal capture nothing into, and lend nothing to, that state
+(TestS4DetachedNodeNotHeldByItsOldTree, TestS4EmptyDetachedInnerNotHeld,
+TestS4HeldCheckIsConstantOnTheCommonPath). The diff given to
 ApplyDiff and the source of MergeDiff are not held: they are read-only arguments, possibly shared
 by concurrent operations (doc.go), and changing one during the operation is a caller contract
 violation, as in libyang (TestS4SharedDiffSourceIsNotHeld runs concurrent applies and merges of

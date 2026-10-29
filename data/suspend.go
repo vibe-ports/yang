@@ -112,18 +112,12 @@ func heldNode(n *Node) bool {
 var heldWalkHook func()
 
 // heldSet reports whether the sibling set s is held: as its first member is (a set and its
-// members share their root). An empty set has no member to place it: it is held only by a
-// waiting state bound to it. A counter-level hold alone does not reach it, as its counter may
-// be one a subtree detached earlier retains; a node entering an empty set of the held tree is
-// refused by its binding to the held counter (rebind), and one leaving a set of it by that set.
+// members share their root). An empty set has no member to place it, and its held binding may be
+// one a subtree detached earlier retains, so it is not held: user code reaches an empty set of
+// the held tree only through that tree's entries (refused) or by moving a node of it out of a
+// non-empty set (refused there).
 func heldSet(s *siblings) bool {
-	if s == nil || !s.work.held() {
-		return false
-	}
-	if s.len() == 0 {
-		return s.journal().suspendedState()
-	}
-	return heldNode(s.At(0))
+	return s != nil && s.work.held() && s.len() != 0 && heldNode(s.At(0))
 }
 
 // userErr is an error returned by user code, classified while its state was still suspended.

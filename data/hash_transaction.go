@@ -629,7 +629,7 @@ func (s *siblings) touch() error {
 	if heldSet(s) {
 		return errInProgress
 	}
-	if j := s.journal(); j != nil {
+	if j := s.journal(); j != nil && !j.suspendedState() { // suspended: a stale binding (heldSet)
 		return j.captureSiblings(s)
 	}
 	return nil
@@ -672,11 +672,8 @@ func (n *Node) touch() error {
 			j = t.work.journal
 		}
 	}
-	if j == nil {
-		return nil
-	}
-	if j.suspendedState() {
-		return errInProgress
+	if j == nil || j.suspendedState() {
+		return nil // none, or a stale binding: heldNode placed n outside the waiting state
 	}
 	if j.fresh[n] {
 		return j.err // NewPath's own new nodes: a refusal leaves no reference to them
@@ -704,6 +701,9 @@ func joinLinkJournal(t *Tree, n *Node) error {
 	source := n.treeOf()
 	if from == nil && source != nil {
 		from = source.work.journal
+	}
+	if from.suspendedState() && !heldNode(n) {
+		from = nil // a stale binding: n left that state's tree before its operation
 	}
 	if from.suspendedState() || t.work.held() || source != nil && source.work.held() {
 		return refuseIn(from, t.work.journal) // a lend into, or from, an operation waiting on user code
