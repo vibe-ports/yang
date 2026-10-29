@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 	"slices"
 	"strings"
 	"sync"
@@ -13,6 +14,8 @@ import (
 
 	"github.com/vibe-ports/yang"
 	"github.com/vibe-ports/yang/internal/schema"
+	"github.com/vibe-ports/yang/internal/snap"
+	"github.com/vibe-ports/yang/internal/xpath"
 )
 
 // orderedSchema is conformance/corpus/protocol-v2/schemas/pv2-ordered2.yang's shape.
@@ -458,5 +461,61 @@ func TestOpaqNextSharedSourceRace(t *testing.T) {
 	wg.Wait()
 	if src.work.hashUsed != 0 || src.work.hashErr != nil {
 		t.Fatalf("the shared source was charged: used %d, err %v", src.work.hashUsed, src.work.hashErr)
+	}
+}
+
+// TestRootLookupMixedContexts: the root lookup of an interleaved top level whose roots come from
+// two contexts follows the linear lyd_find_sibling_schema across contexts (module and node names)
+// and stops at the first opaque root.
+func TestRootLookupMixedContexts(t *testing.T) {
+	owned := func() *schema.Set { // a context of its own (distinct Module.Owner)
+		c, ds, err := yang.NewContext(yang.Options{NoYangLibrary: true}, os.DirFS("../conformance/corpus/protocol-v2/schemas"))
+		if err != nil {
+			t.Fatal(ds, err)
+		}
+		if ds, err := c.Load("pv2-ordered3", "", nil); err != nil {
+			t.Fatal(ds, err)
+		}
+		return snap.Set(c.Schema())
+	}
+	setA, setB := owned(), owned()
+	trA, err := parseOrdered(t, setA, false, `{"pv2-ordered3:a":"x","pv2-ordered3:zz":"u"}`, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	trB, err := parseOrdered(t, setB, false, `{"pv2-ordered3:b":"y"}`, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	a, zz := trA.top.At(0), trA.top.opaqueAt(0)
+	b := trB.top.At(0)
+	probe := func(name string) xpath.InstanceProbe {
+		var sn *schema.Node
+		for _, c := range setA.Implemented("pv2-ordered3").Top {
+			if c.Name == name {
+				sn = c
+			}
+		}
+		p, err := xs{s: sn, set: setA}.PrepareInstance(nil, func(int64) error { return nil })
+		if err != nil {
+			t.Fatal(err)
+		}
+		return p
+	}
+	for _, tc := range []struct {
+		order []*Node
+		found bool
+	}{
+		{[]*Node{a, zz, b}, false}, // past the opaque root: the walk stopped there
+		{[]*Node{b, zz, a}, true},  // before it, matched by module and name across contexts
+	} {
+		var sib siblings
+		sib.view(tc.order...)
+		sib.addContext(a)
+		sib.addContext(b)
+		got, handled, err := xroot{sib: &sib, set: setA}.LookupPrepared(probe("b"))
+		if err != nil || !handled || (len(got) == 1) != tc.found {
+			t.Fatalf("order %v: %v %v %v", names(slices.Values(tc.order)), got, handled, err)
+		}
 	}
 }

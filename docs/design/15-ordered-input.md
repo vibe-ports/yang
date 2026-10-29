@@ -83,11 +83,12 @@ write takes the code path it took before (the counted-work and scaling tests are
   an opaque first one (`opaqNextSpan`: `opaqNext` and XPath, charged per step to the calling
   operation, never to a tree it only reads, such as `MergeDiff`'s source). XPath's hashed child
   lookup (`LookupPrepared`, and for the top level the root adapter `xroot` as
-  `EvalContext.TreeLookup`) follows the same stops, and a children-table miss ends in that
+  `EvalContext.TreeLookup`) follows the same stops, matching a sibling of another context by
+  module and node name as the linear lookup does (`TestRootLookupMixedContexts`), and a children-table miss ends in that
   fallback, not in the evaluator's scan of every child.
 - **Undefined merge refused.** From an opaque first sibling `lyd_find_sibling_opaq_next` compares
   `LYD_NAME`, so an opaque source node can find a data node of its name. libyang then merges an
-  opaque value into a data node, which is undefined. `Merge` refuses it before any change with
+  opaque value into a data node, which crashes (native probe; `conformance/deviations.md`, libyang crash cases). `Merge` refuses it before any change with
   LY_EINVAL "Cannot merge opaque node "x" into data node "x"." (`TestMergeOpaqueIntoDataNodeRefused`).
 - **Value changes.** `LYD_NODE_IS_ALONE` reads the document neighbours, the first sibling's
   cyclic predecessor included, so a leaf-list instance alone in its piece of a split run keeps its

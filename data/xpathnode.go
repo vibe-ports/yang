@@ -101,7 +101,7 @@ func (x xn) LookupPrepared(prepared xpath.InstanceProbe) ([]xpath.Node, bool, er
 	}
 	p, ok := prepared.(*xprobe)
 	sib := &x.n.kids
-	if ok && sib.ht == nil && sib.st != nil && sib.st.interleaved() && !sib.mixedContexts() && x.n.flags&flagDead == 0 {
+	if ok && sib.ht == nil && sib.st != nil && sib.st.interleaved() && x.n.flags&flagDead == 0 {
 		return interleavedLookup(sib, x.set, p)
 	}
 	if !ok || sib.ht == nil || sib.mixedContexts() || x.n.flags&flagDead != 0 {
@@ -154,6 +154,9 @@ func (x xn) LookupPrepared(prepared xpath.InstanceProbe) ([]xpath.Node, bool, er
 // lyd_find_sibling_first (an instance) walks every sibling; then lyd_find_sibling_opaq_next.
 // Every step is charged.
 func interleavedLookup(sib *siblings, set *schema.Set, p *xprobe) ([]xpath.Node, bool, error) {
+	if !p.schemaOnly && sib.mixedContexts() {
+		return nil, false, nil // lyd_find_sibling_first across contexts: the evaluator's scan
+	}
 	span := sib.docSpan()
 	if p.schemaOnly {
 		span = sib.schemaSpan().Slice(0, sib.beforeOpaque())
@@ -163,7 +166,9 @@ func interleavedLookup(sib *siblings, set *schema.Set, p *xprobe) ([]xpath.Node,
 			return nil, false, err
 		}
 		sib.visit()
-		if c.flags&flagDead != 0 || c.schema != p.node.schema {
+		// the linear lyd_find_sibling_schema compares module and node names for a sibling of
+		// another context (tree_data_common.c:1127-1137)
+		if c.flags&flagDead != 0 || !schemaLookupMatch(c.schema, p.node.schema, false) {
 			continue
 		}
 		if !p.schemaOnly {
@@ -205,7 +210,7 @@ func (r xroot) LookupChild(xpath.SchemaNode, []string) ([]xpath.Node, bool) { re
 
 func (r xroot) LookupPrepared(prepared xpath.InstanceProbe) ([]xpath.Node, bool, error) {
 	p, ok := prepared.(*xprobe)
-	if !ok || r.sib.mixedContexts() {
+	if !ok {
 		return nil, false, nil
 	}
 	return interleavedLookup(r.sib, r.set, p)
