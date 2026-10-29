@@ -28,17 +28,12 @@ func s4IndexImage(s *siblings) string {
 	defer s4Inspect(s.work)()
 	o := s.order
 	var b strings.Builder
-	for h := o.seq.First(); h != nil; h = o.seq.Next(h) {
-		rank, _ := o.seq.Rank(h)
-		fmt.Fprintf(&b, "%p:%p:%d ", h, h.Value, rank)
+	seq := &s.st.seq
+	for h := seq.First(); h != nil; h = seq.Next(h) {
+		rank, _ := seq.Pos(h)
+		fmt.Fprintf(&b, "%p:%p:%d:%p ", h, h.Value, rank, h.Value.slot.Get())
 	}
-	keys := make([]string, 0, len(o.byNode))
-	for n, h := range o.byNode {
-		keys = append(keys, fmt.Sprintf("%p=%p", n, h))
-	}
-	sortStrings(keys)
-	fmt.Fprintf(&b, "| byNode %v |", keys)
-	keys = keys[:0]
+	var keys []string
 	for sn, d := range o.entries {
 		if d == nil {
 			keys = append(keys, fmt.Sprintf("%p=nil", sn))
@@ -85,11 +80,6 @@ func s4NoIndexTombstones(t *testing.T, where string, s *siblings) {
 		return
 	}
 	o := s.order
-	for n, h := range o.byNode {
-		if h == nil {
-			t.Fatalf("%s: byNode tombstone %p survived", where, n)
-		}
-	}
 	for sn, d := range o.entries {
 		if d == nil {
 			t.Fatalf("%s: entries tombstone %p survived", where, sn)
@@ -389,7 +379,7 @@ func TestS4RefusedLocalMoveRevivesHandle(t *testing.T) {
 			continue
 		}
 		src, srcOp, dst, dstOp, moved := build(t)
-		handle := srcOp.kids.order.byNode[moved]
+		handle := moved.slot.Get()
 		before := []hashBudgetSnapshot{snapshotHashBudgetTree(src), snapshotHashBudgetTree(dst)}
 		dst.work.hashLimit = limit
 		err := dst.Insert(dstOp, moved)
@@ -404,10 +394,10 @@ func TestS4RefusedLocalMoveRevivesHandle(t *testing.T) {
 		if !reflect.DeepEqual(snapshotHashBudgetTree(src), before[0]) || !reflect.DeepEqual(snapshotHashBudgetTree(dst), before[1]) {
 			t.Fatalf("limit %d: the refusal changed a tree", limit)
 		}
-		if srcOp.kids.order.byNode[moved] != handle {
+		if moved.slot.Get() != handle {
 			t.Fatalf("limit %d: the source handle was replaced", limit)
 		}
-		if _, live := srcOp.kids.order.seq.Rank(handle); !live {
+		if _, live := srcOp.kids.st.seq.Pos(handle); !live {
 			t.Fatalf("limit %d: the original source handle is not live", limit)
 		}
 		if _, err := src.NewTerm(srcOp, "w", "10", NewOptions{}); err != nil {

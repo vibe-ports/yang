@@ -89,7 +89,7 @@ func TestDupCrossSchemaInsertWork(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		tr.work.visits, tr.work.shifts = true, true
+		tr.work.visits = true
 		tr.work.Store(0)
 		for i := 1; i <= count; i++ {
 			if _, err := tr.NewTerm(root, "x", strconv.Itoa(i), NewOptions{}); err != nil {

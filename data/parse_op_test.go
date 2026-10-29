@@ -1139,7 +1139,7 @@ func TestParseOpRollback(t *testing.T) {
 			t.Fatal(err, diags)
 		}
 		tree.work.Store(0)
-		tree.work.visits, tree.work.shifts = true, true
+		tree.work.visits = true
 		var b strings.Builder
 		// XML: every element is a parsed node of its own (lydxml_subtree_r adds each to the
 		// parsed set), so the rollback removes all of them

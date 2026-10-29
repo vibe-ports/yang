@@ -229,7 +229,7 @@ func TestListIndexMutationInvariant(t *testing.T) {
 			// 28 shuffled rounds (14 under the race detector) cover each operation, with at most eight list
 			// instances and six children each. The work counter bounds tree work
 			// independently of machine speed; the reference scans are bounded too.
-			tr.work.visits, tr.work.shifts = true, true
+			tr.work.visits = true
 			for round := range rounds {
 				for _, op := range rng.Perm(operations) {
 					t.Run(fmt.Sprintf("%d/%d", round, op), func(t *testing.T) {

@@ -2286,7 +2286,7 @@ func TestStage3TransferMovesIndexWorkHooks(t *testing.T) {
 	mustLink(t, dst.transferFrom(src))
 	w := &workCounter{}
 	dst.setWork(w)
-	dst.order.seq.InsertBefore(nil, &Node{}) // any index operation reports its visits
+	mustLink(t, dst.appendNode(&Node{})) // any storage operation reports its visits
 	if w.Load() == 0 {
 		t.Fatal("index work after the transfer was not counted on the new owner")
 	}

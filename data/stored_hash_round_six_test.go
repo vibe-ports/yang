@@ -168,7 +168,6 @@ func TestStoredHashNonkeyEditWork(t *testing.T) {
 		x := list.kids.At(1)
 		tr.work.Store(0)
 		tr.work.visits = true
-		tr.work.shifts = true
 		var before, after runtime.MemStats
 		runtime.ReadMemStats(&before)
 		for i := range n {
@@ -234,7 +233,6 @@ func TestStoredHashRegistrationHistoryWork(t *testing.T) {
 		a := root.kids.At(3)
 		tr.work.Store(0)
 		tr.work.visits = true
-		tr.work.shifts = true
 		for range n {
 			if _, err := tr.NewTerm(a, "k", "A3PU0pE=", NewOptions{}); err != nil {
 				t.Fatal(err)

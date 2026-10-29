@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/vibe-ports/yang"
+	"github.com/vibe-ports/yang/internal/schema"
 )
 
 // Both facade searches replace BinarySearchFunc. Preserve its complete probe
@@ -18,11 +19,11 @@ func TestSiblingLowerBoundProbes(t *testing.T) {
 		nodes := make([]*Node, size)
 		positions := make(map[*Node]int, size)
 		for i := range nodes {
-			nodes[i] = &Node{}
+			nodes[i] = &Node{schema: &schema.Node{}}
 			positions[nodes[i]] = i
 		}
 		var sib siblings
-		mustLink(t, sib.Build(nodes, nil))
+		mustLink(t, testBuild(&sib, nodes...))
 		for lo := 0; lo <= size; lo++ {
 			for hi := lo; hi <= size; hi++ {
 				for cut := lo; cut <= hi; cut++ {
@@ -47,30 +48,31 @@ func TestSiblingLowerBoundProbes(t *testing.T) {
 	}
 }
 
-// A singleton needs one origin slot probe and two upper probes. These fixed
-// thresholds catch a smaller enforced charge at the origin lookup boundary.
+// A singleton's origin is its storage rank: a read credit of rbHeight(1)+1 units paid before
+// the walk (design 13 §4.4, design 14), then two upper probes. These fixed thresholds catch a
+// smaller enforced charge at the origin lookup boundary.
 func TestSiblingLinkOriginBudgetThreshold(t *testing.T) {
-	for _, limit := range []uint64{2, 3} {
+	need := rbHeight(1) + 1 + 2
+	for _, limit := range []uint64{need - 1, need} {
 		t.Run(fmt.Sprint(limit), func(t *testing.T) {
 			f := newFixture()
 			tr, parent := f.cont(t)
 			node := f.term(t, f.z, "x")
 			mustLink(t, tr.insert(parent, node, insertDefault))
+			end := tr.work.beginHashWork() // a mutation path: the rank read is paid
+			defer end()
 			tr.work.hashUsed, tr.work.hashLimit = 0, limit
 			tr.work.Store(0)
 			restore, arm, err := tr.linkOrigin(node)
-			if limit == 2 {
+			if limit < need {
 				if !errors.Is(err, yang.ErrBudget) || restore != nil || arm != nil {
-					t.Fatalf("limit=2: error=%v, restore=%t, arm=%t; want ErrBudget before mutation", err, restore != nil, arm != nil)
+					t.Fatalf("limit=%d: error=%v, restore=%t, arm=%t; want ErrBudget before mutation", limit, err, restore != nil, arm != nil)
 				}
-			} else if err != nil || restore == nil || arm == nil || tr.work.hashUsed != 3 {
-				t.Fatalf("limit=3: error=%v hash=%d; want success using 3 units", err, tr.work.hashUsed)
+			} else if err != nil || restore == nil || arm == nil || tr.work.hashUsed != need {
+				t.Fatalf("limit=%d: error=%v hash=%d; want success using %d units", limit, err, tr.work.hashUsed, need)
 			}
 			if node.parent != parent || node.treeOf() != tr {
 				t.Fatal("origin probe changed ownership")
-			}
-			if got := tr.work.Load(); got != 3 {
-				t.Fatalf("origin work=%d; want 3", got)
 			}
 		})
 	}

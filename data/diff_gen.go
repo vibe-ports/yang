@@ -262,13 +262,7 @@ func sibsOf(n *Node) *siblings {
 		return sib
 	}
 	s := &siblings{}
-	if n.schema == nil {
-		// No work binding or journal exists on this fresh view.
-		s.Build(nil, []*Node{n}) //nolint:errcheck,gosec // unbound storage cannot fail journal capture
-	} else {
-		// No work binding or journal exists on this fresh view.
-		s.Build([]*Node{n}, nil) //nolint:errcheck,gosec // unbound storage cannot fail journal capture
-	}
+	s.view(n) // a fresh view: no work binding or journal
 	s.addContext(n)
 	return s
 }

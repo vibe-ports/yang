@@ -21,7 +21,6 @@ func opidxParseWork(t *testing.T, set *schema.Set, input string, fp formatParser
 		c.op = opOpts{rpc: true, action: true, noSiblings: true}
 		c.rcOnly = true
 		c.tree.work.visits = true
-		c.tree.work.shifts = true
 	})
 	if err != nil {
 		t.Fatal(err, diags)
@@ -210,7 +209,6 @@ func TestOpIndexRemoveEach(t *testing.T) {
 						t.Fatalf("instances %d, want %d", len(nodes), n)
 					}
 					tr.work.visits = true
-					tr.work.shifts = true
 					for i := range n {
 						at := i
 						if reverse {

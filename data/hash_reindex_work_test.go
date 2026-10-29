@@ -52,7 +52,7 @@ func TestHashReindexTwoBatchWork(t *testing.T) {
 						indices[i] = 1
 					}
 				}
-				tr.work.visits, tr.work.shifts = true, true
+				tr.work.visits = true
 				for batch := range 2 {
 					tr.work.Store(0)
 					for _, v := range indices {

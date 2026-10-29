@@ -16,10 +16,10 @@ import (
 
 // childOrder is the mutation-maintained ordered index used for operation
 // children, unordered copies, and opaque XML anchors. The libyang-compatible
-// children table and first-instance records remain separate in siblings.
+// children table and first-instance records remain separate in siblings. It
+// registers the handles of the set's storage (design 14) and owns no sequence:
+// while it exists every stored node is registered.
 type childOrder struct {
-	seq         opidx.Seq[*Node]
-	byNode      map[*Node]*opidx.Handle[*Node]
 	bySchema    *opidx.Occurrences[*Node, *schema.Node, uint8]
 	byExact     *opidx.Occurrences[*Node, *schema.Node, exactKey]
 	byRB        *opidx.Occurrences[*Node, *schema.Node, *rbGroup]
@@ -152,7 +152,7 @@ func opaqExactKey(n *Node) opaqueKey {
 	return opaqueKey{n.opaq.Name, n.opaq.ModuleNS}
 }
 
-// orderBinding is the stable hook target of one childOrder (#240 step 4): its structures find
+// orderBinding is the stable hook target of one store and its childOrder (#240 step 4): they find
 // their owner's work counter and their journal through it at call time, so a whole-forest
 // transfer or a rollback rebinds by one pointer write instead of reinstalling (allocating)
 // method values.
@@ -207,25 +207,15 @@ func (b *orderBinding) Journal() *opidx.Journal {
 	return &b.state.index
 }
 
-// newChildOrder returns an empty index whose hooks are installed once, on its binding. The
-// binding has no owner yet: a build fills it uncounted and unjournaled (it is unreachable until
-// published) and binds it at the end.
-func newChildOrder() *childOrder {
-	o := &childOrder{byNode: map[*Node]*opidx.Handle[*Node]{}, entries: map[*schema.Node]*opEntry{},
-		bind: &orderBinding{}}
-	o.bySchema = opidx.NewOccurrences[*Node, *schema.Node, uint8](&o.seq)
-	o.byExact = opidx.NewOccurrences[*Node, *schema.Node, exactKey](&o.seq)
-	o.byRB = opidx.NewOccurrences[*Node, *schema.Node, *rbGroup](&o.seq)
-	o.byOpaqName = opidx.NewOccurrences[*Node, string, uint8](&o.seq)
-	o.byOpaqExact = opidx.NewOccurrences[*Node, opaqueKey, uint8](&o.seq)
-	o.seq.SetHooks(o.bind)
-	o.bySchema.SetHooks(o.bind)
-	o.byExact.SetHooks(o.bind)
-	o.byRB.SetHooks(o.bind)
-	o.byOpaqName.SetHooks(o.bind)
-	o.byOpaqExact.SetHooks(o.bind)
-	o.ranks[0].SetHooks(o.bind)
-	o.ranks[1].SetHooks(o.bind)
+// newChildOrder returns an empty index over st's sequence whose hooks are the store's binding.
+func newChildOrder(st *siblingStore, b *orderBinding) *childOrder {
+	o := &childOrder{entries: map[*schema.Node]*opEntry{}}
+	o.bySchema = opidx.NewOccurrences[*Node, *schema.Node, uint8](&st.seq)
+	o.byExact = opidx.NewOccurrences[*Node, *schema.Node, exactKey](&st.seq)
+	o.byRB = opidx.NewOccurrences[*Node, *schema.Node, *rbGroup](&st.seq)
+	o.byOpaqName = opidx.NewOccurrences[*Node, string, uint8](&st.seq)
+	o.byOpaqExact = opidx.NewOccurrences[*Node, opaqueKey, uint8](&st.seq)
+	o.rebind(b)
 	return o
 }
 
@@ -245,7 +235,6 @@ func (s *siblings) orderRegister(n *Node, h *opidx.Handle[*Node]) {
 }
 
 func (o *childOrder) register(n *Node, h *opidx.Handle[*Node]) {
-	opidx.SetCell(o.bind, o.byNode, n, h)
 	if n.schema == nil {
 		o.byOpaqName.Insert(n.Name(), 0, h)
 		o.byOpaqExact.Insert(opaqExactKey(n), 0, h)
@@ -264,7 +253,7 @@ func (s *siblings) orderUnregister(n *Node) *opidx.Handle[*Node] {
 	if s.order == nil {
 		return nil
 	}
-	h := s.order.byNode[n]
+	h := s.handle(n)
 	if h == nil {
 		return nil
 	}
@@ -280,50 +269,58 @@ func (s *siblings) orderUnregister(n *Node) *opidx.Handle[*Node] {
 		// membership whose node flags have just been changed.
 		s.order.byRB.Remove(h)
 	}
-	opidx.DeleteCell(s.order.bind, s.order.byNode, n)
 	return h
 }
 
-// orderBuild replaces only the ordered acceleration structures. It never
-// derives or changes children_ht, ordinary hash records, schema-alias records,
-// or first-instance record order.
+// orderBuild replaces only the ordered acceleration structures: it registers the handles the
+// storage has (the new index is unreachable on rollback; the capture of s restores the old
+// pointer). It never derives or changes children_ht, ordinary hash records, schema-alias
+// records, or first-instance record order.
 func (s *siblings) orderBuild(t *Tree) error {
 	if err := s.touchSticky(); err != nil {
 		return err
 	}
-	o := newChildOrder()
-	for _, n := range s.SchemaAll() {
-		t.work.Add(1)
-		h := o.seq.InsertBefore(nil, n)
-		s.order = o
-		s.orderRegister(n, h)
-		d := o.entries[n.schema]
-		if d == nil {
-			d = s.orderNewEntry(t, n.schema)
-			o.entries[n.schema] = d
-		} else if prev := o.seq.Prev(h); prev == nil || prev.Value.schema != n.schema {
-			d.gaps++
-		}
-		d.count++
-		if n.inRB && n.rbGroup != nil {
-			d.rb++
-		}
-	}
-	for _, n := range s.opaqueAll() {
-		t.work.Add(1)
-		h := o.seq.InsertBefore(nil, n)
-		s.order = o
-		s.orderRegister(n, h)
-	}
+	st := s.store()
+	// the occurrence classes compare the storage's labels: label it first (unbound, like the
+	// build itself)
+	st.seq.SetLabeled(true)
+	// unbound while it is built: unreachable until published, it reports no work or entries
+	o := newChildOrder(st, &orderBinding{})
 	s.order = o
-	o.bind.owner = s
-	// the state that captured s journals the new index from now on (its earlier writes need no
-	// entries: the whole capture of s restores the previous index pointer)
-	o.bind.state = capturer(t, s)
-	if o.bind.state != nil {
-		o.bind.state.bound = append(o.bind.state.bound, o.bind)
+	var prev *Node
+	for h := st.seq.First(); h != nil; h = st.seq.Next(h) {
+		t.work.Add(1)
+		n := h.Value
+		o.register(n, h)
+		if n.schema != nil {
+			d := o.entries[n.schema]
+			if d == nil {
+				d = s.orderNewEntry(t, n.schema)
+				o.entries[n.schema] = d
+			} else if prev == nil || prev.schema != n.schema {
+				d.gaps++
+			}
+			d.count++
+			if n.inRB && n.rbGroup != nil {
+				d.rb++
+			}
+		}
+		prev = n
 	}
+	o.rebind(&st.bind)
 	return nil
+}
+
+// rebind points every structure of o at b.
+func (o *childOrder) rebind(b *orderBinding) {
+	o.bind = b
+	o.bySchema.SetHooks(b)
+	o.byExact.SetHooks(b)
+	o.byRB.SetHooks(b)
+	o.byOpaqName.SetHooks(b)
+	o.byOpaqExact.SetHooks(b)
+	o.ranks[0].SetHooks(b)
+	o.ranks[1].SetHooks(b)
 }
 
 func (s *siblings) orderNewEntry(t *Tree, sn *schema.Node) *opEntry {
@@ -340,16 +337,15 @@ func (s *siblings) orderNewEntry(t *Tree, sn *schema.Node) *opEntry {
 	return d
 }
 
-func (s *siblings) orderAddSchema(t *Tree, n *Node, at int) error {
+func (s *siblings) orderAddSchema(t *Tree, n *Node) error {
 	if s.order == nil {
 		return s.orderBuild(t)
 	}
 	o := s.order
 	j := o.bind
-	anchor := o.seq.Select(at)
-	h := o.seq.InsertBefore(anchor, n)
-	s.orderRegister(n, h)
-	left, right := o.seq.Prev(h), o.seq.Next(h)
+	h := s.handle(n)
+	o.register(n, h)
+	left, right := s.st.seq.Prev(h), s.st.seq.Next(h)
 	if left != nil && right != nil && left.Value.schema != nil && left.Value.schema == right.Value.schema && left.Value.schema != n.schema {
 		opidx.AddInt(j, &o.entries[left.Value.schema].gaps, 1)
 	}
@@ -368,15 +364,14 @@ func (s *siblings) orderAddSchema(t *Tree, n *Node, at int) error {
 	return nil
 }
 
-func (s *siblings) orderAddOpaque(t *Tree, parent, n *Node, at int) error {
+func (s *siblings) orderAddOpaque(t *Tree, parent, n *Node) error {
 	if s.order == nil {
 		if !isOp(schemaOf(parent)) {
 			return nil
 		}
 		return s.orderBuild(t)
 	}
-	h := s.order.seq.InsertBefore(s.order.seq.Select(s.SchemaLen()+at), n)
-	s.orderRegister(n, h)
+	s.order.register(n, s.handle(n))
 	return nil
 }
 
@@ -387,76 +382,21 @@ func schemaOf(n *Node) *schema.Node {
 	return n.schema
 }
 
-func (s *siblings) orderReorder(run siblingSpan) error {
-	if s.order == nil || run.Len() < 2 {
-		return nil
-	}
-	o := s.order
-	// The run's handles occupy one contiguous range of the sequence (only its own order changed):
-	// one ReplaceHandles republishes them in the run's new order, identities kept. Its point
-	// bound, planned before any write, is prepaid with the occurrence updates (design 13 §4).
-	handles := make([]*opidx.Handle[*Node], run.Len())
-	var first, last *opidx.Handle[*Node]
-	for i, n := range run.All() {
-		h := o.byNode[n]
-		if h == nil {
-			return &opError{"LY_EINT", "Unindexed instance in an ordered sibling run."}
-		}
-		handles[i] = h
-		if c, _ := o.seq.Compare(h, first); first == nil || c < 0 {
-			first = h
-		}
-		if c, _ := o.seq.Compare(h, last); last == nil || c > 0 {
-			last = h
-		}
-	}
-	journaled := s.indexJournaled(s.work)
-	bound := o.seq.ReplaceHandlesBound(first, last, len(handles), journaled, s.work.planPay())
-	for _, n := range run.All() {
-		bound = addHashBound(bound, s.orderRegisterBound(n, journaled))
-	}
-	nested, err := s.work.prepay(bound, false)
-	if err != nil {
-		return err
-	}
-	defer s.work.closeCredit(nested)
-	lo, _ := o.seq.Rank(first)
-	for _, n := range run.All() {
-		s.orderUnregister(n)
-	}
-	if !o.seq.ReplaceHandles(lo, lo+len(handles), handles) {
-		panic("data: an indexed run does not occupy one sequence range")
-	}
-	for i, n := range run.All() {
-		s.orderRegister(n, handles[i])
-	}
-	return nil
-}
-
-// publicationIndexBound bounds what publishing the reordered run [lo, hi) of s does to its index
-// (rbPos): one refreshRB per member, then orderReorder, its planning walk included. It plans
-// before the run changes (the sequence's labels are what orderReorder will see: refreshRB
-// changes only occurrence classes), charging that plan through pay.
-func (s *siblings) publicationIndexBound(run siblingSpan) uint64 {
-	o := s.order
-	if o == nil || run.Len() == 0 {
+// publicationIndexBound bounds what publishing the reordered run [lo, hi) of s does (rbPos):
+// one refreshRB per member, then replaceSchema's republication with its index re-registration,
+// its planning walk included. It plans before the run changes (refreshRB changes only occurrence
+// classes, not labels), charging that plan through pay.
+func (s *siblings) publicationIndexBound(lo, hi int) uint64 {
+	if hi-lo < 2 {
 		return 0
 	}
 	journaled := s.indexJournaled(s.work)
 	var bound uint64
-	var first, last *opidx.Handle[*Node]
-	for _, n := range run.All() {
-		h := o.byNode[n]
-		if h == nil {
-			return bound // an unindexed run: rebuilt (unbound, uncharged), not reordered
-		}
-		bound = addHashBound(bound, addHashBound(o.byRB.RemoveBound(h, journaled), o.byRB.InsertBoundAny(journaled)))
-		bound = addHashBound(bound, orderCells(journaled)+s.orderRegisterBound(n, journaled))
-		if c, _ := o.seq.Compare(h, first); first == nil || c < 0 {
-			first = h
-		}
-		if c, _ := o.seq.Compare(h, last); last == nil || c > 0 {
-			last = h
+	if o := s.order; o != nil {
+		for _, n := range s.schemaSpan().Slice(lo, hi).All() {
+			h := s.handle(n)
+			bound = addHashBound(bound, addHashBound(o.byRB.RemoveBound(h, journaled), o.byRB.InsertBoundAny(journaled)))
+			bound = addHashBound(bound, orderCells(journaled)+s.orderRegisterBound(n, journaled))
 		}
 	}
 	planned := uint64(0)
@@ -465,15 +405,15 @@ func (s *siblings) publicationIndexBound(run siblingSpan) uint64 {
 		planned += units
 		return pay == nil || pay.Pay(units)
 	})
-	bound = addHashBound(bound, o.seq.ReplaceHandlesBound(first, last, run.Len(), journaled, counted))
-	return addHashBound(bound, planned) // orderReorder plans the same walk again
+	bound = addHashBound(bound, s.st.seq.RepublishBound(lo, hi, 0, journaled, counted))
+	return addHashBound(bound, planned) // replaceSchema plans the same walk again
 }
 
 // orderRegisterBound bounds unregistering and registering n again (its occurrence classes and
-// its byNode cell).
+// its entries cell).
 func (s *siblings) orderRegisterBound(n *Node, journaled bool) uint64 {
 	o := s.order
-	h := o.byNode[n]
+	h := s.handle(n)
 	bound := 2 * orderCells(journaled)
 	if n.schema == nil {
 		bound = addHashBound(bound, o.byOpaqName.RemoveBound(h, journaled)+o.byOpaqName.InsertBoundAny(journaled))
@@ -488,12 +428,12 @@ func (s *siblings) orderRemove(n *Node) (survives, survivesRB bool) {
 	if s.order == nil || n == nil || n.schema == nil {
 		return false, false
 	}
-	o, h := s.order, s.order.byNode[n]
+	o, h := s.order, s.handle(n)
 	if h == nil {
 		return false, false
 	}
 	j := o.bind
-	left, right := o.seq.Prev(h), o.seq.Next(h)
+	left, right := s.st.seq.Prev(h), s.st.seq.Next(h)
 	d := o.entries[n.schema]
 	if left != nil && right != nil && left.Value.schema != nil && left.Value.schema == right.Value.schema && left.Value.schema != n.schema {
 		opidx.AddInt(j, &o.entries[left.Value.schema].gaps, -1)
@@ -502,7 +442,6 @@ func (s *siblings) orderRemove(n *Node) (survives, survivesRB bool) {
 		opidx.AddInt(j, &d.gaps, -1)
 	}
 	s.orderUnregister(n)
-	o.seq.Remove(h)
 	if d == nil {
 		return false, false
 	}
@@ -518,32 +457,22 @@ func (s *siblings) orderRemove(n *Node) (survives, survivesRB bool) {
 	return true, d.rb > 0
 }
 
-func (s *siblings) orderRemoveOpaque(n *Node) {
-	if h := s.orderUnregister(n); h != nil {
-		s.order.seq.Remove(h)
-	}
-}
+func (s *siblings) orderRemoveOpaque(n *Node) { s.orderUnregister(n) }
 
+// orderPosition is the position of n in s, -1 if absent or refused: the storage's rank walk. A
+// class-A read on a mutation path pays it, reserved before it runs (design 13 §4.4); inside a
+// prepaid scope the scope's bound pays it.
 func (s *siblings) orderPosition(n *Node) int {
-	if s.order == nil {
-		if at := s.schemaSpan().indexFromEnd(s.work, n); at >= 0 {
-			return at
-		}
-		if at := s.opaqueSpan().indexFromEnd(s.work, n); at >= 0 {
-			return s.SchemaLen() + at
-		}
+	h := s.handle(n)
+	if h == nil {
 		return -1
 	}
-	// a class-A read on a mutation path pays its rank walk, reserved before it runs
 	opened, err := s.work.openRead(rbHeight(s.Len()) + 1)
 	if err != nil {
 		return -1
 	}
-	rank, ok := s.order.seq.Rank(s.order.byNode[n])
+	rank, _ := s.st.seq.Rank(h)
 	s.work.closeRead(opened)
-	if !ok {
-		return -1
-	}
 	return rank
 }
 
@@ -599,36 +528,8 @@ func (s *siblings) allInstances(sn *schema.Node) iter.Seq[*Node] {
 }
 
 func (s *siblings) walkFrom(n *Node) []*Node {
-	if n == nil {
-		return nil
-	}
-	if s.order == nil {
-		if s.len() <= 1 {
-			s.visit()
-			if s.SchemaLen() == 1 && s.At(0) == n {
-				return s.schemaSpan().Collect()
-			}
-			return nil
-		}
-		at := s.schemaSpan().indexFromEnd(s.work, n)
-		if at < 0 {
-			return nil
-		}
-		var out []*Node
-		for ; at < s.SchemaLen() && s.At(at).schema == n.schema; at++ {
-			if s.work != nil {
-				s.work.Add(1)
-			}
-			out = append(out, s.At(at))
-		}
-		return out
-	}
-	h := s.order.byNode[n]
-	if h == nil {
-		return nil
-	}
 	var out []*Node
-	for ; h != nil && h.Value.schema == n.schema; h = s.order.seq.Next(h) {
+	for h := s.handle(n); h != nil && h.Value.schema == n.schema; h = s.st.seq.Next(h) {
 		if s.work != nil {
 			s.work.Add(1)
 		}
@@ -718,7 +619,7 @@ func (s *siblings) exactAtOrAfter(sn *schema.Node, target, first *Node) *Node {
 	if !ok {
 		return nil
 	}
-	h := s.order.byNode[first]
+	h := s.handle(first)
 	if h == nil {
 		return nil
 	}
@@ -746,7 +647,7 @@ func (s *siblings) refreshRB(n *Node) error {
 	if err := s.touchSticky(); err != nil {
 		return err
 	}
-	h := s.order.byNode[n]
+	h := s.handle(n)
 	if h == nil {
 		return nil
 	}
@@ -776,7 +677,7 @@ func (s *siblings) refreshExact(n *Node, change func()) {
 		change()
 		return
 	}
-	h := s.order.byNode[n]
+	h := s.handle(n)
 	if h == nil {
 		change()
 		return
@@ -803,35 +704,30 @@ func (s *siblings) refreshExact(n *Node, change func()) {
 // each edit reports, from the opidx point bounds for the actual heights. A missing index is
 // built unbound, so its build reports nothing.
 
-// orderCells bounds the data-side cells and counters of one add or removal: the byNode and
-// entries cells and the opEntry counters, recorded under a journal.
+// orderCells bounds the data-side cells and counters of one add or removal: the entries cell
+// and the opEntry counters, recorded under a journal.
 func orderCells(journaled bool) uint64 {
 	if !journaled {
 		return 0
 	}
-	return 3 + 3 + 4*2
+	return 3 + 4*2
 }
 
 // indexJournaled reports whether s's index edits are recorded: s is captured, or will be at the
 // edit's touch, by a running state (w's, or the one its own counter has).
 func (s *siblings) indexJournaled(w *workCounter) bool {
-	return w != nil && w.journal != nil || s.journal() != nil || s.order != nil && s.order.bind.state != nil
+	return w != nil && w.journal != nil || s.journal() != nil || s.storeJournaled()
 }
 
 // orderAddBound bounds placing n at position at of its partition (an opaque n: of the opaque
-// nodes, appended when at is out of range), as link does.
+// nodes, appended when at is out of range), as link does: the storage insertion and the index's
+// registration.
 func (s *siblings) orderAddBound(n *Node, at int, journaled bool) uint64 {
+	bound := s.insertBound(n, at, journaled)
 	o := s.order
 	if o == nil {
-		return 0
+		return bound - min(bound, prepaySkew)
 	}
-	if n.schema == nil {
-		if at < 0 || at >= s.OpaqueLen() {
-			at = s.OpaqueLen()
-		}
-		at += s.SchemaLen()
-	}
-	bound := addHashBound(o.seq.SelectBound(), o.seq.InsertBound(o.seq.Peek(at), journaled, s.work.planPay()))
 	bound = addHashBound(bound, orderCells(journaled))
 	if n.schema == nil {
 		bound = addHashBound(bound, o.byOpaqName.InsertBound(n.Name(), 0, journaled))
@@ -853,26 +749,27 @@ func (s *siblings) orderAddBound(n *Node, at int, journaled bool) uint64 {
 // orderAddBoundAny bounds placing the schema node n anywhere in s, before an insertion's run
 // is reordered or its index built (insertPositionBound): position-free and size-based.
 func (s *siblings) orderAddBoundAny(n *Node, journaled bool) uint64 {
-	if s.order == nil && !opChild(n.schema) && !s.schemaUnordered {
-		return 0 // no index: link builds none for an ordinary schema-ordered set
-	}
 	length := s.Len()
-	occ := opidx.UpdateBoundAny(length, journaled)                      // an occurrence class or a rank set of at most length
-	bound := addHashBound(opidx.InsertBoundAny(length, journaled), occ) // the anchor select
-	return addHashBound(bound, 5*occ+orderCells(journaled))             // three classes, two rank sets
+	bound := addHashBound(opidx.InsertBoundAny(length, journaled), slotUnits(journaled)) // the storage insertion
+	if s.order == nil && !opChild(n.schema) && !s.schemaUnordered {
+		return bound // no index: link builds none for an ordinary schema-ordered set
+	}
+	occ := opidx.UpdateBoundAny(length, journaled)          // an occurrence class or a rank set of at most length
+	return addHashBound(bound, 5*occ+orderCells(journaled)) // three classes, two rank sets
 }
 
-// orderRemoveBound bounds removing n (orderRemove, orderRemoveOpaque).
+// orderRemoveBound bounds removing n: the storage removal and the index's (orderRemove,
+// orderRemoveOpaque).
 func (s *siblings) orderRemoveBound(n *Node, journaled bool) uint64 {
-	o := s.order
-	if o == nil {
-		return 0
-	}
-	h := o.byNode[n]
+	h := s.handle(n)
 	if h == nil {
 		return 0
 	}
-	bound := addHashBound(o.seq.RemoveBound(journaled), orderCells(journaled))
+	o := s.order
+	if o == nil {
+		return s.removeBound(journaled)
+	}
+	bound := addHashBound(s.removeBound(journaled), orderCells(journaled))
 	if n.schema == nil {
 		bound = addHashBound(bound, o.byOpaqName.RemoveBound(h, journaled))
 		return addHashBound(bound, o.byOpaqExact.RemoveBound(h, journaled))
@@ -889,17 +786,19 @@ func (s *siblings) orderRemoveBound(n *Node, journaled bool) uint64 {
 // refreshRBBound bounds refreshRB: the RB-class registration leaves and returns, and the count.
 func (s *siblings) refreshRBBound(n *Node, journaled bool) uint64 {
 	o := s.order
-	if o == nil || o.byNode[n] == nil {
+	h := s.handle(n)
+	if o == nil || h == nil {
 		return 0
 	}
-	return addHashBound(addHashBound(o.byRB.RemoveBound(o.byNode[n], journaled), o.byRB.InsertBoundAny(journaled)), orderCells(journaled))
+	return addHashBound(addHashBound(o.byRB.RemoveBound(h, journaled), o.byRB.InsertBoundAny(journaled)), orderCells(journaled))
 }
 
 // refreshExactBound bounds refreshExact: the exact-value registration leaves and returns.
 func (s *siblings) refreshExactBound(n *Node, journaled bool) uint64 {
 	o := s.order
-	if o == nil || o.byNode[n] == nil {
+	h := s.handle(n)
+	if o == nil || h == nil {
 		return 0
 	}
-	return addHashBound(o.byExact.RemoveBound(o.byNode[n], journaled), o.byExact.InsertBoundAny(journaled))
+	return addHashBound(o.byExact.RemoveBound(h, journaled), o.byExact.InsertBoundAny(journaled))
 }

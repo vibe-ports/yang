@@ -1099,12 +1099,12 @@ func TestStage3BindingReservesBeforeAllocation(t *testing.T) {
 	root := &Node{}
 	root.kids.work = old
 	children := make([]*Node, 65536)
-	leaf := &Node{}
-	leaf.kids.work = old
 	for i := range children {
-		children[i] = leaf
+		children[i] = &Node{}
+		children[i].kids.work = old
 	}
-	mustLink(t, root.kids.buildSchema(children))
+	leaf := children[0]
+	mustLink(t, testBuild(&root.kids, children...))
 	j := beginHashTransaction(tr)
 	tr.work.hashLimit = tr.work.hashUsed + 3
 	var before, after runtime.MemStats

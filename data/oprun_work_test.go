@@ -62,8 +62,8 @@ func TestOpRunLookupWork(t *testing.T) {
 					}
 					tr.work.Store(0)
 					src.work.Store(0)
-					tr.work.visits, tr.work.shifts = true, true
-					src.work.visits, src.work.shifts = true, true
+					tr.work.visits = true
+					src.work.visits = true
 					lv := &mergeLevel{parent: op, cache: &dupCache{}}
 					for _, i := range indices {
 						target := srcOp.kids.At(i)

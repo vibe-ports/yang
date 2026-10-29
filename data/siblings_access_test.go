@@ -16,23 +16,30 @@ import (
 	"testing"
 
 	"github.com/vibe-ports/yang"
+	"github.com/vibe-ports/yang/internal/opidx"
 	"github.com/vibe-ports/yang/internal/schema"
 )
 
-// Check tests as well as production, including struct literals, so new callers
-// cannot bypass the facade through an alias or a temporary nodeDeque builder.
+// storageWrites are the sequence and slot methods that change sibling storage (design 14).
+var storageWrites = map[string]bool{"InsertBefore": true, "InsertAfter": true, "Remove": true,
+	"MoveBefore": true, "MoveRange": true, "Splice": true, "ReplaceRange": true, "ReplaceHandles": true,
+	"Republish": true, "Set": true}
+
+// Check tests as well as production, so new callers cannot write sibling storage, or a node's
+// slot, past the facade: a write method called on a store's sequence or on a slot.
 func siblingStorageViolations(fset *token.FileSet, file *ast.File) []token.Position {
 	var found []token.Position
 	ast.Inspect(file, func(n ast.Node) bool {
-		var field *ast.Ident
-		switch n := n.(type) {
-		case *ast.SelectorExpr:
-			field = n.Sel
-		case *ast.KeyValueExpr:
-			field, _ = n.Key.(*ast.Ident)
+		call, ok := n.(*ast.CallExpr)
+		if !ok {
+			return true
 		}
-		if field != nil && (field.Name == "list" || field.Name == "opq") {
-			found = append(found, fset.Position(field.Pos()))
+		sel, ok := call.Fun.(*ast.SelectorExpr)
+		if !ok || !storageWrites[sel.Sel.Name] {
+			return true
+		}
+		if recv, ok := sel.X.(*ast.SelectorExpr); ok && (recv.Sel.Name == "seq" || recv.Sel.Name == "slot") {
+			found = append(found, fset.Position(sel.Sel.Pos()))
 		}
 		return true
 	})
@@ -45,7 +52,7 @@ func TestSiblingStorageBoundary(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, entry := range entries {
-		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".go") || entry.Name() == "siblings_access.go" {
+		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".go") || entry.Name() == "siblings_access.go" || entry.Name() == "siblings_access_test.go" {
 			continue
 		}
 		fset := token.NewFileSet()
@@ -61,9 +68,9 @@ func TestSiblingStorageBoundary(t *testing.T) {
 
 func TestSiblingStorageBoundaryRejectsAliases(t *testing.T) {
 	for _, src := range []string{
-		"package data;func f(s *siblings){_ = s.list}",
-		"package data;func f(s *siblings){alias:=s;alias.opq=nil}",
-		"package data;var s = nodeDeque{list:nil}",
+		"package data;func f(s *siblings){s.st.seq.InsertBefore(nil, nil)}",
+		"package data;func f(s *siblings){alias:=s.st;alias.seq.Remove(nil)}",
+		"package data;func f(n *Node){n.slot.Set(nil, nil)}",
 	} {
 		fset := token.NewFileSet()
 		file, err := parser.ParseFile(fset, "bypass.go", src, 0)
@@ -99,7 +106,7 @@ func TestSiblingFacadeModel(t *testing.T) {
 				}
 				at := lo + rng.IntN(hi-lo+1)
 				n := fresh(opaque)
-				if _, err := s.InsertAt(at, n); err != nil {
+				if err := s.InsertAt(at, n); err != nil {
 					t.Fatal(err)
 				}
 				model = slices.Insert(model, at, n)
@@ -109,7 +116,7 @@ func TestSiblingFacadeModel(t *testing.T) {
 			case 2:
 				if len(model) > 0 {
 					at := rng.IntN(len(model))
-					if _, err := s.DeleteAt(at); err != nil {
+					if err := s.DeleteAt(at); err != nil {
 						t.Fatal(err)
 					}
 					model = slices.Delete(model, at, at+1)
@@ -118,24 +125,28 @@ func TestSiblingFacadeModel(t *testing.T) {
 					}
 				}
 			case 3:
-				opaque := rng.IntN(2) == 0
-				lo, hi := 0, schemaLen
-				if opaque {
-					lo, hi = schemaLen, len(model)
-				}
-				a := lo + rng.IntN(hi-lo+1)
-				b := a + rng.IntN(hi-a+1)
-				nodes := make([]*Node, rng.IntN(4))
-				for i := range nodes {
-					nodes[i] = fresh(opaque)
-				}
-				mustLink(t, s.Splice(a, b, nodes))
-				model = slices.Replace(model, a, b, nodes...)
-				if !opaque {
-					schemaLen += len(nodes) - (b - a)
-				}
+				// republish a schema run in another order (replaceSchema)
+				a := rng.IntN(schemaLen + 1)
+				b := a + rng.IntN(schemaLen-a+1)
+				run := slices.Clone(model[a:b])
+				rng.Shuffle(len(run), func(i, j int) { run[i], run[j] = run[j], run[i] })
+				mustLink(t, s.replaceSchema(a, b, spanOf(run)))
+				copy(model[a:b], run)
 			case 4:
-				mustLink(t, s.Build(slices.Clone(model[:schemaLen]), slices.Clone(model[schemaLen:])))
+				// publish a schema run with new members (publishRun)
+				a := rng.IntN(schemaLen + 1)
+				b := a + rng.IntN(schemaLen-a+1)
+				run := slices.Clone(model[a:b])
+				for range rng.IntN(4) {
+					run = append(run, fresh(false))
+				}
+				rng.Shuffle(len(run), func(i, j int) { run[i], run[j] = run[j], run[i] })
+				mustLink(t, s.publishRun(a, b, run))
+				model = slices.Replace(model, a, b, run...)
+				schemaLen += len(run) - (b - a)
+			}
+			if err := storeCheckInvariant(&s); err != nil {
+				t.Fatalf("seed=%d step=%d: %v", seed, step, err)
 			}
 			if s.Len() != len(model) || s.SchemaLen() != schemaLen || s.OpaqueLen() != len(model)-schemaLen {
 				t.Fatalf("seed=%d step=%d lengths", seed, step)
@@ -177,32 +188,29 @@ func TestSiblingFacadeModel(t *testing.T) {
 }
 
 func TestSiblingFacadeStorageRollback(t *testing.T) {
-	for _, mutation := range []string{"insert", "delete", "splice", "publish", "replay", "build", "compact", "transfer", "reset"} {
+	for _, mutation := range []string{"insert", "insert-opaque", "delete", "publish", "publish-run", "compact", "transfer", "reset"} {
 		t.Run(mutation, func(t *testing.T) {
 			tr := newTree(nil)
 			a, b, c := &Node{schema: &schema.Node{}}, &Node{schema: &schema.Node{}}, &Node{}
-			mustLink(t, tr.top.Build([]*Node{a, b}, []*Node{c}))
+			mustLink(t, testBuild(&tr.top, a, b, c))
 			tr.top.setWork(&tr.work)
 			destination := siblings{work: &tr.work}
 			before := tr.top.CollectRange(0, tr.top.Len())
+			handles := []*opidx.Handle[*Node]{a.slot.Get(), b.slot.Get(), c.slot.Get()}
+			added := &Node{schema: &schema.Node{}}
 			j := beginHashTransaction(tr)
 			switch mutation {
 			case "insert":
-				if _, err := tr.top.InsertAt(1, &Node{schema: &schema.Node{}}); err != nil {
-					t.Fatal(err)
-				}
+				mustLink(t, tr.top.InsertAt(1, added))
+			case "insert-opaque":
+				added = &Node{}
+				mustLink(t, tr.top.InsertAt(tr.top.Len(), added))
 			case "delete":
-				if _, err := tr.top.DeleteAt(0); err != nil {
-					t.Fatal(err)
-				}
-			case "splice":
-				mustLink(t, tr.top.Splice(0, 1, []*Node{{schema: &schema.Node{}}}))
+				mustLink(t, tr.top.DeleteAt(0))
 			case "publish":
 				mustLink(t, tr.top.replaceSchema(0, 2, spanOf([]*Node{b, a})))
-			case "replay":
-				mustLink(t, tr.top.exposeSchema([]*Node{a}))
-			case "build":
-				mustLink(t, tr.top.Build(nil, []*Node{c}))
+			case "publish-run":
+				mustLink(t, tr.top.publishRun(0, 2, []*Node{b, added, a}))
 			case "compact":
 				mustLink(t, tr.top.deleteMatching(func(n *Node) bool { return n == a }, func(n *Node) bool { return n == c }))
 			case "transfer":
@@ -218,29 +226,42 @@ func TestSiblingFacadeStorageRollback(t *testing.T) {
 			if !slices.Equal(tr.top.CollectRange(0, tr.top.Len()), before) || destination.Len() != 0 {
 				t.Fatal("rollback failed")
 			}
+			for i, n := range before {
+				if n.slot.Get() != handles[i] || tr.top.Index(n) != i {
+					t.Fatalf("rollback did not restore the handle of position %d", i)
+				}
+			}
+			if added.slot.Get() != nil || tr.top.handle(added) != nil {
+				t.Fatal("a rolled-back insertion left its node slotted")
+			}
+			if err := storeCheckInvariant(&tr.top); err != nil {
+				t.Fatal(err)
+			}
 			if tr.top.work != &tr.work {
 				t.Fatal("rollback lost work binding")
 			}
-			if _, err := tr.top.InsertAt(1, &Node{schema: &schema.Node{}}); err != nil {
-				t.Fatal(err)
-			}
-			if tr.top.Len() != 4 {
+			mustLink(t, tr.top.InsertAt(1, &Node{schema: &schema.Node{}}))
+			if tr.top.Len() != 4 || storeCheckInvariant(&tr.top) != nil {
 				t.Fatal("insertion after rollback")
 			}
 		})
 	}
 }
 
-func TestSiblingFacadeSnapshotAndView(t *testing.T) {
-	n := &Node{schema: &schema.Node{}}
-	owner := newTree(nil)
-	n.tree = owner
+// TestSiblingFacadeView: a view holds nodes of another set without re-slotting them; both sets
+// find the node, and the owner's storage is unchanged.
+func TestSiblingFacadeView(t *testing.T) {
+	var owner siblings
+	n, m := &Node{schema: &schema.Node{}}, &Node{}
+	mustLink(t, testBuild(&owner, n, m))
+	h := n.slot.Get()
 	var view siblings
-	mustLink(t, view.Build([]*Node{n}, nil))
-	snapshot := view.CollectRange(0, 1)
-	mustLink(t, view.replaceSchema(0, 1, spanOf([]*Node{{schema: &schema.Node{}}})))
-	if snapshot[0] != n || n.tree != owner || n.parent != nil {
-		t.Fatal("view changed ownership or snapshot")
+	view.view(n, m)
+	if n.slot.Get() != h || owner.Index(n) != 0 || view.Index(n) != 0 || view.Index(m) != 1 {
+		t.Fatal("a view changed a slot or cannot find its nodes")
+	}
+	if err := storeCheckInvariant(&owner); err != nil {
+		t.Fatal(err)
 	}
 }
 
@@ -360,7 +381,7 @@ func TestSiblingPublicationBorrowedLifetime(t *testing.T) {
 						}
 						if call, ok := publication.(*ast.CallExpr); ok {
 							if sel, ok := call.Fun.(*ast.SelectorExpr); ok &&
-								(sel.Sel.Name == "replaceSchema" || sel.Sel.Name == "buildSchema" || sel.Sel.Name == "exposeSchema") {
+								(sel.Sel.Name == "replaceSchema" || sel.Sel.Name == "publishRun") {
 								for name := range borrowed {
 									stale[name] = true
 								}
@@ -390,15 +411,12 @@ func TestSiblingFacadeCaptureFailure(t *testing.T) {
 		name   string
 		mutate func(*siblings, *siblings) error
 	}{
-		{"insert-schema", func(s, _ *siblings) error { _, err := s.InsertAt(1, &Node{schema: &schema.Node{}}); return err }},
-		{"insert-opaque", func(s, _ *siblings) error { _, err := s.InsertAt(s.Len(), &Node{}); return err }},
-		{"delete-schema", func(s, _ *siblings) error { _, err := s.DeleteAt(0); return err }},
-		{"delete-opaque", func(s, _ *siblings) error { _, err := s.DeleteAt(s.SchemaLen()); return err }},
-		{"splice", func(s, _ *siblings) error { return s.Splice(0, s.Len(), nil) }},
-		{"publish", func(s, _ *siblings) error { return s.replaceSchema(0, 1, spanOf([]*Node{{schema: &schema.Node{}}})) }},
-		{"replay", func(s, _ *siblings) error { return s.exposeSchema(nil) }},
-		{"build", func(s, _ *siblings) error { return s.Build(nil, nil) }},
-		{"build-schema", func(s, _ *siblings) error { return s.buildSchema(nil) }},
+		{"insert-schema", func(s, _ *siblings) error { return s.InsertAt(1, &Node{schema: &schema.Node{}}) }},
+		{"insert-opaque", func(s, _ *siblings) error { return s.InsertAt(s.Len(), &Node{}) }},
+		{"delete-schema", func(s, _ *siblings) error { return s.DeleteAt(0) }},
+		{"delete-opaque", func(s, _ *siblings) error { return s.DeleteAt(s.SchemaLen()) }},
+		{"publish", func(s, _ *siblings) error { return s.replaceSchema(0, 1, spanOf([]*Node{s.At(0)})) }},
+		{"publish-run", func(s, _ *siblings) error { return s.publishRun(0, 1, []*Node{s.At(0), {schema: &schema.Node{}}}) }},
 		{"append", func(s, _ *siblings) error { return s.appendNode(&Node{}) }},
 		{"compact", func(s, _ *siblings) error { return s.deleteMatching(func(*Node) bool { return true }, nil) }},
 		{"transfer-destination", func(s, src *siblings) error { return s.transferFrom(src) }},
@@ -407,10 +425,10 @@ func TestSiblingFacadeCaptureFailure(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			tr := newTree(nil)
-			mustLink(t, tr.top.Build([]*Node{{schema: &schema.Node{}}}, []*Node{{}}))
+			mustLink(t, testBuild(&tr.top, &Node{schema: &schema.Node{}}, &Node{}))
 			tr.top.setWork(&tr.work)
 			var src siblings
-			mustLink(t, src.Build([]*Node{{schema: &schema.Node{}}}, nil))
+			mustLink(t, testBuild(&src, &Node{schema: &schema.Node{}}))
 			src.setWork(&tr.work)
 			before, sourceBefore := tr.top.CollectRange(0, tr.top.Len()), src.CollectRange(0, src.Len())
 			j := beginHashTransaction(tr)
@@ -430,4 +448,56 @@ func TestSiblingFacadeCaptureFailure(t *testing.T) {
 			j.end(&err)
 		})
 	}
+}
+
+// testBuild replaces the content of s with nodes (schema nodes first) through the storage, as a
+// fixture: members of s keep their handles, other nodes are slotted, the rest leave s.
+func testBuild(s *siblings, nodes ...*Node) error {
+	keep := make(map[*Node]bool, len(nodes))
+	for _, n := range nodes {
+		keep[n] = true
+	}
+	gone := func(n *Node) bool { return !keep[n] }
+	if err := s.deleteMatching(gone, gone); err != nil {
+		return err
+	}
+	st := s.store()
+	journaled := s.storeJournaled()
+	fresh := len(nodes) - st.seq.Len()
+	paid, err := s.payStore(addHashBound(st.seq.RepublishBound(0, st.seq.Len(), fresh, journaled, nil),
+		mulHashBound(uint64(len(nodes)), slotUnits(journaled))))
+	if err != nil {
+		return err
+	}
+	defer paid.close()
+	st.ver++
+	hs, ok := st.seq.Republish(0, st.seq.Len(), nodes, s.handle)
+	if !ok {
+		panic("testBuild: invalid nodes")
+	}
+	schemaLen := 0
+	for i, n := range nodes {
+		if n.slot.Get() != hs[i] {
+			n.slot.Set(&st.bind, hs[i])
+		}
+		if n.schema != nil {
+			schemaLen++
+		}
+	}
+	opidx.AddInt(&st.bind, &st.nschema, schemaLen-st.nschema)
+	return nil
+}
+
+// storageAllowance is the sum of the storage's prepaid point bounds for n schema nodes appended
+// one by one to an unindexed set (design 14), journaled or not: what a budget must leave room for
+// besides the hashing, since each link reserves its insertion's bound before it is charged.
+func storageAllowance(n int, journaled bool) uint64 {
+	var seq opidx.Seq[*Node]
+	seq.SetLabeled(false)
+	var total uint64
+	for range n {
+		total += seq.InsertBound(nil, journaled, nil) + slotUnits(journaled)
+		seq.InsertBefore(nil, nil)
+	}
+	return total
 }

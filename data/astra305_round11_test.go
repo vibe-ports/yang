@@ -70,7 +70,7 @@ func TestParseDistinctDatastoreLeafListsScaling(t *testing.T) {
 		tr, diags, err := parseWith(context.Background(), strings.NewReader(input.String()), set,
 			parseOpts{ParseOptions: ParseOptions{ParseOnly: true}}, parseJSON, func(c *lydCtx) {
 				lc = c
-				c.tree.work.visits, c.tree.work.shifts = true, true
+				c.tree.work.visits = true
 			})
 		if err != nil {
 			t.Fatal(err, diags)

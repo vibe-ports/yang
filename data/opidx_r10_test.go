@@ -135,7 +135,6 @@ func TestOpIndexRehashMiddle(t *testing.T) {
 
 		tr.work.Store(0)
 		tr.work.visits = true
-		tr.work.shifts = true
 		for i, node := range nodes[1 : n+1] {
 			want := strconv.Itoa(n + 2 + i)
 			if rc := tr.changeTerm(node, want); rc != "" {
@@ -198,7 +197,6 @@ func TestOpIndexLookupStaleLeader(t *testing.T) {
 
 		tr.work.Store(0)
 		tr.work.visits = true
-		tr.work.shifts = true
 		for i := range n {
 			if got := tr.schemaLookup(&op.kids, vs); got != last {
 				t.Fatalf("lookup %d = %s, want v%d", i, opidxLabel(got), n)
@@ -286,7 +284,6 @@ func TestOpIndexMetaSplitInterior(t *testing.T) {
 		metadata.WriteByte('}')
 		tr.work.Store(0)
 		tr.work.visits = true
-		tr.work.shifts = true
 		if _, _, diags, err := parseOp(context.Background(), strings.NewReader(metadata.String()),
 			set, FormatJSON, opRPC, op, Reject); err != nil {
 			t.Fatal(err, diags)

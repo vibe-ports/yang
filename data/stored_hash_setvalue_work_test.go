@@ -25,7 +25,7 @@ func TestStoredHashMaxLeafListSetValueWork(t *testing.T) {
 		}
 		tail := tr.top.At(n - 1)
 		tr.work.Store(0)
-		tr.work.visits, tr.work.shifts = true, true
+		tr.work.visits = true
 		var charged uint64
 		for i := range n {
 			if changed, err := tail.SetValue(fmt.Sprint(n + i)); err != nil || !changed {
@@ -58,11 +58,12 @@ func TestStoredHashMaxLeafListSetValueWork(t *testing.T) {
 	if tail.Value() != "31" || tr.top.At(31) != tail {
 		t.Fatal("budget refusal changed the ordered run")
 	}
-	tr.work.hashLimit = 2
+	// the origin is the storage's rank: its read credit is refused before the walk (design 14)
+	tr.work.hashLimit = rbHeight(32)
 	end := tr.work.beginHashWork()
 	_, _, err := tr.linkOrigin(tr.top.At(16))
 	end()
-	if !errors.Is(err, yang.ErrBudget) || tr.work.hashUsed != 2 || tr.top.At(16).Value() != "16" {
+	if !errors.Is(err, yang.ErrBudget) || tr.work.hashUsed != 0 || tr.top.At(16).Value() != "16" {
 		t.Fatalf("middle-position lookup: error=%v charged=%d", err, tr.work.hashUsed)
 	}
 }
@@ -84,7 +85,7 @@ func TestStoredHashMiddleRemovalAppendWork(t *testing.T) {
 			t.Fatal(err)
 		}
 		tr.work.Store(0)
-		tr.work.visits, tr.work.shifts = true, true
+		tr.work.visits = true
 		for i := range n {
 			if _, err := tr.NewTerm(nil, "m:v", fmt.Sprint(n+i), NewOptions{}); err != nil {
 				t.Fatal(err)

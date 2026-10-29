@@ -415,11 +415,11 @@ func TestMovedSubtreeDoesNotChargeSource(t *testing.T) {
 	if err := dst.Insert(nil, root); err != nil {
 		t.Fatal(err)
 	}
-	src.work.hashLimit = 1
 	srcRoot, err := src.NewInner(nil, "m:r", NewOptions{})
 	if err != nil {
 		t.Fatal(err)
 	}
+	src.work.hashLimit = src.work.hashUsed + 1 // below the next link's storage bound (design 14)
 	if _, err := src.NewTerm(srcRoot, "s", "a value", NewOptions{}); !errors.Is(err, yang.ErrBudget) {
 		t.Fatalf("source quota probe: %v", err)
 	}

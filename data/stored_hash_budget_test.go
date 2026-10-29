@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"reflect"
+	"sort"
 	"strings"
 	"testing"
 
@@ -130,7 +131,7 @@ func TestStoredHashLongNameRepeatedValuesBudget(t *testing.T) {
 		mod.Owner = set // compiled snapshots share immutable prefixes across trees
 	}
 	input := `{"m:` + name + `":[` + strings.Repeat(`"",`, 63) + `""]}`
-	limit := uint64(len("m") + len(name) + 64 + 8)
+	limit := uint64(len("m")+len(name)+64+8) + storageAllowance(64, false)
 	var parsed *Tree
 	got, diags, err := parseWith(context.Background(), strings.NewReader(input), set,
 		parseOpts{ParseOptions: ParseOptions{ParseOnly: true}}, parseJSON, func(lc *lydCtx) {
@@ -140,16 +141,19 @@ func TestStoredHashLongNameRepeatedValuesBudget(t *testing.T) {
 	if err != nil || len(diags) != 0 || got == nil || got.top.SchemaLen() != 64 {
 		t.Fatalf("nodes=%d diagnostics=%v error=%v", parsed.top.SchemaLen(), diags, err)
 	}
-	if used := parsed.work.hashUsed; used < uint64(len("m")+len(name)+64) || used > limit {
+	used := parsed.work.hashUsed
+	if used < uint64(len("m")+len(name)+64) || used > limit {
 		t.Fatalf("reserved hash work = %d, want one schema prefix plus 64 values", used)
 	}
 	var repeated *Tree
 	got, diags, err = parseWith(context.Background(), strings.NewReader(input), set,
 		parseOpts{ParseOptions: ParseOptions{ParseOnly: true}}, parseJSON, func(lc *lydCtx) {
-			lc.tree.work.hashLimit = 64 + 8
+			lc.tree.work.hashLimit = 64 + 8 + storageAllowance(64, false)
 			repeated = lc.tree
 		})
-	if err != nil || len(diags) != 0 || got == nil || got.top.SchemaLen() != 64 || repeated.work.hashUsed != 64 {
+	// the same parse, less the one schema prefix the snapshot caches
+	if err != nil || len(diags) != 0 || got == nil || got.top.SchemaLen() != 64 ||
+		repeated.work.hashUsed != used-uint64(len("m")+len(name)) {
 		t.Fatalf("cached prefix: nodes=%d work=%d diagnostics=%v error=%v", repeated.top.SchemaLen(),
 			repeated.work.hashUsed, diags, err)
 	}
@@ -214,8 +218,10 @@ func TestStoredHashCopiedIncompletePrefixBudget(t *testing.T) {
 	aWork := types.HashLYBWorkBound(aValue)
 	bWork := types.HashLYBWorkBound(list.kids.At(0).value)
 	// The positional-prefix and hash-input scans each visit both keys;
-	// displacing the captured prefix copies its one existing key.
-	dst.work.hashLimit = 2*aWork + bWork + 5 - 1
+	// displacing the captured prefix copies its one existing key. The link also prepays the
+	// storage's insertion before the first key (design 14).
+	need := 2*aWork + bWork + 5 + list.kids.insertBound(&Node{schema: list.schema.Keys[0]}, 0, false)
+	dst.work.hashLimit = need - 1
 	beforeHash, beforePrefix := list.hash, list.lkeyPrefix
 	if added, err := dst.NewTerm(list, "a", "a", NewOptions{}); added != nil || !errors.Is(err, yang.ErrBudget) {
 		t.Fatalf("NewTerm node=%v err=%v; want ErrBudget", added, err)
@@ -224,7 +230,7 @@ func TestStoredHashCopiedIncompletePrefixBudget(t *testing.T) {
 		list.lkeyFrozen != nil || list.keyN != 1 || list.lkeyN != 1 {
 		t.Fatal("failed insertion published a key or changed its parent's captured hash")
 	}
-	dst.work.hashLimit = 2*aWork + bWork + 5
+	dst.work.hashLimit = need
 	if added, err := dst.NewTerm(list, "a", "a", NewOptions{}); err != nil || added == nil {
 		t.Fatalf("retry node=%v err=%v", added, err)
 	}
@@ -580,9 +586,19 @@ func TestMergeDiffHashWorkScope(t *testing.T) {
 		if err := tc.merge(probe); err != nil {
 			t.Fatal(err)
 		}
-		limit := probe.work.hashUsed
-		if limit < hashing || limit > hashing+64 {
-			t.Fatalf("%s charged %d, want the hashing %d and a small journal", tc.name, limit, hashing)
+		used := probe.work.hashUsed
+		if used < hashing || used > hashing+64 {
+			t.Fatalf("%s charged %d, want the hashing %d and a small journal", tc.name, used, hashing)
+		}
+		// the smallest sufficient limit: the charge, and room for the storage insertion's
+		// prepaid bound, refunded to its actual units (design 14)
+		limit := uint64(sort.Search(int(used+storageAllowance(1, true)+1), func(l int) bool { //nolint:gosec // small and nonnegative
+			dst := newTree(set)
+			dst.work.hashLimit = uint64(l) //nolint:gosec // nonnegative
+			return tc.merge(dst) == nil
+		}))
+		if limit < used || limit > used+storageAllowance(1, true) {
+			t.Fatalf("%s needs a limit of %d for a charge of %d", tc.name, limit, used)
 		}
 		t.Run(tc.name+" repeated", func(t *testing.T) {
 			dst := newTree(set)

@@ -380,7 +380,7 @@ func TestInsertDetachedOperationLeafListScaling(t *testing.T) {
 			detached[i] = opIndexTerm(t, values, i)
 		}
 		tr.work.Store(0)
-		tr.work.visits, tr.work.shifts = true, true
+		tr.work.visits = true
 		runtime.GC()
 		var before, after runtime.MemStats
 		runtime.ReadMemStats(&before)

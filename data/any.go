@@ -480,11 +480,7 @@ func (n *Node) copyAnyValue(w *anyWork, child *Node, value *string, hints types.
 	if err != nil {
 		return err
 	}
-	for _, c := range children {
-		if err := src.any.children.appendNode(c); err != nil {
-			return err
-		}
-	}
+	src.any.children.view(children...) // the source stays linked where it is
 	d, err := newTree(set).dupWork(src, nil, false, insertDefault, 0, set, w)
 	if err != nil {
 		return err

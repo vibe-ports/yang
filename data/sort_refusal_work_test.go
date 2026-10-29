@@ -64,7 +64,7 @@ func TestStage4SortWork(t *testing.T) {
 				}
 				tr.work.hashUsed = 0
 				tr.work.Store(0)
-				tr.work.visits, tr.work.shifts = true, true
+				tr.work.visits = true
 				var before, after runtime.MemStats
 				runtime.ReadMemStats(&before)
 				for i := range n {
@@ -182,7 +182,7 @@ func TestStage4KeySortWork(t *testing.T) {
 		}
 		tr.work.Store(0)
 		tr.work.hashUsed = 0
-		tr.work.visits, tr.work.shifts = true, true
+		tr.work.visits = true
 		var before, after runtime.MemStats
 		runtime.ReadMemStats(&before)
 		for i := range n {

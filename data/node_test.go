@@ -178,8 +178,9 @@ func TestInsertWork(t *testing.T) {
 				t.Fatalf("position %d holds %s", i, k.value.Canonical())
 			}
 		}
-		// rb_insert_node descends the retained tree (height up to 2*log2 n), then recolours
-		if limit := n * (5*bits.Len(uint(n)) + 4); int(tr.work.Load()) > limit {
+		// rb_insert_node descends the retained tree (height up to 2*log2 n), then recolours; the
+		// storage's AVL insertion descends its own tree once more (design 14)
+		if limit := n * (6*bits.Len(uint(n)) + 4); int(tr.work.Load()) > limit {
 			t.Fatalf("reversed %v: %d comparisons, limit %d", reversed, int(tr.work.Load()), limit)
 		}
 	}
@@ -576,8 +577,9 @@ func TestConcurrentReads(t *testing.T) {
 	wg.Wait()
 }
 
-// TestBulkWork: removing many instances that share a bucket (equal state leaf-list values) and
-// alternating opaque/schema inserts cost linear work (counted, not timed).
+// TestBulkWork: removing many instances that share a bucket (equal state leaf-list values) costs
+// linear work, and alternating opaque/schema inserts cost the storage's O(log n) insertion each
+// (counted, not timed; design 14).
 func TestBulkWork(t *testing.T) {
 	f := newFixture()
 	tr := newTree(f.set)
@@ -592,7 +594,7 @@ func TestBulkWork(t *testing.T) {
 		all = append(all, s)
 		mustLink(t, tr.insert(c, newOpaque(opaque{Name: "o"}), insertDefault))
 	}
-	if int(tr.work.Load()) > 4*n || c.kids.OpaqueLen() != n {
+	if limit := 2 * n * (bits.Len(uint(2*n)) + 4); int(tr.work.Load()) > limit || c.kids.OpaqueLen() != n {
 		t.Fatalf("alternating inserts: %d comparisons", int(tr.work.Load()))
 	}
 	tr.work.Store(0)
@@ -600,8 +602,9 @@ func TestBulkWork(t *testing.T) {
 	if err := tr.unlinkAll(all); err != nil {
 		t.Fatal(err)
 	}
-	// Include the preflight batch scan now charged to the source hash budget.
-	if int(tr.work.Load()) > 6*n || c.kids.SchemaLen() != 0 || len(c.kids.ht) != 0 {
+	// Include the preflight batch scan now charged to the source hash budget, and the storage's
+	// one compaction (Keep): a scan of all 2n siblings and the rebuild of the n survivors.
+	if int(tr.work.Load()) > 9*n || c.kids.SchemaLen() != 0 || len(c.kids.ht) != 0 {
 		t.Fatalf("bulk unlink: %d steps, %d left, %d buckets", int(tr.work.Load()), c.kids.SchemaLen(), len(c.kids.ht))
 	}
 }

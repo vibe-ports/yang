@@ -266,7 +266,7 @@ func TestApplyDiffCreateLookupScaling(t *testing.T) {
 			if first, err := tr.dupInstNext(tr.top.first(), cache); err != nil || first == nil { // builds the index
 				t.Fatal("no first instance", err)
 			}
-			tr.work.visits, tr.work.shifts = true, true
+			tr.work.visits = true
 			var total int64
 			for i := range n {
 				node, err := tr.NewPath("/pv2-dupcreate:tl", fmt.Sprintf("v%07d", i), NewPathOptions{})
@@ -299,7 +299,7 @@ func TestApplyDiffCreateLookupScaling(t *testing.T) {
 			}
 			diff := followupsDiff(t, set, b.String())
 			tr.work.Store(0)
-			tr.work.visits, tr.work.shifts = true, true
+			tr.work.visits = true
 			if err := tr.ApplyDiff(diff, ApplyDiffOptions{}); err != nil {
 				t.Fatal(err)
 			}

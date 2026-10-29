@@ -70,7 +70,7 @@ func TestAstra305Round13CountedWork(t *testing.T) {
 				}
 				dst.work.Store(0)
 				src.work.Store(0)
-				dst.work.visits, dst.work.shifts, src.work.visits, src.work.shifts = true, true, true, true
+				dst.work.visits, src.work.visits = true, true
 				runtime.GC()
 				var before, after runtime.MemStats
 				runtime.ReadMemStats(&before)

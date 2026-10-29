@@ -628,13 +628,13 @@ func (p *jsonParser) metaAttr(node *Node, idx int) (rc error) {
 					return run.At(i)
 				}
 				pastRun = func() *Node {
-					return sibAt(sib, sib.schemaSpan().indexFromEnd(&lc.tree.work, run.At(run.Len()-1))+1+i-run.Len())
+					return sibAt(sib, sib.orderPosition(run.At(run.Len()-1))+1+i-run.Len())
 				}
 				return nil
 			}
 		} else if opChild(node.schema) || sib.schemaUnordered {
-			// A run split by an anchor is located by a counted scan from the nearer end.
-			idx = lc.position(sib, node)
+			// A run split by an anchor is located by its rank.
+			idx = sib.orderPosition(node)
 		}
 	}
 	var status lyjson.Token

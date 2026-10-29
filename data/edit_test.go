@@ -643,7 +643,7 @@ func TestInsertScaling(t *testing.T) {
 	set := editSet(t)
 	measured := func(tr *Tree) *Tree {
 		tr.work.Store(0)
-		tr.work.visits, tr.work.shifts = true, true
+		tr.work.visits = true
 		return tr
 	}
 	build := func(n int, val func(i int) int) *Tree {
@@ -666,7 +666,7 @@ func TestInsertScaling(t *testing.T) {
 			parseOpts{ParseOptions: ParseOptions{ParseOnly: true}}, parseJSON,
 			func(l *lydCtx) {
 				lc = l
-				l.tree.work.visits, l.tree.work.shifts = true, true
+				l.tree.work.visits = true
 			})
 		if err != nil {
 			t.Fatal(err, diags)

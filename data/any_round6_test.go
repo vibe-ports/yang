@@ -624,7 +624,7 @@ func TestCompareDateCanonicalCollision(t *testing.T) {
 			entry := &Node{schema: list, parent: n}
 			leaf := b.term(key, value)
 			leaf.parent = entry
-			mustLink(t, entry.kids.buildSchema([]*Node{leaf}))
+			mustLink(t, testBuild(&entry.kids, leaf))
 			mustLink(t, n.kids.appendNode(entry))
 		}
 		return n

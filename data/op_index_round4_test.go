@@ -37,7 +37,7 @@ func opidxRound4CopiedRPCOf(t *testing.T, values string) (*Tree, *Node) {
 
 func opidxRound4Sequence(s *siblings) []*Node {
 	var nodes []*Node
-	for h := s.order.seq.First(); h != nil; h = s.order.seq.Next(h) {
+	for h := s.st.seq.First(); h != nil; h = s.st.seq.Next(h) {
 		nodes = append(nodes, h.Value)
 	}
 	return nodes

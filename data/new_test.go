@@ -241,7 +241,7 @@ func TestNewList2PublicWorkMatchesInternal(t *testing.T) {
 	set, a := newTestSet(t)
 	measure := func(public bool) int64 {
 		tr := newTree(set)
-		tr.work.visits, tr.work.shifts = true, true
+		tr.work.visits = true
 		for i := 63; i >= 0; i-- {
 			keys := fmt.Sprintf("[a='%d']", i)
 			if public {

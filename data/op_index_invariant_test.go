@@ -27,12 +27,43 @@ func opidxOccurrenceCount(index any) int {
 	return reflect.ValueOf(index).Elem().FieldByName("by").Len()
 }
 
+// storeCheckInvariant checks the storage of s (design 14): the sequence's own invariants, the
+// schema prefix, and that every stored node's slot is its handle there.
+func storeCheckInvariant(s *siblings) error {
+	if s.st == nil {
+		return nil
+	}
+	if err := s.st.seq.CheckInvariants(); err != nil {
+		return fmt.Errorf("storage sequence: %w", err)
+	}
+	i := 0
+	for h := s.st.seq.First(); h != nil; h = s.st.seq.Next(h) {
+		if (i < s.st.nschema) != (h.Value.schema != nil) {
+			return fmt.Errorf("storage position %d breaks the schema prefix of %d", i, s.st.nschema)
+		}
+		if !s.st.view && h.Value.slot.Get() != h {
+			return fmt.Errorf("storage position %d: the node's slot is not its handle", i)
+		}
+		i++
+	}
+	if i < s.st.nschema {
+		return fmt.Errorf("schema count %d above the stored %d", s.st.nschema, i)
+	}
+	return nil
+}
+
 func opidxCheckOrderInvariant(tr *Tree, s *siblings) error {
 	if err := s.checkRecords(); err != nil {
 		return err
 	}
+	if err := storeCheckInvariant(s); err != nil {
+		return err
+	}
 	if s.order == nil {
 		return nil
+	}
+	if s.order.bind != &s.st.bind {
+		return fmt.Errorf("ordered index is not bound to its storage")
 	}
 	// Invariant probes must not become part of the scaling measurements they
 	// guard. The installed hooks read s.work dynamically.
@@ -41,23 +72,6 @@ func opidxCheckOrderInvariant(tr *Tree, s *siblings) error {
 	defer func() { s.work = work }()
 
 	live := slices.Concat(slices.Clone(s.schemaSpan().Collect()), slices.Clone(s.opaqueSpan().Collect()))
-	var sequence []*Node
-	for h := s.order.seq.First(); h != nil; h = s.order.seq.Next(h) {
-		sequence = append(sequence, h.Value)
-	}
-	if !slices.Equal(sequence, live) {
-		return fmt.Errorf("ordered sequence differs from live siblings")
-	}
-	if s.order.seq.Len() != len(live) || len(s.order.byNode) != len(live) {
-		return fmt.Errorf("ordered node counts = sequence %d, handles %d, live %d",
-			s.order.seq.Len(), len(s.order.byNode), len(live))
-	}
-	for i, n := range live {
-		h := s.order.byNode[n]
-		if h == nil || h.Value != n || s.order.seq.Select(i) != h {
-			return fmt.Errorf("ordered handle for live sibling %d is stale", i)
-		}
-	}
 
 	bySchema := map[*schema.Node][]*Node{}
 	byExact := map[struct {

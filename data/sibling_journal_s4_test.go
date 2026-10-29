@@ -107,11 +107,6 @@ func s4Check(t *testing.T, where string, trees []*Tree) {
 			if err := opidxCheckOrderInvariant(tr, s); err != nil {
 				t.Fatalf("%s: tree %d: %v", where, i, err)
 			}
-			if s.order != nil {
-				if err := s.order.seq.CheckInvariants(); err != nil {
-					t.Fatalf("%s: tree %d: sequence: %v", where, i, err)
-				}
-			}
 			for n := range s.all() {
 				stack = append(stack, &n.kids)
 				if n.any != nil {

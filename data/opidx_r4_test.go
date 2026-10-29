@@ -88,7 +88,6 @@ func TestOpIndexBulkUnlinkScrambledRecords(t *testing.T) {
 
 				tr.work.Store(0)
 				tr.work.visits = true
-				tr.work.shifts = true
 				switch tc.kind {
 				case removeAllV:
 					if err := tr.unlinkAll(remove); err != nil {

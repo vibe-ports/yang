@@ -43,8 +43,7 @@ const htMinItems = 4
 // tree_data.c:2280-2330). All child links go through keyLinked; unlink updates the
 // discriminator after detach, and value validation uses hashReindex directly.
 type siblings struct {
-	nodeDeque           // schema nodes, in order, with front headroom for insertAt
-	opq         []*Node // opaque nodes, after all schema nodes (libyang keeps them last)
+	st          *siblingStore // the physical order: schema nodes, then opaque ones (design 14)
 	ht          map[idxKey]*recordChain
 	exactByNode map[*Node]*record
 	// history retains unchecked native insertions, grouped by recorded hash.
@@ -97,6 +96,9 @@ type siblings struct {
 	schemaUnordered bool                // a copy or move retained a different schema order
 	contexts        map[*schema.Set]int // linked schema nodes by retained context; lookups only read its size
 	leaderSeq       uint64              // the last first-instance registration (record.seq)
+	// unattached lists the published members rbPublish has not attached yet (nil otherwise):
+	// libyang links them one by one, so table construction does not see them
+	unattached map[*Node]bool
 }
 
 type recordChain struct {
@@ -318,32 +320,18 @@ func (s *siblings) dropContext(n *Node) {
 	}
 }
 
-// indexOf is the position of n in l, one of s's lists, -1 if absent. It scans from the end: the
-// XML parser's opaque anchor is the last opaque sibling of its name, usually the last one.
-// ponytail: O(distance from the end); a node→index map if anchors far from the end matter.
+// indexOf is the position of n in l, one of s's spans, -1 if absent: its rank (orderPosition).
 func (s *siblings) indexOf(l siblingSpan, n *Node) int {
-	for i := l.Len() - 1; i >= 0; i-- {
-		s.visit()
-		if l.At(i) == n {
-			return i
-		}
+	if at := s.orderPosition(n) - l.lo; at >= 0 && at < l.Len() {
+		return at
 	}
 	return -1
 }
 
-// position caches one interior sibling position until the next insertion or removal. The
-// generation in the key makes mutation invalidate it without any maintenance work.
-func (s *siblings) position(n *Node) int {
-	if at := s.orderPosition(n); at >= 0 {
-		return at
-	}
-	if s.order != nil && s.work != nil && s.work.hashErr != nil {
-		return -1 // a refused read credit is sticky: no uncharged fallback scan
-	}
-	// No cache here: lookups run on read-only paths that concurrent readers share (doc.go), so
-	// they must not write sibling state. The parser keeps its own cache (lydCtx.position).
-	return s.schemaSpan().indexFromEnd(s.work, n)
-}
+// position is the index of n in s (orderPosition: the storage's rank walk), -1 if absent or
+// refused. It writes no sibling state: lookups run on read-only paths that concurrent readers
+// share (doc.go).
+func (s *siblings) position(n *Node) int { return s.orderPosition(n) }
 
 // has reports whether an instance of s is in the list.
 func (s *siblings) has(sn *schema.Node) bool {
@@ -889,7 +877,7 @@ func (s *siblings) hashAdd(parent, n *Node) {
 		}
 		return
 	}
-	if s.SchemaLen() < htMinItems {
+	if s.SchemaLen()-len(s.unattached) < htMinItems {
 		return
 	}
 	if err := s.touchWhole(); err != nil { // the table is built from every sibling
@@ -911,7 +899,7 @@ func (s *siblings) hashAdd(parent, n *Node) {
 // slot in its tree order. A node linked by another insertion path while the parser defers that
 // run is not in its RB tree; keep it in its physical slot so table construction sees it too.
 func (s *siblings) logical() siblingSpan {
-	if len(s.pending) == 0 {
+	if len(s.pending) == 0 && len(s.unattached) == 0 {
 		return s.schemaSpan()
 	}
 	out := make([]*Node, 0, s.SchemaLen())
@@ -923,6 +911,9 @@ func (s *siblings) logical() siblingSpan {
 	for _, n := range s.SchemaAll() {
 		if s.work != nil {
 			s.work.Add(1)
+		}
+		if s.unattached[n] {
+			continue
 		}
 		ord := s.pending[n.schema]
 		if ord == nil || ord.nodes[n] == nil || !ord.nodes[n].active {
@@ -1519,14 +1510,14 @@ func (s *siblings) opRehashNeighbours(n *Node) (prev, next *Node, ok bool) {
 	if s.order == nil {
 		return nil, nil, false
 	}
-	h := s.order.byNode[n]
+	h := s.handle(n)
 	if h == nil {
 		return nil, nil, false
 	}
-	if before := s.order.seq.Prev(h); before != nil && before.Value.schema == n.schema {
+	if before := s.st.seq.Prev(h); before != nil && before.Value.schema == n.schema {
 		return before.Value, nil, true
 	}
-	if after := s.order.seq.Next(h); after != nil && after.Value.schema == n.schema {
+	if after := s.st.seq.Next(h); after != nil && after.Value.schema == n.schema {
 		next = after.Value
 	}
 	return nil, next, true

@@ -358,6 +358,9 @@ func (vc *valCtx) finalR(parent *Node, sibs siblingSpan, sparent *schema.Node, m
 			return rc
 		}
 	}
+	// siblingsSchema links and unlinks a temporary node (lyd_validate_dummy_when), which leaves
+	// every position as it was
+	sibs = sibs.reborrow()
 	for _, n := range sibs.All() {
 		if err := vc.checkContext(); err != nil {
 			return err

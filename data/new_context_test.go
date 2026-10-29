@@ -50,7 +50,7 @@ func TestImplicitConstructorWorkMatchesMain(t *testing.T) {
 					if err != nil {
 						t.Fatal(err)
 					}
-					tr.work.visits, tr.work.shifts = true, true
+					tr.work.visits = true
 					for i := count - 1; i >= 0; i-- {
 						value, name := fmt.Sprint(i%16), kind
 						keys := []string{value}

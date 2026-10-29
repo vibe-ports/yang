@@ -245,7 +245,6 @@ func TestOpIndexBulkUnlinkManyActions(t *testing.T) {
 
 		tr.work.Store(0)
 		tr.work.visits = true
-		tr.work.shifts = true
 		if err := tr.unlinkAll(remove); err != nil {
 			t.Fatal(err)
 		}

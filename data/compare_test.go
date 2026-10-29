@@ -39,7 +39,7 @@ func TestCompareMixedSchemaParentPayload(t *testing.T) {
 	}
 	nodes := []*Node{newTerm(first, v), newTerm(second, v)}
 	sibs := &siblings{} // like an any payload: no children hash table
-	mustLink(t, sibs.Build(nodes, nil))
+	sibs.view(nodes...)
 	tr := newTree(&schema.Set{Modules: []*schema.Module{mod}})
 	frames, ok, err := compareSiblingFrames(tr, &tr.work, nil, sibs, sibs, CompareOptions{})
 	equal, compareErr := compareDataStack(tr, &tr.work, frames)

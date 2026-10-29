@@ -22,7 +22,7 @@ func TestSiblingFacadePublicWork(t *testing.T) {
 			var previousBytes uint64
 			for _, count := range []int{64, 256, 1024} {
 				tr, op := round13RPC(t, set, `{}`)
-				tr.work.visits, tr.work.shifts = true, true
+				tr.work.visits = true
 				tr.work.Store(0)
 				tr.work.hashUsed = 0
 				runtime.GC()
@@ -85,7 +85,7 @@ func TestSiblingFacadePublicationWork(t *testing.T) {
 				if operation == "merge" {
 					dst, op = round13RPC(t, set, `{"v":[10000,10001]}`)
 					src, _ = round13RPC(t, set, body)
-					dst.work.visits, dst.work.shifts = true, true
+					dst.work.visits = true
 					dst.work.Store(0)
 					dst.work.hashUsed = 0
 				}

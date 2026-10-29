@@ -9,6 +9,7 @@ import (
 	"sync"
 	"sync/atomic"
 
+	"github.com/vibe-ports/yang/internal/opidx"
 	"github.com/vibe-ports/yang/internal/schema"
 	"github.com/vibe-ports/yang/internal/types"
 )
@@ -61,6 +62,7 @@ type Node struct {
 	parent *Node
 	tree   *Tree // set for top-level nodes linked into a tree
 	kids   siblings
+	slot   opidx.Slot[*Node] // its handle in its siblings' storage (design 14)
 	any    *anyValue
 	// payloadSet preserves LYD_CTX at a payload boundary, even when the enclosing
 	// any node belongs to another snapshot. It also survives unlinking the root.
@@ -134,7 +136,6 @@ type Tree struct {
 type workCounter struct {
 	atomic.Int64
 	visits     bool        // count sibling/link-record visits too (tests only; set before measured calls)
-	shifts     bool        // count the sibling slots moved by insertions too (tests only)
 	hashUsed   uint64      // cumulative reserved hash transitions in the current mutation
 	hashLimit  uint64      // zero takes the internal default; tests may lower it
 	hashErr    error       // the first hash budget error, propagated at the operation boundary

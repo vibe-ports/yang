@@ -427,9 +427,7 @@ func TestS4GuardDetachedRequest(t *testing.T) {
 // newTreeWith is a dump view of a detached root (typedDump walks a tree's top level).
 func newTreeWith(set *schema.Set, root *Node) *Tree {
 	tr := newTree(set)
-	if err := tr.top.Build([]*Node{root}, nil); err != nil { // a fresh view: nothing to capture
-		panic(err)
-	}
+	tr.top.view(root) // a fresh view: nothing to capture
 	return tr
 }
 

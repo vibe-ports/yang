@@ -5,51 +5,446 @@ package data
 import (
 	"iter"
 	"slices"
+
+	"github.com/vibe-ports/yang/internal/opidx"
 )
 
-// The facade changes physical storage only. Callers retain native linking,
-// generations, secondary indexes, and their existing work reservation/charging.
-// Iteration is uncounted; siblings.all keeps the original visit hooks. Point
-// edits return the same shift counts; mutators return capture errors before
-// writing. A previously checked touch makes capture idempotent without charging
-// again. Restore uses previously reserved undo state and cannot fail.
+// Sibling storage (#240 step 5, design 14). One order-statistic sequence per set is the only
+// physical storage: the schema children occupy [0, SchemaLen()) and the opaque ones follow them.
+// A linked node finds its handle through its slot. The ordered index (childOrder) registers the
+// same handles and owns no sequence.
 //
-// Slices remain authoritative in this stage. Borrowed ranges are invalidated by
-// structural mutation; collect only when the caller needs a stable snapshot.
+// Reads by position or identity are uncounted, as slice indexing was; counted lookups on a
+// mutation path go through orderPosition. Every write is captured first (touch) or recorded by
+// a narrow journal, and pays its bound before it writes: its own prepay, or the credit of the
+// scope it runs in (link, unlink), whose bound includes it. Spans and iterators borrow the live
+// sequence: a storage write invalidates them (test builds panic on a stale read).
 
-// insertCost is the work insertAt does at position at: the shifted slots and, when it must
-// reallocate, the copied ones.
-func (d *nodeDeque) insertCost(at int) uint64 {
-	l := d.list
-	if at >= len(l)/2 || len(l) == 0 {
-		if len(l) == cap(l) {
-			return uint64(2*len(l)-at) + 1 //nolint:gosec // slice lengths are nonnegative
+// siblingStore is the storage of a set, reached through a pointer so that moving or capturing a
+// siblings value never copies the sequence (its handles keep their owner).
+type siblingStore struct {
+	seq     opidx.Seq[*Node]
+	nschema int // schema nodes, the prefix of seq
+	// bind is the one hook target of the sequence and of the ordered index over it
+	bind orderBinding
+	// view marks a non-owning view (sibsOf, printing, a payload copy's source): its handles are
+	// not its nodes' slots, which stay their own sets'
+	view bool
+	// ver changes at every write that moves positions (an insertion or removal): borrowed spans
+	// and iterators check it in test builds. moves changes at a republication, which keeps every
+	// position and only reorders a run: an iterator walking it reseeks by position, as indexing a
+	// slice that was overwritten in place did.
+	ver, moves uint64
+}
+
+// checkSpans makes a read through a span or iterator whose store changed since it was taken
+// panic (test builds).
+var checkSpans bool
+
+// store returns the storage of s, allocated with its first child.
+func (s *siblings) store() *siblingStore {
+	if s.st == nil {
+		st := &siblingStore{}
+		st.bind.owner = s
+		st.seq.SetLabeled(false) // an ordered index turns the labels on (orderBuild)
+		st.seq.SetHooks(&st.bind)
+		s.st = st
+	}
+	return s.st
+}
+
+// bindStore makes j journal every later write of s's storage and index, allocating the store
+// (a capture's image of s keeps the nil pointer, so a rollback drops a new store).
+func (s *siblings) bindStore(j *hashTransaction) {
+	st := s.store()
+	if st.bind.state == nil {
+		st.bind.state = j
+		j.bound = append(j.bound, &st.bind)
+	}
+}
+
+// storeJournaled reports whether s's storage writes are recorded now.
+func (s *siblings) storeJournaled() bool { return s.st != nil && s.st.bind.state != nil }
+
+// slotUnits is what one slot write and the schema count's cell report.
+func slotUnits(journaled bool) uint64 {
+	if !journaled {
+		return 0
+	}
+	return 2 + 2
+}
+
+// storeCredit is the prepaid bound of one storage write (payStore).
+type storeCredit struct {
+	w      *workCounter
+	nested bool
+}
+
+// payStore prepays bound for one storage write on s's counter: its own scope, or inside an open
+// scope a draw on that scope's credit (whose bound includes it); without a counter it pays
+// nothing. As for the ordered index (design 13 §4.1), the write is charged its actual units and
+// the rest of the bound is refunded at close.
+func (s *siblings) payStore(bound uint64) (storeCredit, error) {
+	w := s.work
+	if w == nil {
+		return storeCredit{}, nil
+	}
+	nested, err := w.prepay(bound, false)
+	if err != nil {
+		return storeCredit{}, err
+	}
+	return storeCredit{w: w, nested: nested}, nil
+}
+
+func (c storeCredit) close() {
+	if c.w != nil {
+		c.w.closeCredit(c.nested)
+	}
+}
+
+func (s *siblings) Len() int {
+	if s.st == nil {
+		return 0
+	}
+	return s.st.seq.Len()
+}
+
+func (s *siblings) SchemaLen() int {
+	if s.st == nil {
+		return 0
+	}
+	return s.st.nschema
+}
+
+func (s *siblings) OpaqueLen() int { return s.Len() - s.SchemaLen() }
+func (s *siblings) At(i int) *Node { return s.st.seq.Peek(i).Value }
+func (s *siblings) opaqueAt(i int) *Node {
+	return s.At(s.SchemaLen() + i)
+}
+
+func (s *siblings) span(lo, hi int) siblingSpan {
+	if s.st == nil {
+		return siblingSpan{}
+	}
+	return siblingSpan{st: s.st, lo: lo, hi: hi, ver: s.st.ver}
+}
+func (s *siblings) schemaSpan() siblingSpan          { return s.span(0, s.SchemaLen()) }
+func (s *siblings) opaqueSpan() siblingSpan          { return s.span(s.SchemaLen(), s.Len()) }
+func (s *siblings) SchemaAll() iter.Seq2[int, *Node] { return s.schemaSpan().All() }
+func (s *siblings) opaqueAll() iter.Seq2[int, *Node] { return s.opaqueSpan().All() }
+func (s *siblings) All() iter.Seq2[int, *Node]       { return s.span(0, s.Len()).All() }
+func (s *siblings) Range(lo, hi int) iter.Seq2[int, *Node] {
+	return s.span(lo, hi).All()
+}
+func (s *siblings) CollectRange(lo, hi int) []*Node { return s.span(lo, hi).Collect() }
+
+// handle is n's handle in s, nil when n is not in s.
+func (s *siblings) handle(n *Node) *opidx.Handle[*Node] {
+	if s.st == nil || n == nil {
+		return nil
+	}
+	if h := n.slot.Get(); s.st.seq.Owns(h) {
+		return h
+	}
+	if s.st.view {
+		for h := s.st.seq.First(); h != nil; h = s.st.seq.Next(h) {
+			if h.Value == n {
+				return h
+			}
 		}
-		return uint64(len(l)-at) + 1 //nolint:gosec // slice lengths are nonnegative
 	}
-	off := cap(d.base) - cap(l)
-	if off <= 0 || off >= len(d.base) || &d.base[off] != &l[0] {
-		return uint64(at) + 3*uint64(len(l)) + 1 //nolint:gosec // slice lengths are nonnegative
-	}
-	return uint64(at) + 1 //nolint:gosec // a position is nonnegative
+	return nil
 }
 
-// nodeDeque is a node slice with its backing allocation retained for front headroom.
-type nodeDeque struct {
-	list []*Node
-	base []*Node
+// Index is the position of n in s, -1 if absent. It is uncounted, as slice indexing was.
+func (s *siblings) Index(n *Node) int {
+	h := s.handle(n)
+	if h == nil {
+		return -1
+	}
+	at, _ := s.st.seq.Pos(h)
+	return at
 }
+
+func (s *siblings) LowerBound(lo, hi int, pred func(*Node) bool) int {
+	return s.span(0, s.Len()).LowerBound(lo, hi, pred)
+}
+
+// view publishes nodes (schema nodes first) as a non-owning view of a fresh set: no node is
+// linked, re-slotted or reparented, and no work is bound.
+func (s *siblings) view(nodes ...*Node) {
+	st := &siblingStore{view: true}
+	st.seq.SetLabeled(false)
+	st.seq.Splice(0, 0, nodes)
+	for _, n := range nodes {
+		if n.schema != nil {
+			st.nschema++
+		}
+	}
+	s.st = st
+}
+
+// insert places n before position at of the whole sequence (nil anchor: appended).
+func (s *siblings) insert(at int, n *Node) error {
+	st := s.store()
+	anchor := st.seq.Peek(at)
+	journaled := s.storeJournaled()
+	paid, err := s.payStore(addHashBound(st.seq.InsertBound(anchor, journaled, s.work.planPay()), slotUnits(journaled)))
+	if err != nil {
+		return err
+	}
+	defer paid.close()
+	st.ver++
+	h := st.seq.InsertBefore(anchor, n)
+	n.slot.Set(&st.bind, h)
+	if n.schema != nil {
+		opidx.AddInt(&st.bind, &st.nschema, 1)
+	}
+	return nil
+}
+
+// insertBound bounds insert at (an opaque n: among the opaque nodes, appended when out of range).
+func (s *siblings) insertBound(n *Node, at int, journaled bool) uint64 {
+	if s.st == nil {
+		var empty opidx.Seq[*Node] // the store insert creates
+		empty.SetLabeled(false)
+		return empty.InsertBound(nil, journaled, nil) + slotUnits(journaled)
+	}
+	at = s.storePos(n, at)
+	return addHashBound(s.st.seq.InsertBound(s.st.seq.Peek(at), journaled, s.work.planPay()), slotUnits(journaled))
+}
+
+// storePos is the sequence position link's at means for n.
+func (s *siblings) storePos(n *Node, at int) int {
+	if n.schema != nil {
+		return min(max(at, 0), s.SchemaLen())
+	}
+	if at < 0 || at >= s.OpaqueLen() {
+		return s.Len()
+	}
+	return s.SchemaLen() + at
+}
+
+func (s *siblings) appendNode(n *Node) error {
+	if err := s.touch(); err != nil {
+		return err
+	}
+	at := s.Len()
+	if n.schema != nil {
+		at = s.SchemaLen()
+	}
+	return s.insert(at, n)
+}
+
+// InsertAt puts n at position at of its partition's positions in s (an opaque n: at counts all
+// siblings, appended past the end). Under a narrow journal a schema node's insertion is recorded
+// in the store's journal instead of a whole capture.
+func (s *siblings) InsertAt(at int, n *Node) error {
+	if j := s.narrow(); j != nil && n.schema != nil {
+		if s.st == nil {
+			if err := recordField(j, &s.st); err != nil {
+				return err
+			}
+		}
+		s.bindStore(j)
+	} else if err := s.touch(); err != nil {
+		return err
+	}
+	if n.schema == nil {
+		return s.insert(s.storePos(n, at-s.SchemaLen()), n)
+	}
+	return s.insert(at, n)
+}
+
+// removeBound bounds DeleteAt.
+func (s *siblings) removeBound(journaled bool) uint64 {
+	if s.st == nil {
+		return 0
+	}
+	return addHashBound(s.st.seq.RemoveBound(journaled), slotUnits(journaled))
+}
+
+func (s *siblings) DeleteAt(at int) error {
+	if err := s.touch(); err != nil {
+		return err
+	}
+	return s.remove(s.st.seq.Peek(at))
+}
+
+func (s *siblings) remove(h *opidx.Handle[*Node]) error {
+	st := s.st
+	paid, err := s.payStore(s.removeBound(s.storeJournaled()))
+	if err != nil {
+		return err
+	}
+	defer paid.close()
+	st.ver++
+	n := h.Value
+	st.seq.Remove(h)
+	n.slot.Set(&st.bind, nil)
+	if n.schema != nil {
+		opidx.AddInt(&st.bind, &st.nschema, -1)
+	}
+	return nil
+}
+
+// deleteMatching removes the schema nodes schemaMatch matches and the opaque ones opaqueMatch
+// matches (nil: none), calling each predicate once per node of its partition, in order: one
+// O(n) pass over the storage (Keep), whatever it removes.
+func (s *siblings) deleteMatching(schemaMatch, opaqueMatch func(*Node) bool) error {
+	if err := s.touch(); err != nil {
+		return err
+	}
+	st := s.st
+	if st == nil {
+		return nil
+	}
+	journaled := s.storeJournaled()
+	paid, err := s.payStore(addHashBound(st.seq.KeepBound(journaled),
+		mulHashBound(uint64(st.seq.Len()), slotUnits(journaled)))) //nolint:gosec // a length is nonnegative
+	if err != nil {
+		return err
+	}
+	defer paid.close()
+	i := 0
+	gone := st.seq.Keep(func(n *Node) bool {
+		match := schemaMatch
+		if i >= st.nschema {
+			match = opaqueMatch
+		}
+		i++
+		return match == nil || !match(n)
+	})
+	if len(gone) == 0 {
+		return nil
+	}
+	st.ver++
+	schemaGone := 0
+	for _, h := range gone {
+		h.Value.slot.Set(&st.bind, nil)
+		if h.Value.schema != nil {
+			schemaGone++
+		}
+	}
+	opidx.AddInt(&st.bind, &st.nschema, -schemaGone)
+	return nil
+}
+
+// transferFrom moves the entire container, including native history and work binding; no node
+// is relinked. The caller rebinds its new owner afterwards.
+func (s *siblings) transferFrom(src *siblings) error {
+	if err := s.touch(); err != nil {
+		return err
+	}
+	if err := src.touch(); err != nil {
+		return err
+	}
+	if st := src.st; st != nil && st.bind.state != nil {
+		// the binding moves with the store: one entry restores its owner
+		if err := recordField(st.bind.state, &st.bind.owner); err != nil {
+			return err
+		}
+	}
+	*s, *src = *src, siblings{}
+	if s.st != nil {
+		s.st.bind.owner = s // a pointer write: the hooks stay installed
+	}
+	return nil
+}
+
+func (s *siblings) reset() error {
+	if err := s.touch(); err != nil {
+		return err
+	}
+	*s = siblings{}
+	return nil
+}
+
+// replaceSchema republishes the run [lo, hi) in the order of nodes, which hold exactly its
+// members: their handles keep their identities, the index unregisters them first and registers
+// them again (their relative order changes). It pays its bound before the first write.
+func (s *siblings) replaceSchema(lo, hi int, nodes siblingSpan) error {
+	if err := s.touch(); err != nil {
+		return err
+	}
+	if hi-lo < 2 {
+		return nil
+	}
+	st := s.st
+	journaled := s.storeJournaled()
+	bound := st.seq.RepublishBound(lo, hi, 0, journaled, s.work.planPay())
+	if s.order != nil {
+		for _, n := range nodes.All() {
+			bound = addHashBound(bound, s.orderRegisterBound(n, journaled))
+		}
+	}
+	paid, err := s.payStore(bound)
+	if err != nil {
+		return err
+	}
+	defer paid.close()
+	ordered := nodes.Collect()
+	if s.order != nil {
+		for _, n := range ordered {
+			s.orderUnregister(n)
+		}
+	}
+	st.moves++
+	if _, ok := st.seq.Republish(lo, hi, ordered, s.handle); !ok {
+		panic("data: a republished run does not hold exactly its range")
+	}
+	if s.order != nil {
+		for _, n := range ordered {
+			s.orderRegister(n, n.slot.Get())
+		}
+	}
+	return nil
+}
+
+// publishRun replaces the run [lo, hi) with nodes, which hold its members and new nodes to link
+// (rbPublish): members keep their handles, new nodes get slots. A present index is dropped first
+// and its caller builds it again (every position after lo moves).
+func (s *siblings) publishRun(lo, hi int, nodes []*Node) error {
+	if err := s.touch(); err != nil {
+		return err
+	}
+	st := s.store()
+	fresh := len(nodes) - (hi - lo)
+	journaled := s.storeJournaled()
+	bound := addHashBound(st.seq.RepublishBound(lo, hi, fresh, journaled, s.work.planPay()),
+		mulHashBound(uint64(fresh), slotUnits(journaled))) //nolint:gosec // a count is nonnegative
+	paid, err := s.payStore(bound)
+	if err != nil {
+		return err
+	}
+	defer paid.close()
+	s.order = nil
+	st.ver++
+	hs, ok := st.seq.Republish(lo, hi, nodes, s.handle)
+	if !ok {
+		panic("data: a published run does not hold its range")
+	}
+	for i, n := range nodes {
+		if n.slot.Get() != hs[i] {
+			n.slot.Set(&st.bind, hs[i])
+			opidx.AddInt(&st.bind, &st.nschema, 1)
+		}
+	}
+	return nil
+}
+
+// cacheDeque is unrelated duplication-cache storage: a node slice with its backing allocation
+// retained for front headroom.
+type cacheDeque struct{ nodes, base []*Node }
 
 // insertAt puts n at position at and returns how many slots it shifted: the shorter side moves,
 // the front into retained headroom, so appending and prepending are amortized O(1).
-// ponytail: a single edit in the middle stays O(n/2) shifts (a 160k list: ~40µs); an ordered
-// structure if API edits of huge sibling lists in random order ever matter.
-func (d *nodeDeque) insertAt(at int, n *Node) int {
-	l := d.list
+func (d *cacheDeque) insertAt(at int, n *Node) int {
+	l := d.nodes
 	if at >= len(l)/2 || len(l) == 0 {
 		c := cap(l)
-		d.list = slices.Insert(l, at, n)
-		if cap(d.list) != c {
+		d.nodes = slices.Insert(l, at, n)
+		if cap(d.nodes) != c {
 			d.base = nil // reallocated: drop the old array
 		}
 		return len(l) - at
@@ -66,374 +461,204 @@ func (d *nodeDeque) insertAt(at int, n *Node) int {
 	nl := d.base[off-1 : off+len(l)]
 	copy(nl, l[:at])
 	nl[at] = n
-	d.list = nl
+	d.nodes = nl
 	return at
 }
 
 // deleteAt removes position at and returns the number of slots shifted, moving the shorter side.
-func (d *nodeDeque) deleteAt(at int) int {
-	l := d.list
+func (d *cacheDeque) deleteAt(at int) int {
+	l := d.nodes
 	if at < len(l)-1-at {
 		copy(l[1:at+1], l[:at])
 		if len(d.base) == 0 {
 			d.base = l[:cap(l)]
 		}
 		l[0] = nil
-		d.list = l[1:]
+		d.nodes = l[1:]
 		return at
 	}
 	copy(l[at:], l[at+1:])
 	l[len(l)-1] = nil
-	d.list = l[:len(l)-1]
+	d.nodes = l[:len(l)-1]
 	return len(l) - 1 - at
 }
 
-// siblingSpan is a borrowed physical range. Like the old slice header it keeps
-// its length and backing storage: insertion, removal, publication, reset or
-// transfer invalidates it. Collect makes an independent snapshot when a walk
-// must survive mutation. Neither a span nor a view links or reparents nodes.
-// Storage access lives here so a later representation change has one boundary.
-type siblingSpan struct{ nodes []*Node }
+func (d *cacheDeque) schemaSpan() siblingSpan { return spanOf(d.nodes) }
 
-func spanOf(nodes []*Node) siblingSpan             { return siblingSpan{nodes: nodes} }
-func (r siblingSpan) Len() int                     { return len(r.nodes) }
-func (r siblingSpan) At(i int) *Node               { return r.nodes[i] }
-func (r siblingSpan) Slice(lo, hi int) siblingSpan { return spanOf(r.nodes[lo:hi]) }
-func (r siblingSpan) Collect() []*Node             { return slices.Clone(r.nodes) }
+// siblingSpan is a borrowed range: of a store (a live view, invalidated by the store's next
+// write) or of a detached slice (logical(), collected runs). Neither links or reparents nodes.
+type siblingSpan struct {
+	nodes  []*Node
+	st     *siblingStore
+	lo, hi int
+	ver    uint64
+}
+
+func spanOf(nodes []*Node) siblingSpan { return siblingSpan{nodes: nodes} }
+
+func (r siblingSpan) check() {
+	if checkSpans && r.st != nil && r.st.ver != r.ver {
+		panic("data: a borrowed sibling span read after its storage changed")
+	}
+}
+
+// reborrow is the span again after writes its borrower knows to have left every position as it
+// was (a temporary node linked and unlinked again).
+func (r siblingSpan) reborrow() siblingSpan {
+	if r.st != nil {
+		r.ver = r.st.ver
+	}
+	return r
+}
+
+func (r siblingSpan) Len() int {
+	if r.st == nil {
+		return len(r.nodes)
+	}
+	return r.hi - r.lo
+}
+
+func (r siblingSpan) At(i int) *Node {
+	if r.st == nil {
+		return r.nodes[i]
+	}
+	r.check()
+	if i < 0 || i >= r.hi-r.lo {
+		panic("data: sibling span index out of range")
+	}
+	return r.st.seq.Peek(r.lo + i).Value
+}
+
+func (r siblingSpan) Slice(lo, hi int) siblingSpan {
+	if r.st == nil {
+		return spanOf(r.nodes[lo:hi])
+	}
+	if lo < 0 || hi < lo || hi > r.hi-r.lo {
+		panic("data: sibling span slice out of range")
+	}
+	return siblingSpan{st: r.st, lo: r.lo + lo, hi: r.lo + hi, ver: r.ver}
+}
+
+func (r siblingSpan) Collect() []*Node { return r.AppendTo(make([]*Node, 0, r.Len())) }
+
+func (r siblingSpan) AppendTo(dst []*Node) []*Node {
+	for _, n := range r.All() {
+		dst = append(dst, n)
+	}
+	return dst
+}
+
 func (r siblingSpan) All() iter.Seq2[int, *Node] {
 	return func(yield func(int, *Node) bool) {
-		for i, n := range r.nodes {
-			if !yield(i, n) {
+		if r.st == nil {
+			for i, n := range r.nodes {
+				if !yield(i, n) {
+					return
+				}
+			}
+			return
+		}
+		st := r.st
+		h, moves := st.seq.Peek(r.lo), st.moves
+		for i := 0; i < r.hi-r.lo; i++ {
+			r.check()
+			if st.moves != moves {
+				h, moves = st.seq.Peek(r.lo+i), st.moves
+			}
+			if !yield(i, h.Value) {
 				return
 			}
+			h = st.seq.Next(h)
 		}
 	}
 }
 
-// LowerBound searches a monotone bounded range, returning its first true index.
-// Preserve BinarySearchFunc's final equality probe as well as its descent:
-// callers may charge each predicate invocation to an enforced work budget.
+// Reverse walks the span backwards, keeping full and subtree walks linear.
+func (r siblingSpan) Reverse() iter.Seq2[int, *Node] {
+	return func(yield func(int, *Node) bool) {
+		if r.st == nil {
+			for i := len(r.nodes) - 1; i >= 0; i-- {
+				if !yield(i, r.nodes[i]) {
+					return
+				}
+			}
+			return
+		}
+		st := r.st
+		h, moves := st.seq.Peek(r.hi-1), st.moves
+		for i := r.hi - r.lo - 1; i >= 0; i-- {
+			r.check()
+			if st.moves != moves {
+				h, moves = st.seq.Peek(r.lo+i), st.moves
+			}
+			if !yield(i, h.Value) {
+				return
+			}
+			h = st.seq.Prev(h)
+		}
+	}
+}
+
+// LowerBound searches a monotone bounded range, returning its first true index. It keeps
+// BinarySearchFunc's probes, the final equality probe included: callers charge each predicate
+// call to an enforced budget. A probe is a select (O(log n), uncounted).
 func (r siblingSpan) LowerBound(lo, hi int, pred func(*Node) bool) int {
 	end := hi
 	for lo < hi {
 		mid := lo + (hi-lo)/2
-		if pred(r.nodes[mid]) {
+		if pred(r.At(mid)) {
 			hi = mid
 		} else {
 			lo = mid + 1
 		}
 	}
 	if lo < end {
-		pred(r.nodes[lo])
+		pred(r.At(lo))
 	}
 	return lo
 }
-func (r siblingSpan) Index(n *Node) int { return slices.Index(r.nodes, n) }
-func (r siblingSpan) indexFromEnd(work *workCounter, n *Node) int {
-	// Retain the nearer-end scan and its exact visit accounting.
-	return indexFromEnd(work, r.nodes, n)
-}
 
-func (s *siblings) Len() int       { return len(s.list) + len(s.opq) }
-func (s *siblings) SchemaLen() int { return len(s.list) }
-func (s *siblings) OpaqueLen() int { return len(s.opq) }
-func (s *siblings) At(i int) *Node {
-	if i < len(s.list) {
-		return s.list[i]
+// Index is the position of n in the span, -1 if absent; uncounted.
+func (r siblingSpan) Index(n *Node) int {
+	if r.st == nil {
+		return slices.Index(r.nodes, n)
 	}
-	return s.opq[i-len(s.list)]
-}
-func (s *siblings) opaqueAt(i int) *Node             { return s.opq[i] }
-func (s *siblings) schemaSpan() siblingSpan          { return spanOf(s.list) }
-func (s *siblings) opaqueSpan() siblingSpan          { return spanOf(s.opq) }
-func (s *siblings) SchemaAll() iter.Seq2[int, *Node] { return s.schemaSpan().All() }
-func (s *siblings) opaqueAll() iter.Seq2[int, *Node] { return s.opaqueSpan().All() }
-func (s *siblings) All() iter.Seq2[int, *Node]       { return s.Range(0, s.Len()) }
-func (s *siblings) Range(lo, hi int) iter.Seq2[int, *Node] {
-	// Capture headers before iteration, as ranging the previous slices did.
-	a, b := s.list, s.opq
-	return func(yield func(int, *Node) bool) {
-		for i := lo; i < hi; i++ {
-			var n *Node
-			if i < len(a) {
-				n = a[i]
-			} else {
-				n = b[i-len(a)]
-			}
-			if !yield(i-lo, n) {
-				return
-			}
-		}
-	}
-}
-func (s *siblings) CollectRange(lo, hi int) []*Node {
-	if hi <= s.SchemaLen() {
-		return slices.Clone(s.list[lo:hi])
-	}
-	if lo >= s.SchemaLen() {
-		return slices.Clone(s.opq[lo-s.SchemaLen() : hi-s.SchemaLen()])
-	}
-	return slices.Concat(s.list[lo:], s.opq[:hi-s.SchemaLen()])
-}
-
-// Index is uncounted, matching slices.Index. Budgeted scans use the span's
-// indexFromEnd; ordered-index lookup remains the responsibility of its callers.
-func (s *siblings) Index(n *Node) int {
-	if i := slices.Index(s.list, n); i >= 0 {
-		return i
-	}
-	if i := slices.Index(s.opq, n); i >= 0 {
-		return len(s.list) + i
+	r.check()
+	owner := siblings{st: r.st}
+	if at := owner.Index(n); at >= r.lo && at < r.hi {
+		return at - r.lo
 	}
 	return -1
 }
-func (s *siblings) LowerBound(lo, hi int, pred func(*Node) bool) int {
-	end := hi
-	for lo < hi {
-		mid := lo + (hi-lo)/2
-		if pred(s.At(mid)) {
-			hi = mid
-		} else {
-			lo = mid + 1
-		}
-	}
-	if lo < end {
-		pred(s.At(lo))
-	}
-	return lo
-}
 
-// Build publishes a borrowed set of physical nodes without linking them or
-// changing compatibility indexes. The caller owns the input arrays afterwards
-// and must maintain the schema/opaque partition and secondary index contract.
-func (s *siblings) Build(schema, opaque []*Node) error {
-	if err := s.touch(); err != nil {
-		return err
-	}
-	s.list, s.base, s.opq = schema, nil, opaque
-	return nil
-}
-func (s *siblings) buildSchema(nodes []*Node) error {
-	if err := s.touch(); err != nil {
-		return err
-	}
-	s.list, s.base = nodes, nil
-	return nil
-}
+func (s *siblings) reverseAll() iter.Seq2[int, *Node] { return s.span(0, s.Len()).Reverse() }
 
-// exposeSchema temporarily publishes an attach-replay prefix while retaining
-// the existing deque backing allocation, exactly as the original publication.
-func (s *siblings) exposeSchema(nodes []*Node) error {
-	if err := s.touch(); err != nil {
-		return err
-	}
-	s.list = nodes
-	return nil
-}
-func (s *siblings) appendNode(n *Node) error {
-	if err := s.touch(); err != nil {
-		return err
-	}
-	if n.schema == nil {
-		s.opq = append(s.opq, n)
-	} else {
-		s.list = append(s.list, n)
-	}
-	return nil
-}
-func (s *siblings) InsertAt(at int, n *Node) (int, error) {
-	if j := s.narrow(); j != nil && n.schema != nil {
-		// the entry removes the slot again, without a search; its shifts (the shorter side of
-		// the grown list, as deleteAt moves) are prepaid with it
-		if err := j.record(1); err != nil {
-			return 0, err
-		}
-		if err := j.charge(uint64(min(at, len(s.list)-at))); err != nil { //nolint:gosec // positions are nonnegative
-			return 0, err
-		}
-		j.undo = append(j.undo, func() { s.deleteAt(at) })
-	} else if err := s.touch(); err != nil {
-		return 0, err
-	}
-	if n.schema != nil {
-		return s.insertAt(at, n), nil
-	}
-	at -= len(s.list)
-	old := len(s.opq)
-	if at < 0 || at >= old {
-		s.opq = append(s.opq, n)
-		return 0, nil
-	}
-	s.opq = slices.Insert(s.opq, at, n)
-	return old - at, nil
-}
-func (s *siblings) DeleteAt(at int) (int, error) {
-	if err := s.touch(); err != nil {
-		return 0, err
-	}
-	if at < len(s.list) {
-		return s.deleteAt(at), nil
-	}
-	d := nodeDeque{list: s.opq}
-	moves := d.deleteAt(at - len(s.list))
-	s.opq = d.list
-	return moves, nil
-}
-
-// Splice replaces physical slots; publication and compatibility replay stay with
-// the caller. It makes no ownership/index changes beyond the physical storage.
-func (s *siblings) Splice(lo, hi int, nodes []*Node) error {
-	if err := s.touch(); err != nil {
-		return err
-	}
-	boundary := len(s.list)
-	split := 0
-	for split < len(nodes) && nodes[split].schema != nil {
-		split++
-	}
-	if lo < boundary || split > 0 {
-		s.list = slices.Replace(s.list, min(lo, boundary), min(hi, boundary), nodes[:split]...)
-		s.base = nil
-	}
-	if hi > boundary || split < len(nodes) {
-		s.opq = slices.Replace(s.opq, max(0, lo-boundary), max(0, hi-boundary), nodes[split:]...)
-	}
-	return nil
-}
-func (s *siblings) deleteMatching(schema, opaque func(*Node) bool) error {
-	if err := s.touch(); err != nil {
-		return err
-	}
-	if schema != nil {
-		s.list = slices.DeleteFunc(s.list, schema)
-	}
-	if opaque != nil {
-		s.opq = slices.DeleteFunc(s.opq, opaque)
-	}
-	return nil
-}
-func (s *siblings) opaqueInsertCost() uint64 {
-	if len(s.opq) == cap(s.opq) {
-		return uint64(len(s.opq)) + 1
-	}
-	return 1
-}
-func (s *siblings) cloneStorage(src *siblings) {
-	s.nodeDeque = nodeDeque{list: slices.Clone(src.list)}
-	s.opq = slices.Clone(src.opq)
-}
-
-// transferFrom moves the entire container, including native history and work
-// binding; no node is relinked. The caller rebinds its new owner afterwards.
-func (s *siblings) transferFrom(src *siblings) error {
-	if err := s.touch(); err != nil {
-		return err
-	}
-	if err := src.touch(); err != nil {
-		return err
-	}
-	if o := src.order; o != nil && o.bind.state != nil {
-		// the binding moves with the index: one entry restores its owner
-		if err := recordField(o.bind.state, &o.bind.owner); err != nil {
-			return err
-		}
-	}
-	*s, *src = *src, siblings{}
-	if s.order != nil {
-		s.order.bind.owner = s // a pointer write: the hooks stay installed
-	}
-	return nil
-}
-func (s *siblings) reset() error {
-	if err := s.touch(); err != nil {
-		return err
-	}
-	*s = siblings{}
-	return nil
-}
-
-// cacheDeque is unrelated duplication-cache storage. Keeping it distinct makes
-// the storage-access lint independent of receiver names or type-checker imports.
-type cacheDeque struct{ nodes, base []*Node }
-
-func (d *cacheDeque) insertAt(at int, n *Node) int {
-	q := nodeDeque{list: d.nodes, base: d.base}
-	m := q.insertAt(at, n)
-	d.nodes, d.base = q.list, q.base
-	return m
-}
-func (d *cacheDeque) deleteAt(at int) int {
-	q := nodeDeque{list: d.nodes, base: d.base}
-	m := q.deleteAt(at)
-	d.nodes, d.base = q.list, q.base
-	return m
-}
-
-func (r siblingSpan) AppendTo(dst []*Node) []*Node { return append(dst, r.nodes...) }
-
-// replaceSchema overwrites an equal-sized run while retaining deque headroom.
-// Publication invalidates borrowed ranges; callers must reacquire them.
-func (s *siblings) replaceSchema(lo, hi int, nodes siblingSpan) error {
-	if err := s.touch(); err != nil {
-		return err
-	}
-	copy(s.list[lo:hi], nodes.nodes)
-	return nil
-}
-
-func (d *cacheDeque) schemaSpan() siblingSpan { return spanOf(d.nodes) }
-func (d *nodeDeque) retainsBase(n *Node) bool { return slices.Contains(d.base[:cap(d.base)], n) }
-func (d *nodeDeque) retainsList(n *Node) bool { return slices.Contains(d.list[:cap(d.list)], n) }
-
-// Reverse cursors keep full/subtree walks linear after a representation switch.
-func (r siblingSpan) Reverse() iter.Seq2[int, *Node] {
-	return func(yield func(int, *Node) bool) {
-		for i := len(r.nodes) - 1; i >= 0; i-- {
-			if !yield(i, r.nodes[i]) {
-				return
-			}
-		}
-	}
-}
-func (s *siblings) reverseAll() iter.Seq2[int, *Node] {
-	a, b := s.schemaSpan(), s.opaqueSpan()
-	return func(yield func(int, *Node) bool) {
-		for i, n := range b.Reverse() {
-			if !yield(a.Len()+i, n) {
-				return
-			}
-		}
-		for i, n := range a.Reverse() {
-			if !yield(i, n) {
-				return
-			}
-		}
-	}
-}
-func (s *siblings) snapshotStorage() siblings { saved := *s; saved.cloneStorage(s); return saved }
+// snapshotStorage is the whole-capture image of s: the store pointer, not its content (the
+// store's own journal restores that).
+func (s *siblings) snapshotStorage() siblings { return *s }
 
 // restoreStorage uses already reserved undo state and cannot fail or journal.
 func (s *siblings) restoreStorage(saved siblings) { *s = saved }
 
-// siblingCursor reads a borrowed forest incrementally, without materialising a
-// wide child set or repeatedly selecting by rank. Mutation invalidates it.
+// siblingCursor reads a borrowed forest incrementally, without materialising a wide child set
+// or repeatedly selecting by rank. Mutation invalidates it.
 type siblingCursor struct {
-	schema, opaque siblingSpan
-	next           int
-	owner          *siblings
+	h     *opidx.Handle[*Node]
+	owner *siblings
 }
 
 func (s *siblings) cursor() siblingCursor {
-	return siblingCursor{schema: s.schemaSpan(), opaque: s.opaqueSpan(), owner: s}
-}
-func (c *siblingCursor) done() bool { return c.next == c.schema.Len()+c.opaque.Len() }
-func (c *siblingCursor) take() *Node {
-	i := c.next
-	c.next++
-	if i < c.schema.Len() {
-		return c.schema.At(i)
+	c := siblingCursor{owner: s}
+	if s.st != nil {
+		c.h = s.st.seq.First()
 	}
-	return c.opaque.At(i - c.schema.Len())
+	return c
+}
+func (c *siblingCursor) done() bool { return c.h == nil }
+func (c *siblingCursor) take() *Node {
+	n := c.h.Value
+	c.h = c.owner.st.seq.Next(c.h)
+	return n
 }
 
 func (c *siblingCursor) visit() { c.owner.visit() }

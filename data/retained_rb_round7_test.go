@@ -57,7 +57,7 @@ func TestForeignSchemaIndexKeepsOwnContextIdentity(t *testing.T) {
 		t.Fatal("rpc input/output x not compiled")
 	}
 	s := &siblings{}
-	mustLink(t, s.buildSchema([]*Node{retainedRBTerm(t, out, "o"), retainedRBTerm(t, in, "i"), retainedRBTerm(t, z, "z")}))
+	mustLink(t, testBuild(s, retainedRBTerm(t, out, "o"), retainedRBTerm(t, in, "i"), retainedRBTerm(t, z, "z")))
 	d := newTree(setA)
 	end := d.work.beginLookupWork()
 	defer end()
@@ -258,7 +258,9 @@ func TestBatchMergeHashCharge(t *testing.T) {
 	if err := dst.Merge(src); err != nil {
 		t.Fatal(err)
 	}
-	const bound = 4*65196 + 14*4096 + 64 // comparison bound plus newly charged publication/metadata work
+	// comparison bound plus newly charged publication/metadata work, plus the storage's O(log n)
+	// insertion of every published node (design 14)
+	const bound = 4*65196 + 14*4096 + 64 + 4096*(2*13+4)
 	if used := dst.work.hashUsed; used > bound {
 		t.Fatalf("4096-value Merge consumed %d hash units, bound %d", used, bound)
 	}

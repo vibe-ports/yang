@@ -51,7 +51,7 @@ func TestOpIndexMergeIdenticalReplyScaling(t *testing.T) {
 		dst, _ := opidxPartBReply(t, set, reply)
 		src, _ := opidxPartBReply(t, set, reply)
 		dst.work.Store(0)
-		dst.work.visits, dst.work.shifts = true, true
+		dst.work.visits = true
 		if err := dst.Merge(src); err != nil {
 			t.Fatal(err)
 		}
@@ -78,7 +78,7 @@ func TestOpIndexSplitValueChangeScaling(t *testing.T) {
 		}
 		nodes := op.kids.opInst(vs)
 		tr.work.Store(0)
-		tr.work.visits, tr.work.shifts = true, true
+		tr.work.visits = true
 		for i, node := range nodes[:n] {
 			if changed, err := node.SetValue(strconv.Itoa(2*n + i)); err != nil || !changed {
 				t.Fatalf("SetValue(%d): changed=%t error=%v", i, changed, err)
@@ -103,7 +103,7 @@ func TestOpIndexXMLDistinctOpaqueNamesScaling(t *testing.T) {
 			lc = c
 			c.op = opOpts{rpc: true, action: true, noSiblings: true}
 			c.rcOnly = true
-			c.tree.work.visits, c.tree.work.shifts = true, true
+			c.tree.work.visits = true
 		})
 		if err != nil {
 			t.Fatal(err, diags)
@@ -131,7 +131,7 @@ func TestOpIndexXMLOpaqueAnchorIgnoresSchemaPrefix(t *testing.T) {
 		opts := parseOpts{ParseOptions: ParseOptions{Unknown: Opaque, ParseOnly: true}}
 		tr, diags, err := parseWith(context.Background(), strings.NewReader(input.String()), set, opts, parseXML, func(c *lydCtx) {
 			reached = true
-			c.tree.work.visits, c.tree.work.shifts = true, true
+			c.tree.work.visits = true
 		})
 		if err != nil {
 			t.Fatal(err, diags)
@@ -159,7 +159,7 @@ func TestOpIndexSparseRanksScaling(t *testing.T) {
 		mod := opIndexModule(t, set)
 		tr, op := opidxPartBReply(t, set, `{}`)
 		tr.work.Store(0)
-		tr.work.visits, tr.work.shifts = true, true
+		tr.work.visits = true
 		for _, rank := range []int{0, n / 2, n - 1} {
 			sn := schema.FindChild(op.schema, nil, mod, fmt.Sprintf("v%d", rank), schema.GetNextOutput)
 			mustLink(t, tr.insert(op, opIndexTerm(t, sn, rank), insertDefault))
@@ -187,7 +187,7 @@ func TestOpIndexKeylessMergeScaling(t *testing.T) {
 		dst, _ := opidxPartBReply(t, set, reply.String())
 		src, _ := opidxPartBReply(t, set, reply.String())
 		dst.work.Store(0)
-		dst.work.visits, dst.work.shifts = true, true
+		dst.work.visits = true
 		if err := dst.Merge(src); err != nil {
 			t.Fatal(err)
 		}

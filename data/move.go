@@ -509,7 +509,7 @@ func (t *Tree) linkOrigin(n *Node) (restore func(), arm func(dst *siblings) (dis
 				return err
 			}
 			cost = addHashBound(cost, binding)
-			recovery = addHashBound(addHashBound(4*cost+64, 2*linkSlots(sib, n, at)), sib.transferCost(next, n))
+			recovery = addHashBound(4*cost+64, sib.transferCost(next, n))
 			recovery = addHashBound(recovery, recordRecovery)
 			if err := t.work.chargeHash(recovery); err != nil {
 				return err
@@ -638,22 +638,20 @@ func (t *Tree) linkOrigin(n *Node) (restore func(), arm func(dst *siblings) (dis
 	return restore, arm, nil
 }
 
-// originIndex locates a linked node from both ends. Each step is charged before
-// touching the sibling slots, so a middle-position lookup stops at the quota.
+// originIndex is the position of the linked n in nodes, sib's schema or opaque span: the
+// storage's rank walk, paid before it runs.
 func (t *Tree) originIndex(sib *siblings, nodes siblingSpan, n *Node) (int, error) {
-	for i, j := 0, nodes.Len()-1; i <= j; i, j = i+1, j-1 {
-		if err := t.work.chargeHash(1); err != nil {
-			return -1, err
-		}
-		sib.work.Add(1)
-		if nodes.At(j) == n {
-			return j, nil
-		}
-		if nodes.At(i) == n {
-			return i, nil
-		}
+	at := sib.orderPosition(n)
+	if w := sib.work; w != nil && w.hashErr != nil {
+		return -1, w.hashErr
 	}
-	return -1, nil
+	if at >= 0 && n.schema == nil {
+		at -= sib.SchemaLen()
+	}
+	if at < 0 || at >= nodes.Len() {
+		return -1, nil
+	}
+	return at, nil
 }
 
 // runs splits nodes into runs of consecutive instances of one schema node (opaque nodes: of
@@ -669,20 +667,6 @@ func runs(nodes []*Node) [][]*Node {
 		i = j
 	}
 	return rs
-}
-
-// runSlots bounds the sibling-slice work of linking run one by one from position at (-1:
-// appended): each link shifts the shorter side, plus every reallocation copy. Charged before the
-// run is linked.
-func runSlots(dst *siblings, run []*Node, at int) uint64 {
-	size, m := uint64(dst.len()), uint64(len(run)) //nolint:gosec // lengths are nonnegative
-	shift := uint64(0)
-	if at >= 0 && at < dst.SchemaLen() {
-		shift = uint64(min(at+len(run), dst.SchemaLen()-at)) //nolint:gosec // positions are nonnegative
-	}
-	// a front insertion without headroom copies into 3*len+1 slots (nodeDeque.insertAt); the
-	// headroom it leaves makes later reallocations geometric, so all copies stay within 6*(len+m)
-	return addHashBound(mulHashBound(m, shift+1), 6*(size+m)+2)
 }
 
 // treeRuns joins each run to the following runs whose instances belong to its leader's RB tree.
@@ -892,9 +876,6 @@ func (t *Tree) moveNodes(parent *Node, src *Tree) (result error) {
 	if dst.len() == 0 {
 		// lyd_move_nodes_at_once: the list keeps its order, its runs their RB trees
 		for _, run := range rs {
-			if err := t.work.chargeHash(runSlots(dst, run, -1)); err != nil {
-				return err
-			}
 			for _, n := range run {
 				at := -1
 				if n.schema != nil {
@@ -933,9 +914,6 @@ func (t *Tree) moveNodes(parent *Node, src *Tree) (result error) {
 			if t.work.hashErr != nil {
 				return t.work.hashErr
 			}
-		}
-		if err := t.work.chargeHash(runSlots(dst, run, at)); err != nil {
-			return err
 		}
 		for i, n := range run {
 			if at < 0 {
@@ -1121,7 +1099,7 @@ func (t *Tree) merge(parent *Node, dst *siblings, run []*Node, state movedRunSta
 		} else {
 			leader = n
 		}
-		if err := t.work.chargeHash(addHashBound(linkSlots(dst, n, at), dst.transferCost(anchor, n))); err != nil {
+		if err := t.work.chargeHash(dst.transferCost(anchor, n)); err != nil {
 			return err
 		}
 		n.inRB, n.rbGroup = true, dstGroup

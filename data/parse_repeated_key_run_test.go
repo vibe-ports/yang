@@ -78,7 +78,7 @@ func TestParseRepeatedKeyRunScaling(t *testing.T) {
 		} else {
 			tr, diags, err := parseWith(context.Background(), strings.NewReader(in), set,
 				parseOpts{ParseOptions: ParseOptions{Unknown: Reject, ParseOnly: true}}, parseJSON,
-				func(c *lydCtx) { c.tree.work.visits, c.tree.work.shifts = true, true })
+				func(c *lydCtx) { c.tree.work.visits = true })
 			if err != nil {
 				t.Fatal(err, diags)
 			}

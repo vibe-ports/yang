@@ -145,7 +145,7 @@ func validateOpNode(ctx context.Context, set *schema.Set, opNode *Node, dep *Tre
 			return nil, err
 		}
 		cost = addHashBound(cost, binding)
-		recovery = addHashBound(4*cost+64, 2*linkSlots(sourceSib, sub, at))
+		recovery = 4*cost + 64
 		if err := t.work.chargeHash(recovery); err != nil {
 			return nil, err
 		}

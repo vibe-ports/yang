@@ -975,10 +975,11 @@ func (j *hashTransaction) captureOrder(d *dirtyOrder) error {
 	return nil
 }
 
-// captureSiblings journals s with its index records and the structs of the nodes in it (index
-// changes update their positions, hashes and RB-tree state), not their children.
-// ponytail: a sibling set is copied whole, O(its size) on the first change; a per-record journal
-// would make a change in a huge sibling set O(1) if that ever matters.
+// captureSiblings journals s with its compatibility records and the structs of the nodes in it
+// (index changes update their hashes and RB-tree state), not their children. Its storage and
+// ordered index journal entry by entry from here on (bindStore).
+// ponytail: the compatibility records and node structs are copied whole, O(the set's size) on the
+// first change; per-entry compat journaling (#240 step 6) makes a change in a huge set O(1).
 // captureHook observes every whole sibling-set capture (tests only; nil otherwise).
 var captureHook func(*siblings)
 
@@ -1043,11 +1044,9 @@ func (j *hashTransaction) captureSiblings(s *siblings) error {
 	saved.rbOrders = maps.Clone(s.rbOrders)
 	saved.contexts = maps.Clone(s.contexts)
 	addWhole(j, j.siblings, &j.img.siblings, wholeSiblings, s, saved)
-	if s.order != nil && s.order.bind.state == nil {
-		// the index is not copied: from now on every write of it is an entry of j.index
-		s.order.bind.state = j
-		j.bound = append(j.bound, s.order.bind)
-	}
+	// the storage and its index are not copied: from now on every write of them is an entry of
+	// j.index (design 14)
+	s.bindStore(j)
 	for _, order := range s.rbOrders {
 		if err := j.captureOrder(order); err != nil {
 			return err
@@ -1161,20 +1160,6 @@ func (j *hashTransaction) rollbackTo(l level) {
 	clear(j.placed[l.placed:])
 	j.placed = j.placed[:l.placed]
 	j.index.Rollback(l.index)
-}
-
-// capturer returns the running state that has captured s whole (orderBuild's new index reports
-// to it), nil when none has.
-func capturer(t *Tree, s *siblings) *hashTransaction {
-	for _, j := range [2]*hashTransaction{s.journal(), t.work.journal} {
-		if j == nil {
-			continue
-		}
-		if _, whole := j.siblings[s]; whole {
-			return j
-		}
-	}
-	return nil
 }
 
 // refuse makes the guard's refusal the operation's: it fails with it and restores whatever it

@@ -3,7 +3,7 @@
 package data
 
 // unlinkPlan reserves a single unlink before a relocation can remove hash records. It also
-// avoids rescanning the slice after native lookup and recovery preparation. Bulk unlink uses
+// avoids locating the node again after native lookup and recovery preparation. Bulk unlink uses
 // its own virtual links and one charged compaction instead.
 type unlinkPlan struct {
 	node                     *Node
@@ -38,20 +38,12 @@ func prepareUnlink(n *Node) (*unlinkPlan, error) {
 	if n.schema == nil {
 		nodes = sib.opaqueSpan()
 	}
-	at := -1
-	for i, j := 0, nodes.Len()-1; i <= j; i, j = i+1, j-1 {
-		if err := w.chargeHash(1); err != nil {
-			return nil, err
-		}
-		w.Add(1)
-		if nodes.At(j) == n {
-			at = j
-			break
-		}
-		if nodes.At(i) == n {
-			at = i
-			break
-		}
+	at := sib.orderPosition(n) // the storage's rank walk, paid before it runs
+	if w.hashErr != nil {
+		return nil, w.hashErr
+	}
+	if n.schema == nil {
+		at -= sib.SchemaLen()
 	}
 	if at < 0 {
 		return nil, &opError{"LY_EINT", "Unlinked node in sibling storage."}
@@ -68,7 +60,7 @@ func prepareUnlink(n *Node) (*unlinkPlan, error) {
 	if err != nil {
 		return nil, err
 	}
-	amount := uint64(min(at, nodes.Len()-at-1)) + 1 //nolint:gosec // a valid slice position and its shift count are nonnegative
+	amount := uint64(1)
 	if sib.rbGroups[n] != nil {
 		// Metadata surviving unlink travels on n. Pay its queue copies before any
 		// physical/hash mutation, including a NULL-root item made by duplication.

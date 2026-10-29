@@ -34,7 +34,7 @@ func TestParseRepeatedKeyScaling(t *testing.T) {
 			parseOpts{ParseOptions: ParseOptions{Unknown: Reject, ParseOnly: true}}, parseJSON,
 			func(l *lydCtx) {
 				lc = l
-				l.tree.work.visits, l.tree.work.shifts = true, true
+				l.tree.work.visits = true
 			})
 		runtime.ReadMemStats(&after)
 		runtime.KeepAlive(tr)
@@ -243,7 +243,7 @@ func TestKeyConcatCollisionScaling(t *testing.T) {
 				Validate: ValidateOptions{MultiError: true, Present: true}}}, parseJSON,
 			func(l *lydCtx) {
 				lc = l
-				l.tree.work.visits, l.tree.work.shifts = true, true
+				l.tree.work.visits = true
 			})
 		runtime.ReadMemStats(&after)
 		if err != nil {

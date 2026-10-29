@@ -22,7 +22,7 @@ func TestMergeDistinctSourceRBGroups(t *testing.T) {
 		}
 		byValue[value] = n
 	}
-	mustLink(t, src.top.buildSchema([]*Node{byValue["20"], byValue["40"], byValue["5"], byValue["10"]}))
+	mustLink(t, testBuild(&src.top, byValue["20"], byValue["40"], byValue["5"], byValue["10"]))
 	src.top.firstRun[src.top.At(0).schema] = src.top.At(0)
 	groupA, groupB := &rbGroup{}, &rbGroup{}
 	for i, n := range src.top.SchemaAll() {

@@ -352,7 +352,7 @@ func TestS4IndexEditErrorsPropagate(t *testing.T) {
 	before := snapshotHashBudgetTree(tr)
 	edits := map[string]func() error{
 		"orderBuild": func() error { return s.orderBuild(tr) },
-		"opOrderAdd": func() error { return s.opOrderAdd(tr, newTerm(n.schema, n.value, &tr.work), 0) },
+		"opOrderAdd": func() error { return s.opOrderAdd(tr, newTerm(n.schema, n.value, &tr.work)) },
 		"opRemove": func() error {
 			_, _, err := s.opRemove(n, 0)
 			return err
@@ -798,9 +798,6 @@ func TestS4GuardPublicFormEveryReachPath(t *testing.T) {
 					e = env{recv: b, dep: a, c: b.top.first(), leaf: s4Child(b.top.first(), "r", "a"), dln: s4Child(a.top.first(), "t", "y")}
 				default:
 					e = env{recv: b, dep: newTree(set), c: b.top.first(), leaf: r, dln: r}
-					if err := e.dep.top.Build(nil, nil); err != nil {
-						t.Fatal(err)
-					}
 				}
 				if e.dep.top.len() == 0 {
 					e.dep = s4ParseLinks(t, set, `{"pv2-links:c":{"t":["q"]}}`)

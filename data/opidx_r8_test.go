@@ -207,7 +207,6 @@ func TestOpIndexParseLeaderTransitionsWork(t *testing.T) {
 		input := `{"opidxu:s":[` + values.String() + `]}`
 		tr.work.Store(0)
 		tr.work.visits = true
-		tr.work.shifts = true
 		if _, _, diags, err := parseOp(context.Background(), strings.NewReader(input),
 			set2, FormatJSON, opRPC, op, Reject); err != nil {
 			t.Fatal(err, diags)

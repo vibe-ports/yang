@@ -522,7 +522,7 @@ func runSplitOrderModel(t *testing.T, input []byte) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	dst.work.visits, dst.work.shifts = true, true
+	dst.work.visits = true
 	checkWork := func(step string, before int64) {
 		t.Helper()
 		// Split runs may scan their own slots to locate a physical boundary,

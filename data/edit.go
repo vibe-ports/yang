@@ -406,13 +406,17 @@ func (t *Tree) instanceRun(s *siblings, sn *schema.Node) iter.Seq2[int, *Node] {
 		switch {
 		case mixed && s.ht != nil && s.firstRecordSchema(sn):
 			if leader := s.leaderFirstMixed(sn); leader != nil {
-				run = s.schemaSpan().Slice(s.schemaSpan().indexFromEnd(&t.work, leader), s.schemaSpan().Len())
+				if at := s.orderPosition(leader); at >= 0 {
+					run = s.schemaSpan().Slice(at, s.SchemaLen())
+				}
 			}
 		case mixed:
 			// A single instance (leaf, container, ...) has no first-instance record: the
 			// schema lookup that matches other contexts by name finds it.
 			if n := t.schemaLookup(s, sn); n != nil {
-				run = s.schemaSpan().Slice(s.schemaSpan().indexFromEnd(&t.work, n), s.schemaSpan().Len())
+				if at := s.orderPosition(n); at >= 0 {
+					run = s.schemaSpan().Slice(at, s.SchemaLen())
+				}
 			}
 		case opChild(sn) || s.schemaUnordered:
 			// Keep the ordered run lazy even when a caller needs only its first node.
@@ -1045,7 +1049,7 @@ func (t *Tree) changeNodeValue(n *Node, v types.Value, hashAmount uint64) {
 			sib.leaderUnlinkBetween(target, prev, next, false)
 		} else {
 			// Split runs need the physical neighbours.
-			at = sib.schemaSpan().indexFromEnd(&t.work, target)
+			at = sib.orderPosition(target)
 			sib.leaderUnlink(target, at, false)
 		}
 	}
@@ -1442,7 +1446,7 @@ func insertKeylessBucket(index map[string]*cacheDeque, key string, n *Node, sib 
 			if err := work.chargeHash(1); err != nil {
 				return 0
 			}
-			cmp, _ := sib.order.seq.Compare(sib.order.byNode[a], sib.order.byNode[b])
+			cmp, _ := sib.st.seq.Compare(a.slot.Get(), b.slot.Get())
 			return cmp
 		})
 	} else {
@@ -1542,30 +1546,20 @@ func keylessRunAdjacent(sib *siblings, index *keylessFirstIndex, n *Node) bool {
 	if index.first != nil && index.first.node == n {
 		return true
 	}
-	if sib.order != nil {
-		h := sib.order.byNode[n]
-		if h == nil {
-			return false
-		}
-		if prev := sib.order.seq.Prev(h); prev != nil {
-			if _, ok := index.members[prev.Value]; ok {
-				return true
-			}
-		}
-		if next := sib.order.seq.Next(h); next != nil {
-			_, ok := index.members[next.Value]
-			return ok
-		}
+	h := sib.handle(n)
+	if h == nil {
 		return false
 	}
-	at := sib.schemaSpan().indexFromEnd(sib.work, n)
-	return at > 0 && hasNode(index.members, sib.At(at-1)) ||
-		at >= 0 && at+1 < sib.SchemaLen() && hasNode(index.members, sib.At(at+1))
-}
-
-func hasNode(set map[*Node]struct{}, n *Node) bool {
-	_, ok := set[n]
-	return ok
+	if prev := sib.st.seq.Prev(h); prev != nil {
+		if _, ok := index.members[prev.Value]; ok {
+			return true
+		}
+	}
+	if next := sib.st.seq.Next(h); next != nil {
+		_, ok := index.members[next.Value]
+		return ok
+	}
+	return false
 }
 
 // created records n, just created at the level of c by ApplyDiff: lyd_find_sibling_dup_inst_set
@@ -1620,7 +1614,7 @@ func (t *Tree) created(c *dupCache, n *Node) {
 	}
 	// the deque moves the shorter side: prepends and appends are amortized O(1), a middle slot
 	// is charged per moved entry
-	t.work.Add(int64(run.insertAt(t.runSlot(sib.schemaSpan(), run.nodes, n, k), n)))
+	t.work.Add(int64(run.insertAt(t.runSlot(sib, run.nodes, n, k), n)))
 }
 
 // moved re-records n, just moved within the level of c by an ApplyDiff replace: lyd_diff_insert
@@ -1666,8 +1660,9 @@ func (t *Tree) moved(c *dupCache, n *Node) {
 // runSlot is where n goes in run, its equal instances in sibling order: before the nearest run
 // member after n, after the nearest one before it. It walks out from n both ways at once, so the
 // cost is at most the distance to the nearer end of l, which the insertion of n shifted anyway.
-func (t *Tree) runSlot(l siblingSpan, run []*Node, n *Node, k idxKey) int {
-	at := l.indexFromEnd(&t.work, n)
+func (t *Tree) runSlot(sib *siblings, run []*Node, n *Node, k idxKey) int {
+	l := sib.schemaSpan()
+	at := sib.orderPosition(n)
 	member := func(c *Node) int {
 		if c.schema != n.schema {
 			return -1

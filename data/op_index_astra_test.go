@@ -153,9 +153,9 @@ func TestOpIndexKeylessDuplicateSetUsesRegistrationOrder(t *testing.T) {
 				t.Fatal(err)
 			}
 			if split {
-				mustLink(t, op.kids.buildSchema([]*Node{lists[0], lists[1], separator, lists[3], lists[2]}))
+				mustLink(t, testBuild(&op.kids, lists[0], lists[1], separator, lists[3], lists[2]))
 			} else {
-				mustLink(t, op.kids.buildSchema([]*Node{lists[0], lists[3], lists[1], lists[2], separator}))
+				mustLink(t, testBuild(&op.kids, lists[0], lists[3], lists[1], lists[2], separator))
 			}
 			if err := op.kids.orderBuild(tr); err != nil {
 				t.Fatal(err)
@@ -202,7 +202,7 @@ func TestOpIndexAscendingNewTermAllocationScaling(t *testing.T) {
 	measure := func(n int) (int64, uint64) {
 		tr, op := opIndexParseRPC(t, set, `{"m:r":{}}`)
 		tr.work.Store(0)
-		tr.work.visits, tr.work.shifts = true, true
+		tr.work.visits = true
 		runtime.GC()
 		var before, after runtime.MemStats
 		runtime.ReadMemStats(&before)

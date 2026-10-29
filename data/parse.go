@@ -161,30 +161,6 @@ type lydCtx struct {
 	dirtySet  map[dirtyRun]bool        // the runs pending in dirty, for a constant-time repeat mark
 	dirtyOrd  map[dirtyRun]*dirtyOrder // the dirty runs' trees
 	runOrd    map[dirtyRun]*dirtyOrder // aliases of retained trees used during this parse
-	pos       struct {                 // position's cache: one sibling set at one generation
-		sib *siblings
-		gen uint64
-		at  map[*Node]int
-	}
-}
-
-// position is the index of n in sib.schemaSpan() for the parser's readers (metadata walks over split
-// runs), cached while sib does not change (sib.gen): repeated metadata members for one run cost
-// one scan. The cache belongs to this parse (a mutation), never to the shared sibling state that
-// concurrent readers use.
-func (lc *lydCtx) position(sib *siblings, n *Node) int {
-	if lc.pos.sib != sib || lc.pos.gen != sib.gen {
-		lc.pos.sib, lc.pos.gen, lc.pos.at = sib, sib.gen, nil
-	}
-	if at, ok := lc.pos.at[n]; ok {
-		return at
-	}
-	at := sib.schemaSpan().indexFromEnd(&lc.tree.work, n)
-	if lc.pos.at == nil {
-		lc.pos.at = map[*Node]int{}
-	}
-	lc.pos.at[n] = at
-	return at
 }
 
 type dirtyRun struct {
@@ -858,7 +834,7 @@ func (lc *lydCtx) appendSorted(parent, n *Node) (bool, error) {
 			// The gap-free operation invariant normally gives the physical slice
 			// directly. Keep malformed/stale index state on a counted error path
 			// instead of allowing parser input to cause a slice-bounds panic.
-			lo = sib.schemaSpan().indexFromEnd(sib.work, first)
+			lo = sib.orderPosition(first)
 			at = lo + runLen
 			if lo < 0 || at > sib.SchemaLen() {
 				return false, &opError{"LY_EINT", "Invalid ordered sibling index."}
@@ -1143,13 +1119,6 @@ func (lc *lydCtx) flushDirtyRun(k dirtyRun, lo int) {
 		}
 	}
 	lc.tree.work.Add(int64(run.Len()))
-	if k.sib.order != nil {
-		if d := k.sib.order.entries[k.sn]; d != nil {
-			if err := k.sib.opRebuild(run); err != nil && lc.tree.work.hashErr == nil {
-				lc.tree.work.hashErr = err // the publication is refused: the parse fails and restores
-			}
-		}
-	}
 	k.sib.gen++
 }
 

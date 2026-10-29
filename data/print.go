@@ -115,12 +115,8 @@ func (o printConfig) isDefault(n *Node) bool {
 					// A detached subtree is the validation root for its values. This
 					// view is read-only: printing must not link leafrefs (D-0128).
 					t = newTree(ctxOf(root))
-					if root.schema == nil {
-						// No work binding or journal exists on this fresh view.
-						t.top.Build(nil, []*Node{root}) //nolint:errcheck,gosec // unbound storage cannot fail journal capture
-					} else {
-						// No work binding or journal exists on this fresh view.
-						t.top.Build([]*Node{root}, nil) //nolint:errcheck,gosec // unbound storage cannot fail journal capture
+					t.top.view(root) // a fresh view: no work binding or journal
+					if root.schema != nil {
 						t.top.contexts = map[*schema.Set]int{ctxOf(root): 1}
 					}
 					dc.views[root] = t

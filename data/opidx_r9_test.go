@@ -175,7 +175,6 @@ func TestOpIndexSortRelocationDuplicateHeavy(t *testing.T) {
 
 		tr.work.Store(0)
 		tr.work.visits = true
-		tr.work.shifts = true
 		mustLink(t, tr.insert(op, opIndexTerm(t, ss, 6), insertDefault))
 		work := tr.work.Load()
 
@@ -297,7 +296,6 @@ func TestOpIndexBucketRemoveScrambled(t *testing.T) {
 
 		tr.work.Store(0)
 		tr.work.visits = true
-		tr.work.shifts = true
 		for len(remaining) != 0 {
 			at := 0
 			if len(remaining)%2 == 0 {

@@ -124,7 +124,6 @@ func opIndexParseRPC(t *testing.T, set *schema.Set, input string) (*Tree, *Node)
 		c.op = opOpts{rpc: true, action: true, noSiblings: true}
 		c.rcOnly = true
 		c.tree.work.visits = true
-		c.tree.work.shifts = true
 	})
 	if err != nil {
 		t.Fatal(err, diags)
@@ -160,7 +159,6 @@ func TestOpIndexDescendingInput(t *testing.T) {
 					t.Fatal(err, diags)
 				}
 				tree.work.Store(0)
-				tree.work.shifts = true
 				for i := range n {
 					v := i
 					if tc.descending {
@@ -203,7 +201,6 @@ func TestOpIndexAbsentSiblings(t *testing.T) {
 		}
 		tree.work.Store(0)
 		tree.work.visits = true
-		tree.work.shifts = true
 		reply := `{"m:tail":"t","m:v":[` + opIndexValues(n, false) + `]}`
 		if _, _, diags, err = parseOp(context.Background(), strings.NewReader(reply), set,
 			FormatJSON, opReply, op, Reject); err != nil {
@@ -257,7 +254,6 @@ func TestOpIndexPrependUserOrdered(t *testing.T) {
 		first := op.kids.At(0)
 		sn := first.schema
 		tree.work.Store(0)
-		tree.work.shifts = true
 		for i := range n {
 			fresh := opIndexTerm(t, sn, i+1)
 			mustLink(t, tree.insertBefore(first, fresh))
@@ -292,21 +288,10 @@ func TestOpIndexUnlinkClearsRetainedPointers(t *testing.T) {
 			if err := unlinkTree(removed); err != nil {
 				t.Fatal(err)
 			}
-			assertDequeDoesNotRetain(t, "siblings", &op.kids.nodeDeque, removed)
-			if op.kids.order.byNode[removed] != nil {
-				t.Error("operation index retains removed node")
+			if op.kids.handle(removed) != nil || removed.slot.Get() != nil {
+				t.Error("operation storage retains removed node")
 			}
 			runtime.KeepAlive(tree)
 		})
-	}
-}
-
-func assertDequeDoesNotRetain(t *testing.T, name string, d *nodeDeque, removed *Node) {
-	t.Helper()
-	if d.retainsBase(removed) {
-		t.Errorf("%s base retains removed node", name)
-	}
-	if d.retainsList(removed) {
-		t.Errorf("%s list backing array retains removed node", name)
 	}
 }
