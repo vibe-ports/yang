@@ -627,7 +627,11 @@ func (p *jsonParser) metaAttr(node *Node, idx int) (rc error) {
 				run = spanOf(sib.walkFrom(node))
 			}
 			idx = 0
-			walk, walked := run.cursor(), 0 // the instances are read in order: a threaded walk
+			// The instances are read in order: a threaded walk. node is the run's first
+			// instance and both callers advance idx before next, so the cursor starts past it.
+			walk := run.cursor()
+			walk.next()
+			walked := 1
 			next = func(i int) *Node {
 				if i < run.Len() {
 					if i == walked {
