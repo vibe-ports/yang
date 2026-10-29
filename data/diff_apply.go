@@ -38,6 +38,9 @@ type ApplyDiffOptions struct {
 // may itself have such a split because libyang inserts generated diff nodes by their schema
 // anchors; it is accepted and walked in its stored order.
 func (t *Tree) ApplyDiff(diff *Tree, o ApplyDiffOptions) error {
+	if t.work.inProgress() { // an operation in progress governs t: refused before its counter is used
+		return refusedEntry(t.context())
+	}
 	var mod *schema.Module
 	if o.Module != "" {
 		mod = t.context().Implemented(o.Module)

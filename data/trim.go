@@ -59,6 +59,9 @@ func appendTrimSubtree(dst *[]*Node, root *Node, charge func(int64) bool) bool {
 // recorded before (`//.` on a nested tree): the tree is unchanged. A modification: it needs
 // exclusive access to t.
 func (t *Tree) TrimXPath(expr string, o XPathOptions) ([]yang.Diagnostic, error) {
+	if t.work.inProgress() { // an operation in progress governs t: refused before its counter is used
+		return nil, refusedEntry(t.context())
+	}
 	defer t.work.beginHashWork()()
 	l := &logger{set: t.context()}
 	if o.Node != nil {

@@ -78,6 +78,9 @@ func (l *logger) done(err error) error {
 // libyang's "Different contexts mixed in a \"lyd_new_path\" function call." diagnostic.
 // Other errors are a *ValidationError with libyang's diagnostics.
 func (t *Tree) NewPath(path, value string, o NewPathOptions) (*Node, error) {
+	if t.work.inProgress() { // an operation in progress governs t: refused before its counter is used
+		return nil, refusedEntry(t.context())
+	}
 	defer t.work.beginHashWork()()
 	lg := &logger{set: t.context()}
 	// newPath opens the creation's journal (design 12, "NewPath mutation journal"), with or
@@ -118,6 +121,9 @@ func (n *Node) Remove() error {
 	if n == nil {
 		return nil
 	}
+	if governing(n).suspendedState() { // an operation in progress governs n: refused before its counter is used
+		return refusedEntry(ctxOf(n))
+	}
 	done, err := n.beginHashWork()
 	if err != nil {
 		return err
@@ -132,6 +138,9 @@ func (n *Node) Remove() error {
 func (n *Node) Unlink() error {
 	if n == nil {
 		return nil
+	}
+	if governing(n).suspendedState() { // an operation in progress governs n: refused before its counter is used
+		return refusedEntry(ctxOf(n))
 	}
 	if n.siblingsOf() == nil {
 		return nil
@@ -179,6 +188,9 @@ func (n *Node) beginHashWork() (func(), error) {
 // nothing. Unequal anydata/anyxml payloads replace the whole destination payload,
 // copying the source flags plus New; equal payloads leave the destination unchanged.
 func (t *Tree) Merge(src *Tree) (result error) {
+	if t.work.inProgress() { // an operation in progress governs t: refused before its counter is used
+		return refusedEntry(t.context())
+	}
 	defer t.work.beginHashWork()()
 	lg := &logger{set: t.context()}
 	defer func() { result = lg.done(result) }() // a sticky D-0121 refusal returned as hashErr

@@ -33,7 +33,12 @@ func (m *Meta) Value() string { return m.m.value.Canonical() }
 
 // Remove is lyd_free_meta_single: the instance leaves its node. Removing it again does nothing.
 // It mutates the tree and, like Node.Remove, must not run concurrently with any other call on it.
-func (m *Meta) Remove() { _ = removeMeta(m.node, m.m) } // a refused capture leaves it in place
+func (m *Meta) Remove() {
+	if m.node != nil && governing(m.node).suspendedState() {
+		return // an operation in progress governs the node: refused before its counter is used
+	}
+	_ = removeMeta(m.node, m.m) // a refused capture leaves it in place
+}
 
 // removeMeta is lyd_free_meta_single: m leaves the metadata of n; nothing when it is not there.
 // It builds a new slice instead of shifting n.meta in place, so a range over the old n.meta (the
@@ -132,6 +137,9 @@ func (n *Node) FindMeta(name string) (*Meta, error) {
 // or an opaque n is a *ValidationError with libyang's diagnostics and return code (RC). The Default
 // flags of n and its parents are kept.
 func (t *Tree) NewMeta(n *Node, name, value string) (*Meta, error) {
+	if t.work.inProgress() { // an operation in progress governs t: refused before its counter is used
+		return nil, refusedEntry(t.context())
+	}
 	set := t.context()
 	if n != nil && n.treeOf() != nil && n.treeOf() != t {
 		lg := &logger{set: set}

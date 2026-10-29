@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/vibe-ports/yang"
+	"github.com/vibe-ports/yang/internal/schema"
 )
 
 // One recovery state per operation, and a state waiting on user code is suspended (#240 step 4,
@@ -290,3 +291,11 @@ func linkGuard(n *Node, w *workCounter) error {
 	}
 	return nil
 }
+
+// inProgress reports whether w's state waits on user code: a public mutator of a tree (or node)
+// it governs is refused at entry, before it charges, touches or sets the shared counter's sticky
+// error, which would otherwise fail the waiting operation.
+func (w *workCounter) inProgress() bool { return w != nil && w.journal.suspendedState() }
+
+// refusedEntry is that refusal, logged as LY_EINVAL in the caller's context.
+func refusedEntry(set *schema.Set) error { return (&logger{set: set}).done(errInProgress) }

@@ -42,6 +42,9 @@ func (op diffOp) String() string { return [...]string{"create", "delete", "repla
 // validation to modules present in t. Validation observes ctx cancellation and fixed default
 // implicit-node and XPath budgets.
 func (t *Tree) ValidateDiff(ctx context.Context, o ValidateOptions) (diff *Tree, d []yang.Diagnostic, err error) {
+	if t.work.inProgress() { // an operation in progress governs t: refused before its counter is used
+		return nil, nil, refusedEntry(t.context())
+	}
 	ctx = suspending(ctx, &t.work) // its polls run the user's context suspended (design 13 §2.4)
 	defer func() { err = restoreUser(err) }()
 	journal := beginHashTransaction(t)
@@ -86,6 +89,9 @@ func (t *Tree) ValidateDiff(ctx context.Context, o ValidateOptions) (diff *Tree,
 // run; finalize each relevant module separately with ValidateModuleFinal.
 func (t *Tree) ValidateModuleDiff(ctx context.Context, module string, o ValidateOptions) (diff *Tree,
 	d []yang.Diagnostic, err error) {
+	if t.work.inProgress() { // an operation in progress governs t: refused before its counter is used
+		return nil, nil, refusedEntry(t.context())
+	}
 	ctx = suspending(ctx, &t.work) // its polls run the user's context suspended (design 13 §2.4)
 	defer func() { err = restoreUser(err) }()
 	mod, d, err := t.validateModuleArgs(module, o)

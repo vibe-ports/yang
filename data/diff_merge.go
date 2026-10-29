@@ -94,6 +94,9 @@ type MergeDiffOptions struct {
 // given at ReverseDiff. An operation's children in a diff tree may be split by schema-anchor
 // insertion; MergeDiff accepts that order, as libyang does.
 func (t *Tree) MergeDiff(src *Tree, o MergeDiffOptions) error {
+	if t.work.inProgress() { // an operation in progress governs t: refused before its counter is used
+		return refusedEntry(t.context())
+	}
 	var mod *schema.Module
 	if o.Module != "" {
 		mod = t.context().Implemented(o.Module)
@@ -133,6 +136,9 @@ func (t *Tree) mergeDiffWithModule(src *Tree, o MergeDiffOptions, mod *schema.Mo
 // merges nothing. Operation-child runs in either diff may be split by schema-anchor insertion
 // and are accepted in that stored order, as in libyang.
 func (t *Tree) MergeDiffTree(parent, src *Node, o MergeDiffOptions) (result error) {
+	if t.work.inProgress() { // an operation in progress governs t: refused before its counter is used
+		return refusedEntry(t.context())
+	}
 	defer func() { result = restoreUser(result) }() // a callback's own error, after the state ended
 	defer t.work.beginHashWork()()
 	t.diffLogs = nil

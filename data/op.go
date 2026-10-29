@@ -162,6 +162,9 @@ type ValidateOpOptions struct {
 // ValidateOp changes t and, while it runs, o.Operational (the operation is linked into it and
 // unlinked again): it needs exclusive access to both.
 func (t *Tree) ValidateOp(ctx context.Context, typ OpType, o ValidateOpOptions) (_ []yang.Diagnostic, err error) {
+	if t.work.inProgress() { // an operation in progress governs t: refused before its counter is used
+		return nil, refusedEntry(t.context())
+	}
 	ctx = suspending(ctx, &t.work) // its polls run the user's context suspended (design 13 §2.4)
 	defer func() { err = restoreUser(err) }()
 	lg := &logger{set: t.context()}

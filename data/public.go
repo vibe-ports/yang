@@ -85,6 +85,9 @@ func (n *Node) Schema() *yang.SchemaNode {
 // duplicate instances. A node whose when is false is removed silently if it was created as
 // valid earlier (FlagWhenTrue), else it is an error. Diagnostics and err as for Parse.
 func (t *Tree) Validate(ctx context.Context, o ValidateOptions) (_ []yang.Diagnostic, err error) {
+	if t.work.inProgress() { // an operation in progress governs t: refused before its counter is used
+		return nil, refusedEntry(t.context())
+	}
 	ctx = suspending(ctx, &t.work) // its polls run the user's context suspended (design 13 §2.4)
 	defer func() { err = restoreUser(err) }()
 	return t.validateAll(ctx, o, Budget{}, nil)
@@ -98,6 +101,9 @@ func (t *Tree) Validate(ctx context.Context, o ValidateOptions) (_ []yang.Diagno
 // returns LY_EINVAL without a diagnostic. Other diagnostics and err are as for Validate. See
 // ValidateModuleDiff for the diff-returning form and its mutation and error semantics.
 func (t *Tree) ValidateModule(ctx context.Context, module string, o ValidateOptions) (_ []yang.Diagnostic, err error) {
+	if t.work.inProgress() { // an operation in progress governs t: refused before its counter is used
+		return nil, refusedEntry(t.context())
+	}
 	ctx = suspending(ctx, &t.work) // its polls run the user's context suspended (design 13 §2.4)
 	defer func() { err = restoreUser(err) }()
 	mod, d, err := t.validateModuleArgs(module, o)

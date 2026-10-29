@@ -111,6 +111,12 @@ is refused with LY_EINVAL (`errInProgress`) before it writes (D-0148):
    `captureDetachedParent` captures and every link counterpart is enrolled until `end`
    (`enroll`): its counter is lent to the state, or a set without a counter is bound to the
    state's temporary counter (a works entry restores it) and unbound at end on both outcomes;
+0. every public mutator of a tree or node a suspended state governs (`Insert`, `New*`, `NewPath`,
+   `Merge`, `Dup*`, `Remove`, `Unlink`, `SetValue*`, `NewMeta`, `Meta.Remove`, `TrimXPath`,
+   `LinkLeafrefs`, the validations, `ApplyDiff`, `MergeDiff*`, `ParseOp` with such a `Request`)
+   refuses at entry (`inProgress`), before it charges, touches or sets the shared counter's sticky
+   error, which would otherwise fail the waiting operation; a `ParseOp` into a detached request
+   opens its state and captures (enrolls) the request before the Reader runs;
 5. operations without a journal check the link records they will edit first (`linkGuard` in
    `prepareUnlink`, the value change, `reserveFreeLinks`, `linkLeafrefNode`), each visit charged
    before it is made.

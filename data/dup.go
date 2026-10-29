@@ -687,6 +687,9 @@ func (o DupOptions) opts() dupOpts {
 // are always copied in full, retaining their source schema contexts; their copies
 // keep metadata and only the Default flag (plus New), independently of o.
 func (t *Tree) Dup(n, parent *Node, o DupOptions) (*Node, []yang.Diagnostic, error) {
+	if t.work.inProgress() { // an operation in progress governs t: refused before its counter is used
+		return nil, nil, refusedEntry(t.context())
+	}
 	return t.dupPublic(n, parent, o, false, "lyd_dup_single")
 }
 
@@ -694,6 +697,9 @@ func (t *Tree) Dup(n, parent *Node, o DupOptions) (*Node, []yang.Diagnostic, err
 // Like Dup, it refuses a terminal parent (D-0123) or an ordinary schema parent that is not an
 // instance of n's schema parent (D-0124).
 func (t *Tree) DupSiblings(n, parent *Node, o DupOptions) (*Node, []yang.Diagnostic, error) {
+	if t.work.inProgress() { // an operation in progress governs t: refused before its counter is used
+		return nil, nil, refusedEntry(t.context())
+	}
 	return t.dupPublic(n, parent, o, true, "lyd_dup_siblings")
 }
 

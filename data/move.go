@@ -80,6 +80,9 @@ func sibList(n *Node) *Tree {
 // the sequence step insert, seq/insert-*; Go tests TestTreeBuild, TestInsertChild,
 // TestInsertSibling and TestInsertIntoItself.
 func (t *Tree) Insert(parent, n *Node) error {
+	if t.work.inProgress() { // an operation in progress governs t: refused before its counter is used
+		return refusedEntry(t.context())
+	}
 	defer t.work.beginHashWork()()
 	fn := "lyd_insert_child"
 	if parent == nil {

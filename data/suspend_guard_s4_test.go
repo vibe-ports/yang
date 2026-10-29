@@ -531,3 +531,69 @@ func TestS4GuardRefusedValidationRestores(t *testing.T) {
 		s4Check(t, "after", []*Tree{a, b})
 	}
 }
+
+// TestS4GuardNestedRefusalLeavesOuterOperation: every public mutator of the tree an ApplyDiff is
+// changing, called from its callback, is refused at entry, before it charges or sets the shared
+// counter's sticky error; the callback catches the refusal and returns nil, and ApplyDiff then
+// succeeds with exactly the reference result (PR #327 review, round 2).
+func TestS4GuardNestedRefusalLeavesOuterOperation(t *testing.T) {
+	set := s4LinksSet(t)
+	ref, _, _, _ := s4LinkedPair(t, set)
+	if err := ref.ApplyDiff(s4Diff(t, set, ref, false), ApplyDiffOptions{}); err != nil {
+		t.Fatal(err)
+	}
+	want := typedDump(ref)
+	mutators := map[string]func(a *Tree, c, leaf *Node) error{
+		"SetValue": func(_ *Tree, _, leaf *Node) error { _, err := leaf.SetValue("b"); return err },
+		"SetValueCanonical": func(_ *Tree, _, leaf *Node) error {
+			_, err := leaf.SetValueCanonical("b")
+			return err
+		},
+		"NewTerm": func(a *Tree, c, _ *Node) error { _, err := a.NewTerm(c, "t", "n", NewOptions{}); return err },
+		"NewList": func(a *Tree, c, _ *Node) error { _, err := a.NewList(c, "l", []string{"n"}, NewOptions{}); return err },
+		"NewPath": func(a *Tree, _, _ *Node) error {
+			_, err := a.NewPath("/pv2-links:c/t[.='n']", "", NewPathOptions{})
+			return err
+		},
+		"Insert":    func(a *Tree, c, leaf *Node) error { return a.Insert(c, leaf) },
+		"Remove":    func(_ *Tree, _, leaf *Node) error { return leaf.Remove() },
+		"Unlink":    func(_ *Tree, _, leaf *Node) error { return leaf.Unlink() },
+		"Merge":     func(a *Tree, _, _ *Node) error { return a.Merge(s4ParseLinks(t, set, `{"pv2-links:c":{"t":["m"]}}`)) },
+		"Dup":       func(a *Tree, c, leaf *Node) error { _, _, err := a.Dup(leaf, c, DupOptions{}); return err },
+		"TrimXPath": func(a *Tree, _, _ *Node) error { _, err := a.TrimXPath("/pv2-links:c/t", XPathOptions{}); return err },
+		"Validate": func(a *Tree, _, _ *Node) error {
+			_, err := a.Validate(context.Background(), ValidateOptions{})
+			return err
+		},
+		"LinkLinks": func(a *Tree, _, _ *Node) error { _, err := a.LinkLeafrefs(context.Background()); return err },
+		"ApplyDiff": func(a *Tree, _, _ *Node) error { return a.ApplyDiff(s4Diff(t, set, a, false), ApplyDiffOptions{}) },
+	}
+	for name, mutate := range mutators {
+		t.Run(name, func(t *testing.T) {
+			a, _, _, _ := s4LinkedPair(t, set)
+			called := false
+			err := a.ApplyDiff(s4Diff(t, set, a, false), ApplyDiffOptions{Callback: func(_, _ *Node) error {
+				if called {
+					return nil
+				}
+				called = true
+				c := a.top.first()
+				leaf := s4Child(c, "t", "y")
+				used := a.work.hashUsed
+				if err := mutate(a, c, leaf); !s4Refused(err) {
+					t.Errorf("%s from the callback: %v, want the guard's refusal", name, err)
+				}
+				if a.work.hashErr != nil || a.work.hashUsed != used {
+					t.Errorf("%s: the refusal leaked into the operation's counter (%v, %d units)", name, a.work.hashErr, a.work.hashUsed-used)
+				}
+				return nil // the refusal is caught: the callback succeeds
+			}})
+			if err != nil || !called {
+				t.Fatalf("ApplyDiff: %v (called %t), want success", err, called)
+			}
+			if got := typedDump(a); !reflect.DeepEqual(got, want) {
+				t.Fatalf("history differs from the reference:\n%v\nwant\n%v", got, want)
+			}
+		})
+	}
+}

@@ -506,3 +506,57 @@ func TestS4ValidatePanickingContextError(t *testing.T) {
 		}
 	}
 }
+
+// failingReader runs mutate, then fails.
+type failingReader struct {
+	mutate func()
+	err    error
+}
+
+func (r failingReader) Read([]byte) (int, error) {
+	r.mutate()
+	return 0, r.err
+}
+
+// TestS4GuardDetachedRequestReader: a ParseOp into a detached request whose Reader removes an
+// input child: the parse's state is open and enrolls the request before the Reader runs, so
+// the removal is refused, with a succeeding and with a failing Reader, and the request is as it
+// was (PR #327 review, round 2). The public ParseOp returns the failing Reader's own error.
+func TestS4GuardDetachedRequestReader(t *testing.T) {
+	set, parent := s4OpsFixture(t)
+	for _, failing := range []bool{false, true} {
+		tree, op := parent()
+		root := tree.top.first()
+		if err := root.Unlink(); err != nil {
+			t.Fatal(err)
+		}
+		before := s4Dumps(newTreeWith(set, root))
+		var mutErr error
+		mutate := func() {
+			if mutErr == nil {
+				mutErr = op.kids.first().Remove()
+			}
+		}
+		readErr := errors.New("read failed")
+		var r io.Reader = &mutatingReader{in: strings.NewReader(`{}`), mutate: mutate}
+		if failing {
+			r = failingReader{mutate: mutate, err: readErr}
+		}
+		_, _, err := ParseOp(context.Background(), r, FormatJSON, snap.New(set), OpReply, ParseOpOptions{Request: op})
+		if failing && err != readErr { //nolint:errorlint // the Reader's own error
+			t.Fatalf("failing Reader: %v, want its own error", err)
+		}
+		if !failing && err != nil {
+			t.Fatal(err)
+		}
+		if !s4Refused(mutErr) {
+			t.Fatalf("failing=%t: the Reader's removal: %v, want the guard's refusal", failing, mutErr)
+		}
+		if got := s4Dumps(newTreeWith(set, root)); !reflect.DeepEqual(got, before) {
+			t.Fatalf("failing=%t: request %v, want %v", failing, got, before)
+		}
+		if err := op.kids.first().Remove(); err != nil {
+			t.Fatalf("failing=%t: the request after the parse: %v", failing, err)
+		}
+	}
+}

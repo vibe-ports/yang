@@ -275,10 +275,25 @@ func parseOpWith(ctx context.Context, r io.Reader, s *schema.Set, f Format, t op
 		oo.noSiblings = parent == nil
 	}
 	o := parseOpts{ParseOptions: ParseOptions{Unknown: unknown, ParseOnly: true, Budget: b}}
+	var detachedTree *Tree
 	if parent != nil {
+		if governing(parent).suspendedState() {
+			return nil, nil, nil, nil, errInProgress // its operation waits on user code
+		}
 		if owner := parent.treeOf(); owner != nil {
 			journal = beginHashTransaction(owner)
 			o.owner = &owner.work
+		} else {
+			// A detached parent (LYD_CTX(parent)): the parser's own tree of s stands in for
+			// lookups, and its journal, opened and capturing (enrolling) the whole detached request
+			// before the Reader runs, restores the parent on any budget failure and makes the
+			// Reader and the context reach a suspended state (design 13 §2.4)
+			detachedTree = newTree(s)
+			journal = beginHashTransaction(detachedTree)
+			o.owner = &detachedTree.work
+			if err := journal.captureDetachedParent(parent); err != nil {
+				return nil, nil, nil, nil, err
+			}
 		}
 	}
 	var lc *lydCtx
@@ -289,14 +304,7 @@ func parseOpWith(ctx context.Context, r io.Reader, s *schema.Set, f Format, t op
 			if pt := parent.treeOf(); pt != nil {
 				c.tree = pt
 			} else {
-				// A detached parent (LYD_CTX(parent)): the parser's own tree of s stands in for
-				// lookups, and its journal (Tree.touch captures the parent's children before the
-				// first link) restores the parent on any budget failure, sticky hash work included.
-				journal = beginHashTransaction(c.tree)
-				// parseWith checks the sticky error before reading any input.
-				if err := journal.captureDetachedParent(parent); err != nil && c.tree.work.hashErr == nil {
-					c.tree.work.hashErr = err
-				}
+				c.tree = detachedTree // its journal captured the request before the read
 			}
 		}
 	})

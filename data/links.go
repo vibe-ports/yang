@@ -430,6 +430,9 @@ func (vc *valCtx) linkType(n *Node, v types.Value, t *schema.Type) error {
 // also on success: a leafref path whose evaluation fails (a dangling deref()) is logged at its
 // node and the link skipped. The XPath evaluations stop when ctx is done.
 func (t *Tree) LinkLeafrefs(ctx context.Context) (_ []yang.Diagnostic, err error) {
+	if t.work.inProgress() { // an operation in progress governs t: refused before its counter is used
+		return nil, refusedEntry(t.context())
+	}
 	ctx = suspending(ctx, &t.work) // its polls run the user's context suspended (design 13 §2.4)
 	defer func() { err = restoreUser(err) }()
 	lg := &logger{set: t.context()}

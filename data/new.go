@@ -559,6 +559,9 @@ func (t *Tree) placed(b newBuilder, parent, n *Node, err error) (*Node, error) {
 // (LY_ENOTFOUND), a value the type rejects the type's diagnostics. o.StoreOnly suppresses most
 // value restriction checks; combining it with o.Canonical is LY_EINVAL.
 func (t *Tree) NewTerm(parent *Node, name, value string, o NewOptions) (*Node, error) {
+	if t.work.inProgress() { // an operation in progress governs t: refused before its counter is used
+		return nil, refusedEntry(t.context())
+	}
 	defer t.work.beginHashWork()()
 	b, mod, local, err := t.builder(parent, name, "_lyd_new_term")
 	if err != nil {
@@ -574,6 +577,9 @@ func (t *Tree) NewTerm(parent *Node, name, value string, o NewOptions) (*Node, e
 // Default flag, which inserting a child into it clears. StoreOnly and Canonical do not apply to
 // inner nodes and are ignored.
 func (t *Tree) NewInner(parent *Node, name string, o NewOptions) (*Node, error) {
+	if t.work.inProgress() { // an operation in progress governs t: refused before its counter is used
+		return nil, refusedEntry(t.context())
+	}
 	defer t.work.beginHashWork()()
 	b, mod, local, err := t.builder(parent, name, "lyd_new_inner")
 	if err != nil {
@@ -590,6 +596,9 @@ func (t *Tree) NewInner(parent *Node, name string, o NewOptions) (*Node, error) 
 // libyang ignores them; nil keys of a keyed list is "Missing list … keys." and fewer values than
 // keys an LY_EINVAL argument error, "keys".
 func (t *Tree) NewList(parent *Node, name string, keys []string, o NewOptions) (*Node, error) {
+	if t.work.inProgress() { // an operation in progress governs t: refused before its counter is used
+		return nil, refusedEntry(t.context())
+	}
 	defer t.work.beginHashWork()()
 	b, mod, local, err := t.builder(parent, name, "lyd_new_list")
 	if err != nil {
@@ -606,6 +615,9 @@ func (t *Tree) NewList(parent *Node, name string, keys []string, o NewOptions) (
 // An empty keys string creates a keyless list but is invalid for a keyed list. Output and
 // StoreOnly apply; Canonical is ignored, including when StoreOnly is also set.
 func (t *Tree) NewList2(parent *Node, name, keys string, o NewOptions) (*Node, error) {
+	if t.work.inProgress() { // an operation in progress governs t: refused before its counter is used
+		return nil, refusedEntry(t.context())
+	}
 	defer t.work.beginHashWork()()
 	b, mod, local, err := t.builder(parent, name, "lyd_new_list2")
 	if err != nil {
@@ -638,6 +650,9 @@ type OpaqueOptions struct {
 // snapshot. The prefix is copied. A JSON value "[null]" gets libyang's empty-value hint.
 // A leaf or leaf-list parent (D-0113) and a NUL byte in any string (D-0111) are refused.
 func (t *Tree) NewOpaque(parent *Node, name, value string, o OpaqueOptions) (*Node, error) {
+	if t.work.inProgress() { // an operation in progress governs t: refused before its counter is used
+		return nil, refusedEntry(t.context())
+	}
 	defer t.work.beginHashWork()()
 	set := t.context()
 	b := newBuilder{set: set, log: &logger{set: set}, work: &t.work, tree: t}
@@ -665,6 +680,9 @@ func (t *Tree) NewOpaque(parent *Node, name, value string, o OpaqueOptions) (*No
 // Default flag of a default node and of its non-presence container parents (LY_EEXIST), or
 // changes nothing (LY_ENOT). An opaque or non-term n is an LY_EINVAL *ValidationError.
 func (n *Node) SetValue(value string) (changed bool, err error) {
+	if n != nil && governing(n).suspendedState() { // an operation in progress governs n: refused before its counter is used
+		return false, refusedEntry(ctxOf(n))
+	}
 	return n.setValue(value, false)
 }
 
@@ -673,6 +691,9 @@ func (n *Node) SetValue(value string) (changed bool, err error) {
 // canonical form. As with SetValue, changed is true only for an actual value change; clearing a
 // Default flag without changing the value returns false, nil.
 func (n *Node) SetValueCanonical(value string) (changed bool, err error) {
+	if n != nil && governing(n).suspendedState() { // an operation in progress governs n: refused before its counter is used
+		return false, refusedEntry(ctxOf(n))
+	}
 	return n.setValue(value, true)
 }
 
