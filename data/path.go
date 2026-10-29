@@ -41,15 +41,12 @@ func listPos(n *Node) int {
 	if sib == nil {
 		return 1
 	}
-	i := sib.SchemaLen() - 1
-	for i >= 0 && sib.At(i) != n {
-		i--
-	}
-	if i < 0 {
+	h := sib.handle(n)
+	if h == nil || n.schema == nil {
 		return 1 // not linked: the node alone
 	}
 	pos := 0
-	for ; i >= 0 && sib.At(i).schema == n.schema; i-- {
+	for ; h != nil && h.Value.schema == n.schema; h = sib.st.seq.Prev(h) {
 		pos++
 	}
 	return pos

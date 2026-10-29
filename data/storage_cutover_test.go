@@ -347,3 +347,80 @@ func TestParserManyDeferredRunsScaling(t *testing.T) {
 		t.Fatal("quadrupling the deferred runs grew the parse faster than linearly")
 	}
 }
+
+// TestMergeAttachReplayScaling (design 14, attach replay): merging M new values into an indexed
+// operation run with a children table attaches them one by one, each registering its first-
+// instance record between its visible neighbours; finding them is O(1) per member
+// (visibleNeighbours), so quadrupling M stays near linear in counted visits and charged work.
+func TestMergeAttachReplayScaling(t *testing.T) {
+	set := opIndexSet(t, `module m { yang-version 1.1; namespace "urn:m"; prefix m;
+	  rpc r { input { leaf-list v { type uint32; } leaf a { type string; } leaf b { type string; } } } }`)
+	measure := func(m int) (int64, uint64) {
+		dst, op := opIndexParseRPC(t, set, `{"m:r":{"v":[0,100000],"a":"x","b":"y"}}`)
+		if op.kids.ht == nil {
+			t.Fatal("the destination needs a children table")
+		}
+		var values strings.Builder
+		for i := range m {
+			if i != 0 {
+				values.WriteByte(',')
+			}
+			fmt.Fprint(&values, i+1) // ascending: each attach is followed by pending ones
+		}
+		src, _ := opIndexParseRPC(t, set, `{"m:r":{"v":[`+values.String()+`]}}`)
+		dst.work.Store(0)
+		dst.work.visits = true
+		if err := dst.Merge(src); err != nil {
+			t.Fatal(err)
+		}
+		if op.kids.SchemaLen() != m+4 {
+			t.Fatalf("merged %d children", op.kids.SchemaLen())
+		}
+		opidxAssertTreeInvariant(t, dst)
+		return dst.work.Load(), dst.work.hashUsed
+	}
+	w1, h1 := measure(256)
+	w4, h4 := measure(1024)
+	t.Logf("256: work %d hash %d; 1024: work %d hash %d", w1, h1, w4, h4)
+	if w4 > 6*w1 || h4 > 6*h1 {
+		t.Fatal("quadrupling the merged run grew the merge faster than linearly")
+	}
+}
+
+// TestPublishSparseDirtyRuns (design 14, completion funding): publishing two small deferred runs
+// beside N unrelated siblings locates each run by a logarithmic lookup, so its counted and
+// charged work does not grow with N.
+func TestPublishSparseDirtyRuns(t *testing.T) {
+	set := opIndexSet(t, `module m { yang-version 1.1; namespace "urn:m"; prefix m; container c {
+	  leaf-list a { type uint32; } leaf-list b { type uint32; } leaf-list z { type uint32; ordered-by user; } } }`)
+	measure := func(n int) (int64, uint64) {
+		tr, _, err := parseJSONString(set, `{"m:c":{"a":[20,10],"b":[20,10],"z":[`+opIndexValues(n, false)+`]}}`, Reject, true)
+		if err != nil {
+			t.Fatal(err)
+		}
+		c := tr.top.first()
+		lc := &lydCtx{tree: tr, ctx: context.Background(), log: &logger{set: set}}
+		end := tr.work.beginHashWork()
+		defer end()
+		for _, sn := range []*schema.Node{c.kids.At(0).schema, c.kids.At(2).schema} {
+			v, _ := types.Store(sn.Type, "1", types.FormatJSON, types.JSONHints("number"), types.ModuleNames{Set: set}, sn)
+			if inserted, err := lc.appendSorted(c, newTerm(sn, v)); err != nil || !inserted {
+				t.Fatalf("append: %t %v", inserted, err)
+			}
+		}
+		used := tr.work.hashUsed
+		tr.work.Store(0)
+		tr.work.visits = true
+		mustLink(t, lc.flushDirtyAll())
+		if got := c.kids.CollectRange(0, 6); got[0].value.Canonical() != "1" || got[3].value.Canonical() != "1" {
+			t.Fatal("the runs were not published in value order")
+		}
+		return tr.work.Load(), tr.work.hashUsed - min(used, tr.work.hashUsed)
+	}
+	w1, h1 := measure(1024)
+	w2, h2 := measure(raceScale(32768, 4))
+	t.Logf("publication: work %d -> %d, hash %d -> %d", w1, w2, h1, h2)
+	if w2 > 2*w1+64 || h2 > 2*h1+64 {
+		t.Fatal("publishing two small runs grew with the unrelated siblings")
+	}
+}

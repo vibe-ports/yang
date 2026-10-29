@@ -26,11 +26,11 @@ func ownedNodes(roots []*Node, work *workCounter) ([]*Node, error) {
 			return nil, err
 		}
 		nodes = append(nodes, n)
-		for i := sib.OpaqueLen() - 1; i >= 0; i-- {
-			stack = append(stack, sib.opaqueAt(i))
+		for _, c := range sib.opaqueSpan().Reverse() {
+			stack = append(stack, c)
 		}
-		for i := sib.SchemaLen() - 1; i >= 0; i-- {
-			stack = append(stack, sib.At(i))
+		for _, c := range sib.schemaSpan().Reverse() {
+			stack = append(stack, c)
 		}
 	}
 	return nodes, nil

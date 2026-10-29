@@ -454,9 +454,12 @@ func (t *Tree) insertPos(sib *siblings, n *Node, order insertOrder) int {
 			leader = l.At(at)
 		case at > 0 && l.At(at-1).schema == n.schema && l.At(at-1).inRB:
 			leader = l.At(at - 1)
-			for i := at - 2; i >= 0 && l.At(i).schema == n.schema; i-- {
+			for _, c := range l.Slice(0, at-1).Reverse() {
+				if c.schema != n.schema {
+					break
+				}
 				t.work.Add(1)
-				leader = l.At(i)
+				leader = c
 			}
 		}
 		if sib.rbTree[leader] {
@@ -551,12 +554,12 @@ func (t *Tree) crossContextInsertPos(sib *siblings, n *Node, newCtx *schema.Set,
 				}
 				// the key is the table's lineage match; confirm it as schemaLookup does and
 				// otherwise continue the same first-match scan from there
-				for ; i < l.Len(); i++ {
+				for j, c := range l.Slice(i, l.Len()).All() {
 					if t.work.chargeHash(1) != nil {
 						return l.Len(), true
 					}
-					if schemaLookupMatch(l.At(i).schema, sn, true) {
-						return i, true
+					if schemaLookupMatch(c.schema, sn, true) {
+						return i + j, true
 					}
 				}
 			}
@@ -708,8 +711,9 @@ func rbCompareCost(a, b *Node) uint64 {
 		return 1 + types.CompareCost(a.value, b.value)
 	}
 	cost := uint64(1)
+	ca, cb := a.kids.schemaSpan().cursor(), b.kids.schemaSpan().cursor()
 	for i := range min(a.kids.SchemaLen(), b.kids.SchemaLen()) {
-		ka, kb := a.kids.At(i), b.kids.At(i)
+		ka, kb := ca.next(), cb.next()
 		if i > 0 && (!ka.isKey() || !kb.isKey()) {
 			break
 		}
@@ -727,8 +731,9 @@ func chargeCompareCost(w *workCounter, a, b *Node) error {
 	if err := w.chargeHash(1); err != nil {
 		return err
 	}
+	ca, cb := a.kids.schemaSpan().cursor(), b.kids.schemaSpan().cursor()
 	for i := range min(a.kids.SchemaLen(), b.kids.SchemaLen()) {
-		ka, kb := a.kids.At(i), b.kids.At(i)
+		ka, kb := ca.next(), cb.next()
 		if i > 0 && (!ka.isKey() || !kb.isKey()) {
 			break
 		}
@@ -1102,7 +1107,8 @@ func (t *Tree) sortedLeaderIndex(sib *siblings, n *Node) int {
 		if sib.foreignFor(n.schema) && (t.work.lookupDepth == 0 || !t.foreignSchemaInput[sib]) {
 			// schemaIndex's linear foreign-name scan, charged step by step: it stops at the
 			// first match, so reserving every sibling per insertion made a run quadratic
-			return t.foreignScan(sib, n.schema, true)
+			at, _ := t.foreignScan(sib, n.schema, true)
+			return at
 		}
 		// the other lookups read up to every sibling: reserve that first
 		if err := t.work.chargeHash(uint64(sib.SchemaLen()) + 1); err != nil { //nolint:gosec // a sibling count is nonnegative
@@ -1644,17 +1650,24 @@ func markRB(sib *siblings, leader *Node) {
 		sib.rbGroups[leader] = group
 	}
 	// A newly created tree includes every indexed instance of this physical run.
-	for i := sib.position(leader); i >= 0 && i < sib.SchemaLen() && sib.At(i).schema == leader.schema; i++ {
+	at := sib.position(leader)
+	if at < 0 {
+		return
+	}
+	for _, c := range sib.schemaSpan().Slice(at, sib.SchemaLen()).All() {
+		if c.schema != leader.schema {
+			break
+		}
 		if sib.work != nil {
 			sib.work.Add(1)
 		}
-		if sib.At(i).inRB && sib.At(i).rbGroup == nil {
-			if err := sib.At(i).touch(); err != nil {
+		if c.inRB && c.rbGroup == nil {
+			if err := c.touch(); err != nil {
 				return
 			}
-			sib.At(i).rbGroup = group
+			c.rbGroup = group
 		}
-		if sib.refreshRB(sib.At(i)) != nil {
+		if sib.refreshRB(c) != nil {
 			return // sticky: the operation fails and its journal restores
 		}
 	}
@@ -1832,11 +1845,14 @@ func (t *Tree) sortedStorageRefusalMode(sib *siblings, n *Node, order insertOrde
 	// No tree yet: rb_insert_node descends the tree lyds_additionally_create_rb_tree is about to
 	// build from the leader's run, so check exactly that path on a detached copy.
 	detached := &dirtyOrder{work: &t.work}
-	for i := lo; i < sib.SchemaLen() && sib.At(i).schema == leader.schema; i++ {
+	for _, c := range sib.schemaSpan().Slice(lo, sib.SchemaLen()).All() {
+		if c.schema != leader.schema {
+			break
+		}
 		if err := t.work.chargeHash(1); err != nil {
 			return err
 		}
-		if _, ok := t.rbAdd(detached, sib.At(i), t.compareSortedCompatible); !ok {
+		if _, ok := t.rbAdd(detached, c, t.compareSortedCompatible); !ok {
 			if t.work.hashErr != nil {
 				return t.work.hashErr
 			}
@@ -2529,8 +2545,9 @@ func (t *Tree) rbReplay(d *dirtyOrder, replay []*Node) error {
 func (t *Tree) rbPublish(parent *Node, sib *siblings, lo, hi int, group *rbGroup, d *dirtyOrder, attach []*Node) error {
 	old := sib.schemaSpan()
 	size := old.Len() - (hi - lo) + len(d.nodes)
-	usize := uint64(size) //nolint:gosec // slice lengths are nonnegative
-	pub := addHashBound(8*usize+8*uint64(len(d.nodes)), 8)
+	usize := uint64(size)                                    //nolint:gosec // slice lengths are nonnegative
+	members := uint64(hi - lo + len(attach))                 //nolint:gosec // slice lengths are nonnegative
+	pub := addHashBound(8*members+8*uint64(len(d.nodes)), 8) // the run's republication and attach replay
 	sn := attach[0].schema
 	canTable := sib.ht == nil && parent != nil && parent.schema != nil && !isAny(parent.schema)
 	records := sib.firstRecordSchema(sn) && (sib.ht != nil || canTable)
@@ -2538,9 +2555,8 @@ func (t *Tree) rbPublish(parent *Node, sib *siblings, lo, hi int, group *rbGroup
 		pub = addHashBound(pub, mulHashBound(usize, uint64(min(htMinItems, len(attach)))))
 	}
 	if records {
-		// ponytail: each record update scans to its linked neighbours, O(S) per node; only
-		// operation children and copies outside schema order keep first-instance records
-		pub = addHashBound(pub, mulHashBound(usize, uint64(len(attach))))
+		// the visible neighbours of every attach, replayed backwards over the run (visibleNeighbours)
+		pub = addHashBound(pub, 4*members+4)
 	}
 	if err := t.work.chargeHash(pub); err != nil {
 		return err
@@ -2616,30 +2632,45 @@ func (t *Tree) rbPublish(parent *Node, sib *siblings, lo, hi int, group *rbGroup
 	// from them (logical skips the pending members), as lyd_insert_hash builds it
 	sib.unattached = pending
 	defer func() { sib.unattached = nil }()
+	var neighbours map[*Node][2]*Node
+	if records {
+		neighbours = visibleNeighbours(sib, lo, len(run), attach)
+	}
 	for _, n := range attach {
 		tableBefore := sib.ht != nil
 		delete(pending, n)
 		t.attach(parent, sib, n)
 		if tableBefore && records {
 			// the neighbours n has among the schema siblings linked so far
-			var prev, next *Node
-			h := sib.handle(n)
-			for x := sib.st.seq.Prev(h); x != nil; x = sib.st.seq.Prev(x) {
-				if !pending[x.Value] {
-					prev = x.Value
-					break
-				}
-			}
-			for x := sib.st.seq.Next(h); x != nil && x.Value.schema != nil; x = sib.st.seq.Next(x) {
-				if !pending[x.Value] {
-					next = x.Value
-					break
-				}
-			}
-			sib.leaderInsertBetween(n, prev, next)
+			sib.leaderInsertBetween(n, neighbours[n][0], neighbours[n][1])
 		}
 	}
 	return t.work.hashErr
+}
+
+// visibleNeighbours is, for each member of attach, its schema neighbours among the siblings
+// attached before it (rbPublish attaches them in that order into the run published at
+// [lo, lo+count)): a list over the run and its two outer neighbours, from which the members
+// leave in reverse attach order, each recording its neighbours as it leaves. O(count).
+func visibleNeighbours(sib *siblings, lo, count int, attach []*Node) map[*Node][2]*Node {
+	prev := make(map[*Node]*Node, count+1)
+	next := make(map[*Node]*Node, count+1)
+	var last *Node
+	if lo > 0 {
+		last = sib.At(lo - 1)
+	}
+	for _, n := range sib.schemaSpan().Slice(lo, min(lo+count+1, sib.SchemaLen())).All() {
+		prev[n], next[last] = last, n
+		last = n
+	}
+	out := make(map[*Node][2]*Node, len(attach))
+	for i := len(attach) - 1; i >= 0; i-- {
+		n := attach[i]
+		p, q := prev[n], next[n]
+		out[n] = [2]*Node{p, q}
+		next[p], prev[q] = q, p
+	}
+	return out
 }
 
 // registerParent is the successful key-insertion event in tree_data.c:837-842:
@@ -2999,13 +3030,12 @@ func (t *Tree) unlinkAllDefaults(ns, defaults []*Node) (result error) {
 			l.opaqueTail = sib.opaqueAt(sib.OpaqueLen() - 1)
 		}
 		for _, nodes := range []siblingSpan{sib.schemaSpan(), sib.opaqueSpan()} {
-			for i, c := range nodes.All() {
-				if i > 0 {
-					l.prev[c] = nodes.At(i - 1)
+			var prev *Node
+			for _, c := range nodes.All() {
+				if prev != nil {
+					l.prev[c], l.next[prev] = prev, c
 				}
-				if i+1 < nodes.Len() {
-					l.next[c] = nodes.At(i + 1)
-				}
+				prev = c
 			}
 		}
 		sets[sib] = l

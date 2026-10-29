@@ -450,8 +450,12 @@ func (p *jsonParser) metadataFinish(parent *Node) (result error) {
 				// Non-operation metadata numbering uses a logarithmic start lookup,
 				// then this counted run walk, cached once per schema.
 				j := i
-				for ; j < sib.SchemaLen() && sib.At(j).schema == sn; j++ {
+				for _, c := range sib.schemaSpan().Slice(i, sib.SchemaLen()).All() {
+					if c.schema != sn {
+						break
+					}
 					lc.tree.work.Add(1)
+					j++
 				}
 				r = sib.schemaSpan().Slice(i, j)
 			}

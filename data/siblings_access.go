@@ -117,7 +117,24 @@ func (s *siblings) SchemaLen() int {
 }
 
 func (s *siblings) OpaqueLen() int { return s.Len() - s.SchemaLen() }
-func (s *siblings) At(i int) *Node { return s.st.seq.Peek(i).Value }
+
+// At is the node at position i: one descent of the storage, its levels counted as sibling
+// visits. A sequential walk uses an iterator (All, Range, from, back) instead.
+func (s *siblings) At(i int) *Node { return s.st.at(i) }
+
+func (st *siblingStore) at(i int) *Node {
+	switch i {
+	case 0: // the ends are threaded: no descent
+		return st.seq.First().Value
+	case st.seq.Len() - 1:
+		return st.seq.Last().Value
+	}
+	h, levels := st.seq.PeekLevels(i)
+	if o := st.bind.owner; o != nil && o.work != nil && o.work.visits { // tests only
+		o.work.Add(int64(levels))
+	}
+	return h.Value
+}
 func (s *siblings) opaqueAt(i int) *Node {
 	return s.At(s.SchemaLen() + i)
 }
@@ -539,7 +556,7 @@ func (r siblingSpan) At(i int) *Node {
 	if i < 0 || i >= r.hi-r.lo {
 		panic("data: sibling span index out of range")
 	}
-	return r.st.seq.Peek(r.lo + i).Value
+	return r.st.at(r.lo + i)
 }
 
 func (r siblingSpan) Slice(lo, hi int) siblingSpan {
@@ -584,6 +601,37 @@ func (r siblingSpan) All() iter.Seq2[int, *Node] {
 			h = st.seq.Next(h)
 		}
 	}
+}
+
+// spanCursor reads a span forward one node at a time (next), for a walk that cannot be a range
+// loop (two spans in step); like an iterator it is invalidated by a write that moves positions.
+type spanCursor struct {
+	r siblingSpan
+	h *opidx.Handle[*Node]
+	i int
+}
+
+func (r siblingSpan) cursor() spanCursor {
+	c := spanCursor{r: r}
+	if r.st != nil && r.Len() > 0 {
+		c.h = r.st.seq.Peek(r.lo)
+	}
+	return c
+}
+
+// next is the next node, nil past the end.
+func (c *spanCursor) next() *Node {
+	if c.i >= c.r.Len() {
+		return nil
+	}
+	c.i++
+	if c.r.st == nil {
+		return c.r.nodes[c.i-1]
+	}
+	c.r.check()
+	n := c.h.Value
+	c.h = c.r.st.seq.Next(c.h)
+	return n
 }
 
 // Reverse walks the span backwards, keeping full and subtree walks linear.

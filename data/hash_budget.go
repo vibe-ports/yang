@@ -224,6 +224,8 @@ func (w *workCounter) termHashBound(parent *Node, sn *schema.Node, value types.V
 		start = 0
 	}
 	var amount uint64
+	// the old children from start, in order, with the new one at at (start <= at)
+	old := parent.kids.schemaSpan().Slice(start, parent.kids.SchemaLen()).cursor()
 	for i := start; i <= parent.kids.SchemaLen(); i++ {
 		w.Add(1)
 		if err := w.chargeHash(1); err != nil {
@@ -233,14 +235,11 @@ func (w *workCounter) termHashBound(parent *Node, sn *schema.Node, value types.V
 			amount = addHashBound(amount, types.HashLYBWorkBound(value))
 			continue
 		}
-		old := i
-		if i > at {
-			old--
-		}
-		if !parent.kids.At(old).isKey() {
+		c := old.next()
+		if !c.isKey() {
 			break
 		}
-		amount = addHashBound(amount, types.HashLYBWorkBound(parent.kids.At(old).value))
+		amount = addHashBound(amount, types.HashLYBWorkBound(c.value))
 	}
 	if ps := parent.siblingsOf(); ps != nil && ps.ht != nil {
 		amount = addHashBound(amount, indexInsertedBound(parent, &Node{schema: sn, value: value}, at, w))

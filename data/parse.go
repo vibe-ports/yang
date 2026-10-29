@@ -1094,20 +1094,10 @@ func (lc *lydCtx) publishDirty(sib *siblings) {
 		lc.tree.work.Add(1)
 		delete(lc.dirtySet, dirtyRun{sib, sn})
 	}
-	if len(keys) == 1 {
-		lc.flushDirtyRun(dirtyRun{sib, keys[0]}, -1)
-		return
-	}
-	// Many small dirty runs are located by one sibling pass, not one endpoint scan per run.
-	starts := make(map[*schema.Node]int, len(keys))
-	for i, n := range sib.SchemaAll() {
-		lc.tree.work.Add(1)
-		if _, ok := starts[n.schema]; !ok {
-			starts[n.schema] = i
-		}
-	}
+	// each run is located by its own logarithmic lookup (flushDirtyRun), not by a pass over the
+	// whole set: publishing a few small runs costs nothing per unrelated sibling
 	for _, sn := range keys {
-		lc.flushDirtyRun(dirtyRun{sib, sn}, starts[sn])
+		lc.flushDirtyRun(dirtyRun{sib, sn}, -1)
 	}
 }
 

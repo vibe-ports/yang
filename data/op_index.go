@@ -572,8 +572,7 @@ func (s *siblings) contiguousBounds(n *Node) (lo, hi int, ok bool) {
 
 func (s *siblings) opaqueLast(name, namespace string) *Node {
 	if s.order == nil {
-		for i := s.OpaqueLen() - 1; i >= 0; i-- {
-			n := s.opaqueAt(i)
+		for _, n := range s.opaqueSpan().Reverse() {
 			if n.opaq.Name == name && n.opaq.ModuleNS == namespace {
 				return n
 			}

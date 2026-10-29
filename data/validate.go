@@ -84,12 +84,12 @@ func (vc *valCtx) firstModuleSibling(top siblingSpan, start int, mod *schema.Mod
 		return first, nil
 	}
 	if cmp < 0 { // there may be some following data
-		for i := first; i < top.Len(); i++ {
+		for i, c := range top.Slice(first, top.Len()).All() {
 			if err := vc.checkContext(); err != nil {
 				return 0, err
 			}
-			if ownerModule(vc.t.context(), top.At(i)) == mod {
-				return i, nil
+			if ownerModule(vc.t.context(), c) == mod {
+				return first + i, nil
 			}
 		}
 	}
@@ -116,18 +116,17 @@ func (vc *valCtx) modules() ([]*schema.Module, error) {
 		}
 		return out, nil
 	}
-	top := vc.topList()
-	for i := 0; i < top.Len(); {
-		mod := ownerModule(vc.t.context(), top.At(i))
+	var last *schema.Module
+	for _, c := range vc.topList().All() { // the modules of consecutive top-level runs
+		mod := ownerModule(vc.t.context(), c)
 		if mod == nil {
 			break
 		}
-		out = append(out, mod)
-		for i < top.Len() && ownerModule(vc.t.context(), top.At(i)) == mod {
-			if err := vc.checkContext(); err != nil {
-				return nil, err
-			}
-			i++
+		if mod != last {
+			out, last = append(out, mod), mod
+		}
+		if err := vc.checkContext(); err != nil {
+			return nil, err
 		}
 	}
 	return out, nil
@@ -219,11 +218,14 @@ func (vc *valCtx) validate(validateSubtree bool) error {
 					return err
 				}
 			}
-			for i := start; i < top.Len() && ownerModule(vc.t.context(), top.At(i)) == mod; i++ {
+			for _, c := range top.Slice(start, top.Len()).All() {
+				if ownerModule(vc.t.context(), c) != mod {
+					break
+				}
 				if err := vc.checkContext(); err != nil {
 					return err
 				}
-				if err := vc.validateTree(top.At(i)); err != nil {
+				if err := vc.validateTree(c); err != nil {
 					if rc = err; vc.stop(err) {
 						return rc
 					}

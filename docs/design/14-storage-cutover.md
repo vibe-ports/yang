@@ -64,10 +64,12 @@ comments cite this document as "design 14".
 it does, `siblings.unattached` names the members not attached yet: the table threshold counts
 `SchemaLen() - len(unattached)`, and table construction (`logical`) skips them, so a children
 table created during the replay holds the siblings attached so far, in sibling order, and the
-later members register after them in attach order. A member's record neighbours are found by
-walking the sequence past unattached members, a walk the publication's charge already bounds
-(`usize * len(attach)`). TestRBPublishTableHistory checks the registration order around the
-threshold for several attach orders (and fails without the filter).
+later members register after them in attach order. A member's record neighbours among the
+attached siblings are precomputed in O(run) (`visibleNeighbours`: a list over the run and its two
+outer neighbours, from which the members leave in reverse attach order), and the publication's
+charge is linear in the run. TestRBPublishTableHistory checks the registration order around the
+threshold for several attach orders (and fails without the filter); TestMergeAttachReplayScaling
+merges M ascending values into an indexed run with a table: linear in M.
 
 ## Completion funding of deferred publication
 
@@ -79,12 +81,18 @@ members, indexed), so a top-up is O(1) however many runs are pending
 (TestParserManyDeferredRunsScaling). `publishDirty` opens a prepaid scope with that
 already-charged credit, so a publication charges nothing fallible and refunds the rest. Test
 builds panic if a publication refuses (`checkPublish`). An opaque XML link that grows a set with
-pending runs tops it up too. TestParserPublicationFunded sweeps every budget limit, every
+pending runs tops it up too. Each run is located by its own logarithmic lookup at publication,
+not by a pass over the whole set (TestPublishSparseDirtyRuns). TestParserPublicationFunded sweeps every budget limit, every
 cancellation point and truncated inputs over data and operation parses.
 
 ## Complexity
 
-A point edit costs O(log n + L) sequence work: L is the relabel, zero while unlabeled and
+Positional reads are descents: `At` counts its levels as sibling visits (test builds), the two
+ends are threaded (O(1)), and every sequential consumer walks the threads instead (iterators,
+`siblingSpan.cursor`, handle neighbours); lookups return the node they found rather than a
+position to read again (`schemaFind`, `foreignSchemaFind`). Point reads stay O(log n) and
+uncharged, as slice indexing was; they are O(1) per edit. A point edit costs O(log n + L)
+sequence work: L is the relabel, zero while unlabeled and
 amortized O(log n) in an indexed set (Bender et al.). `LowerBound` over storage is one bounded
 descent (`BoundIn`): O(log n) structural visits, counted as sibling visits, and at most one
 predicate call per level. A bulk removal (`Keep`) is O(n) however many go. A republished run of
@@ -128,3 +136,7 @@ The first snapshot review (`240s5-snap1`) found three blocking issues, all fixed
 completion planner rescanned every pending run of its set per top-up (now O(1) aggregates);
 disposal kept the discarded forest reachable through the kept roots' slots; label activation
 reported no work and was not reserved by the link that builds the index.
+
+The second snapshot review (`240s5-snap2`) found three more, fixed: publication located its runs
+by a pass over the whole set; sequential consumers read by position (O(n log n), uncounted);
+the attach replay scanned past pending members (O(M²)).

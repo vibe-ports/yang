@@ -334,9 +334,12 @@ func (t *Tree) dupLink(f dupFrame) error {
 		if sortedSupported(d) && sib.SchemaLen() > 0 &&
 			sib.At(sib.SchemaLen()-1).schema == d.schema && sib.At(sib.SchemaLen()-1).inRB {
 			leader := sib.At(sib.SchemaLen() - 1)
-			for i := sib.SchemaLen() - 2; i >= 0 && sib.At(i).schema == d.schema; i-- {
+			for _, c := range sib.schemaSpan().Slice(0, sib.SchemaLen()-1).Reverse() {
+				if c.schema != d.schema {
+					break
+				}
 				t.work.Add(1)
-				leader = sib.At(i)
+				leader = c
 			}
 			markUnsorted(sib, leader)
 		}

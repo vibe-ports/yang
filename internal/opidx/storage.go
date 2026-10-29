@@ -82,6 +82,29 @@ func (s *Seq[T]) BoundIn(lo, hi int, pred func(T) bool, visit func()) int {
 	return answer
 }
 
+// PeekLevels is Peek, also returning the tree levels it descended (for a caller that counts
+// them).
+func (s *Seq[T]) PeekLevels(rank int) (*Handle[T], int) {
+	if rank < 0 || rank >= s.length {
+		return nil, 0
+	}
+	levels := 0
+	for n := s.root; n != nil; {
+		levels++
+		left := nodeSize(n.left)
+		switch {
+		case rank < left:
+			n = n.left
+		case rank > left:
+			rank -= left + 1
+			n = n.right
+		default:
+			return n, levels
+		}
+	}
+	return nil, levels
+}
+
 // Owns reports whether h is a live handle of s.
 func (s *Seq[T]) Owns(h *Handle[T]) bool { return h != nil && h.owner == s }
 

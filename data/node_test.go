@@ -594,7 +594,9 @@ func TestBulkWork(t *testing.T) {
 		all = append(all, s)
 		mustLink(t, tr.insert(c, newOpaque(opaque{Name: "o"}), insertDefault))
 	}
-	if limit := 2 * n * (bits.Len(uint(2*n)) + 4); int(tr.work.Load()) > limit || c.kids.OpaqueLen() != n {
+	// each link inserts into the storage and reads its position's neighbours by rank: a few
+	// O(log n) descents, counted as sibling visits
+	if limit := 2 * n * (4*bits.Len(uint(2*n)) + 4); int(tr.work.Load()) > limit || c.kids.OpaqueLen() != n {
 		t.Fatalf("alternating inserts: %d comparisons", int(tr.work.Load()))
 	}
 	tr.work.Store(0)

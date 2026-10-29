@@ -634,9 +634,11 @@ func (t *Tree) nextAnchor(n *Node) *Node {
 		}
 		return nil
 	}
-	for i := sib.indexOf(sib.schemaSpan(), n) + 1; i < sib.SchemaLen(); i++ {
-		if sib.At(i).schema != n.schema {
-			return sib.At(i)
+	if at := sib.indexOf(sib.schemaSpan(), n); at >= 0 {
+		for _, c := range sib.schemaSpan().Slice(at+1, sib.SchemaLen()).All() {
+			if c.schema != n.schema {
+				return c
+			}
 		}
 	}
 	if sib.OpaqueLen() > 0 {

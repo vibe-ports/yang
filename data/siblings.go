@@ -1652,10 +1652,8 @@ func (t *Tree) schemaLookup(s *siblings, sn *schema.Node) *Node {
 		(s.SchemaLen() == 0 || sn.Module.Owner == nil || ctxOf(s.At(0)) == sn.Module.Owner) {
 		return t.schemaLookupOperation(s, sn)
 	}
-	if i := t.schemaIndex(s, sn); i >= 0 {
-		return s.At(i)
-	}
-	return nil
+	_, n := t.schemaFind(s, sn)
+	return n
 }
 
 // A diff create can leave sibling roots compiled in different contexts. The
@@ -1672,10 +1670,8 @@ func (t *Tree) documentFirst(s *siblings, sn *schema.Node) *Node {
 	if opChild(sn) || s.schemaUnordered {
 		return s.documentFirst(sn)
 	}
-	if i := t.schemaIndex(s, sn); i >= 0 {
-		return s.At(i)
-	}
-	return nil
+	_, n := t.schemaFind(s, sn)
+	return n
 }
 
 // schemaIndex is the index of the first instance of sn in s, -1 if there is none.
@@ -1683,45 +1679,59 @@ func (t *Tree) documentFirst(s *siblings, sn *schema.Node) *Node {
 // and run-only lookups use schemaLookup and opRun without a position scan. Unordered copies
 // likewise use their first-instance records when the children table exists.
 func (t *Tree) schemaIndex(s *siblings, sn *schema.Node) int {
+	at, _ := t.schemaFind(s, sn)
+	return at
+}
+
+// schemaFind is schemaIndex with the node found (nil: none), so a caller needs no second
+// positional read.
+func (t *Tree) schemaFind(s *siblings, sn *schema.Node) (int, *Node) {
 	if s.SchemaLen() == 0 {
-		return -1
+		return -1, nil
 	}
 	// The linear branch of lyd_find_sibling_schema compares only module and
 	// node names for foreign contexts. Its table callback compares schema lineage.
 	if s.foreignFor(sn) {
 		if t.work.lookupDepth != 0 && t.foreignSchemaInput[s] {
-			return t.foreignSchemaIndex(s, sn, s.ht != nil)
+			return t.foreignSchemaFind(s, sn, s.ht != nil)
 		}
 		return t.foreignScan(s, sn, false)
 	}
 	if opChild(sn) || s.schemaUnordered {
 		if leader := physicalStart(s, sn, t.schemaLookupOperation(s, sn)); leader != nil {
-			return s.orderPosition(leader)
+			return s.orderPosition(leader), leader
 		}
-		return -1
+		return -1, nil
 	}
 	probe := &Node{schema: sn, parent: s.At(0).parent} // top level or not decides the module order
-	i := s.LowerBound(0, s.SchemaLen(), func(a *Node) bool { return t.sameOrAfter(a, probe) })
-	if i < s.SchemaLen() && s.At(i).schema == sn {
-		return i
+	var found *Node                                    // the bound's node: its last true probe
+	i := s.LowerBound(0, s.SchemaLen(), func(a *Node) bool {
+		after := t.sameOrAfter(a, probe)
+		if after {
+			found = a
+		}
+		return after
+	})
+	if found != nil && found.schema == sn {
+		return i, found
 	}
-	return -1
+	return -1, nil
 }
 
 // foreignScan is schemaIndex's linear foreign-name scan; charge charges each step to the
 // enforced quota before it reads the sibling. -1: no match, or a refused step (sticky in
 // t.work.hashErr, which callers check first).
-func (t *Tree) foreignScan(s *siblings, sn *schema.Node, charge bool) int {
+func (t *Tree) foreignScan(s *siblings, sn *schema.Node, charge bool) (int, *Node) {
 	for i, n := range s.SchemaAll() {
 		if charge && t.work.chargeHash(1) != nil {
-			return -1
+			return -1, nil
 		}
 		s.visit()
 		if schemaLookupMatch(n.schema, sn, s.ht != nil) {
-			return i
+			return i, n
 		}
 	}
-	return -1
+	return -1, nil
 }
 
 type foreignSchemaCacheKey struct {
@@ -1749,45 +1759,57 @@ type foreignSchemaIndexKey struct {
 // lineage with it (libyang v5.8.6 src/tree_data_common.c:1101-1137). Building this index once per
 // sibling set replaces the two repeated scans in diff.c:1252-1254 and 1339-1341.
 func (t *Tree) foreignSchemaIndex(s *siblings, sn *schema.Node, table bool) int {
+	at, _ := t.foreignSchemaFind(s, sn, table)
+	return at
+}
+
+// foreignCandidate is a sibling of the foreign index: its position and the node there.
+type foreignCandidate struct {
+	at int
+	n  *Node
+}
+
+// foreignSchemaFind is foreignSchemaIndex with the node found (nil: none).
+func (t *Tree) foreignSchemaFind(s *siblings, sn *schema.Node, table bool) (int, *Node) {
 	if t.foreignSchema == nil {
-		t.foreignSchema = make(map[foreignSchemaCacheKey]map[foreignSchemaIndexKey][]int)
+		t.foreignSchema = make(map[foreignSchemaCacheKey]map[foreignSchemaIndexKey][]foreignCandidate)
 	}
 	cacheKey := foreignSchemaCacheKey{s: s, table: table}
 	index := t.foreignSchema[cacheKey]
 	if index == nil {
 		// no capacity hint: the index grows only after each sibling's charge succeeded
-		index = make(map[foreignSchemaIndexKey][]int)
+		index = make(map[foreignSchemaIndexKey][]foreignCandidate)
 		for i, n := range s.SchemaAll() {
 			s.visit()
 			if err := t.work.chargeLookup(1); err != nil {
-				return -1
+				return -1, nil
 			}
 			key, ok, err := t.foreignSchemaKey(n.schema, table)
 			if err != nil || !ok { // a lookup budget error is returned at the diff boundary
-				return -1
+				return -1, nil
 			}
-			index[key] = append(index[key], i)
+			index[key] = append(index[key], foreignCandidate{i, n})
 		}
 		t.foreignSchema[cacheKey] = index
 	}
 	if err := t.work.chargeLookup(1); err != nil {
-		return -1
+		return -1, nil
 	}
 	key, valid, err := t.foreignSchemaKey(sn, table)
 	if err != nil || !valid {
-		return -1
+		return -1, nil
 	}
 	// The key is the foreign match; a candidate of sn's own context must be sn itself
 	// (lyd_find_sibling_schema compares schema pointers there), so check each in order.
-	for _, i := range index[key] {
+	for _, c := range index[key] {
 		if err := t.work.chargeLookup(1); err != nil {
-			return -1
+			return -1, nil
 		}
-		if schemaLookupMatch(s.At(i).schema, sn, table) {
-			return i
+		if schemaLookupMatch(c.n.schema, sn, table) {
+			return c.at, c.n
 		}
 	}
-	return -1
+	return -1, nil
 }
 
 type foreignInstanceKey struct {
@@ -1843,8 +1865,8 @@ func (t *Tree) foreignInstances(s *siblings, target *Node) (iter.Seq[*Node], err
 // cross-context diff uses its charged lineage index, other callers a charged sibling scan.
 func (t *Tree) foreignTableSchema(s *siblings, sn *schema.Node, work *workCounter) (*schema.Node, error) {
 	if t.work.lookupDepth != 0 && t.foreignSchemaInput[s] {
-		if i := t.foreignSchemaIndex(s, sn, true); i >= 0 {
-			return s.At(i).schema, nil
+		if _, n := t.foreignSchemaFind(s, sn, true); n != nil {
+			return n.schema, nil
 		}
 		return nil, t.work.lookupErr
 	}

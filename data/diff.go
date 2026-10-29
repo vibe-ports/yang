@@ -149,12 +149,9 @@ func prevInst(n *Node) *Node {
 	if sib == nil {
 		return nil
 	}
-	for i := sib.SchemaLen() - 1; i > 0; i-- {
-		if sib.At(i) == n {
-			if p := sib.At(i - 1); p.schema == n.schema {
-				return p
-			}
-			return nil
+	if h := sib.handle(n); h != nil && n.schema != nil {
+		if p := sib.st.seq.Prev(h); p != nil && p.Value.schema == n.schema {
+			return p.Value
 		}
 	}
 	return nil
@@ -837,8 +834,13 @@ func lastInst(n *Node) *Node {
 	if sib == nil {
 		return last
 	}
-	for i := sib.indexOf(sib.schemaSpan(), n) + 1; i < sib.SchemaLen() && sib.At(i).schema == n.schema; i++ {
-		last = sib.At(i)
+	if at := sib.indexOf(sib.schemaSpan(), n); at >= 0 {
+		for _, c := range sib.schemaSpan().Slice(at+1, sib.SchemaLen()).All() {
+			if c.schema != n.schema {
+				break
+			}
+			last = c
+		}
 	}
 	return last
 }
