@@ -466,6 +466,7 @@ func (t *Tree) linkOrigin(n *Node) (restore func(), arm func(dst *siblings) (dis
 			return nil, nil, err
 		}
 	}
+	near := sib.originPlace(n)
 	rb, uns, group := sib.rbTree[leader], sib.unsorted[leader], n.rbGroup
 	// lyds_unlink removes n from its tree, so a failed insertion must put back that exact
 	// topology. arm, called right before the unlink once every preflight passed, reserves the
@@ -510,7 +511,9 @@ func (t *Tree) linkOrigin(n *Node) (restore func(), arm func(dst *siblings) (dis
 			return err
 		}
 		if !journaled { // a journaled relocation rolls back instead (relocation): nothing to reserve
+			sib.setPlace(near) // the bound of restoreLink's placed link
 			cost, err := owner.linkBound(parent, sib, n, at)
+			sib.clearPlace()
 			if err != nil {
 				return err
 			}
@@ -624,7 +627,7 @@ func (t *Tree) linkOrigin(n *Node) (restore func(), arm func(dst *siblings) (dis
 			}
 			n.inRB = inRB
 			n.rbGroup = group
-			owner.restoreLink(parent, n, at, recovery)
+			owner.restoreLink(parent, n, at, recovery, near)
 			if detachedOrigin && t.work.journal == nil {
 				// restoreLink bound the detached origin tree to t (bindDestination); give it
 				// its own counters back
@@ -1116,6 +1119,7 @@ func (t *Tree) merge(parent *Node, dst *siblings, run []*Node, state movedRunSta
 		if pred != nil {
 			anchor = pred
 		}
+		sortedPlace(dst, n, pred, leader) // lyds_link_data_node's physical place (design 15)
 		at, err := t.chargedIndex(dst, anchor)
 		if err != nil {
 			return err

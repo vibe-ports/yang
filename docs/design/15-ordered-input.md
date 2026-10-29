@@ -65,8 +65,10 @@ write takes the code path it took before (the counted-work and scaling tests are
     `lyd_insert_after` of the last same-name opaque sibling (`lydxml_get_hints_opaq`), which may
     lie before a schema sibling or be the last opaque node; a sorted insertion's
     `lyds_link_data_node` after its RB predecessor, else before the leader (`sortedPlace`, set
-    in `rbPos` before it reserves the link); the next members of a moved run; and a forest moved
-    into an empty set.
+    in `rbPos` before it reserves the link, and in a sorted forest move); the next members of a moved run; and a forest moved
+    into an empty set; and a node put back after a temporary move, between its document
+    neighbours (`originPlace`: `restoreLink` for `ValidateOp` and failed moves, its recovery
+    reserved with the placement).
 - **Anchors** (`interleavedPos`). Without a children table, or at the top level,
   `lyd_insert_get_next_anchor` walks the siblings and stops at the first opaque one
   (tree_data.c:546-589). When that opaque node comes before the schema anchor, it is the anchor,
@@ -78,13 +80,16 @@ write takes the code path it took before (the counted-work and scaling tests are
   share with `opRun` and `runBounds` (`schemaLookupOperation`) therefore find nothing past it
   (`linearBound`). `lyd_validate_new` stops there too
   (validation.c:1023). `lyd_find_sibling_opaq_next` searches the trailing opaque block, or every sibling from
-  an opaque first one (`opaqNext`, charged per step).
+  an opaque first one (`opaqNextSpan`: `opaqNext` and XPath, charged per step). XPath's hashed
+  child lookup (`LookupPrepared`) stops at the first opaque sibling without a children table too.
 - **Runs.** In an interleaved set an opaque node ends a run, as another schema node does
   (`LYD_LIST_FOR_INST`, `lyds_additionally_create_rb_tree`). The set switches to the unordered
   mode when it interleaves. There the first-instance records use document neighbours
   (`lyd_insert_hash_add`/`lyd_unlink_hash`: `docNeighbours`), the index's run gaps count opaque
   separators (`orderBuild`, `orderAddSchema`, `orderRemove`, `opaqueSplit`), table and record builds
-  walk document order (`logicalInterleaved`), and `runBounds`, `runEnd`, `retainedRunEnd` and the
+  walk document order (`logicalInterleaved`), unlinking an opaque separator marks the left run
+  unsorted (its RB tree does not take the right piece), Merge never batches a run (each
+  insertion selects its leader again), and `runBounds`, `runEnd`, `retainedRunEnd` and the
   other run walks stop at the run's opaque neighbours (`runPiece`, `runPieceStart`: one O(log n)
   read each) before they read the run, so a walk costs its piece, not the set
   (`TestSplitRunInsertScaling`).
@@ -100,7 +105,7 @@ write takes the code path it took before (the counted-work and scaling tests are
 
 ## Evidence
 
-- Oracle fixtures `protocol-v2/ordered-*` (28) cover:
+- Oracle fixtures `protocol-v2/ordered-*` (31) cover:
   - parse order, JSON and XML;
   - the XML opaque anchor;
   - later insertions with and without a children table, crossing the table threshold, and a sorted
@@ -111,6 +116,8 @@ write takes the code path it took before (the counted-work and scaling tests are
   - a set that lost its opaque node; an ordered forest whose first root is opaque, moved whole;
   - freeing a split run's second-piece leader; a merge from an opaque first sibling; a positional
     path past the first opaque sibling; Merge (no `LYD_MERGE_DESTRUCT`) into a split run;
+  - a merge after the separator is gone; a sorted forest moved next to an opaque node; an XPath
+    name test past the first opaque sibling;
   - opaque appends; unlink and re-insert; merge; dup; diff; validation (implicit default, opaque
     error and the stop of `lyd_validate_new`);
   - XPath axes and positions; a key after an opaque child; a validated out-of-order parse.

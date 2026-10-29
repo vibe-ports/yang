@@ -313,3 +313,83 @@ func TestSplitRunBulkUnlink(t *testing.T) {
 		t.Fatalf("after an insertion: batch %v, single %v", got, want)
 	}
 }
+
+// TestValidateOpRestoresDocumentOrder: lyd_validate_op moves the operation's top node into the
+// dependency for the validation and back; in an interleaved top level it returns between its
+// document neighbours, not by its logical position (originPlace).
+func TestValidateOpRestoresDocumentOrder(t *testing.T) {
+	set := opIndexSet(t, `module m { yang-version 1.1; namespace "urn:m"; prefix m;
+	  container c { action act { input { leaf i { type string; } } } } container d { leaf x { type string; } } }`)
+	ctx := context.Background()
+	tr, err := parseOrdered(t, set, false, `{"m:c":{},"m:zz":"u","m:d":{"x":"y"}}`, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !tr.top.st.interleaved() {
+		t.Fatal("the top level is not interleaved")
+	}
+	var c *Node
+	for c = range tr.Top() {
+		break
+	}
+	act, err := tr.NewInner(c, "act", NewOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	dep, err := parseOrdered(t, set, false, `{"m:d":{"x":"z"}}`, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := validateOp(ctx, set, act, dep, opRPC, Budget{}); err != nil {
+		t.Fatal(err)
+	}
+	opidxAssertTreeInvariant(t, tr)
+	if got := names(tr.Top()); !slices.Equal(got, []string{"c", "zz", "d"}) {
+		t.Fatalf("top level after ValidateOp: %v", got)
+	}
+}
+
+// TestSeparatorUnlinkThenMerge: unlinking the opaque node that splits a run joins two pieces
+// whose RB trees stay apart; the left one is marked unsorted, so a later Merge inserts its
+// instances one by one (oracle, through a trim: protocol-v2/ordered-separator-gone-merge), at
+// every charge boundary.
+func TestSeparatorUnlinkThenMerge(t *testing.T) {
+	set := opIndexSet(t, orderedSchema)
+	build := func() (*Tree, func() error) {
+		tr, err := parseOrdered(t, set, true, `<c xmlns="urn:m"><ll>3</ll><zz>u</zz><ll>1</ll></c>`, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var c *Node
+		for c = range tr.Top() {
+			break
+		}
+		if _, err := tr.NewTerm(c, "ll", "4", NewOptions{}); err != nil {
+			t.Fatal(err)
+		}
+		for n := range c.Children() {
+			if n.schema == nil {
+				if err := n.Unlink(); err != nil {
+					t.Fatal(err)
+				}
+				break
+			}
+		}
+		src, _, err := parseJSONString(set, `{"m:c":{"ll":[5,6]}}`, Reject, false)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return tr, func() error { return tr.Merge(src) }
+	}
+	tr, merge := build()
+	if err := merge(); err != nil {
+		t.Fatal(err)
+	}
+	opidxAssertTreeInvariant(t, tr)
+	for c := range tr.Top() {
+		if got := names(c.Children()); !slices.Equal(got, []string{"ll=3", "ll=4", "ll=5", "ll=6", "ll=1"}) {
+			t.Fatalf("%v", got)
+		}
+	}
+	checkEveryHashBudgetPoint(t, build)
+}

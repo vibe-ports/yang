@@ -83,7 +83,7 @@ func (x xn) LookupChild(sn xpath.SchemaNode, vals []string) ([]xpath.Node, bool)
 		nodes, found, _ := x.LookupPrepared(probe)
 		return nodes, found
 	}
-	probe := &xprobe{node: newInner(s.s), set: s.set}
+	probe := &xprobe{node: newInner(s.s), set: s.set, schemaOnly: true}
 	probe.key, _ = hashOf(probe.node)
 	nodes, found, _ := x.LookupPrepared(probe)
 	return nodes, found
@@ -101,6 +101,30 @@ func (x xn) LookupPrepared(prepared xpath.InstanceProbe) ([]xpath.Node, bool, er
 	}
 	p, ok := prepared.(*xprobe)
 	sib := &x.n.kids
+	if ok && p.schemaOnly && sib.ht == nil && sib.st != nil && sib.st.interleaved() &&
+		!sib.mixedContexts() && x.n.flags&flagDead == 0 {
+		// without a children table lyd_find_sibling_schema stops at the first opaque sibling
+		// (design 15): the evaluator's scan of every child would go past it
+		for _, c := range sib.schemaSpan().Slice(0, sib.beforeOpaque()).All() {
+			if err := p.work(1); err != nil {
+				return nil, false, err
+			}
+			sib.visit()
+			if c.flags&flagDead == 0 && c.schema == p.node.schema {
+				return []xpath.Node{wrap(x.set, c)}, true, nil
+			}
+		}
+		for _, c := range sib.opaqNextSpan().All() { // then lyd_find_sibling_opaq_next
+			if err := p.work(1); err != nil {
+				return nil, false, err
+			}
+			sib.visit()
+			if c.flags&flagDead == 0 && c.Name() == p.node.schema.Name {
+				return []xpath.Node{wrap(x.set, c)}, true, nil
+			}
+		}
+		return nil, true, nil
+	}
 	if !ok || sib.ht == nil || sib.mixedContexts() || x.n.flags&flagDead != 0 {
 		return nil, false, nil
 	}
@@ -113,7 +137,7 @@ func (x xn) LookupPrepared(prepared xpath.InstanceProbe) ([]xpath.Node, bool, er
 		if err != nil || mapped == nil || !compareSchemaEqual(mapped, p.node.schema, true) {
 			// LY_ENOTFOUND, then lyd_find_sibling_opaq_next. Not a decline: the
 			// evaluator's scan would match the unequal node by module and name.
-			for _, c := range sib.opaqTail().All() {
+			for _, c := range sib.opaqNextSpan().All() {
 				if err := p.work(1); err != nil {
 					return nil, false, err
 				}
@@ -478,18 +502,20 @@ func (e *xpathProbeError) Error() string { return e.diag.Msg }
 // xprobe is lyd_create_list's fresh typed instance and its secondary index key.
 // It is private to one evaluation: concurrent reads never mutate the real tree.
 type xprobe struct {
-	node   *Node
-	set    *schema.Set // the context the instance was created in
-	key    idxKey
-	charge func(int64) error
-	bytes  int64
+	// schemaOnly: lyd_find_sibling_val without a value (lyd_find_sibling_schema)
+	schemaOnly bool
+	node       *Node
+	set        *schema.Set // the context the instance was created in
+	key        idxKey
+	charge     func(int64) error
+	bytes      int64
 }
 
 // PrepareInstance follows xpath.c:6343-6345 before the parent loop. Re-storing
 // canonical predicates is observable: a second store may fail or choose another
 // union member. Never turn that error into a successful empty result.
 func (x xs) PrepareInstance(vals []string, charge func(int64) error) (xpath.InstanceProbe, error) {
-	p := &xprobe{node: newInner(x.s), set: x.set, charge: charge}
+	p := &xprobe{node: newInner(x.s), set: x.set, charge: charge, schemaOnly: len(vals) == 0}
 	keys := x.s.Keys
 	if x.s.Kind == schema.LeafList {
 		keys = []*schema.Node{x.s}

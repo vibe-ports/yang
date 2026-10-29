@@ -127,6 +127,22 @@ func (s *siblings) linkAnchor(n *Node, at int) *opidx.Handle[*Node] {
 	return s.storeAnchor(n, at)
 }
 
+// originPlace is the placement that puts the linked n back between its document neighbours after
+// a temporary removal (restoreLink); the logical default unless s is interleaved.
+func (s *siblings) originPlace(n *Node) placement {
+	if s.st == nil || !s.st.interleaved() {
+		return placement{}
+	}
+	prev, next := s.docNeighbours(n)
+	switch {
+	case prev != nil:
+		return placement{mode: placeAfter, node: prev, target: n}
+	case next != nil:
+		return placement{mode: placeBefore, node: next, target: n}
+	}
+	return placement{}
+}
+
 // linkMixes reports whether link's insertion of n at at (link's convention: an opaque n's at is
 // among the opaque nodes, -1 appended) makes s interleaved.
 func (s *siblings) linkMixes(n *Node, at int) bool {
@@ -368,6 +384,16 @@ func (s *siblings) opaqTail() siblingSpan {
 		lo = at + 1
 	}
 	return s.docSpan().Slice(lo, s.Len())
+}
+
+// opaqNextSpan is what lyd_find_sibling_opaq_next walks from the first sibling: every sibling
+// when that one is opaque, else the trailing opaque block (tree_data.c:3392-3412; it compares
+// LYD_NAME, so a schema node's name too).
+func (s *siblings) opaqNextSpan() siblingSpan {
+	if first := s.docFirst(); first != nil && first.schema == nil && s.st.interleaved() {
+		return s.docSpan()
+	}
+	return s.opaqTail()
 }
 
 // docFirst and docLast are libyang's first child and its prev: the ends in document order.

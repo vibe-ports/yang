@@ -62,8 +62,14 @@ func prepareUnlink(n *Node) (*unlinkPlan, error) {
 		next = sib.st.seq.Next(h).Value
 	}
 	var left *Node
-	if n.schema != nil && prev != nil && next != nil && n.schema != prev.schema &&
-		prev.schema == next.schema && len(sib.rbTree) != 0 {
+	separates := n.schema != nil && prev != nil && next != nil && n.schema != prev.schema &&
+		prev.schema == next.schema
+	if n.schema == nil && sib.st.interleaved() {
+		// an opaque node between two instances of one schema node separates a run too (design 15)
+		pp, nn := sib.st.seq.Prev(h), sib.st.seq.Next(h)
+		separates = pp != nil && nn != nil && pp.Value.schema != nil && pp.Value.schema == nn.Value.schema
+	}
+	if separates && len(sib.rbTree) != 0 {
 		// removing a separator joins two runs: unlink marks the left run's tree unsorted
 		l := sib.st.seq.Prev(h) // prev, walked back to its run's first member, a charged step each
 		for {
@@ -72,7 +78,7 @@ func prepareUnlink(n *Node) (*unlinkPlan, error) {
 			}
 			sib.visit()
 			p := sib.st.seq.Prev(l)
-			if p == nil || p.Value.schema != prev.schema {
+			if p == nil || p.Value.schema != l.Value.schema {
 				break
 			}
 			l = p

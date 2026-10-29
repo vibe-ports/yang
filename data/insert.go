@@ -1271,6 +1271,11 @@ func (t *Tree) sortedRunBatchable(sib *siblings, n *Node) bool {
 	if sib.SchemaLen() == 0 || mixedSortedLookup(sib, n) {
 		return false
 	}
+	if sib.st != nil && sib.st.interleaved() {
+		// a run may be split: each insertion selects its leader again (lyd_insert_node), and one
+		// may change the record the next selects (design 15)
+		return false
+	}
 	_, rb, unsorted := t.sortedLeader(sib, n)
 	return rb && !unsorted
 }
@@ -2393,13 +2398,15 @@ func (t *Tree) preflightMoveDestination(parent, n *Node) error {
 
 // restoreLink puts a previously linked node back after a failed move or
 // temporary validation. Structural cleanup must run despite a hash quota error.
-func (t *Tree) restoreLink(parent, n *Node, at int, allowance uint64) {
+func (t *Tree) restoreLink(parent, n *Node, at int, allowance uint64, near placement) {
 	// Rollback reattaches a node that already existed before the failed operation.
 	// linkOrigin charged this finite recovery allowance before unlinking. Its use cannot spend
 	// a failed operation's exhausted forward allowance or allocate unreserved rollback work.
 	used, limit, err := t.work.hashUsed, t.work.hashLimit, t.work.hashErr
 	t.work.hashUsed, t.work.hashLimit, t.work.hashErr = 0, allowance, nil
-	if linkErr := t.link(parent, t.childrenOf(parent), n, at); linkErr != nil {
+	sib := t.childrenOf(parent)
+	sib.setPlace(near) // between its document neighbours again (originPlace, design 15)
+	if linkErr := t.link(parent, sib, n, at); linkErr != nil {
 		panic("data: failed to restore a linked node")
 	}
 	t.work.hashUsed, t.work.hashLimit, t.work.hashErr = used, limit, err
@@ -2913,6 +2920,9 @@ func unlink(n *Node) error {
 			if err := sib.DeleteAt(sib.SchemaLen() + i); err != nil {
 				return err
 			}
+		}
+		if left := plan.left; left != nil && sib.rbTree[left] {
+			markUnsorted(sib, left) // an opaque separator joined two runs (design 15)
 		}
 		sib.runGone(n)
 	} else if i := plan.at; i >= 0 {

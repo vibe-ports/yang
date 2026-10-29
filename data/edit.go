@@ -2052,11 +2052,7 @@ func opaqNext(s *siblings, name string) (*Node, error) {
 	}
 	// From an opaque first sibling the walk covers every sibling; from a schema one, the trailing
 	// opaque block (tree_data.c:3392-3412). It compares LYD_NAME, a schema node's name too.
-	span := s.opaqTail()
-	if first := s.docFirst(); first != nil && first.schema == nil {
-		span = s.docSpan()
-	}
-	for _, n := range span.All() {
+	for _, n := range s.opaqNextSpan().All() {
 		if s.work != nil {
 			if err := s.work.chargeHash(1); err != nil {
 				return nil, err

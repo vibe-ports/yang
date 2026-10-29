@@ -126,6 +126,7 @@ func validateOpNode(ctx context.Context, set *schema.Set, opNode *Node, dep *Tre
 	}
 	at := -1
 	var recovery uint64
+	var near placement
 	if sourceSib != nil {
 		list := sourceSib.schemaSpan()
 		if sub.schema == nil {
@@ -136,7 +137,10 @@ func validateOpNode(ctx context.Context, set *schema.Set, opNode *Node, dep *Tre
 		if err != nil {
 			return nil, err
 		}
+		near = sourceSib.originPlace(sub)
+		sourceSib.setPlace(near) // the bound of restoreLink's placed link
 		cost, err := sourceOwner.linkBound(sourceParent, sourceSib, sub, at)
+		sourceSib.clearPlace()
 		if err != nil {
 			return nil, err
 		}
@@ -224,7 +228,7 @@ func validateOpNode(ctx context.Context, set *schema.Set, opNode *Node, dep *Tre
 		} else if sourceSib != nil {
 			// _lyd_validate_op restores only positional links and hashes. The removed RB node
 			// remains a nonmember; hash leadership must not move lyds metadata implicitly.
-			sourceOwner.restoreLink(sourceParent, sub, at, recovery)
+			sourceOwner.restoreLink(sourceParent, sub, at, recovery, near)
 		}
 		return nil
 	}
