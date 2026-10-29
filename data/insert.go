@@ -968,6 +968,33 @@ func (t *Tree) linkCost(parent *Node, sib *siblings, n *Node, at int) (uint64, e
 	return addHashBound(amount, bound), err
 }
 
+// indexAddBound is the storage and index work of n's link at at (orderAddBound), the labelling
+// of the storage included when this link builds the index (linkBuildsIndex).
+func (t *Tree) indexAddBound(parent *Node, sib *siblings, n *Node, at int) uint64 {
+	journaled := sib.indexJournaled(&t.work)
+	bound := sib.orderAddBound(n, at, journaled)
+	if t.linkBuildsIndex(parent, sib, n, at) {
+		// the labels of every handle after n's insertion, and the header's image
+		bound = addHashBound(bound, uint64(sib.Len()+1)+slotUnits(journaled)/2) //nolint:gosec // a length is nonnegative
+	}
+	return bound
+}
+
+// linkBuildsIndex reports whether link builds sib's ordered index for n at at: an operation's
+// first child, or one that makes or finds the siblings unordered (markUnordered, markMixed).
+func (t *Tree) linkBuildsIndex(parent *Node, sib *siblings, n *Node, at int) bool {
+	switch {
+	case sib.order != nil:
+		return false
+	case n.schema == nil:
+		return isOp(schemaOf(parent))
+	case opChild(n.schema) || sib.schemaUnordered || t.mixedSwitch(sib, parent, n):
+		return true
+	}
+	at = min(max(at, 0), sib.SchemaLen())
+	return at > 0 && t.after(sib.At(at-1), n) || at < sib.SchemaLen() && t.after(n, sib.At(at))
+}
+
 // mulHashBound multiplies two work bounds, saturating like addHashBound.
 func mulHashBound(a, b uint64) uint64 {
 	if hi, lo := bits.Mul64(a, b); hi == 0 {
@@ -1959,7 +1986,7 @@ func (t *Tree) link(parent *Node, sib *siblings, n *Node, at int) error {
 	// The prepaid scope (design 13 §4.1-4.2): from here to the end of link no charge refuses.
 	// It debits every charge of the suffix (linkApplyBound) and the index edit's point bound
 	// now; journal captures stay fallible, and only exist where a journal restores them.
-	amount = addHashBound(amount, sib.orderAddBound(n, at, sib.indexJournaled(&t.work)))
+	amount = addHashBound(amount, t.indexAddBound(parent, sib, n, at))
 	nested, err := t.work.prepay(amount, false)
 	if err != nil {
 		return err
@@ -2082,7 +2109,7 @@ func (t *Tree) linkBound(parent *Node, sib *siblings, n *Node, at int) (uint64, 
 	amount, err := t.linkApplyBound(parent, sib, n, at)
 	// link repeats this charged probe before applying its reserved work, and prepays the index
 	// edit's point bound with it.
-	amount = addHashBound(amount, sib.orderAddBound(n, at, sib.indexJournaled(&t.work)))
+	amount = addHashBound(amount, t.indexAddBound(parent, sib, n, at))
 	return addHashBound(amount, t.work.hashUsed-before), err
 }
 

@@ -281,9 +281,14 @@ func (s *siblings) orderBuild(t *Tree) error {
 		return err
 	}
 	st := s.store()
-	// the occurrence classes compare the storage's labels: label it first (unbound, like the
-	// build itself)
+	// the occurrence classes compare the storage's labels: label it first, paid (inside link's
+	// scope link's bound has it: indexAddBound)
+	paid, err := s.payStore(st.seq.LabelBound(s.storeJournaled()))
+	if err != nil {
+		return err
+	}
 	st.seq.SetLabeled(true)
+	paid.close()
 	// unbound while it is built: unreachable until published, it reports no work or entries
 	o := newChildOrder(st, &orderBinding{})
 	s.order = o

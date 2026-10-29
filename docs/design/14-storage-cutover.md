@@ -16,9 +16,14 @@ comments cite this document as "design 14".
   store marked `view`: its handles are not its nodes' slots, and building it neither reparents
   nor re-slots anything.
 - The sequence maintains no order labels until an ordered index is built over it
-  (`SetLabeled(true)` in `orderBuild`, one unreported pass and an unpaid header image, like the
-  build itself); `Compare` falls back to ranks meanwhile. Unlabeled point edits are pure AVL
-  work, so an ordinary set pays no relabelling.
+  (`SetLabeled(true)` in `orderBuild`: a unit per handle and the header's image, prepaid;
+  `LabelBound`). `Compare` falls back to ranks meanwhile. Unlabeled point edits are pure AVL
+  work, so an ordinary set pays no relabelling. A link that builds the index reserves the
+  labelling with its other work (`indexAddBound`, which predicts the build: `linkBuildsIndex`
+  mirrors link's operation-child, markUnordered and markMixed decisions).
+- Disposal (`reset`, for `DiscardTree` and a replaced payload) gives every node's slot back,
+  journaled and paid, so a discarded root a caller keeps does not keep its former siblings
+  alive through the storage (TestDiscardReleasesFormerSiblings).
 
 ## What went away
 
@@ -69,7 +74,9 @@ threshold for several attach orders (and fails without the filter).
 A parser run deferred for publication is funded as it grows: before linking a member,
 `payPublication` tops up its set's completion credit to `publicationNeed` (per pending run
 `RepublishBoundAny` of its members, its index re-registration when indexed, and its reads, for
-the set's length after the link, journaled). `publishDirty` opens a prepaid scope with that
+the set's length after the link, journaled). The credit is kept as aggregates per set (runs,
+members, indexed), so a top-up is O(1) however many runs are pending
+(TestParserManyDeferredRunsScaling). `publishDirty` opens a prepaid scope with that
 already-charged credit, so a publication charges nothing fallible and refunds the rest. Test
 builds panic if a publication refuses (`checkPublish`). An opaque XML link that grows a set with
 pending runs tops it up too. TestParserPublicationFunded sweeps every budget limit, every
@@ -95,7 +102,8 @@ per-entry compat journaling is step 6.
    probe's usage now search the smallest sufficient limit (TestMergeDiffHashWorkScope) or add
    `storageAllowance`.
 2. **Unlabeled storage** (not in the plan): labels cost about 130 units per middle insertion and
-   no unindexed reader needs them.
+   no unindexed reader needs them. Turning them on is paid like the rest of the build's reach
+   (snapshot review 1).
 3. **Handle identity across an unjournaled relocation's forward recovery** is not kept: the
    recovery relinks the node with a fresh handle (`restoreLink`); order, slots and index are
    restored, and nothing outside the storage observes the handle.
@@ -111,6 +119,12 @@ per-entry compat journaling is step 6.
 - data: TestSiblingFacadeModel, TestSiblingFacadeStorageRollback, TestSiblingFacadeView,
   TestSiblingFacadeCaptureFailure, TestSiblingStorageBoundary (no storage write outside the
   facade), TestRBPublishTableHistory, TestParserPublicationFunded,
-  TestStorageMiddleEditScaling; the storage invariant in every tree invariant check and budget
+  TestParserManyDeferredRunsScaling, TestStorageMiddleEditScaling,
+  TestDiscardReleasesFormerSiblings; the storage invariant in every tree invariant check and budget
   snapshot; every existing S4 sweep and history, TestAstra305Round13CountedWork and the
   repeated-key scaling tests unchanged.
+
+The first snapshot review (`240s5-snap1`) found three blocking issues, all fixed: the
+completion planner rescanned every pending run of its set per top-up (now O(1) aggregates);
+disposal kept the discarded forest reachable through the kept roots' slots; label activation
+reported no work and was not reserved by the link that builds the index.

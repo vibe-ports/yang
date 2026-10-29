@@ -26,17 +26,14 @@ func (s *Seq[T]) Pos(h *Handle[T]) (int, bool) {
 // Labeled reports whether s maintains its order labels.
 func (s *Seq[T]) Labeled() bool { return !s.unlabeled }
 
-// SetLabeled turns label maintenance on or off. Turning it on labels every handle in one pass.
-// Like the build of the index that needs the labels, it reports no work and pays for no entry:
-// it records only the header (unpaid), since before it the labels were not maintained and a
-// rollback that restores the flag needs none of them.
+// SetLabeled turns label maintenance on or off. Turning it on labels every handle in one pass,
+// a unit of work per handle, and records only the header: before it the labels were not
+// maintained, so a rollback that restores the flag needs none of them.
 func (s *Seq[T]) SetLabeled(on bool) {
 	if on != s.unlabeled {
 		return
 	}
-	if j := s.journal(); j != nil && j.first(&s.stamp) {
-		j.add(Entry{obj: s, ptr: [6]any{s.root, s.first, s.last}, num: [3]uint64{uint64(s.length), uint64(s.scale)}, had: s.unlabeled}, 0, nil) //nolint:gosec // restored bit for bit
-	}
+	s.touchHeader()
 	s.unlabeled = !on
 	if !on || s.length == 0 {
 		return
@@ -45,9 +42,18 @@ func (s *Seq[T]) SetLabeled(on bool) {
 	step := tagUniverse / 4 * 3 / uint64(s.length+1) //nolint:gosec // a length is nonnegative
 	i := uint64(1)
 	for h := s.first; h != nil; h = h.next {
+		s.charge()
 		h.tag = i * step
 		i++
 	}
+}
+
+// LabelBound bounds SetLabeled(true): its pass and the header's image.
+func (s *Seq[T]) LabelBound(journaled bool) uint64 {
+	if !s.unlabeled {
+		return 0
+	}
+	return saturatingAdd(uint64(s.length), images(1, journaled)) //nolint:gosec // a length is nonnegative
 }
 
 // BoundIn returns the first rank in [lo, hi) whose value satisfies pred, monotone over the range

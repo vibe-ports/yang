@@ -162,10 +162,19 @@ type lydCtx struct {
 	dirtySet  map[dirtyRun]bool        // the runs pending in dirty, for a constant-time repeat mark
 	dirtyOrd  map[dirtyRun]*dirtyOrder // the dirty runs' trees
 	runOrd    map[dirtyRun]*dirtyOrder // aliases of retained trees used during this parse
-	// pubPaid is the completion credit of each set with pending runs: the units already charged
-	// for publishing them (payPublication), which their publication draws on and cannot refuse
-	pubPaid map[*siblings]uint64
-	pubRuns map[dirtyRun]int // the members each deferred run's credit covers
+	// pubFunds is the completion credit of each set with deferred runs (payPublication): the
+	// units already charged for publishing them, which their publication draws on and cannot
+	// refuse; pubRuns the members each deferred run's credit covers
+	pubFunds map[*siblings]*pubFund
+	pubRuns  map[dirtyRun]int
+}
+
+// pubFund is the completion credit of one set's deferred runs, kept as aggregates so a top-up
+// is O(1): the runs and members it covers, whether one of them is indexed, the units charged.
+type pubFund struct {
+	runs, members int
+	indexed       bool
+	paid          uint64
 }
 
 type dirtyRun struct {
@@ -999,51 +1008,50 @@ func (lc *lydCtx) flushDirty(sib *siblings) error {
 	return nil
 }
 
-// publicationNeed bounds publishing the deferred runs of sib, sn's covering k members (sn nil:
-// none changes), once sib holds one more sibling: each run's republication with its index
-// re-registration and reads, position-free (the set may grow before it is published) and
-// journaled (design 14, completion funding).
-func (lc *lydCtx) publicationNeed(sib *siblings, sn *schema.Node, k int) uint64 {
+// publicationNeed bounds publishing f's runs once sib holds one more sibling: each run's
+// republication (RepublishBoundAny, linear in its members) and reads, and the re-registration
+// of every member when the set is indexed; position-free (the set may grow before it is
+// published) and journaled (design 14, completion funding).
+func publicationNeed(sib *siblings, f *pubFund) uint64 {
 	length := sib.Len() + 1
-	var need uint64
-	keys := lc.dirty[sib]
-	if sn != nil && !slices.Contains(keys, sn) {
-		keys = append(slices.Clone(keys), sn)
+	perRun := addHashBound(opidx.RepublishBoundAny(length, 0, true), 2*opidx.UpdateBoundAny(length, false))
+	perMember := opidx.RepublishBoundAny(length, 1, true) - opidx.RepublishBoundAny(length, 0, true)
+	if f.indexed || sib.order != nil {
+		perMember = addHashBound(perMember, 2*orderCells(true)+6*opidx.UpdateBoundAny(length, true))
 	}
-	for _, key := range keys {
-		members := lc.pubRuns[dirtyRun{sib, key}]
-		if key == sn {
-			members = max(members, k)
-		}
-		reads := 2 * opidx.UpdateBoundAny(length, false)
-		bound := addHashBound(opidx.RepublishBoundAny(length, members, true), reads)
-		if sib.order != nil || opChild(key) {
-			per := 2*orderCells(true) + 6*opidx.UpdateBoundAny(length, true)
-			bound = addHashBound(bound, mulHashBound(uint64(members), per)) //nolint:gosec // a count is nonnegative
-		}
-		need = addHashBound(need, bound)
-	}
-	return need
+	return addHashBound(mulHashBound(uint64(f.runs), perRun), mulHashBound(uint64(f.members), perMember)) //nolint:gosec // counts are nonnegative
 }
 
-// payPublication tops up sib's completion credit to publicationNeed before a mutation that a
-// publication will have to cover: a refusal comes here, before the parser changes anything.
+// payPublication tops up sib's completion credit before a mutation that a publication will have
+// to cover (sn's run growing to k members, or sn nil: the set growing), in O(1): a refusal comes
+// here, before the parser changes anything.
 func (lc *lydCtx) payPublication(sib *siblings, sn *schema.Node, k int) error {
-	need := lc.publicationNeed(sib, sn, k)
-	if paid := lc.pubPaid[sib]; need > paid {
-		if err := lc.tree.work.chargeHash(need - paid); err != nil {
+	f := lc.pubFunds[sib]
+	if f == nil {
+		f = &pubFund{}
+	}
+	next := *f
+	key := dirtyRun{sib, sn}
+	if sn != nil {
+		old, had := lc.pubRuns[key]
+		if !had {
+			next.runs++
+		}
+		next.members += max(k-old, 0)
+		next.indexed = next.indexed || opChild(sn)
+	}
+	if need := publicationNeed(sib, &next); need > next.paid {
+		if err := lc.tree.work.chargeHash(need - next.paid); err != nil {
 			return err
 		}
-		if lc.pubPaid == nil {
-			lc.pubPaid = map[*siblings]uint64{}
-		}
-		lc.pubPaid[sib] = need
+		next.paid = need
 	}
+	*f = next
+	if lc.pubFunds == nil {
+		lc.pubFunds, lc.pubRuns = map[*siblings]*pubFund{}, map[dirtyRun]int{}
+	}
+	lc.pubFunds[sib] = f
 	if sn != nil {
-		if lc.pubRuns == nil {
-			lc.pubRuns = map[dirtyRun]int{}
-		}
-		key := dirtyRun{sib, sn}
 		lc.pubRuns[key] = max(lc.pubRuns[key], k)
 	}
 	return nil
@@ -1067,8 +1075,11 @@ func (lc *lydCtx) publishDirty(sib *siblings) {
 			}
 		}()
 	}
-	credit := lc.pubPaid[sib]
-	delete(lc.pubPaid, sib)
+	var credit uint64
+	if f := lc.pubFunds[sib]; f != nil {
+		credit = f.paid
+	}
+	delete(lc.pubFunds, sib)
 	for _, sn := range keys {
 		delete(lc.pubRuns, dirtyRun{sib, sn})
 	}

@@ -233,8 +233,11 @@ func TestUnlabeledSequence(t *testing.T) {
 	}
 	mark := j.Mark()
 	h.units = 0
+	if b := seq.LabelBound(true); b != 300+2 {
+		t.Fatalf("LabelBound %d", b)
+	}
 	seq.SetLabeled(true)
-	if !seq.Labeled() || h.units != 0 {
+	if !seq.Labeled() || h.units != 300+2 { // a unit per handle, the header's image
 		t.Fatalf("labelling reported %d units", h.units)
 	}
 	if err := seq.CheckInvariants(); err != nil { // the labels are strictly increasing now

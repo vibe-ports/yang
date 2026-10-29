@@ -352,9 +352,22 @@ func (s *siblings) transferFrom(src *siblings) error {
 	return nil
 }
 
+// reset discards the container. Its nodes give their slots back first (journaled, paid): a
+// discarded root a caller keeps must not keep its former siblings alive through the storage.
 func (s *siblings) reset() error {
 	if err := s.touch(); err != nil {
 		return err
+	}
+	if st := s.st; st != nil && st.seq.Len() != 0 && !st.view {
+		paid, err := s.payStore(mulHashBound(uint64(st.seq.Len()), slotUnits(s.storeJournaled()))) //nolint:gosec // a length is nonnegative
+		if err != nil {
+			return err
+		}
+		for h := st.seq.First(); h != nil; h = st.seq.Next(h) {
+			s.visit()
+			h.Value.slot.Set(&st.bind, nil)
+		}
+		paid.close()
 	}
 	*s = siblings{}
 	return nil

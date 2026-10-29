@@ -6,13 +6,17 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"runtime"
 	"slices"
 	"sort"
 	"strings"
 	"testing"
+	"weak"
 
 	"github.com/vibe-ports/yang"
+	"github.com/vibe-ports/yang/internal/contextopts"
 	"github.com/vibe-ports/yang/internal/schema"
+	"github.com/vibe-ports/yang/internal/types"
 )
 
 // TestRBPublishTableHistory (design 14, attach replay): rbPublish links its batch at once but
@@ -255,5 +259,91 @@ func TestStorageMiddleEditScaling(t *testing.T) {
 				}
 			})
 		}
+	}
+}
+
+// TestDiscardReleasesFormerSiblings (design 14): discarding a forest gives every root's slot
+// back, so a root the caller keeps does not keep its former siblings alive through the storage.
+func TestDiscardReleasesFormerSiblings(t *testing.T) {
+	set := opIndexSet(t, `module m { yang-version 1.1; namespace "urn:m"; prefix m;
+	  leaf-list v { type uint32; ordered-by user; } }`)
+	tr, _, err := parseJSONString(set, `{"m:v":[1,2,3,4,5,6,7,8]}`, Reject, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	kept := tr.top.At(0)
+	gone := weak.Make(tr.top.At(5))
+	if err := contextopts.DiscardTree(tr); err != nil {
+		t.Fatal(err)
+	}
+	if kept.slot.Get() != nil || tr.top.Len() != 0 {
+		t.Fatal("a discarded root kept its slot")
+	}
+	tr = nil
+	runtime.GC()
+	runtime.GC()
+	if gone.Value() != nil {
+		t.Fatal("a kept discarded root retains its former siblings")
+	}
+	runtime.KeepAlive(kept)
+}
+
+// TestParserManyDeferredRunsScaling (design 14, completion funding): r runs deferred in one set
+// at once (an existing set whose populated runs each get a new minimum, as a parse into an
+// existing tree adds them) are funded in O(1) per member, so quadrupling r stays near linear in
+// counted work, charged hash work and allocated bytes.
+func TestParserManyDeferredRunsScaling(t *testing.T) {
+	measure := func(r int) (work int64, hash, bytes uint64) {
+		var mod, in strings.Builder
+		mod.WriteString(`module m { yang-version 1.1; namespace "urn:m"; prefix m; container c {`)
+		in.WriteString(`{"m:c":{`)
+		for i := range r {
+			fmt.Fprintf(&mod, " leaf-list v%d { type uint32; }", i)
+			if i != 0 {
+				in.WriteString(",")
+			}
+			fmt.Fprintf(&in, `"v%d":[20,10]`, i) // a sorted insertion gives each run its tree
+		}
+		mod.WriteString(" } }")
+		in.WriteString("}}")
+		set := opIndexSet(t, mod.String())
+		tr, _, err := parseJSONString(set, in.String(), Reject, true)
+		if err != nil {
+			t.Fatal(err)
+		}
+		c := tr.top.first()
+		var fresh []*Node
+		for _, n := range c.kids.SchemaAll() {
+			if n.value.Canonical() == "10" {
+				v, _ := types.Store(n.schema.Type, "1", types.FormatJSON, types.JSONHints("number"), types.ModuleNames{Set: set}, n.schema)
+				fresh = append(fresh, newTerm(n.schema, v))
+			}
+		}
+		lc := &lydCtx{tree: tr, ctx: context.Background(), log: &logger{set: set}}
+		end := tr.work.beginHashWork()
+		tr.work.Store(0)
+		tr.work.visits = true
+		var before, after runtime.MemStats
+		runtime.GC()
+		runtime.ReadMemStats(&before)
+		for _, n := range fresh {
+			if inserted, err := lc.appendSorted(c, n); err != nil || !inserted {
+				t.Fatalf("append: %t %v", inserted, err)
+			}
+		}
+		if len(lc.dirty[&c.kids]) != r {
+			t.Fatalf("%d runs deferred, want %d", len(lc.dirty[&c.kids]), r)
+		}
+		mustLink(t, lc.flushDirtyAll())
+		runtime.ReadMemStats(&after)
+		work, hash = tr.work.Load(), tr.work.hashUsed
+		end()
+		return work, hash, after.TotalAlloc - before.TotalAlloc
+	}
+	w1, h1, b1 := measure(64)
+	w4, h4, b4 := measure(256)
+	t.Logf("64 runs: work %d hash %d bytes %d; 256 runs: work %d hash %d bytes %d", w1, h1, b1, w4, h4, b4)
+	if w4 > 6*w1 || h4 > 6*h1 || b4 > 6*b1 {
+		t.Fatal("quadrupling the deferred runs grew the parse faster than linearly")
 	}
 }
