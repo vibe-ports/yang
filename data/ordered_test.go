@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"slices"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/vibe-ports/yang"
@@ -392,4 +393,70 @@ func TestSeparatorUnlinkThenMerge(t *testing.T) {
 		}
 	}
 	checkEveryHashBudgetPoint(t, build)
+}
+
+// TestMergeOpaqueIntoDataNodeRefused: from an opaque first sibling lyd_find_sibling_opaq_next
+// compares LYD_NAME, so an opaque source finds the data node of its name; merging one into the
+// other is undefined natively, and Merge refuses it before any change (design 15). The tree
+// still prints.
+func TestMergeOpaqueIntoDataNodeRefused(t *testing.T) {
+	set := opIndexSet(t, orderedSchema)
+	tr, err := parseOrdered(t, set, false, `{"m:c":{"zz":"u","b":"y"}}`, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	src, err := parseOrdered(t, set, false, `{"m:c":{"b":false}}`, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	before := typedDump(tr)
+	err = tr.Merge(src)
+	if err == nil || !strings.Contains(err.Error(), `Cannot merge opaque node "b" into data node "b".`) {
+		t.Fatalf("Merge = %v", err)
+	}
+	if !slices.Equal(typedDump(tr), before) {
+		t.Fatal("the refused merge changed the tree")
+	}
+	var b strings.Builder
+	if err := tr.PrintJSON(&b, PrintOptions{}); err != nil || !strings.Contains(b.String(), `"b": "y"`) {
+		t.Fatalf("print after the refusal: %v %q", err, b.String())
+	}
+}
+
+// TestOpaqNextSharedSourceRace: lyd_find_sibling_opaq_next over a source that diffMergeDelete
+// and findMatch only read (MergeDiff's src, Diff's trees) charges the calling operation's counter;
+// concurrent callers over one shared interleaved set leave its tree's counter alone (run under
+// -race).
+func TestOpaqNextSharedSourceRace(t *testing.T) {
+	set := opIndexSet(t, orderedSchema)
+	src, err := parseOrdered(t, set, false, `{"m:c":{"zz":"u","a":"x","yy":"t"}}`, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var c *Node
+	for c = range src.Top() {
+		break
+	}
+	src.work.hashUsed = 0
+	var wg sync.WaitGroup
+	for range 8 {
+		wg.Go(func() {
+			callers := newTree(set) // each operation's own counter
+			defer callers.work.beginHashWork()()
+			for range 50 {
+				n, err := opaqNext(&callers.work, &c.kids, "yy")
+				if err != nil || n == nil || n.Name() != "yy" {
+					t.Errorf("opaqNext = %v, %v", n, err)
+					return
+				}
+			}
+			if callers.work.hashUsed == 0 {
+				t.Error("the walk was not charged to its caller")
+			}
+		})
+	}
+	wg.Wait()
+	if src.work.hashUsed != 0 || src.work.hashErr != nil {
+		t.Fatalf("the shared source was charged: used %d, err %v", src.work.hashUsed, src.work.hashErr)
+	}
 }

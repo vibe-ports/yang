@@ -287,7 +287,7 @@ func (t *Tree) findMatch(sib *siblings, target *Node, defaults bool, cache *dupC
 	switch {
 	case target.schema == nil:
 		var err error
-		if m, err = opaqNext(sib, target.Name()); err != nil {
+		if m, err = opaqNext(&t.work, sib, target.Name()); err != nil {
 			return nil, err
 		}
 	case target.schema.Kind == schema.List || target.schema.Kind == schema.LeafList:

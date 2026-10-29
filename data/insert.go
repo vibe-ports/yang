@@ -1641,17 +1641,6 @@ func (t *Tree) opRun(s *siblings, sn *schema.Node) iter.Seq[*Node] {
 	}
 }
 
-// opNeighbours reads only the slots adjacent to the changed slot, before unlink or after link.
-func (s *siblings) opNeighbours(at int) (left, right *schema.Node) {
-	if at > 0 {
-		left = s.At(at - 1).schema
-	}
-	if at+1 < s.SchemaLen() {
-		right = s.At(at + 1).schema
-	}
-	return left, right
-}
-
 // opBuild (re)builds the instance index of an operation or unordered copy; mutations only.
 func (s *siblings) opBuild(t *Tree) error {
 	return s.orderBuild(t)

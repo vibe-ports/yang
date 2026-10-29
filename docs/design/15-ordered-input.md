@@ -80,8 +80,18 @@ write takes the code path it took before (the counted-work and scaling tests are
   share with `opRun` and `runBounds` (`schemaLookupOperation`) therefore find nothing past it
   (`linearBound`). `lyd_validate_new` stops there too
   (validation.c:1023). `lyd_find_sibling_opaq_next` searches the trailing opaque block, or every sibling from
-  an opaque first one (`opaqNextSpan`: `opaqNext` and XPath, charged per step). XPath's hashed
-  child lookup (`LookupPrepared`) stops at the first opaque sibling without a children table too.
+  an opaque first one (`opaqNextSpan`: `opaqNext` and XPath, charged per step to the calling
+  operation, never to a tree it only reads, such as `MergeDiff`'s source). XPath's hashed child
+  lookup (`LookupPrepared`, and for the top level the root adapter `xroot` as
+  `EvalContext.TreeLookup`) follows the same stops, and a children-table miss ends in that
+  fallback, not in the evaluator's scan of every child.
+- **Undefined merge refused.** From an opaque first sibling `lyd_find_sibling_opaq_next` compares
+  `LYD_NAME`, so an opaque source node can find a data node of its name. libyang then merges an
+  opaque value into a data node, which is undefined. `Merge` refuses it before any change with
+  LY_EINVAL "Cannot merge opaque node "x" into data node "x"." (`TestMergeOpaqueIntoDataNodeRefused`).
+- **Value changes.** `LYD_NODE_IS_ALONE` reads the document neighbours, the first sibling's
+  cyclic predecessor included, so a leaf-list instance alone in its piece of a split run keeps its
+  place when its value changes.
 - **Runs.** In an interleaved set an opaque node ends a run, as another schema node does
   (`LYD_LIST_FOR_INST`, `lyds_additionally_create_rb_tree`). The set switches to the unordered
   mode when it interleaves. There the first-instance records use document neighbours
@@ -105,7 +115,7 @@ write takes the code path it took before (the counted-work and scaling tests are
 
 ## Evidence
 
-- Oracle fixtures `protocol-v2/ordered-*` (31) cover:
+- Oracle fixtures `protocol-v2/ordered-*` (34) cover:
   - parse order, JSON and XML;
   - the XML opaque anchor;
   - later insertions with and without a children table, crossing the table threshold, and a sorted
@@ -116,8 +126,9 @@ write takes the code path it took before (the counted-work and scaling tests are
   - a set that lost its opaque node; an ordered forest whose first root is opaque, moved whole;
   - freeing a split run's second-piece leader; a merge from an opaque first sibling; a positional
     path past the first opaque sibling; Merge (no `LYD_MERGE_DESTRUCT`) into a split run;
-  - a merge after the separator is gone; a sorted forest moved next to an opaque node; an XPath
-    name test past the first opaque sibling;
+  - a merge after the separator is gone; a sorted forest moved next to an opaque node; XPath name
+    tests past the first opaque sibling, at the top level, and after a children-table miss with an
+    opaque node of the name in the middle; value changes of singleton pieces of a split run;
   - opaque appends; unlink and re-insert; merge; dup; diff; validation (implicit default, opaque
     error and the stop of `lyd_validate_new`);
   - XPath axes and positions; a key after an opaque child; a validated out-of-order parse.

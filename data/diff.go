@@ -926,7 +926,7 @@ func (t *Tree) diffMergeDelete(dm *Node, cur diffOp, src *Node) error {
 		switch {
 		case c.schema == nil:
 			var err error
-			if found, err = opaqNext(&src.kids, c.Name()); err != nil {
+			if found, err = opaqNext(&t.work, &src.kids, c.Name()); err != nil {
 				return err
 			}
 		case c.schema.Kind == schema.List || c.schema.Kind == schema.LeafList:

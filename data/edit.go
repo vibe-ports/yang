@@ -912,17 +912,13 @@ func (t *Tree) changeNodeValue(n *Node, v types.Value, hashAmount uint64) {
 			entry = sib.order.entries[target.schema]
 		}
 		if entry == nil || entry.count != 1 || sib.documentFirst(target.schema) != target {
-			at, err := t.originIndex(sib, sib.schemaSpan(), target)
-			if err != nil {
-				t.work.hashErr = err
-				return
+			// the document neighbours (an opaque one ends the run, design 15); the first
+			// sibling's prev is the last sibling in libyang
+			prev, next := sib.docNeighbours(target)
+			if prev == nil && sib.docLast() != target {
+				prev = sib.docLast()
 			}
-			left, right := sib.opNeighbours(at)
-			// In libyang the first sibling's prev points to the last sibling.
-			if at == 0 && sib.OpaqueLen() == 0 && sib.SchemaLen() > 1 {
-				left = sib.At(sib.SchemaLen() - 1).schema
-			}
-			relocate = left == target.schema || right == target.schema
+			relocate = prev != nil && prev.schema == target.schema || next != nil && next.schema == target.schema
 		}
 	}
 	if relocate {
@@ -1807,8 +1803,14 @@ func (t *Tree) mergeSibling(lv *mergeLevel, src *Node) error {
 	switch {
 	case src.schema == nil:
 		var err error
-		if match, err = opaqNext(sib, src.Name()); err != nil {
+		if match, err = opaqNext(&t.work, sib, src.Name()); err != nil {
 			return err
+		}
+		if match != nil && match.schema != nil {
+			// lyd_find_sibling_opaq_next compares LYD_NAME, so an opaque source can find a data
+			// node of its name; merging one into the other is undefined natively (design 15)
+			return &opError{"LY_EINVAL", fmt.Sprintf("Cannot merge opaque node \"%s\" into data node \"%s\".",
+				src.Name(), match.Name())}
 		}
 	case src.schema.Kind == schema.List && src.schema.Keyless() && !sib.mixedContexts():
 		var err error
@@ -2045,20 +2047,21 @@ func (t *Tree) flushMerge(lv *mergeLevel) error {
 }
 
 // opaqNext is lyd_find_sibling_opaq_next from the first sibling: the first opaque node named
-// name; the error is a refused charge of its walk.
-func opaqNext(s *siblings, name string) (*Node, error) {
+// name; the error is a refused charge of its walk, charged to w, the calling operation's counter
+// (s may belong to a tree the operation only reads).
+func opaqNext(w *workCounter, s *siblings, name string) (*Node, error) {
 	if s.st == nil || !s.st.interleaved() {
 		return s.opaqueFirst(name), nil
 	}
 	// From an opaque first sibling the walk covers every sibling; from a schema one, the trailing
 	// opaque block (tree_data.c:3392-3412). It compares LYD_NAME, a schema node's name too.
 	for _, n := range s.opaqNextSpan().All() {
-		if s.work != nil {
-			if err := s.work.chargeHash(1); err != nil {
-				return nil, err
-			}
+		if err := w.chargeHash(1); err != nil {
+			return nil, err
 		}
-		s.visit()
+		if w.visits { // tests only
+			w.Add(1)
+		}
 		if n.Name() == name {
 			return n, nil
 		}

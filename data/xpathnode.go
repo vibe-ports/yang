@@ -101,29 +101,8 @@ func (x xn) LookupPrepared(prepared xpath.InstanceProbe) ([]xpath.Node, bool, er
 	}
 	p, ok := prepared.(*xprobe)
 	sib := &x.n.kids
-	if ok && p.schemaOnly && sib.ht == nil && sib.st != nil && sib.st.interleaved() &&
-		!sib.mixedContexts() && x.n.flags&flagDead == 0 {
-		// without a children table lyd_find_sibling_schema stops at the first opaque sibling
-		// (design 15): the evaluator's scan of every child would go past it
-		for _, c := range sib.schemaSpan().Slice(0, sib.beforeOpaque()).All() {
-			if err := p.work(1); err != nil {
-				return nil, false, err
-			}
-			sib.visit()
-			if c.flags&flagDead == 0 && c.schema == p.node.schema {
-				return []xpath.Node{wrap(x.set, c)}, true, nil
-			}
-		}
-		for _, c := range sib.opaqNextSpan().All() { // then lyd_find_sibling_opaq_next
-			if err := p.work(1); err != nil {
-				return nil, false, err
-			}
-			sib.visit()
-			if c.flags&flagDead == 0 && c.Name() == p.node.schema.Name {
-				return []xpath.Node{wrap(x.set, c)}, true, nil
-			}
-		}
-		return nil, true, nil
+	if ok && sib.ht == nil && sib.st != nil && sib.st.interleaved() && !sib.mixedContexts() && x.n.flags&flagDead == 0 {
+		return interleavedLookup(sib, x.set, p)
 	}
 	if !ok || sib.ht == nil || sib.mixedContexts() || x.n.flags&flagDead != 0 {
 		return nil, false, nil
@@ -137,16 +116,7 @@ func (x xn) LookupPrepared(prepared xpath.InstanceProbe) ([]xpath.Node, bool, er
 		if err != nil || mapped == nil || !compareSchemaEqual(mapped, p.node.schema, true) {
 			// LY_ENOTFOUND, then lyd_find_sibling_opaq_next. Not a decline: the
 			// evaluator's scan would match the unequal node by module and name.
-			for _, c := range sib.opaqNextSpan().All() {
-				if err := p.work(1); err != nil {
-					return nil, false, err
-				}
-				sib.visit()
-				if c.flags&flagDead == 0 && c.Name() == p.node.schema.Name {
-					return []xpath.Node{wrap(x.set, c)}, true, nil
-				}
-			}
-			return nil, true, nil
+			return opaqFallback(sib, x.set, p)
 		}
 		if p = p.toCtx(x.set); p == nil {
 			return nil, false, nil // the instance does not store there: the charged scan
@@ -171,7 +141,74 @@ func (x xn) LookupPrepared(prepared xpath.InstanceProbe) ([]xpath.Node, bool, er
 			return []xpath.Node{wrap(x.set, n)}, true, nil
 		}
 	}
+	if sib.st.interleaved() {
+		// the miss's lyd_find_sibling_opaq_next searches only the trailing opaque block (or all
+		// siblings from an opaque first one); the evaluator's scan would look at every child
+		return opaqFallback(sib, x.set, p)
+	}
 	return nil, sib.OpaqueLen() == 0, nil
+}
+
+// interleavedLookup is moveto_node_hash_child's lookup in an interleaved set without a children
+// table (design 15): lyd_find_sibling_schema stops at the first opaque sibling, and
+// lyd_find_sibling_first (an instance) walks every sibling; then lyd_find_sibling_opaq_next.
+// Every step is charged.
+func interleavedLookup(sib *siblings, set *schema.Set, p *xprobe) ([]xpath.Node, bool, error) {
+	span := sib.docSpan()
+	if p.schemaOnly {
+		span = sib.schemaSpan().Slice(0, sib.beforeOpaque())
+	}
+	for _, c := range span.All() {
+		if err := p.work(1); err != nil {
+			return nil, false, err
+		}
+		sib.visit()
+		if c.flags&flagDead != 0 || c.schema != p.node.schema {
+			continue
+		}
+		if !p.schemaOnly {
+			match, err := p.Match(xn{c, set})
+			if err != nil {
+				return nil, false, err
+			}
+			if !match {
+				continue
+			}
+		}
+		return []xpath.Node{wrap(set, c)}, true, nil
+	}
+	return opaqFallback(sib, set, p)
+}
+
+// opaqFallback is lyd_find_sibling_opaq_next after a lookup miss, charged; a handled miss.
+func opaqFallback(sib *siblings, set *schema.Set, p *xprobe) ([]xpath.Node, bool, error) {
+	for _, c := range sib.opaqNextSpan().All() {
+		if err := p.work(1); err != nil {
+			return nil, false, err
+		}
+		sib.visit()
+		if c.flags&flagDead == 0 && c.Name() == p.node.schema.Name {
+			return []xpath.Node{wrap(set, c)}, true, nil
+		}
+	}
+	return nil, true, nil
+}
+
+// xroot is the document root's ChildLookup (EvalContext.TreeLookup) of an interleaved top level:
+// top-level siblings have no children table, so interleavedLookup's rules apply (design 15).
+type xroot struct {
+	sib *siblings
+	set *schema.Set
+}
+
+func (r xroot) LookupChild(xpath.SchemaNode, []string) ([]xpath.Node, bool) { return nil, false }
+
+func (r xroot) LookupPrepared(prepared xpath.InstanceProbe) ([]xpath.Node, bool, error) {
+	p, ok := prepared.(*xprobe)
+	if !ok || r.sib.mixedContexts() {
+		return nil, false, nil
+	}
+	return interleavedLookup(r.sib, r.set, p)
 }
 
 // HashKeyValuesEqual applies lyd_hash's LYB value gate when XPath's keyed-list
