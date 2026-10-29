@@ -5,6 +5,7 @@ package data
 import (
 	"context"
 	"fmt"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -177,4 +178,96 @@ func TestS4CtxEntriesHoldTheirTrees(t *testing.T) {
 		})
 	}
 	t.Logf("%d entries, %d mutated polls", len(fixtures), total)
+}
+
+// TestS4DetachedNodeNotHeldByItsOldTree: a node unlinked before an operation keeps its old
+// counter only as accounting: user code of a LinkLeafrefs or ApplyDiff on that tree may still
+// edit it (snapshot review 4, finding 1).
+func TestS4DetachedNodeNotHeldByItsOldTree(t *testing.T) {
+	set := s4LinksSet(t)
+	tr := s4ParseLinks(t, set, `{"pv2-links:c":{"l":[{"k":"a"}],"t":["y","x"],"r":"a"}}`)
+	detached := s4Child(tr.top.first(), "t", "y")
+	if err := detached.Unlink(); err != nil {
+		t.Fatal(err)
+	}
+	var editErr error
+	ctx := &pollCtx{Context: context.Background(), k: 1, at: func() { _, editErr = detached.SetValue("z") }}
+	if _, err := tr.LinkLeafrefs(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if editErr != nil || detached.Value() != "z" {
+		t.Fatalf("editing a node detached earlier: %v (value %q), want success", editErr, detached.Value())
+	}
+	other := s4ParseLinks(t, set, `{"pv2-links:c":{"t":["q"]}}`)
+	err := other.ApplyDiff(s4Diff(t, set, other, false), ApplyDiffOptions{Callback: func(_, _ *Node) error {
+		_, err := detached.SetValue("w")
+		return err
+	}})
+	if err != nil {
+		t.Fatalf("ApplyDiff whose callback edits an unrelated detached node: %v", err)
+	}
+}
+
+// TestS4HeldCheckIsConstantOnTheCommonPath: touching every node of a journaled deep chain,
+// whose state waits on nothing, makes no guard root walk (snapshot review 4, finding 2).
+func TestS4HeldCheckIsConstantOnTheCommonPath(t *testing.T) {
+	set := reviewDiffSet(t, s4JournalModule)
+	tr, op := s4OpTree(t, set, "5", "1", "9")
+	var nodes []*Node
+	for n := range op.allAny() {
+		nodes = append(nodes, n)
+	}
+	j := beginHashTransaction(tr)
+	heldWalks = 0
+	for _, n := range nodes {
+		if err := n.touch(); err != nil {
+			t.Fatal(err)
+		}
+		if err := childStorage(n).touch(); err != nil {
+			t.Fatal(err)
+		}
+	}
+	walks := heldWalks
+	j.end(nil)
+	if walks != 0 {
+		t.Fatalf("%d guard root walks on the common path", walks)
+	}
+}
+
+// TestS4CallbackHoldsTheDiffSource: an ApplyDiff callback that changes a leaf of the source
+// diff before the traversal reaches it is refused (the source is held through callbacks), and
+// ApplyDiff gives the reference result (snapshot review 4, direction note).
+func TestS4CallbackHoldsTheDiffSource(t *testing.T) {
+	set := s4LinksSet(t)
+	ref, _, _, _ := s4LinkedPair(t, set)
+	if err := ref.ApplyDiff(s4Diff(t, set, ref, false), ApplyDiffOptions{}); err != nil {
+		t.Fatal(err)
+	}
+	want := typedDump(ref)
+	a, _, _, _ := s4LinkedPair(t, set)
+	diff := s4Diff(t, set, a, false)
+	var leaf *Node
+	for n := range diff.top.first().allAny() {
+		if n.schema != nil && n.isTerm() && n.Value() == "z" {
+			leaf = n
+		}
+	}
+	if leaf == nil {
+		t.Fatal("setup: the diff has no created t='z'")
+	}
+	called := false
+	err := a.ApplyDiff(diff, ApplyDiffOptions{Callback: func(_, _ *Node) error {
+		if !called {
+			called = true
+			_, err := leaf.SetValue("zz")
+			s4PublicRefusal(t, "source SetValue", nil, err, false)
+		}
+		return nil
+	}})
+	if err != nil || !called {
+		t.Fatalf("ApplyDiff: %v (called %t)", err, called)
+	}
+	if got := typedDump(a); !reflect.DeepEqual(got, want) {
+		t.Fatalf("history differs from the reference:\n%v\nwant\n%v", got, want)
+	}
 }

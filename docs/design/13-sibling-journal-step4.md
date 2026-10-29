@@ -96,6 +96,17 @@ public ctx-taking entry: at each of its polls on a small fixture the context's E
 SetValue, Remove and Unlink of the root, NewTerm, Insert, Merge and NewPath into the held tree;
 each is refused in the public form and the result equals a benign run's.
 
+A held counter places, it does not own: a subtree detached earlier retains its old counter for
+accounting only. `heldNode` is O(1) while its node's own binding is not held, and only then walks
+to the root once: the node is held if it is in the held tree, or if the waiting state captured it
+(an in-flight detachment that state restores). An empty set has no member to place it and is held
+only by a waiting state bound to it; a node entering an empty set of the held tree is refused by
+its rebinding to the held counter or by the entry guard of the tree it enters
+(TestS4DetachedNodeNotHeldByItsOldTree, TestS4HeldCheckIsConstantOnTheCommonPath). Diff callbacks
+hold the source diff's counter as well as the destination's (`callUser(f, also...)`), so a
+callback cannot change a source node the traversal has yet to read
+(TestS4CallbackHoldsTheDiffSource).
+
 User code runs during a mutation only in the diff callbacks, the Reader of a ParseOp with a
 parent, and the methods of a context (and of the errors they all return). Around each the
 operation raises its state's `suspendDepth` and lowers it in a defer (`callUser`, `readUser`,

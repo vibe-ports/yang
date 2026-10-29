@@ -78,24 +78,51 @@ func (w *workCounter) held() bool {
 	return w != nil && (w.suspendDepth > 0 || w.journal.suspendedState())
 }
 
-// heldNode reports whether n is held: its governing state is suspended, or the counter that
-// governs it is (Node.touch's resolution).
+// heldNode reports whether n is held by an operation waiting on user code. The common case is
+// O(1): n's own binding (its children's counter and the state on it) is not held. Only when it
+// is does the check walk to n's root, once, on the refusal path: the hold applies to a node of
+// the held tree, or to a detached subtree the waiting state itself captured (an in-flight
+// detachment it restores); a subtree detached earlier keeps its old counter only as accounting,
+// and is not held by it.
 func heldNode(n *Node) bool {
 	if n == nil {
 		return false
 	}
-	if governing(n).suspendedState() {
-		return true
+	if !childStorage(n).work.held() {
+		return false // n's binding: the tree's counter, or one lent to the state on it
 	}
-	if w := childStorage(n).work; w.held() {
-		return true
+	heldWalks++
+	g := governing(n)
+	root := n
+	for x := n; x != nil; x = x.parent {
+		if g != nil && g.suspendedState() && g.nodes[x] != 0 {
+			return true // the waiting state captured it: its rollback restores it
+		}
+		root = x
 	}
-	t := n.treeOf()
-	return t != nil && t.work.held()
+	if root.tree != nil {
+		return root.tree.work.held()
+	}
+	return g.suspendedState() && g.detached[root] != 0
 }
 
-// heldSet reports whether the sibling set s is held.
-func heldSet(s *siblings) bool { return s != nil && (s.work.held() || s.journal().suspendedState()) }
+// heldWalks counts heldNode's root walks (tests: the common path must not walk).
+var heldWalks int
+
+// heldSet reports whether the sibling set s is held: as its first member is (a set and its
+// members share their root). An empty set has no member to place it: it is held only by a
+// waiting state bound to it. A counter-level hold alone does not reach it, as its counter may
+// be one a subtree detached earlier retains; a node entering an empty set of the held tree is
+// refused by its binding to the held counter (rebind), and one leaving a set of it by that set.
+func heldSet(s *siblings) bool {
+	if s == nil || !s.work.held() {
+		return false
+	}
+	if s.len() == 0 {
+		return s.journal().suspendedState()
+	}
+	return heldNode(s.At(0))
+}
 
 // userErr is an error returned by user code, classified while its state was still suspended.
 // It has no Unwrap or As: internal code (journal.fail, parse cleanup, diffDone) reaches only
@@ -216,9 +243,22 @@ func (e *restoredErr) Error() string {
 func (e *restoredErr) Unwrap() []error { return []error{e.outer, e.user.err} }
 
 // callUser runs user code f suspended, its error classified before the state resumes.
-func (w *workCounter) callUser(f func() error) error {
+func (w *workCounter) callUser(f func() error, also ...*workCounter) error {
 	defer w.suspend()()
+	for _, o := range also { // the other trees the operation reads (a diff source)
+		if o != w {
+			defer o.suspend()()
+		}
+	}
 	return classifyUser(f())
+}
+
+// workOf is the counter of n's tree (nil for a detached node).
+func workOf(n *Node) *workCounter {
+	if t := n.treeOf(); t != nil {
+		return &t.work
+	}
+	return nil
 }
 
 // readUser is io.ReadAll of a user Reader, suspended, its error classified inside.

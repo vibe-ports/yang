@@ -651,7 +651,7 @@ func (t *Tree) diffMergeR(src, parent *Node, cache *dupCache, o mergeOpts) error
 			return err
 		}
 		if o.cb != nil {
-			if err := t.work.callUser(func() error { return o.cb(src, dn) }); err != nil {
+			if err := t.work.callUser(func() error { return o.cb(src, dn) }, workOf(src)); err != nil { // the source diff is held too
 				return err
 			}
 		}
@@ -696,7 +696,7 @@ func (t *Tree) diffMergeR(src, parent *Node, cache *dupCache, o mergeOpts) error
 			return err
 		}
 		if o.cb != nil {
-			if err := t.work.callUser(func() error { return o.cb(nil, dn) }); err != nil {
+			if err := t.work.callUser(func() error { return o.cb(nil, dn) }, workOf(src)); err != nil { // the source diff is held too
 				return err
 			}
 		}

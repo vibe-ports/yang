@@ -211,7 +211,7 @@ func (t *Tree) applyR(parent, dn *Node, cb func(diff, node *Node) error, cache *
 		return err
 	}
 	if cb != nil {
-		if err := t.work.callUser(func() error { return cb(dn, match) }); err != nil {
+		if err := t.work.callUser(func() error { return cb(dn, match) }, workOf(dn)); err != nil { // the diff is held too
 			return err
 		}
 	}
