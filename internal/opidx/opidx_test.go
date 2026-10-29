@@ -533,3 +533,147 @@ func TestCountedDuplicateHeavyOccurrences(t *testing.T) {
 		previous = work
 	}
 }
+
+// TestOccurrencesBuildModel: Build over a sequence's handles answers every query as registering
+// them one by one does, keeps balanced trees that later edits maintain, costs one unit per
+// registered handle, and refuses (registering nothing) a non-empty index or unordered handles.
+func TestOccurrencesBuildModel(t *testing.T) {
+	rng := rand.New(rand.NewSource(6)) //nolint:gosec // a reproducible test sequence
+	for _, n := range []int{0, 1, 2, 7, 64, 1000} {
+		var seq Seq[int]
+		var hs []*Handle[int]
+		for i := range n {
+			at := rng.Intn(len(hs) + 1)
+			hs = slices.Insert(hs, at, seq.InsertBefore(valueAt(hs, at), i))
+		}
+		class := func(v int) (int, int, bool) { return v % 3, v % 5, v%7 != 0 }
+		ordered := make([]*Handle[int], 0, n)
+		for h := seq.First(); h != nil; h = seq.Next(h) {
+			ordered = append(ordered, h)
+		}
+		built, one := NewOccurrences[int, int, int](&seq), NewOccurrences[int, int, int](&seq)
+		var work uint64
+		built.SetWorkHook(func(u uint64) { work += u })
+		if !built.Build(ordered, class) {
+			t.Fatalf("n=%d: build refused", n)
+		}
+		registered := uint64(0)
+		for _, h := range ordered {
+			if s, k, ok := class(h.Value); ok {
+				one.Insert(s, k, h)
+				registered++
+			}
+		}
+		if work != registered {
+			t.Fatalf("n=%d: build work %d for %d handles", n, work, registered)
+		}
+		same := func(stage string) {
+			for s := range 3 {
+				for k := range 5 {
+					if built.Len(s, k) != one.Len(s, k) || built.First(s, k) != one.First(s, k) || built.Last(s, k) != one.Last(s, k) {
+						t.Fatalf("n=%d %s: class (%d,%d) differs", n, stage, s, k)
+					}
+					for _, h := range ordered {
+						if built.Next(s, k, h) != one.Next(s, k, h) {
+							t.Fatalf("n=%d %s: Next differs", n, stage)
+						}
+					}
+				}
+			}
+			for _, tr := range built.trees {
+				checkOccBalanced(t, tr.root)
+			}
+		}
+		same("built")
+		for i, h := range ordered {
+			if i%3 == 0 {
+				built.Remove(h)
+				one.Remove(h)
+			}
+		}
+		same("after removals")
+		if len(built.by) != 0 && built.Build(ordered, class) {
+			t.Fatalf("n=%d: a non-empty index was rebuilt", n)
+		}
+		if n > 1 {
+			fresh := NewOccurrences[int, int, int](&seq)
+			if fresh.Build([]*Handle[int]{ordered[1], ordered[0]}, class) || len(fresh.by) != 0 {
+				t.Fatalf("n=%d: unordered handles were registered", n)
+			}
+		}
+	}
+}
+
+func checkOccBalanced[T any](t *testing.T, n *occNode[T]) int {
+	t.Helper()
+	if n == nil {
+		return 0
+	}
+	l, r := checkOccBalanced(t, n.left), checkOccBalanced(t, n.right)
+	if l-r > 1 || r-l > 1 || n.height != 1+max(l, r) {
+		t.Fatal("an occurrence tree is unbalanced or its heights are stale")
+	}
+	return n.height
+}
+
+// TestRanksBuildModel: Build answers every query as inserting one by one does, with a balanced
+// tree, one unit per key per radix pass and per node, and refuses repeated or negative keys and
+// a non-empty set.
+func TestRanksBuildModel(t *testing.T) {
+	rng := rand.New(rand.NewSource(6)) //nolint:gosec // a reproducible test sequence
+	for _, n := range []int{0, 1, 2, 9, 255, 256, 3000} {
+		keys := rng.Perm(4 * n)[:n]
+		if n == 3000 {
+			keys[0] = 1 << 40 // six radix passes
+		}
+		var built, one Ranks
+		var work uint64
+		built.SetWorkHook(func(u uint64) { work += u })
+		if !built.Build(keys) {
+			t.Fatalf("n=%d: build refused", n)
+		}
+		largest := 0
+		for _, k := range keys {
+			one.Insert(k)
+			largest = max(largest, k)
+		}
+		passes := uint64(1)
+		for largest>>(8*passes) != 0 {
+			passes++
+		}
+		if work != uint64(n)*(passes+1) { //nolint:gosec // a test size
+			t.Fatalf("n=%d: build work %d, want %d", n, work, uint64(n)*(passes+1)) //nolint:gosec // a test size
+		}
+		if built.Len() != one.Len() {
+			t.Fatalf("n=%d: lengths differ", n)
+		}
+		var check func(*rankNode) int
+		check = func(x *rankNode) int {
+			if x == nil {
+				return 0
+			}
+			l, r := check(x.left), check(x.right)
+			if l-r > 1 || r-l > 1 || x.height != 1+max(l, r) {
+				t.Fatalf("n=%d: unbalanced", n)
+			}
+			return x.height
+		}
+		check(built.root)
+		for q := -1; q <= 4*n+1; q++ {
+			a, aok := built.Successor(q)
+			b, bok := one.Successor(q)
+			c, cok := built.Predecessor(q)
+			d, dok := one.Predecessor(q)
+			if a != b || aok != bok || c != d || cok != dok || built.Contains(q) != one.Contains(q) {
+				t.Fatalf("n=%d: query %d differs", n, q)
+			}
+		}
+		if n > 0 && built.Build(keys) {
+			t.Fatalf("n=%d: a non-empty set was rebuilt", n)
+		}
+	}
+	var r Ranks
+	if r.Build([]int{3, 1, 3}) || r.Build([]int{-1}) || r.Len() != 0 {
+		t.Fatal("repeated or negative keys were accepted")
+	}
+}

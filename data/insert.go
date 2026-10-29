@@ -986,8 +986,9 @@ func (t *Tree) indexAddBound(parent *Node, sib *siblings, n *Node, at int) uint6
 	journaled := sib.indexJournaled(&t.work)
 	bound := sib.orderAddBound(n, at, journaled)
 	if t.linkBuildsIndex(parent, sib, n, at) {
-		// the labels of every handle after n's insertion, and the header's image
+		// the labels of every handle after n's insertion, the header's image, and the build
 		bound = addHashBound(bound, uint64(sib.Len()+1)+slotUnits(journaled)/2) //nolint:gosec // a length is nonnegative
+		bound = addHashBound(bound, orderBuildBound(sib.Len()+1))
 	}
 	return bound
 }
@@ -2569,8 +2570,8 @@ func (t *Tree) rbPublish(parent *Node, sib *siblings, lo, hi int, group *rbGroup
 	}
 	rebuild := spliceNeedsOrder(sib, attach) // publishRun drops a present index
 	if rebuild {
-		// opBuild registers every sibling again (its build reports no work: reserve it here)
-		pub = addHashBound(pub, 8*usize+8)
+		// opBuild registers every sibling again (counted, not charged: reserve it here)
+		pub = addHashBound(pub, orderBuildBound(size))
 	}
 	if err := t.work.chargeHash(pub); err != nil {
 		return err

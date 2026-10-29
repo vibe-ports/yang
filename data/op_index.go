@@ -161,12 +161,20 @@ type orderBinding struct {
 	// state is the recovery state that captured owner whole: it journals every index write
 	// until it ends, whichever counter the set is bound to meanwhile
 	state *hashTransaction
+	// count is the counter an unbound binding (an index being built) reports its work to
+	count *workCounter
 }
 
 // Work counts index work, and inside a prepaid scope of the owner's counter draws it from the
 // credit (design 13 §4.4, class B; outside a scope it is counted only, class C).
 func (b *orderBinding) Work(units uint64) {
 	if b.owner == nil {
+		if w := b.count; w != nil {
+			w.Add(int64(min(units, math.MaxInt64)))
+			if w.prepaid {
+				w.draw(units)
+			}
+		}
 		return
 	}
 	b.owner.orderWork(units)
@@ -289,19 +297,40 @@ func (s *siblings) orderBuild(t *Tree) error {
 	}
 	st.seq.SetLabeled(true)
 	paid.close()
-	// unbound while it is built: unreachable until published, it reports no work or entries
-	o := newChildOrder(st, &orderBinding{})
+	// unbound while it is built: unreachable until published, it journals no entry; its work
+	// draws from an open credit (link's: indexAddBound has orderBuildBound), and is counted only
+	// otherwise (rbPublish charged orderBuildBound before its first write)
+	o := newChildOrder(st, &orderBinding{count: &t.work})
 	s.order = o
-	var prev *Node
+	hs := make([]*opidx.Handle[*Node], 0, st.seq.Len())
 	for h := st.seq.First(); h != nil; h = st.seq.Next(h) {
+		hs = append(hs, h)
+	}
+	// each class's tree is built balanced from its handles in sequence order: O(N), where
+	// registering them one by one was O(N log N) (design 14, step 6)
+	built := o.bySchema.Build(hs, func(n *Node) (*schema.Node, uint8, bool) { return n.schema, 0, n.schema != nil })
+	built = built && o.byExact.Build(hs, func(n *Node) (*schema.Node, exactKey, bool) {
+		key, ok := opExactValue(n)
+		return schemaOf(n), key, ok
+	})
+	built = built && o.byRB.Build(hs, func(n *Node) (*schema.Node, *rbGroup, bool) {
+		return n.schema, n.rbGroup, n.schema != nil && n.inRB && n.rbGroup != nil
+	})
+	built = built && o.byOpaqName.Build(hs, func(n *Node) (string, uint8, bool) { return n.Name(), 0, n.schema == nil })
+	built = built && o.byOpaqExact.Build(hs, func(n *Node) (opaqueKey, uint8, bool) { return opaqExactKey(n), 0, n.schema == nil })
+	var ranks [2][]int // the operation children's distinct ranks, per direction
+	var prev *Node
+	for _, h := range hs {
 		t.work.Add(1)
 		n := h.Value
-		o.register(n, h)
 		if n.schema != nil {
 			d := o.entries[n.schema]
 			if d == nil {
-				d = s.orderNewEntry(t, n.schema)
+				d = newOpEntry(t, n.schema)
 				o.entries[n.schema] = d
+				if opChild(n.schema) {
+					ranks[d.direction] = append(ranks[d.direction], d.rank)
+				}
 			} else if prev == nil || prev.schema != n.schema {
 				d.gaps++
 			}
@@ -312,8 +341,19 @@ func (s *siblings) orderBuild(t *Tree) error {
 		}
 		prev = n
 	}
+	built = built && o.ranks[0].Build(ranks[0]) && o.ranks[1].Build(ranks[1])
+	if !built {
+		panic("data: an index build over its own storage was refused")
+	}
 	o.rebind(&st.bind)
 	return nil
+}
+
+// orderBuildBound bounds the work orderBuild's registration reports for a set of n handles: a
+// handle enters at most three occurrence classes (Occurrences.Build), and a distinct rank takes
+// at most eight radix passes and its node (Ranks.Build).
+func orderBuildBound(n int) uint64 {
+	return mulHashBound(uint64(n), 12) + 8 //nolint:gosec // a length is nonnegative
 }
 
 // rebind points every structure of o at b.
@@ -329,16 +369,23 @@ func (o *childOrder) rebind(b *orderBinding) {
 }
 
 func (s *siblings) orderNewEntry(t *Tree, sn *schema.Node) *opEntry {
+	d := newOpEntry(t, sn)
+	if opChild(sn) {
+		s.order.ranks[d.direction].Insert(d.rank)
+	}
+	return d
+}
+
+// newOpEntry is the entry of sn's first instance; an operation child's rank is not registered.
+func newOpEntry(t *Tree, sn *schema.Node) *opEntry {
 	d := &opEntry{}
 	if !opChild(sn) {
 		return d
 	}
-	d.direction = 0
 	if sn.InOutput() {
 		d.direction = 1
 	}
 	d.rank = t.schemaRank(sn)
-	s.order.ranks[d.direction].Insert(d.rank)
 	return d
 }
 

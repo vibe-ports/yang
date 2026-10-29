@@ -2,6 +2,8 @@
 
 package opidx
 
+import "slices"
+
 // Ranks is a sparse AVL set of schema ranks. Use separate instances for input
 // and output; storage depends on populated ranks, not schema width.
 type Ranks struct {
@@ -118,6 +120,62 @@ func (r *Ranks) rankBalance(n *rankNode) *rankNode {
 		}
 		return r.rankLeft(n)
 	}
+	return n
+}
+
+// Build fills an empty set without a journal with keys, distinct and nonnegative, in any order:
+// an LSD radix sort by bytes (as many passes as the largest key has bytes) and a balanced tree
+// over the sorted keys, one unit of work per key per pass and per node: O(len(keys)), where
+// Insert one by one is O(n log n). It reports false, filling nothing, for a set that is not empty
+// or has a journal, and for a negative or repeated key.
+func (r *Ranks) Build(keys []int) bool {
+	if r.len != 0 || r.root != nil || r.journal() != nil {
+		return false
+	}
+	largest := 0
+	for _, k := range keys {
+		if k < 0 {
+			return false
+		}
+		largest = max(largest, k)
+	}
+	sorted, buf := slices.Clone(keys), make([]int, len(keys))
+	for shift := 0; ; shift += 8 {
+		var count [257]int
+		for _, k := range sorted {
+			r.charge()
+			count[(k>>shift)&0xff+1]++
+		}
+		for i := 1; i < len(count); i++ {
+			count[i] += count[i-1]
+		}
+		for _, k := range sorted {
+			d := (k >> shift) & 0xff
+			buf[count[d]] = k
+			count[d]++
+		}
+		sorted, buf = buf, sorted
+		if largest>>(shift+8) == 0 {
+			break
+		}
+	}
+	for i := 1; i < len(sorted); i++ {
+		if sorted[i] == sorted[i-1] {
+			return false
+		}
+	}
+	r.root, r.len = r.build(sorted), len(sorted)
+	return true
+}
+
+func (r *Ranks) build(keys []int) *rankNode {
+	if len(keys) == 0 {
+		return nil
+	}
+	r.charge()
+	m := len(keys) / 2
+	n := &rankNode{key: keys[m], left: r.build(keys[:m]), right: r.build(keys[m+1:])}
+	rankFix(n)
 	return n
 }
 

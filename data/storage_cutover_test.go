@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"reflect"
 	"runtime"
 	"slices"
 	"sort"
@@ -427,24 +428,147 @@ func TestPublishSparseDirtyRuns(t *testing.T) {
 
 // TestMergeSparseBatchChargesRebuild (design 14): a small sorted batch published beside N
 // unrelated siblings of an indexed set rebuilds the set's ordered index, a pass over all N
-// siblings whose build reports no work: rbPublish reserves and charges it with the publication.
+// siblings whose build charges nothing itself: rbPublish reserves and charges it with the
+// publication. The build's structure work is counted (step 6: each occurrence tree is built
+// balanced from its ordered handles, where registering them one by one descended from the root,
+// O(N log N) under a linear charge): the merge's counted work per charged unit stays flat as N
+// grows, and a budget one unit short refuses the merge before any write.
 func TestMergeSparseBatchChargesRebuild(t *testing.T) {
 	set := opIndexSet(t, `module m { yang-version 1.1; namespace "urn:m"; prefix m;
 	  rpc r { input { leaf-list v { type uint32; } leaf-list z { type uint32; ordered-by user; } } } }`)
-	for _, n := range []int{256, 2048} {
+	build := func(n int) (*Tree, *Node, *Tree) {
 		dst, op := opIndexParseRPC(t, set, `{"m:r":{"v":[0,100],"z":[`+opIndexValues(n, false)+`]}}`)
 		src, _ := opIndexParseRPC(t, set, `{"m:r":{"v":[7,3]}}`)
+		return dst, op, src
+	}
+	var ratios []float64
+	for _, n := range scaleSizes([]int{256, 2048, 16384}, 2) {
+		dst, op, src := build(n)
 		dst.work.hashUsed = 0
+		dst.work.Store(0)
 		if err := dst.Merge(src); err != nil {
 			t.Fatal(err)
 		}
 		if op.kids.order == nil {
 			t.Fatal("the destination lost its index")
 		}
+		used, work := dst.work.hashUsed, dst.work.Load()
 		// the merge's own work is charged about 13 units per sibling; the rebuild adds 8 more
-		if used := dst.work.hashUsed; used < 16*uint64(n) { //nolint:gosec // a small size
+		if used < 16*uint64(n) { //nolint:gosec // a small size
 			t.Fatalf("N=%d: the index rebuild was not charged (%d units)", n, used)
 		}
+		ratios = append(ratios, float64(work)/float64(used))
+		t.Logf("N=%d: counted work %d, charged %d (%.3f per unit)", n, work, used, ratios[len(ratios)-1])
 		opidxAssertTreeInvariant(t, dst)
+
+		dst, _, src = build(n)
+		before := snapshotHashBudgetTree(dst)
+		dst.work.hashUsed, dst.work.hashLimit = 0, used-1
+		if err := dst.Merge(src); !errors.Is(err, yang.ErrBudget) {
+			t.Fatalf("N=%d: merge with budget %d = %v, want ErrBudget", n, used-1, err)
+		}
+		if !reflect.DeepEqual(snapshotHashBudgetTree(dst), before) {
+			t.Fatalf("N=%d: the refused merge changed the tree", n)
+		}
+		opidxAssertTreeInvariant(t, dst)
+	}
+	if last := ratios[len(ratios)-1]; last > 1.1*ratios[0] {
+		t.Fatalf("counted work per charged unit grew with N: %v", ratios)
+	}
+}
+
+// TestMergeWideBatchRebuildRanks (design 14, step 6): the rebuild of an operation's index with N
+// distinct input children builds their rank sets from the collected ranks (Ranks.Build), not one
+// insertion each: counted work per charged unit stays flat as the schema widens with N (both
+// sizes take two radix passes; a pass per rank byte, at most eight, is orderBuildBound's).
+func TestMergeWideBatchRebuildRanks(t *testing.T) {
+	var ratios []float64
+	for _, n := range scaleSizes([]int{300, 3000}, 1) {
+		var mod, in strings.Builder
+		mod.WriteString(`module m { yang-version 1.1; namespace "urn:m"; prefix m; rpc r { input { leaf-list v { type uint32; }`)
+		in.WriteString(`{"m:r":{"v":[0,100]`)
+		for i := range n {
+			fmt.Fprintf(&mod, " leaf l%d { type uint32; }", i)
+			fmt.Fprintf(&in, `,"l%d":%d`, i, i)
+		}
+		mod.WriteString(" } } }")
+		in.WriteString("}}")
+		set := opIndexSet(t, mod.String())
+		dst, op := opIndexParseRPC(t, set, in.String())
+		src, _ := opIndexParseRPC(t, set, `{"m:r":{"v":[7,3]}}`)
+		dst.work.hashUsed = 0
+		dst.work.Store(0)
+		if err := dst.Merge(src); err != nil {
+			t.Fatal(err)
+		}
+		if op.kids.order == nil || op.kids.order.ranks[0].Len() != n+1 {
+			t.Fatal("the rebuilt index lost a rank")
+		}
+		ratios = append(ratios, float64(dst.work.Load())/float64(dst.work.hashUsed))
+		t.Logf("N=%d: counted work %d, charged %d", n, dst.work.Load(), dst.work.hashUsed)
+		opidxAssertTreeInvariant(t, dst)
+	}
+	if last := ratios[len(ratios)-1]; len(ratios) > 1 && last > 1.1*ratios[0] {
+		t.Fatalf("counted work per charged unit grew with the schema: %v", ratios)
+	}
+}
+
+// TestLinkBuildsIndexCharged (design 14, step 6): a link that makes N system-ordered siblings
+// unordered builds their index inside link's prepaid scope; the build draws its work from the
+// scope's credit (indexAddBound reserves orderBuildBound), so its charge covers it: counted work
+// per charged unit stays flat as N grows, and a budget one unit short refuses before any write.
+func TestLinkBuildsIndexCharged(t *testing.T) {
+	set := opIndexSet(t, `module m { yang-version 1.1; namespace "urn:m"; prefix m;
+	  container c { leaf a { type uint32; } leaf-list v { type uint32; } } }`)
+	build := func(n int) (*Tree, *Node, *Node) {
+		tr, _, err := parseJSONString(set, `{"m:c":{"v":[`+opIndexValues(n, false)+`]}}`, Reject, true)
+		if err != nil {
+			t.Fatal(err)
+		}
+		c := tr.top.first()
+		return tr, c, modelFreshTerm(t, c, "a", "1")
+	}
+	var ratios []float64
+	for _, n := range scaleSizes([]int{256, 2048, 16384}, 2) {
+		tr, c, v := build(n)
+		if c.kids.order != nil {
+			t.Fatal("fixture: the siblings are indexed already")
+		}
+		tr.work.visits = true
+		tr.work.Store(0)
+		end := tr.work.beginHashWork()
+		err := tr.link(c, &c.kids, v, c.kids.SchemaLen()) // a after the v run: unordered
+		end()
+		if err != nil {
+			t.Fatal(err)
+		}
+		if c.kids.order == nil {
+			t.Fatal("the link built no index")
+		}
+		used, work := tr.work.hashUsed, tr.work.Load()
+		ratios = append(ratios, float64(work)/float64(used))
+		t.Logf("N=%d: counted work %d, charged %d", n, work, used)
+		// a label per handle and two occurrence classes per leaf-list value (a refunded build
+		// charged about one unit per handle)
+		if used < 3*uint64(n) { //nolint:gosec // a small size
+			t.Fatalf("N=%d: the index build was not charged (%d units)", n, used)
+		}
+		opidxAssertTreeInvariant(t, tr)
+
+		tr, c, v = build(n)
+		before := snapshotHashBudgetTree(tr)
+		tr.work.hashLimit = used - 1
+		end = tr.work.beginHashWork()
+		err = tr.link(c, &c.kids, v, c.kids.SchemaLen())
+		end()
+		if !errors.Is(err, yang.ErrBudget) {
+			t.Fatalf("N=%d: link with budget %d = %v, want ErrBudget", n, used-1, err)
+		}
+		if !reflect.DeepEqual(snapshotHashBudgetTree(tr), before) || c.kids.order != nil {
+			t.Fatalf("N=%d: the refused link changed the tree", n)
+		}
+	}
+	if last := ratios[len(ratios)-1]; last > 1.1*ratios[0] {
+		t.Fatalf("counted work per charged unit grew with N: %v", ratios)
 	}
 }

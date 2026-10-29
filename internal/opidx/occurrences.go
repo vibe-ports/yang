@@ -198,6 +198,58 @@ func (o *Occurrences[T, S, K]) Insert(schema S, key K, h *Handle[T]) bool {
 	return true
 }
 
+// Build registers the live handles hs, in ascending sequence order, into an empty index without a
+// journal, each in the class class gives it (false: none). Each class's tree is built balanced
+// from its ordered handles: O(len(hs)) and one unit of work per registered handle, where Insert
+// one by one descends from the root each time (O(n log n)). It reports false, registering nothing,
+// when the index is not empty, has a journal, or a handle is foreign or out of order.
+func (o *Occurrences[T, S, K]) Build(hs []*Handle[T], class func(T) (S, K, bool)) bool {
+	if o.seq == nil || len(o.by) != 0 || len(o.trees) != 0 || o.journal() != nil {
+		return false
+	}
+	var classes map[occKey[S, K]][]*Handle[T]
+	var order []occKey[S, K] // first-seen order: the build does not depend on map iteration
+	for i, h := range hs {
+		if h == nil || h.owner != o.seq || i > 0 && hs[i-1].tag >= h.tag {
+			return false
+		}
+		schema, key, ok := class(h.Value)
+		if !ok {
+			continue
+		}
+		if classes == nil {
+			classes = make(map[occKey[S, K]][]*Handle[T])
+		}
+		k := occKey[S, K]{schema, key}
+		if classes[k] == nil {
+			order = append(order, k)
+		}
+		classes[k] = append(classes[k], h)
+	}
+	for _, k := range order {
+		l := classes[k]
+		t := &occTree[T, S, K]{key: k, first: l[0], last: l[len(l)-1], len: len(l)}
+		o.trees[k] = t
+		t.root = o.build(l)
+		for _, h := range l {
+			o.by[h] = &t.key
+		}
+	}
+	return true
+}
+
+// build returns a balanced tree over the ordered handles hs, one unit per node.
+func (o *Occurrences[T, S, K]) build(hs []*Handle[T]) *occNode[T] {
+	if len(hs) == 0 {
+		return nil
+	}
+	o.charge()
+	m := len(hs) / 2
+	n := &occNode[T]{handle: hs[m], left: o.build(hs[:m]), right: o.build(hs[m+1:])}
+	occFix(n)
+	return n
+}
+
 // Remove unregisters a handle while it still belongs to the sequence.
 func (o *Occurrences[T, S, K]) Remove(h *Handle[T]) bool {
 	kp := o.by[h]
