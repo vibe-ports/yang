@@ -585,3 +585,46 @@ func TestS4RefreshExactThroughValidation(t *testing.T) {
 	}
 	s4Check(t, "validated", []*Tree{tr})
 }
+
+// TestS4KeyRelocationRefusalsEndTheirScope: an indexed list key's SetValue relocates its
+// instance; refused at every limit, it leaves the tree unchanged and neither its relocation
+// transaction nor its hash-work scope installed (snapshot review 1, finding 1).
+func TestS4KeyRelocationRefusalsEndTheirScope(t *testing.T) {
+	set := reviewDiffSet(t, s4JournalModule)
+	build := func() (*Tree, *Node) {
+		tr, op := s4OpTree(t, set, "5")
+		for _, k := range []string{"5", "7", "9"} {
+			if _, err := tr.NewList(op, "e", []string{k}, NewOptions{}); err != nil {
+				t.Fatal(err)
+			}
+		}
+		return tr, s4Child(op, "e", "1").kids.first() // e[k=1] moves past e[k=3]
+	}
+	tr, key := build()
+	if _, err := key.SetValue("8"); err != nil {
+		t.Fatal(err)
+	}
+	need := tr.work.hashUsed
+	refused := 0
+	for limit := uint64(1); limit < need; limit++ {
+		tr, key := build()
+		before := snapshotHashBudgetTree(tr)
+		tr.work.hashLimit = limit
+		_, err := key.SetValue("8")
+		tr.work.hashLimit = 0
+		if err == nil {
+			continue
+		}
+		refused++
+		if tr.work.journal != nil || tr.work.hashDepth != 0 {
+			t.Fatalf("limit %d: journal %v, hash-work depth %d left behind", limit, tr.work.journal, tr.work.hashDepth)
+		}
+		if !reflect.DeepEqual(snapshotHashBudgetTree(tr), before) {
+			t.Fatalf("limit %d: the refusal changed the tree (%v)", limit, err)
+		}
+		s4Check(t, "key relocation", []*Tree{tr})
+	}
+	if refused == 0 {
+		t.Fatal("no limit refused the relocation")
+	}
+}

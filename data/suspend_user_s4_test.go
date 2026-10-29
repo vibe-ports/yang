@@ -16,6 +16,7 @@ import (
 
 	"github.com/vibe-ports/yang"
 	"github.com/vibe-ports/yang/internal/schema"
+	"github.com/vibe-ports/yang/internal/snap"
 )
 
 // #240 step 4 (design 13 §2.4, G8 c, d, h, h2, j; G10e): user code reached through a Reader, a
@@ -185,6 +186,21 @@ func TestS4GuardUserErrorMethods(t *testing.T) {
 		tree, op := parent()
 		trap := &trapErr{tree: tree, calls: &[]string{}}
 		_, _, _, err := parseOp(context.Background(), errReader{trap}, set, FormatJSON, opReply, op, Reject)
+		check(t, err, trap)
+	})
+	t.Run("public-reader", func(t *testing.T) {
+		tree, op := parent()
+		trap := &trapErr{tree: tree, calls: &[]string{}}
+		_, _, err := ParseOp(context.Background(), errReader{trap}, FormatJSON, snap.New(set), OpReply,
+			ParseOpOptions{Request: op})
+		check(t, err, trap)
+	})
+	t.Run("public-context", func(t *testing.T) {
+		tree, op := parent()
+		trap := &trapErr{tree: tree, calls: &[]string{}}
+		ctx := &mutatingCtx{Context: context.Background(), mutate: func() {}, err: trap}
+		_, _, err := ParseOp(ctx, strings.NewReader(`{}`), FormatJSON, snap.New(set), OpReply,
+			ParseOpOptions{Request: op})
 		check(t, err, trap)
 	})
 	t.Run("context", func(t *testing.T) {

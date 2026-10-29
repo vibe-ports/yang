@@ -228,7 +228,7 @@ const (
 func parseOp(ctx context.Context, r io.Reader, s *schema.Set, f Format, t opType, parent *Node,
 	unknown UnknownPolicy) (tree *Tree, op *Node, diags []yang.Diagnostic, err error) {
 	tree, op, _, diags, err = parseOpWith(ctx, r, s, f, t, parent, unknown, Budget{})
-	return tree, op, diags, err
+	return tree, op, diags, restoreUser(err) // its callers are public boundaries (tests)
 }
 
 // parseOpWith is parseOp with the resource limits b, for the NETCONF and RESTCONF messages too
@@ -250,8 +250,7 @@ func parseOpWith(ctx context.Context, r io.Reader, s *schema.Set, f Format, t op
 			}
 			panic(p)
 		}
-		journal.end(&err)
-		err = restoreUser(err) // the Reader's or context's own error, the state having ended
+		journal.end(&err) // a user error stays sealed: the public caller restores it last
 	}()
 	var oo opOpts
 	fp := parseJSON

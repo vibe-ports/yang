@@ -79,7 +79,7 @@ type OpResult struct {
 // instances of a leaf-list or list stay in Request's tree) and for XML each top-level element,
 // so Request's tree may stay modified after a failure.
 func ParseOp(ctx context.Context, r io.Reader, f Format, s *yang.Schema, typ OpType, o ParseOpOptions) (_ OpResult, _ []yang.Diagnostic, err error) {
-	defer func() { err = restoreUser(err) }() // a Reader's or context's own error, after the state ended
+	defer func() { err = restoreUser(err) }() // a Reader's or context's own error, once, after every state ended
 	fail := func(set *schema.Set, err error) (OpResult, []yang.Diagnostic, error) {
 		lg := &logger{set: set}
 		err = lg.done(err)

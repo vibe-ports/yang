@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"io"
+	"reflect"
 	"strings"
 	"time"
 
@@ -103,18 +104,63 @@ func classifyUser(err error) error {
 		deadline: errors.Is(err, context.DeadlineExceeded), budget: errors.Is(err, yang.ErrBudget)}
 }
 
-// restoreUser gives the caller the original user error back; call it at the public return,
-// after the operation's state has ended. A sealed error our own code wrapped keeps that wrapping:
-// the result unwraps to both, and its text names the original.
+// restoreUser gives the caller the original user error back; call it once, at the public
+// return, after the operation's state has ended. A sealed error our own code wrapped keeps that
+// wrapping: the result unwraps to both, and its text names the original. The search walks only
+// wrappers of this package and the standard library, so it never calls a user method (an
+// already restored error, or a user error that is not sealed, is returned as it is).
 func restoreUser(err error) error {
-	var u *userErr
-	if !errors.As(err, &u) {
+	u := sealedIn(err)
+	if u == nil {
 		return err
 	}
 	if err == u { //nolint:errorlint // the sealed error itself, returned as is
 		return u.err
 	}
 	return &restoredErr{outer: err, user: u}
+}
+
+// sealedIn finds a sealed user error through our own and the standard library's wrappers.
+func sealedIn(err error) *userErr {
+	stack := []error{err}
+	for len(stack) != 0 {
+		e := stack[len(stack)-1]
+		stack = stack[:len(stack)-1]
+		switch x := e.(type) {
+		case nil:
+			continue
+		case *userErr:
+			return x
+		case *restoredErr:
+			continue // restored already: what it wraps is user code
+		}
+		if !ownWrapper(e) {
+			continue
+		}
+		switch x := e.(type) {
+		case interface{ Unwrap() error }:
+			stack = append(stack, x.Unwrap())
+		case interface{ Unwrap() []error }:
+			stack = append(stack, x.Unwrap()...)
+		}
+	}
+	return nil
+}
+
+var ownPackage = reflect.TypeFor[userErr]().PkgPath()
+
+// ownWrapper reports whether e's Unwrap is ours or the standard library's.
+func ownWrapper(e error) bool {
+	t := reflect.TypeOf(e)
+	for t.Kind() == reflect.Pointer {
+		t = t.Elem()
+	}
+	switch p := t.PkgPath(); {
+	case p == ownPackage, p == "fmt", p == "errors":
+		return true
+	default:
+		return strings.HasPrefix(p, "github.com/vibe-ports/yang/")
+	}
 }
 
 type restoredErr struct {

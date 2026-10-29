@@ -965,41 +965,42 @@ func (t *Tree) changeNodeValue(n *Node, v types.Value, hashAmount uint64) {
 			t.work.hashErr = err
 			return
 		}
-		if err := unlinkRetainingHistory(target); err != nil {
-			finish(&err)
+		// Every outcome after this point ends the relocation exactly once: a failure rolls it
+		// back (reviving the source handle and position), success commits it.
+		var linkErr error
+		defer func() {
+			if linkErr == nil {
+				linkErr = t.work.hashErr
+			}
+			finish(&linkErr)
+			if linkErr != nil && t.work.hashErr == nil {
+				t.work.hashErr = linkErr // the refused reinsertion is the change's result (SetValue, diff, Merge)
+			}
+		}()
+		if linkErr = unlinkRetainingHistory(target); linkErr != nil {
 			return
 		}
-		if err := n.touch(); err != nil {
-			t.work.hashErr = err // the caller tests the sticky error
+		if linkErr = n.touch(); linkErr != nil {
 			return
 		}
 		n.value = v
 		refreshInstanceHash(&t.work, target)
-		linkErr := t.work.hashErr
+		linkErr = t.work.hashErr
 		if linkErr == nil {
 			linkErr = t.insert(parent, target, insertDefault)
 		}
 		if linkErr != nil {
+			// without a journal (an unindexed relocation) the forward recovery needs the old
+			// native snapshot back; a journaled one restores it anyway
 			n.value, target.hash = oldValue, oldHash
 			target.keyN, target.lkeyN = oldKeyN, oldLkeyN
 			target.lkeyFrozen, target.lkeyOK = oldFrozen, oldOK
 			target.lkeyPrefix, target.lkeyDirty = oldPrefix, oldDirty
 			for _, s := range slots {
-				if err := s.key.touch(); err != nil {
-					return
+				if s.key.touch() == nil {
+					s.key.keySlot = s.old
 				}
-				s.key.keySlot = s.old
 			}
-			finish(&linkErr) // rolls back: the source handle and position revive
-			// the refused reinsertion is the change's result (SetValue, diff, Merge)
-			if t.work.hashErr == nil {
-				t.work.hashErr = linkErr
-			}
-			return
-		}
-		finish(&linkErr)
-		if linkErr != nil && t.work.hashErr == nil {
-			t.work.hashErr = linkErr // a refused commit (a charge of the local transaction)
 		}
 		return
 	}
