@@ -4,8 +4,10 @@ package data
 
 import (
 	"errors"
+	"fmt"
 	"reflect"
 	"slices"
+	"strings"
 	"testing"
 
 	"github.com/vibe-ports/yang"
@@ -14,13 +16,18 @@ import (
 
 func opidxRound4CopiedRPC(t *testing.T) (*Tree, *Node) {
 	t.Helper()
+	return opidxRound4CopiedRPCOf(t, "3,1")
+}
+
+func opidxRound4CopiedRPCOf(t *testing.T, values string) (*Tree, *Node) {
+	t.Helper()
 	module := func(order string) string {
 		return `module m { yang-version 1.1; namespace "urn:m"; prefix m;
   rpc r { input { leaf-list v { type uint32; ` + order + ` } } } }`
 	}
 	source := opIndexSet(t, module("ordered-by user;"))
 	target := opIndexSet(t, module(""))
-	_, src := opIndexParse(t, source, `{"m:r":{"v":[3,1]}}`, opRPC, Reject)
+	_, src := opIndexParse(t, source, `{"m:r":{"v":[`+values+`]}}`, opRPC, Reject)
 	op, err := dupTo(src, target, nil, dupRecursive, false)
 	if err != nil {
 		t.Fatal(err)
@@ -169,8 +176,31 @@ func TestOpIndexKeylessDigestIgnoresChoiceCaseAncestry(t *testing.T) {
 // no rollback journal, so every budget refusal after a copied run is inspected
 // for unchanged sibling order, RB state, and sequence records.
 func TestHashBudgetCopiedRPCSortReservesOrderedLink(t *testing.T) {
+	runs := []string{"3,1", opidxRound4Descending(40)}
+	if raceEnabled && !fzFull {
+		runs = runs[:1] // the 40-instance run is swept at every point in the normal suite
+	}
+	for _, values := range runs {
+		testHashBudgetCopiedRPCSort(t, values)
+	}
+}
+
+// opidxRound4Descending lists n descending values (a copied user-ordered run the first sorted
+// insertion reorders whole).
+func opidxRound4Descending(n int) string {
+	var b strings.Builder
+	for i := n; i >= 1; i-- {
+		if i != n {
+			b.WriteString(",")
+		}
+		fmt.Fprint(&b, 2*i+1)
+	}
+	return b.String()
+}
+
+func testHashBudgetCopiedRPCSort(t *testing.T, values string) {
 	build := func() (*Tree, func() error) {
-		tr, op := opidxRound4CopiedRPC(t)
+		tr, op := opidxRound4CopiedRPCOf(t, values)
 		return tr, func() error {
 			_, err := tr.NewTerm(op, "v", "4", NewOptions{})
 			return err

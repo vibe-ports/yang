@@ -845,6 +845,9 @@ func (t *Tree) rbPos(sib *siblings, n *Node, lo, hi int, compare func(*Node, *No
 			return lo, true
 		}
 		amount = addHashBound(amount, link)
+		// the publication's index work (refreshRB per member, orderReorder) prepays inside
+		// itself; reserve it with the rest, before the run changes
+		amount = addHashBound(amount, sib.publicationIndexBound(l.Slice(lo, hi)))
 		// the sibling-slice shift and copy of n's link, charged with the sorted insertion
 		slots := linkSlots(sib, n, at)
 		metaCost := addHashBound(sib.transferCost(leader, run[0]), sib.transferCost(run[0], n))

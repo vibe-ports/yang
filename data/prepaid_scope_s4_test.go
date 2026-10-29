@@ -63,6 +63,9 @@ func TestS4PrepaidOverdraftProductionPolicy(t *testing.T) {
 	separate := fresh.work.hashUsed
 	exceeded := 0
 	for limit := uint64(1); limit < need; limit++ {
+		if !s4RaceLimit(limit, need) {
+			continue
+		}
 		tr, op := s4OpTree(t, set, "5", "1", "9")
 		before := snapshotHashBudgetTree(tr)
 		over := false
@@ -163,7 +166,7 @@ func TestS4PrepaidCumulativeEnforcement(t *testing.T) {
 	need := tr.work.hashUsed
 	refusedLater := 0
 	for limit := uint64(1); limit < need; limit++ {
-		if raceEnabled && limit%5 != 0 {
+		if !s4RaceLimit(limit, need) {
 			continue
 		}
 		tr, op := s4OpTree(t, set, "5", "1", "9")

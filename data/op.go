@@ -201,12 +201,13 @@ func (t *Tree) ValidateOp(ctx context.Context, typ OpType, o ValidateOpOptions) 
 		defer o.Operational.work.beginHashWork()()
 	}
 	journal, err := beginJointTransaction(t, o.Operational)
+	// panic-safe finalization, armed at once (design 13 §2.4): a panic in user code (a context's
+	// error classification) while the operation subtree sits in the dependency restores both
+	// trees, detaches the state and closes its hash-work scope before the panic goes on
+	defer journal.endPanicSafe(&err)
 	if err != nil {
-		journal.end(&err)
 		return nil, err
 	}
-	diags, err := validateOp(ctx, t.context(), first, o.Operational, vt, o.Budget)
 	// a failed journal charge fails the operation, and both trees roll back
-	journal.end(&err)
-	return diags, err
+	return validateOp(ctx, t.context(), first, o.Operational, vt, o.Budget)
 }

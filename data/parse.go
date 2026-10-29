@@ -241,16 +241,14 @@ func parseOpWith(ctx context.Context, r io.Reader, s *schema.Set, f Format, t op
 	// journal restores and detaches, its hash-work scope closes, and the panic goes on; on a
 	// normal return it is the former fail-then-end sequence, so precedence does not change.
 	var journal *hashTransaction
+	// a closure: it ends the journal assigned below; a user error stays sealed (the public
+	// caller restores it last)
 	defer func() {
 		if p := recover(); p != nil {
-			if journal != nil {
-				journal.rollback = true
-				failed := errPanicked
-				journal.end(&failed)
-			}
+			journal.abandon()
 			panic(p)
 		}
-		journal.end(&err) // a user error stays sealed: the public caller restores it last
+		journal.end(&err)
 	}()
 	var oo opOpts
 	fp := parseJSON

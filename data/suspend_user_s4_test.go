@@ -114,9 +114,11 @@ func TestS4GuardReaderAndContextDuringParse(t *testing.T) {
 			t.Fatalf("startup refusal and a Reader error: %v, want ErrBudget first", err)
 		}
 		tree.work.hashLimit = 0
-		big := strings.NewReader(`{"a:al":"` + strings.Repeat("1", DefaultMaxBytes) + `"}`)
-		if _, _, _, err := parseOp(context.Background(), big, set, FormatJSON, opReply, op, Reject); !errors.Is(err, yang.ErrBudget) {
-			t.Fatalf("oversized input: %v", err)
+		if !raceEnabled { // a DefaultMaxBytes input; TestParseOpInputErrors covers it under race
+			big := strings.NewReader(`{"a:al":"` + strings.Repeat("1", DefaultMaxBytes) + `"}`)
+			if _, _, _, err := parseOp(context.Background(), big, set, FormatJSON, opReply, op, Reject); !errors.Is(err, yang.ErrBudget) {
+				t.Fatalf("oversized input: %v", err)
+			}
 		}
 		if tree.work.journal != nil {
 			t.Fatal("a journal stayed installed")
@@ -429,4 +431,44 @@ func newTreeWith(set *schema.Set, root *Node) *Tree {
 		panic(err)
 	}
 	return tr
+}
+
+// TestS4ValidateOpPanickingContextError: public ValidateOp with a dependency and a context whose
+// error's Is panics while the operation subtree sits in the dependency: the panic propagates,
+// both trees are restored, no state stays installed or enrolled, the hash-work scopes close,
+// and both trees then validate and mutate again (snapshot review 2, finding 2).
+func TestS4ValidateOpPanickingContextError(t *testing.T) {
+	set := reviewDiffSet(t, s4JournalModule)
+	req, _ := s4OpTree(t, set, "5", "1", "9")
+	oper := s4DataTree(t, set, "3", "7")
+	before := s4Dumps(req, oper)
+	polls := 0
+	ctx := &mutatingCtx{Context: context.Background(), mutate: func() { polls++ }}
+	ctx.err = &trapErr{tree: req, calls: &[]string{}, panics: true}
+	func() {
+		defer func() {
+			if recover() == nil {
+				t.Fatal("the panic did not propagate")
+			}
+		}()
+		_, _ = req.ValidateOp(ctx, OpRPC, ValidateOpOptions{Operational: oper})
+	}()
+	if polls == 0 {
+		t.Fatal("validation never polled its context")
+	}
+	for _, tr := range []*Tree{req, oper} {
+		if tr.work.journal != nil || tr.work.hashDepth != 0 {
+			t.Fatalf("after the panic: journal %v, hash-work depth %d", tr.work.journal, tr.work.hashDepth)
+		}
+	}
+	if got := s4Dumps(req, oper); !reflect.DeepEqual(got, before) {
+		t.Fatalf("the trees were not restored:\n%v\nwant\n%v", got, before)
+	}
+	s4Check(t, "after", []*Tree{req, oper})
+	if _, err := req.ValidateOp(context.Background(), OpRPC, ValidateOpOptions{Operational: oper}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := oper.NewTerm(oper.top.first(), "u", "z", NewOptions{}); err != nil {
+		t.Fatal(err)
+	}
 }

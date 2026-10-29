@@ -524,6 +524,26 @@ func (j *hashTransaction) end(result *error) {
 	j.spare()
 }
 
+// endPanicSafe is end for a deferred call: on a panic it restores and detaches the transaction
+// (rollback set) and lets the panic go on; otherwise it is end(result).
+// It must itself be the deferred function (recover works only there).
+func (j *hashTransaction) endPanicSafe(result *error) {
+	if p := recover(); p != nil {
+		j.abandon()
+		panic(p)
+	}
+	j.end(result)
+}
+
+// abandon restores and detaches the transaction of an operation a panic interrupts.
+func (j *hashTransaction) abandon() {
+	if j != nil {
+		j.rollback = true
+		failed := errPanicked
+		j.end(&failed)
+	}
+}
+
 // fail makes a failed journal charge the operation's result.
 func (j *hashTransaction) fail(result *error) {
 	if j == nil {
@@ -813,15 +833,16 @@ func (j *hashTransaction) captureNode(n *Node) error {
 		}
 	}
 	if n.links != nil {
+		// the capture charges its counterparts before the scan visits them
+		if err := j.captureLinks(n.links); err != nil {
+			return err
+		}
 		for _, side := range [2][]*Node{n.links.leafrefs, n.links.targets} {
 			for _, c := range side {
 				if governing(c).suspendedState() {
 					return j.refuse() // freeLinks, the bulk cleaner or a link edit would reach it
 				}
 			}
-		}
-		if err := j.captureLinks(n.links); err != nil {
-			return err
 		}
 		for _, c := range n.links.leafrefs {
 			if err := j.captureOwner(c); err != nil {

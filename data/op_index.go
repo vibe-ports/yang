@@ -433,6 +433,42 @@ func (s *siblings) orderReorder(run siblingSpan) error {
 	return nil
 }
 
+// publicationIndexBound bounds what publishing the reordered run [lo, hi) of s does to its index
+// (rbPos): one refreshRB per member, then orderReorder, its planning walk included. It plans
+// before the run changes (the sequence's labels are what orderReorder will see: refreshRB
+// changes only occurrence classes), charging that plan through pay.
+func (s *siblings) publicationIndexBound(run siblingSpan) uint64 {
+	o := s.order
+	if o == nil || run.Len() == 0 {
+		return 0
+	}
+	journaled := s.indexJournaled(s.work)
+	var bound uint64
+	var first, last *opidx.Handle[*Node]
+	for _, n := range run.All() {
+		h := o.byNode[n]
+		if h == nil {
+			return bound // an unindexed run: rebuilt (unbound, uncharged), not reordered
+		}
+		bound = addHashBound(bound, addHashBound(o.byRB.RemoveBound(h, journaled), o.byRB.InsertBoundAny(journaled)))
+		bound = addHashBound(bound, orderCells(journaled)+s.orderRegisterBound(n, journaled))
+		if c, _ := o.seq.Compare(h, first); first == nil || c < 0 {
+			first = h
+		}
+		if c, _ := o.seq.Compare(h, last); last == nil || c > 0 {
+			last = h
+		}
+	}
+	planned := uint64(0)
+	pay := s.work.planPay()
+	counted := func(units uint64) bool {
+		planned += units
+		return pay == nil || pay(units)
+	}
+	bound = addHashBound(bound, o.seq.ReplaceHandlesBound(first, last, run.Len(), journaled, counted))
+	return addHashBound(bound, planned) // orderReorder plans the same walk again
+}
+
 // orderRegisterBound bounds unregistering and registering n again (its occurrence classes and
 // its byNode cell).
 func (s *siblings) orderRegisterBound(n *Node, journaled bool) uint64 {
@@ -717,7 +753,7 @@ func (s *siblings) refreshRB(n *Node) error {
 	// paid inside link's scope; on its own (rbPos's new tree) it prepays its point bound
 	nested, err := s.work.prepay(s.refreshRBBound(n, s.indexJournaled(s.work)), false)
 	if err != nil {
-		return s.touchSticky() // never nil here: the refusal is sticky
+		return err // sticky: prepay's charge recorded it
 	}
 	defer s.work.closeCredit(nested)
 	was := s.order.byRB.Remove(h)

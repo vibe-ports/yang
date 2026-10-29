@@ -170,13 +170,13 @@ func s4History(t *testing.T, sc s4Scenario, limited int) {
 	}
 	limits := map[uint64]bool{} // true: a charge point's own limit, kept under the race detector too
 	for limit := uint64(1); limit < need; limit++ {
-		if raceSweep(limit, need) {
+		if s4RaceLimit(limit, need) {
 			limits[limit] = false
 		}
 	}
 	for i, at := range points {
 		// under the race detector every 4th charge point is kept (all of them normally)
-		if at > 1 && (!raceEnabled || fzFull || i%4 == 0) {
+		if at > 1 && (!raceEnabled || fzFull || i == 0) {
 			limits[at-1] = true
 		}
 	}
@@ -527,6 +527,9 @@ func TestS4BulkPrefixPublicationRefusal(t *testing.T) {
 	}
 	limits := map[uint64]bool{}
 	for limit := uint64(1); limit < need; limit++ {
+		if !s4RaceLimit(limit, need) {
+			continue
+		}
 		limits[limit] = true
 	}
 	for _, at := range points {
@@ -635,4 +638,11 @@ func s4Refused(err error) bool {
 	}
 	var ve *ValidationError
 	return errors.As(err, &ve) && ve.RC() == "LY_EINVAL" && strings.Contains(ve.Error(), errInProgress.Msg)
+}
+
+// s4RaceLimit is the S4 sweeps' sampling under the race detector: these budget histories run on
+// one goroutine and are swept at every limit in the normal suite, so the race run keeps only the
+// first, a middle and the last limit (YANG_STAGE3_FUZZ_FULL=1 keeps all).
+func s4RaceLimit(limit, need uint64) bool {
+	return !raceEnabled || fzFull || limit == 1 || limit == need/2 || limit+1 == need
 }

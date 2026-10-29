@@ -41,6 +41,9 @@ func TestS4ReadCreditFirstUnitRefusal(t *testing.T) {
 		return tr.work.Load(), after.Mallocs - before.Mallocs
 	}
 	for limit := uint64(1); limit <= 8; limit++ {
+		if raceEnabled && !fzFull && limit > 1 {
+			break // swept in the normal suite
+		}
 		smallWork, smallAllocs := measure(8, limit)
 		largeWork, largeAllocs := measure(2048, limit)
 		if largeWork > 2*smallWork+16 || largeAllocs > 2*smallAllocs+16 {

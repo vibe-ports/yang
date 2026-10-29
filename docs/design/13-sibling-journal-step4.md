@@ -82,7 +82,7 @@ from an enclosing scope's credit (a nested prepay opens nothing):
 
 | Write | Caller | Prepaid |
 |---|---|---|
-| `orderReorder` | sorted and parser publication | one `ReplaceHandles` over the run (its handles occupy one contiguous range), its relabel planned exactly, with the occurrence updates |
+| `orderReorder` | sorted and parser publication | one `ReplaceHandles` over the run (its handles occupy one contiguous range), its relabel planned exactly, with the occurrence updates; `rbPos` reserves it, and its `refreshRB`s, in its check before the run changes (`publicationIndexBound`) |
 | `refreshRB` | `rbPos`'s new tree | its point bound |
 | `refreshExact` | `validateIncomplete` | its point bound |
 
@@ -115,8 +115,10 @@ is refused with LY_EINVAL (`errInProgress`) before it writes (D-0148):
    `prepareUnlink`, the value change, `reserveFreeLinks`, `linkLeafrefNode`), each visit charged
    before it is made.
 
-`freeLinks` and `linkLeafrefNode` return their errors. `parseOpWith` arms a panic-safe
-finalization before its journal opens.
+`freeLinks` and `linkLeafrefNode` return their errors. `parseOpWith` and `ValidateOp` arm a
+panic-safe finalization (`abandon`, `endPanicSafe`) before user code can run, so a panic in a
+Reader, a context or an error method restores and detaches the state and closes its hash-work
+scope.
 
 ## Mutation inventory (step 4)
 
@@ -187,6 +189,16 @@ Every index mutator that swallowed a refused touch returns it and makes it stick
     partial work is kept, as before); the guard only guarantees no suspension or installed state
     is left behind.
 
+The second snapshot review (`240s4-snap2`) found three more, fixed: `rbPos` reached the new
+index prepays after the run had changed (now reserved before it); `ValidateOp` did not arm a
+panic-safe finalization; `captureNode` scanned counterparts before charging them.
+
+**Open (direction, from `240s4-snap2`):** the parser's publication reaches a fresh fallible
+prepay (`orderReorder` in `publishDirty`) instead of drawing on a completion credit retained on
+the pending run (design 13 §6). A refusal there fails the parse, which its state (or, without a
+parent, discarding the parsed tree) restores, so nothing is left half published; but the
+funding model is not the design's yet.
+
 The first snapshot review (`240s4-snap1`) found five blocking issues, all fixed: a value change's
 relocation could return without ending its scope; captured detached sets were not enrolled;
 `ParseOp` restored a user error twice; the exempt writes appended entries past a refused budget;
@@ -215,6 +227,10 @@ removal limit from 128 to 192: the index removal's point bound is prepaid before
   TestS4GuardReaderAndContextDuringParse, TestS4GuardUserErrorMethods, TestS4GuardUserPanics,
   TestS4GuardValidationPolls, TestS4PollsGoThroughOneHelper, TestS4IndexEditErrorsPropagate,
   TestS4GuardDetachedRequest, TestS4RestoreUserKeepsOurWrapping, TestS4LinkGuardRefusalScaling,
-  TestS4KeyRelocationRefusalsEndTheirScope, TestPlannerPaysBeforeEachVisit.
+  TestS4KeyRelocationRefusalsEndTheirScope, TestPlannerPaysBeforeEachVisit,
+  TestS4ValidateOpPanickingContextError, TestS4CounterpartCaptureRefusalScaling, and the 40-instance
+  run of TestHashBudgetCopiedRPCSortReservesOrderedLink.
+- Under the race detector the S4 budget sweeps keep the first, a middle and the last limit
+  (`s4RaceLimit`); the normal suite sweeps every limit.
 - The step-4 preparation histories (TestS4JournalRefusalHistories,
   TestS4BulkPrefixPublicationRefusal) pass unchanged.

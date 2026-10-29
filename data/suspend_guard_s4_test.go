@@ -413,8 +413,76 @@ func TestS4LinkGuardRefusalScaling(t *testing.T) {
 		return tr.work.Load(), after.Mallocs - before.Mallocs
 	}
 	for limit := uint64(1); limit <= 6; limit++ {
+		if raceEnabled && !fzFull && limit > 1 {
+			break // swept in the normal suite
+		}
 		smallWork, smallAllocs := measure(8, limit)
 		largeWork, largeAllocs := measure(4096, limit)
+		if largeWork > smallWork+16 || largeAllocs > smallAllocs+16 {
+			t.Fatalf("limit %d: refusal work %d -> %d, allocations %d -> %d", limit, smallWork, largeWork, smallAllocs, largeAllocs)
+		}
+	}
+}
+
+// TestS4CounterpartCaptureRefusalScaling: a journaled capture of a node with leafref
+// counterparts charges them before its suspension scan visits them and before it copies them,
+// so a capture refused at any limit the 8-counterpart capture needs does the same work and
+// allocations with 4,096 counterparts (snapshot review 2, finding 3).
+func TestS4CounterpartCaptureRefusalScaling(t *testing.T) {
+	set := reviewDiffSet(t, s4JournalModule)
+	build := func(degree int) (*Tree, *siblings) {
+		a := s4DataTree(t, set, "3")
+		b := s4DataTree(t, set, "3")
+		target := s4Child(a.top.first(), "v", "m")
+		for i := range degree {
+			ref, err := b.NewTerm(b.top.first(), "u", fmt.Sprint("r", i), NewOptions{})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := linkLeafrefNode(target, ref); err != nil {
+				t.Fatal(err)
+			}
+		}
+		return a, &a.top.first().kids
+	}
+	capture := func(degree int, limit uint64) (int64, uint64, error) {
+		a, s := build(degree)
+		done := a.work.beginHashWork()
+		defer done()
+		j := beginHashTransaction(a)
+		a.work.Store(0)
+		a.work.visits = true
+		a.work.hashLimit = limit
+		runtime.GC()
+		var before, after runtime.MemStats
+		runtime.ReadMemStats(&before)
+		err := s.touch()
+		runtime.ReadMemStats(&after)
+		a.work.hashLimit = 0
+		j.end(nil)
+		return a.work.Load(), after.Mallocs - before.Mallocs, err
+	}
+	a, s := build(8)
+	done := a.work.beginHashWork()
+	j := beginHashTransaction(a)
+	if err := s.touch(); err != nil {
+		t.Fatal(err)
+	}
+	need := a.work.hashUsed
+	j.end(nil)
+	done()
+	for limit := uint64(1); limit < need; limit++ {
+		if raceEnabled && !fzFull && limit%8 != 1 {
+			continue
+		}
+		smallWork, smallAllocs, err := capture(8, limit)
+		if err == nil {
+			continue
+		}
+		largeWork, largeAllocs, err := capture(4096, limit)
+		if !errors.Is(err, yang.ErrBudget) {
+			t.Fatalf("limit %d: %v", limit, err)
+		}
 		if largeWork > smallWork+16 || largeAllocs > smallAllocs+16 {
 			t.Fatalf("limit %d: refusal work %d -> %d, allocations %d -> %d", limit, smallWork, largeWork, smallAllocs, largeAllocs)
 		}

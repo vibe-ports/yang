@@ -383,7 +383,7 @@ func TestS4RefusedLocalMoveRevivesHandle(t *testing.T) {
 	need := dst.work.hashUsed
 	refused := 0
 	for limit := uint64(1); limit < need; limit++ {
-		if raceEnabled && limit%7 != 0 && limit != need-1 {
+		if !s4RaceLimit(limit, need) {
 			continue
 		}
 		src, srcOp, dst, dstOp, moved := build(t)
@@ -574,6 +574,9 @@ func TestS4RefreshExactThroughValidation(t *testing.T) {
 	}
 	need := tr.work.hashUsed
 	for limit := uint64(1); limit < need; limit++ {
+		if !s4RaceLimit(limit, need) {
+			continue
+		}
 		tr, op := build()
 		index, snap := s4IndexImage(&op.kids), snapshotHashBudgetTree(tr)
 		tr.work.hashLimit = limit
@@ -610,6 +613,9 @@ func TestS4KeyRelocationRefusalsEndTheirScope(t *testing.T) {
 	need := tr.work.hashUsed
 	refused := 0
 	for limit := uint64(1); limit < need; limit++ {
+		if !s4RaceLimit(limit, need) {
+			continue
+		}
 		tr, key := build()
 		before := snapshotHashBudgetTree(tr)
 		tr.work.hashLimit = limit
