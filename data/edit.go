@@ -809,7 +809,7 @@ func (t *Tree) changeTermVal(n *Node, v types.Value, dflt bool) (valChange, dflt
 // contexts the callbacks compare storage that the port's value equality does not see.
 func (t *Tree) changeTermValCompared(n *Node, v types.Value, dflt, equal bool) (valChange, dfltChange bool) {
 	if !equal {
-		if err := linkGuard(n); err != nil { // the value preflight of freeLinks below
+		if err := linkGuard(n, &t.work); err != nil { // the value preflight of freeLinks below
 			t.work.hashErr = err
 			return false, false
 		}

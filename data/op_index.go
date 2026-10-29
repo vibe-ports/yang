@@ -411,7 +411,7 @@ func (s *siblings) orderReorder(run siblingSpan) error {
 		}
 	}
 	journaled := s.indexJournaled(s.work)
-	bound := o.seq.ReplaceHandlesBound(first, last, len(handles), journaled)
+	bound := o.seq.ReplaceHandlesBound(first, last, len(handles), journaled, s.work.planPay())
 	for _, n := range run.All() {
 		bound = addHashBound(bound, s.orderRegisterBound(n, journaled))
 	}
@@ -795,7 +795,7 @@ func (s *siblings) orderAddBound(n *Node, at int, journaled bool) uint64 {
 		}
 		at += s.SchemaLen()
 	}
-	bound := addHashBound(o.seq.SelectBound(), o.seq.InsertBound(o.seq.Peek(at), journaled))
+	bound := addHashBound(o.seq.SelectBound(), o.seq.InsertBound(o.seq.Peek(at), journaled, s.work.planPay()))
 	bound = addHashBound(bound, orderCells(journaled))
 	if n.schema == nil {
 		bound = addHashBound(bound, o.byOpaqName.InsertBound(n.Name(), 0, journaled))

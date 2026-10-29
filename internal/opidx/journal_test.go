@@ -390,10 +390,10 @@ func TestPointBoundsCoverJournaledEdits(t *testing.T) {
 						}
 					}
 					var nh *Handle[int]
-					if b, free := seq.InsertBound(anchor, journaled), InsertBoundAny(seq.Len(), journaled); b > free {
+					if b, free := seq.InsertBound(anchor, journaled, nil), InsertBoundAny(seq.Len(), journaled); b > free {
 						t.Fatalf("seed %d: point bound %d above the position-free bound %d", seed, b, free)
 					}
-					check("insert", seq.InsertBound(anchor, journaled), func() { nh = seq.InsertBefore(anchor, i) })
+					check("insert", seq.InsertBound(anchor, journaled, nil), func() { nh = seq.InsertBefore(anchor, i) })
 					live = append(live, nh)
 					check("occ insert", occ.InsertBound(i%4, 0, journaled), func() { occ.Insert(i%4, 0, nh) })
 				case c < 7:
@@ -408,7 +408,7 @@ func TestPointBoundsCoverJournaledEdits(t *testing.T) {
 						a = nil
 					}
 					check("occ remove", occ.RemoveBound(x, journaled), func() { occ.Remove(x) })
-					check("move", seq.MoveBound(x, a, journaled), func() { seq.MoveBefore(x, a) })
+					check("move", seq.MoveBound(x, a, journaled, nil), func() { seq.MoveBefore(x, a) })
 					check("occ insert", occ.InsertBound(x.Value%4, 0, journaled), func() { occ.Insert(x.Value%4, 0, x) })
 				case c == 9 && len(live) > 2 && r.IntN(2) == 0:
 					lo := r.IntN(len(live) - 1)
@@ -421,7 +421,7 @@ func TestPointBoundsCoverJournaledEdits(t *testing.T) {
 					for _, h := range hs {
 						occ.Remove(h) // their relative order changes: unregister first
 					}
-					check("replace", seq.ReplaceHandlesBound(first, last, len(hs), journaled), func() {
+					check("replace", seq.ReplaceHandlesBound(first, last, len(hs), journaled, nil), func() {
 						if !seq.ReplaceHandles(lo, lo+len(hs), hs) {
 							t.Fatal("ReplaceHandles refused a contiguous range")
 						}
@@ -442,5 +442,42 @@ func TestPointBoundsCoverJournaledEdits(t *testing.T) {
 				t.Fatal(err)
 			}
 		}
+	}
+}
+
+// TestPlannerPaysBeforeEachVisit: the label planner charges its walk step by step through its
+// Pay, so a refused budget stops it at its first units however dense the labels are, and the
+// refused bound saturates (snapshot review 1, finding 5).
+func TestPlannerPaysBeforeEachVisit(t *testing.T) {
+	var seq Seq[int]
+	anchor := seq.InsertBefore(nil, 0)
+	for i := range 4096 {
+		seq.InsertBefore(anchor, i+1)
+	}
+	tag := uint64(1)
+	for h := seq.First(); h != nil; h = h.next { // packed labels: no gap anywhere
+		h.tag = tag
+		tag++
+	}
+	for _, budget := range []uint64{0, 1, 5} {
+		calls := uint64(0)
+		pay := func(units uint64) bool {
+			calls += units
+			return calls <= budget
+		}
+		if b := seq.InsertBound(anchor, true, pay); b != ^uint64(0) && calls > budget {
+			t.Fatalf("budget %d: a refused plan returned the bound %d", budget, b)
+		}
+		if calls > budget+1 {
+			t.Fatalf("budget %d: the planner made %d paid visits", budget, calls)
+		}
+	}
+	unpaid := seq.InsertBound(anchor, true, nil)
+	paid := uint64(0)
+	if seq.InsertBound(anchor, true, func(u uint64) bool { paid += u; return true }) != unpaid {
+		t.Fatal("paying changed the bound")
+	}
+	if paid < 8 {
+		t.Fatalf("a full plan paid only %d visits: the labels are not dense", paid)
 	}
 }

@@ -1152,17 +1152,6 @@ func (j *hashTransaction) refuse() error {
 	return errInProgress
 }
 
-// governingCounter is the counter whose state would govern c (Node.touch's resolution).
-func governingCounter(c *Node) *workCounter {
-	if w := childStorage(c).work; w != nil {
-		return w
-	}
-	if t := c.treeOf(); t != nil {
-		return &t.work
-	}
-	return nil
-}
-
 // enroll makes this state govern s until it ends (design 13 §2.4): s's counter is lent to it,
 // or, for a set without a counter (an unbound detached set), s is bound to the state's
 // temporary counter, recorded as a works entry (a rollback restores it) and unbound at end.

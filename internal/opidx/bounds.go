@@ -7,11 +7,15 @@ import (
 	"math/bits"
 )
 
+// Pay charges planning work before it is done; false refuses it (the planner stops, and its bound
+// saturates so the caller's prepay refuses). Nil plans unpaid.
+type Pay func(units uint64) bool
+
 // Point bounds (#240 step 4, design 13 §7): what one mutation charges through its hooks, its
 // work units plus two units per recorded image and three per map cell, for the actual AVL
 // heights. They are O(height), except the relabel, which the read-only planner below counts
-// exactly by walking the same handles labelRange (or rebuildTags) will; the planner itself is
-// uncharged and its walk is bounded by the work it plans. They are tight enough to prepay per
+// exactly by walking the same handles labelRange (or rebuildTags) will; the planner charges its
+// own walk through a Pay, before each visit. They are tight enough to prepay per
 // edit and generous in the constants: a test build panics on any overdraft, so every sweep
 // checks them.
 
@@ -47,7 +51,7 @@ func (s *Seq[T]) SelectBound() uint64 { return uint64(nodeHeight(s.root)) + 2 } 
 
 // InsertBound bounds InsertBefore(anchor, ·) (anchor nil: append), its relabel included;
 // journaled: its images too.
-func (s *Seq[T]) InsertBound(anchor *Handle[T], journaled bool) uint64 {
+func (s *Seq[T]) InsertBound(anchor *Handle[T], journaled bool, pay Pay) uint64 {
 	prev, next := s.last, (*Handle[T])(nil)
 	if anchor != nil {
 		prev, next = anchor.prev, anchor
@@ -57,7 +61,10 @@ func (s *Seq[T]) InsertBound(anchor *Handle[T], journaled bool) uint64 {
 	if length > 2*scale {
 		charges, touched = uint64(length), uint64(length) //nolint:gosec // a length is nonnegative
 	} else {
-		charges, touched = s.planLabel(prev, next, nil, 1, scale, length)
+		var ok bool
+		if charges, touched, ok = s.planLabel(prev, next, nil, 1, scale, length, pay); !ok {
+			return ^uint64(0)
+		}
 	}
 	return saturatingAdd(avlUnits(nodeHeight(s.root)+1, journaled), saturatingAdd(charges, images(touched, journaled)))
 }
@@ -72,7 +79,7 @@ func (s *Seq[T]) RemoveBound(journaled bool) uint64 {
 }
 
 // MoveBound bounds MoveBefore(h, anchor), its relabel included.
-func (s *Seq[T]) MoveBound(h, anchor *Handle[T], journaled bool) uint64 {
+func (s *Seq[T]) MoveBound(h, anchor *Handle[T], journaled bool, pay Pay) uint64 {
 	if h == nil || h == anchor {
 		return 0
 	}
@@ -85,14 +92,18 @@ func (s *Seq[T]) MoveBound(h, anchor *Handle[T], journaled bool) uint64 {
 	if prev == h {
 		prev = h.prev
 	}
-	charges, touched := s.planLabel(prev, next, h, 1, max(s.scale, 1), s.length)
+	charges, touched, ok := s.planLabel(prev, next, h, 1, max(s.scale, 1), s.length, pay)
+	if !ok {
+		return ^uint64(0)
+	}
 	return saturatingAdd(moveUnits(nodeHeight(s.root), journaled), saturatingAdd(charges, images(touched, journaled)))
 }
 
 // planLabel counts the charges and the touched handles of labelRange for count new handles
 // placed between prev and next (either nil at an end), skip being absent from the order: the
 // same window search, read-only.
-func (s *Seq[T]) planLabel(prev, next, skip *Handle[T], count, scale, length int) (charges, touched uint64) {
+func (s *Seq[T]) planLabel(prev, next, skip *Handle[T], count, scale, length int, pay Pay) (charges, touched uint64, ok bool) {
+	step := func() bool { return pay == nil || pay(1) }
 	before := func(x *Handle[T]) *Handle[T] {
 		if x = x.prev; x == skip && x != nil {
 			x = x.prev
@@ -113,14 +124,14 @@ func (s *Seq[T]) planLabel(prev, next, skip *Handle[T], count, scale, length int
 		hi = next.tag
 	}
 	if hi > lo && hi-lo > uint64(count) { //nolint:gosec // a count is nonnegative
-		return uint64(count), uint64(count) //nolint:gosec // a count is nonnegative
+		return uint64(count), uint64(count), true //nolint:gosec // a count is nonnegative
 	}
 	anchor := prev
 	if anchor == nil {
 		anchor = next
 	}
 	if anchor == nil {
-		return uint64(length), uint64(length) //nolint:gosec // a length is nonnegative
+		return uint64(length), uint64(length), true //nolint:gosec // a length is nonnegative
 	}
 	t := math.Pow(float64(tagUniverse)/float64(2*scale), 1.0/tagBits)
 	scanned := 0
@@ -129,10 +140,16 @@ func (s *Seq[T]) planLabel(prev, next, skip *Handle[T], count, scale, length int
 		base := anchor.tag & ^(width - 1)
 		back := 0
 		for x := prev; x != nil && x.tag >= base; x = before(x) {
+			if !step() {
+				return 0, 0, false
+			}
 			back++
 		}
 		fwd := 0
 		for x := next; x != nil && x.tag < base+width; x = after(x) {
+			if !step() {
+				return 0, 0, false
+			}
 			fwd++
 		}
 		if scanned += 2*(back+fwd) + count; scanned > scanCap(length) {
@@ -146,9 +163,9 @@ func (s *Seq[T]) planLabel(prev, next, skip *Handle[T], count, scale, length int
 		if width/uint64(items+1) == 0 { //nolint:gosec // a count is nonnegative
 			continue
 		}
-		return saturatingAdd(charges, uint64(items)), uint64(items) //nolint:gosec // a count is nonnegative
+		return saturatingAdd(charges, uint64(items)), uint64(items), true //nolint:gosec // a count is nonnegative
 	}
-	return saturatingAdd(charges, uint64(length)), uint64(length) //nolint:gosec // a length is nonnegative
+	return saturatingAdd(charges, uint64(length)), uint64(length), true //nolint:gosec // a length is nonnegative
 }
 
 func (o *Occurrences[T, S, K]) classHeight(schema S, key K) int {
@@ -238,12 +255,15 @@ func (r *Ranks) ReadBound() uint64 {
 // of s, first and last its first and last in physical order: the ownership scans, the splits
 // and joins, the subtree build and the run's relabel, planned exactly (its images included when
 // journaled).
-func (s *Seq[T]) ReplaceHandlesBound(first, last *Handle[T], k int, journaled bool) uint64 {
+func (s *Seq[T]) ReplaceHandlesBound(first, last *Handle[T], k int, journaled bool, pay Pay) uint64 {
 	if first == nil || last == nil || k < 2 {
 		return 0
 	}
-	charges, touched := s.planLabel(first.prev, last.next, nil, k, max(s.scale, 1), s.length)
-	kk := uint64(k) //nolint:gosec // a count is nonnegative
+	charges, touched, ok := s.planLabel(first.prev, last.next, nil, k, max(s.scale, 1), s.length, pay)
+	if !ok {
+		return ^uint64(0)
+	}
+	kk := uint64(k)
 	bound := saturatingAdd(moveUnits(nodeHeight(s.root), journaled), saturatingAdd(4*kk, images(kk+2, journaled)))
 	bound = saturatingAdd(bound, 3*s.SelectBound())
 	return saturatingAdd(bound, saturatingAdd(charges, images(touched, journaled)))

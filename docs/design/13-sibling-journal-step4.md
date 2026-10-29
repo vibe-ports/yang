@@ -67,22 +67,24 @@ TestS4CompleteRollbackAllocs, TestJournalNestedModel).
   `opAnchor`'s rank successors. Class B reads inside a scope draw from the write's credit. Class C
   (no hash-work scope, or user code under a suspended state) pays nothing. A refused read credit
   is sticky and short-circuits the fallback scans. Test builds panic on an index hook that fires
-  unpaid inside a hash-work scope (`unpaidReadPanics`), except for the listed writes below.
+  unpaid inside a hash-work scope, and on any journaled index entry outside a credit
+  (`unpaidReadPanics`).
 - **Point bounds** (`internal/opidx/bounds.go`): `c·(h+2)+4` for the actual AVL heights, with
   c measured (worst cases below 1.8 per level without images and 4.7 with them, 12.2 and 18.6
   for a move) and kept at 3/6 and 14/24. The relabel is counted exactly by a read-only planner
-  that mirrors `labelRange`/`rebuildTags`. `InsertBoundAny` is the position-free bound for a
+  that mirrors `labelRange`/`rebuildTags`; it charges its own walk step by step through an
+  `opidx.Pay` before each visit (`workCounter.planPay`), so a refused budget stops it at once. `InsertBoundAny` is the position-free bound for a
   preflight that precedes a reorder (`insertPositionBound`). TestPointBoundsCoverJournaledEdits
   checks every bound against the units its edit reports.
 
-Index writes outside the three scopes are counted, not charged (their callers reserve the
-surrounding work as before); the detector exempts exactly these (`unpaidIndexWrites`):
+Every other journaled index write prepays its own point bound before its first write, or draws
+from an enclosing scope's credit (a nested prepay opens nothing):
 
-| Write | Caller | Reservation |
+| Write | Caller | Prepaid |
 |---|---|---|
-| `orderReorder` | sorted and parser publication | `reorderReplayCost`, the publication's charges |
-| `refreshRB` | `rbPos`'s new tree | the sorted insertion's reservation |
-| `refreshExact` | `validateIncomplete` | the completed value's native rehash |
+| `orderReorder` | sorted and parser publication | one `ReplaceHandles` over the run (its handles occupy one contiguous range), its relabel planned exactly, with the occurrence updates |
+| `refreshRB` | `rbPos`'s new tree | its point bound |
+| `refreshExact` | `validateIncomplete` | its point bound |
 
 ## Suspension guard
 
@@ -94,8 +96,9 @@ entries wrap the caller's context (`suspending`); every poll in data and interna
 through one helper, which TestS4PollsGoThroughOneHelper checks.
 
 User errors are classified while suspended and sealed as `userErr` (flags only; its `Is` answers
-from them, it has no `Unwrap` or `As`). The public return restores the original error after the
-state has ended (`restoreUser`).
+from them, it has no `Unwrap` or `As`). The public return restores the original error once, after
+the state has ended (`restoreUser`, which walks only this module's and the standard library's
+wrappers, so it never calls a user method; a wrapping of ours is kept around the original).
 
 A capture, begin, lend or link-record edit that reaches an object governed by a suspended state
 is refused with LY_EINVAL (`errInProgress`) before it writes (D-0148):
@@ -104,10 +107,13 @@ is refused with LY_EINVAL (`errInProgress`) before it writes (D-0148):
    scope; its `end` only reports);
 2. `siblings.touch`, `Tree.touch`, `Node.touch` (and `touchLazy` through `narrow`) refuse;
 3. `joinLinkJournal`, `moveNodes`, `rebind`, `beginJointTransaction` refuse to lend;
-4. `captureNode` and `captureOwner` refuse a suspended counterpart and enroll a counterpart's
-   counter in the state until `end`;
+4. `captureNode` and `captureOwner` refuse a suspended counterpart, and every set
+   `captureDetachedParent` captures and every link counterpart is enrolled until `end`
+   (`enroll`): its counter is lent to the state, or a set without a counter is bound to the
+   state's temporary counter (a works entry restores it) and unbound at end on both outcomes;
 5. operations without a journal check the link records they will edit first (`linkGuard` in
-   `prepareUnlink`, the value change, `reserveFreeLinks`, `linkLeafrefNode`).
+   `prepareUnlink`, the value change, `reserveFreeLinks`, `linkLeafrefNode`), each visit charged
+   before it is made.
 
 `freeLinks` and `linkLeafrefNode` return their errors. `parseOpWith` arms a panic-safe
 finalization before its journal opens.
@@ -130,9 +136,9 @@ restores, an ordinary or D-0121 refusal publishes the completed prefix; **V** un
 | `orderBuild`/`opBuild` | new index unreachable on rollback; the old one untouched | S (in `link`) / J |
 | `orderAddSchema`, `orderAddOpaque` | index entries | S |
 | `orderRemove`, `orderRemoveOpaque` | index entries | S (single) / J+prefix (bulk) |
-| `orderReorder` | index entries | J (counted, exempt) |
-| `refreshRB` | index entries | S (in `link`) / J (exempt in `rbPos`) |
-| `refreshExact` | index entries | S (value change) / J (exempt in `validateIncomplete`) |
+| `orderReorder` | index entries | S (its own prepay) |
+| `refreshRB` | index entries | S (in `link`, or its own prepay in `rbPos`) |
+| `refreshExact` | index entries | S (value change, or its own prepay in `validateIncomplete`) |
 | `cloneChildOrder` | — | deleted |
 
 Every index mutator that swallowed a refused touch returns it and makes it sticky
@@ -166,18 +172,25 @@ Every index mutator that swallowed a refused touch returns it and makes it stick
 6. **One work hook.** The binding has one `Work` hook (no separate read hook); class A credits
    open inside the index read functions when the counter is on a mutation path, rather than in
    per-site wrappers.
-7. **Writes outside the three scopes are counted, not prepaid** (the exemption table above).
+7. **`orderReorder` republishes with one `ReplaceHandles`** instead of a move per node, which
+   makes an exact prepaid bound possible (the moves' relabels depend on each other).
 8. **`userErr` has an `Is` answering from its flags**, so internal `errors.Is` keeps working
    without calling a user method.
 9. **Context suspension is a wrapping context** created at the public entries, plus one poll
    helper per package and a grep test, rather than a `w.poll(ctx)` at each site.
-10. **Enrollment lends only counters**: a counterpart without a counter (an unbound detached set)
-    is not rebound to the state's tree counter.
+10. **Enrollment binds a counterless set to a per-state temporary counter**, not to the state's
+    tree counter: a later legitimate binding to the tree's counter must survive the unbinding at
+    end.
 11. **ValidateOp attribution**: captures of the dependency's objects charge the operation tree's
     counter (the state's), as every capture of a state does.
 12. **A panicking diff callback** ends ApplyDiff through its deferred `end` with no result (the
     partial work is kept, as before); the guard only guarantees no suspension or installed state
     is left behind.
+
+The first snapshot review (`240s4-snap1`) found five blocking issues, all fixed: a value change's
+relocation could return without ending its scope; captured detached sets were not enrolled;
+`ParseOp` restored a user error twice; the exempt writes appended entries past a refused budget;
+the planner and the link guard walked input-sized structures before their first charge.
 
 Found while implementing: `linkApplyBound` lacked the reindex of a list whose compared prefix a
 non-key enters (`keyLinked` → `reindexComparedParent`), and `opAnchor` located its anchor with an
@@ -200,6 +213,8 @@ removal limit from 128 to 192: the index removal's point bound is prepaid before
   TestS4GuardLinkedCallbackEdits, TestS4GuardThirdTreeAllowed, TestS4GuardSameTreeBegin,
   TestS4GuardEnrolledCounterpart, TestS4GuardCallbackPanic, TestS4GuardNesting,
   TestS4GuardReaderAndContextDuringParse, TestS4GuardUserErrorMethods, TestS4GuardUserPanics,
-  TestS4GuardValidationPolls, TestS4PollsGoThroughOneHelper, TestS4IndexEditErrorsPropagate.
+  TestS4GuardValidationPolls, TestS4PollsGoThroughOneHelper, TestS4IndexEditErrorsPropagate,
+  TestS4GuardDetachedRequest, TestS4RestoreUserKeepsOurWrapping, TestS4LinkGuardRefusalScaling,
+  TestS4KeyRelocationRefusalsEndTheirScope, TestPlannerPaysBeforeEachVisit.
 - The step-4 preparation histories (TestS4JournalRefusalHistories,
   TestS4BulkPrefixPublicationRefusal) pass unchanged.

@@ -31,7 +31,7 @@ func prepareUnlink(n *Node) (*unlinkPlan, error) {
 	}
 	// the removal's freeLinks: a counterpart governed by a suspended state refuses it here,
 	// before any write (design 13 §2.4 (5))
-	if err := linkGuard(n); err != nil {
+	if err := linkGuard(n, w); err != nil {
 		return nil, err
 	}
 	nodes := sib.schemaSpan()

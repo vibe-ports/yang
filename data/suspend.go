@@ -126,7 +126,7 @@ func sealedIn(err error) *userErr {
 	for len(stack) != 0 {
 		e := stack[len(stack)-1]
 		stack = stack[:len(stack)-1]
-		switch x := e.(type) {
+		switch x := e.(type) { //nolint:errorlint // walking the chain by hand: errors.As would call user methods
 		case nil:
 			continue
 		case *userErr:
@@ -137,7 +137,7 @@ func sealedIn(err error) *userErr {
 		if !ownWrapper(e) {
 			continue
 		}
-		switch x := e.(type) {
+		switch x := e.(type) { //nolint:errorlint // our own and the standard library's wrappers only
 		case interface{ Unwrap() error }:
 			stack = append(stack, x.Unwrap())
 		case interface{ Unwrap() []error }:
@@ -155,8 +155,8 @@ func ownWrapper(e error) bool {
 	for t.Kind() == reflect.Pointer {
 		t = t.Elem()
 	}
-	switch p := t.PkgPath(); {
-	case p == ownPackage, p == "fmt", p == "errors":
+	switch p := t.PkgPath(); p {
+	case ownPackage, "fmt", "errors":
 		return true
 	default:
 		return strings.HasPrefix(p, "github.com/vibe-ports/yang/")
@@ -245,33 +245,44 @@ func (c *suspendCtx) Value(key any) any {
 
 // linkGuard refuses, before any write, an edit of n's leafref records that would reach a record
 // governed by a suspended state: freeLinks' walk, read-only (an operation without a journal of
-// its own has no capture to hook, design 13 §2.4 (5)).
-func linkGuard(n *Node) error {
+// its own has no capture to hook, design 13 §2.4 (5)). Each visit is charged to w before it
+// is made (nil: inside a scope whose own walk pays it), and the visited set is allocated only
+// once the walk recurses, so a refused budget stops it at its first units.
+func linkGuard(n *Node, w *workCounter) error {
 	if n == nil || n.links == nil {
 		return nil
 	}
-	seen := map[*Node]bool{n: true}
+	pay := func() error {
+		if w == nil || w.prepaid {
+			return nil
+		}
+		return w.chargeHash(1)
+	}
+	if governing(n).suspendedState() {
+		return errInProgress
+	}
+	var seen map[*Node]bool
 	stack := []*Node{n}
 	for len(stack) != 0 {
 		x := stack[len(stack)-1]
 		stack = stack[:len(stack)-1]
-		if governing(x).suspendedState() {
-			return errInProgress
-		}
-		if x.links == nil {
-			continue
-		}
 		for _, side := range [2][]*Node{x.links.leafrefs, x.links.targets} {
 			for _, c := range side {
-				if seen[c] {
+				if err := pay(); err != nil {
+					return err
+				}
+				if c == n || seen[c] {
 					continue
 				}
-				seen[c] = true
 				if governing(c).suspendedState() {
 					return errInProgress
 				}
 				// freeLinks recurses into a counterpart whose record it empties
 				if c.links != nil && len(c.links.leafrefs)+len(c.links.targets) <= 1 {
+					if seen == nil {
+						seen = map[*Node]bool{n: true}
+					}
+					seen[c] = true
 					stack = append(stack, c)
 				}
 			}

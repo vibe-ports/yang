@@ -103,7 +103,7 @@ func freeLinks(n *Node) error {
 		return nil
 	}
 	// before any record changes: a counterpart governed by a suspended state refuses it
-	if err := linkGuard(n); err != nil {
+	if err := linkGuard(n, nil); err != nil { // its preflight paid the walk
 		return err
 	}
 	if err := n.touch(); err != nil {

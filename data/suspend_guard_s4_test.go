@@ -5,7 +5,9 @@ package data
 import (
 	"context"
 	"errors"
+	"fmt"
 	"reflect"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -375,6 +377,46 @@ func TestS4IndexEditErrorsPropagate(t *testing.T) {
 		}
 		if !reflect.DeepEqual(snapshotHashBudgetTree(tr), before) {
 			t.Fatalf("%s wrote before refusing", name)
+		}
+	}
+}
+
+// TestS4LinkGuardRefusalScaling: the link guard of an unlink charges each counterpart before it
+// visits it, so a removal refused at its first units does the same work and allocations with 8
+// or 4,096 leafref counterparts (snapshot review 1, finding 5).
+func TestS4LinkGuardRefusalScaling(t *testing.T) {
+	set := reviewDiffSet(t, s4JournalModule)
+	measure := func(degree int, limit uint64) (int64, uint64) {
+		tr := s4DataTree(t, set, "3")
+		c := tr.top.first()
+		target := s4Child(c, "v", "m")
+		for i := range degree {
+			ref, err := tr.NewTerm(c, "u", fmt.Sprint("r", i), NewOptions{})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := linkLeafrefNode(target, ref); err != nil {
+				t.Fatal(err)
+			}
+		}
+		tr.work.Store(0)
+		tr.work.visits = true
+		tr.work.hashLimit = limit
+		runtime.GC()
+		var before, after runtime.MemStats
+		runtime.ReadMemStats(&before)
+		err := target.Unlink() // prepareUnlink's link guard runs before its first charge
+		runtime.ReadMemStats(&after)
+		if !errors.Is(err, yang.ErrBudget) {
+			t.Fatalf("degree %d limit %d: %v, want a refusal", degree, limit, err)
+		}
+		return tr.work.Load(), after.Mallocs - before.Mallocs
+	}
+	for limit := uint64(1); limit <= 6; limit++ {
+		smallWork, smallAllocs := measure(8, limit)
+		largeWork, largeAllocs := measure(4096, limit)
+		if largeWork > smallWork+16 || largeAllocs > smallAllocs+16 {
+			t.Fatalf("limit %d: refusal work %d -> %d, allocations %d -> %d", limit, smallWork, largeWork, smallAllocs, largeAllocs)
 		}
 	}
 }
