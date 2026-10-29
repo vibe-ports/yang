@@ -757,20 +757,21 @@ func codecsSkippedFieldsAllowed(op string, fields []string) bool {
 // codecsUnsupported names every codecs fixture allowed to remain unsupported and the registry id
 // that must occur in its unsupported reason.
 var codecsUnsupported = map[string]string{
-	"any-core/create-invalid-json":            "U-0112",
-	"any-core/create-invalid-text":            "U-0112",
-	"any-core/create-invalid-xml":             "U-0112",
-	"any-core/create-warning-xml-key-order":   "U-0112",
-	"any-core/create-xml-scan-error-anydata":  "U-0112",
-	"any-core/create-xml-scan-error-anyxml":   "U-0112",
-	"ext/structure-data-json":                 "U-0060",
-	"ops/parse-json-rpc-parent-opaque-meta":   "U-0106",
-	"ops/parse-json-rpc-rollback-key":         "U-0106",
-	"ops/parse-json-rpc-rollback-keys-order":  "U-0106",
-	"ops/parse-xml-rpc-parent-envelope-value": "U-0106",
-	"ops/parse-xml-rpc-parent-input":          "U-0106",
-	"ut-new/any-create-json":                  "U-0112",
-	"ut-new/any-create-xml":                   "U-0112",
+	"protocol-v2/ordered-split-list-merge-destruct": "U-0113",
+	"any-core/create-invalid-json":                  "U-0112",
+	"any-core/create-invalid-text":                  "U-0112",
+	"any-core/create-invalid-xml":                   "U-0112",
+	"any-core/create-warning-xml-key-order":         "U-0112",
+	"any-core/create-xml-scan-error-anydata":        "U-0112",
+	"any-core/create-xml-scan-error-anyxml":         "U-0112",
+	"ext/structure-data-json":                       "U-0060",
+	"ops/parse-json-rpc-parent-opaque-meta":         "U-0106",
+	"ops/parse-json-rpc-rollback-key":               "U-0106",
+	"ops/parse-json-rpc-rollback-keys-order":        "U-0106",
+	"ops/parse-xml-rpc-parent-envelope-value":       "U-0106",
+	"ops/parse-xml-rpc-parent-input":                "U-0106",
+	"ut-new/any-create-json":                        "U-0112",
+	"ut-new/any-create-xml":                         "U-0112",
 }
 
 func codecsAllowed(id, reason string, registry map[string]bool) bool {

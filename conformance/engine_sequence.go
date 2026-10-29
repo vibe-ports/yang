@@ -1042,6 +1042,10 @@ func stepEdit(r Request, s *yang.Schema, st map[string]any, tree *data.Tree, det
 		if src, diags, err = data.Parse(context.Background(), inputReader(in, present), f, s, o); err != nil {
 			return tree, diags, rc, err
 		}
+		if destructDiverges(tree, src) {
+			return tree, diags, rc, fmt.Errorf("%w: LYD_MERGE_DESTRUCT keeps a run's leader across new source instances; "+
+				"Tree.Merge (no options) looks it up per instance, which differs in a split run (U-0113)", ErrUnsupported)
+		}
 		err = tree.Merge(src)
 		return tree, append(diags, diagsOf(err)...), rc, err
 	}
@@ -1050,6 +1054,54 @@ func stepEdit(r Request, s *yang.Schema, st map[string]any, tree *data.Tree, det
 		diags = slices.Concat(findDiags, diags)
 	}
 	return tree, diags, rc, err
+}
+
+// destructDiverges reports whether the oracle's lyd_merge_siblings(LYD_MERGE_DESTRUCT) and
+// Tree.Merge may place src's instances differently in dst: the destructive merge keeps the
+// leader of the previous inserted instance of a run (lyds_insert2's leader_p, tree_data.c:
+// 2721-2760), Merge looks it up again per instance. They differ only when a destination run is
+// split into pieces (by an opaque node or another schema node, design 15) and at least two
+// source instances of it are new (U-0113).
+func destructDiverges(dst, src *data.Tree) bool {
+	type set struct{ parent, name string }
+	pieces := map[set]int{}
+	var walk func(parent string, kids iter.Seq[*data.Node])
+	walk = func(parent string, kids iter.Seq[*data.Node]) {
+		prev := "" // the previous sibling's name, "" for an opaque one
+		for n := range kids {
+			name := ""
+			if n.Schema() != nil {
+				name = n.Name()
+				if name != prev {
+					pieces[set{parent, name}]++
+				}
+				walk(n.Path(), n.Children())
+			}
+			prev = name
+		}
+	}
+	walk("", dst.Top())
+	fresh := map[set]int{}
+	var count func(parent string, kids iter.Seq[*data.Node])
+	count = func(parent string, kids iter.Seq[*data.Node]) {
+		for n := range kids {
+			if n.Schema() == nil {
+				continue
+			}
+			if m, err := dst.Find(n.Path()); err != nil || m == nil {
+				fresh[set{parent, n.Name()}]++ // copied whole: nothing below merges
+				continue
+			}
+			count(n.Path(), n.Children())
+		}
+	}
+	count("", src.Top())
+	for k, c := range fresh {
+		if c >= 2 && pieces[k] >= 2 {
+			return true
+		}
+	}
+	return false
 }
 
 // notFoundRC is lyd_find_path's return for a path Find did not find: LY_EINCOMPLETE when a leading

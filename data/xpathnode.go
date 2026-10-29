@@ -154,10 +154,8 @@ func (x xn) LookupPrepared(prepared xpath.InstanceProbe) ([]xpath.Node, bool, er
 // lyd_find_sibling_first (an instance) walks every sibling; then lyd_find_sibling_opaq_next.
 // Every step is charged.
 func interleavedLookup(sib *siblings, set *schema.Set, p *xprobe) ([]xpath.Node, bool, error) {
-	if !p.schemaOnly && sib.mixedContexts() {
-		return nil, false, nil // lyd_find_sibling_first across contexts: the evaluator's scan
-	}
 	span := sib.docSpan()
+	var foreign *xprobe // p in the siblings' context
 	if p.schemaOnly {
 		span = sib.schemaSpan().Slice(0, sib.beforeOpaque())
 	}
@@ -172,7 +170,18 @@ func interleavedLookup(sib *siblings, set *schema.Set, p *xprobe) ([]xpath.Node,
 			continue
 		}
 		if !p.schemaOnly {
-			match, err := p.Match(xn{c, set})
+			// lyd_find_sibling_first's lyd_compare_single compares equivalent schemas across
+			// contexts: a probe of another context is translated into the sibling's once
+			q := p
+			if c.schema != p.node.schema {
+				if foreign == nil || foreign.set != ctxOf(c) {
+					if foreign = p.toCtx(ctxOf(c)); foreign == nil {
+						continue // the instance does not store there
+					}
+				}
+				q = foreign
+			}
+			match, err := q.Match(xn{c, set})
 			if err != nil {
 				return nil, false, err
 			}
@@ -565,14 +574,13 @@ func (x xs) PrepareInstance(vals []string, charge func(int64) error) (xpath.Inst
 	// lyd_find_sibling_schema builds a schema-only lookup. Keep the probe so a
 	// cross-context hash miss can charge lyd_find_sibling_opaq_next, but do not
 	// try to materialize absent list keys or a leaf-list value.
-	if vals == nil {
-		keys = nil
-	}
-	for i, key := range keys {
-		if err := p.work(1 + int64(len(vals[i]))); err != nil {
+	vals = vals[:min(len(keys), len(vals))] // none for a schema-only lookup
+	for i, val := range vals {
+		key := keys[i]
+		if err := p.work(1 + int64(len(val))); err != nil {
 			return nil, err
 		}
-		v, d := types.StoreOnly(key.Type, vals[i], types.FormatJSON, types.HintData,
+		v, d := types.StoreOnly(key.Type, val, types.FormatJSON, types.HintData,
 			types.ModuleNames{Set: x.set}, key)
 		if d != nil {
 			return nil, &xpathProbeError{schema: key, diag: d}

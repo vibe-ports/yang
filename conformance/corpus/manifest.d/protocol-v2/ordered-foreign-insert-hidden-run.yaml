@@ -1,0 +1,17 @@
+# a leaf-list instance of another schema context inserted into an ordered top level whose run lies past the first opaque root: lyd_find_sibling_schema's linear walk (module and node names across contexts) stops at the opaque node, so the instance goes by schema, before it
+fixtures:
+  - id: protocol-v2/ordered-foreign-insert-hidden-run
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#7.5.7"]
+    areas: [codecs]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      context_options: ["no_yanglibrary"]
+      modules: [{name: "pv2-lyds"}]
+      steps:
+        - {do: parse, format: json, data_type: get, unknown: opaque, parse_options: [ordered], data: '{"pv2-lyds:zz": "u", "pv2-lyds:ll": [3]}'}
+        - {do: insert, format: json, data_type: get, data: '{"pv2-lyds:ll": [1]}', target: {searchdirs: [schemas], modules: [{name: "pv2-lyds"}], context_options: ["no_yanglibrary"]}}
+        - {do: dump}
+    golden: golden/ordered-foreign-insert-hidden-run.json

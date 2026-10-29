@@ -519,3 +519,48 @@ func TestRootLookupMixedContexts(t *testing.T) {
 		}
 	}
 }
+
+// TestInterleavedLookupForeignInstance: a keyed probe of one context against an interleaved set
+// whose schema nodes all come from another (a homogeneous foreign set): the no-table
+// lyd_find_sibling_first compares equivalent schemas across contexts, so the probe is
+// translated into the siblings' context before it matches.
+func TestInterleavedLookupForeignInstance(t *testing.T) {
+	owned := func() *schema.Set {
+		c, ds, err := yang.NewContext(yang.Options{NoYangLibrary: true}, os.DirFS("../conformance/corpus/protocol-v2/schemas"))
+		if err != nil {
+			t.Fatal(ds, err)
+		}
+		if ds, err := c.Load("pv2-ordered2", "", nil); err != nil {
+			t.Fatal(ds, err)
+		}
+		return snap.Set(c.Schema())
+	}
+	setA, setB := owned(), owned()
+	trB, err := parseOrdered(t, setB, false, `{"pv2-ordered2:c":{"l":[{"k":"w"}],"zz":"u","l":[{"k":"x"}]}}`, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var c *Node
+	for c = range trB.Top() {
+		break
+	}
+	if !c.kids.st.interleaved() || c.kids.ht != nil {
+		t.Fatal("want an interleaved set without a children table")
+	}
+	var l *schema.Node
+	for _, n := range setA.Implemented("pv2-ordered2").Top[0].Children {
+		if n.Name == "l" {
+			l = n
+		}
+	}
+	for _, key := range []string{"w", "x"} {
+		p, err := xs{s: l, set: setA}.PrepareInstance([]string{key}, func(int64) error { return nil })
+		if err != nil {
+			t.Fatal(err)
+		}
+		got, handled, err := interleavedLookup(&c.kids, setB, p.(*xprobe))
+		if err != nil || !handled || len(got) != 1 || got[0].(xn).n.Path() != "/pv2-ordered2:c/l[k='"+key+"']" {
+			t.Fatalf("key %s: %v %v %v", key, got, handled, err)
+		}
+	}
+}

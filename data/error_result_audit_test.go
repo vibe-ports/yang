@@ -97,11 +97,11 @@ var ignoredErrorAllowlist = map[string]string{
 	"siblings.go:795:Write":                  allowNoFailWriter,
 	"siblings.go:793:Write":                  allowNoFailWriter,
 	"siblings.go:794:Write":                  allowNoFailWriter,
-	"siblings.go:2013:findFirstWork":         allowNoWork,
-	"siblings.go:2176:compareSingleWork":     allowNoWork,
-	"siblings.go:2250:Fprintf":               "fmt writes to a strings.Builder, whose Write method cannot fail",
-	"siblings.go:2247:Fprintf":               "fmt writes to a strings.Builder, whose Write method cannot fail",
-	"siblings.go:2245:Fprintf":               "fmt writes to a strings.Builder, whose Write method cannot fail",
+	"siblings.go:2014:findFirstWork":         allowNoWork,
+	"siblings.go:2177:compareSingleWork":     allowNoWork,
+	"siblings.go:2251:Fprintf":               "fmt writes to a strings.Builder, whose Write method cannot fail",
+	"siblings.go:2248:Fprintf":               "fmt writes to a strings.Builder, whose Write method cannot fail",
+	"siblings.go:2246:Fprintf":               "fmt writes to a strings.Builder, whose Write method cannot fail",
 	"unres.go:105:logErr":                    allowLoggedMarker,
 	"unres.go:187:item":                      allowLoggedMarker,
 	"unres.go:595:xpathErr":                  "validation commits each saved probe diagnostic before returning the final type diagnostic",
@@ -116,7 +116,7 @@ var ignoredErrorAllowlist = map[string]string{
 	"validate.go:822:WriteByte":              allowNoFailWriter,
 	"xpathnode.go:83:LookupPrepared":         "LookupChild prepares without a charge callback, so LookupPrepared cannot return a work error",
 	"xpathnode.go:88:LookupPrepared":         "the schema-only probe has no charge callback, so LookupPrepared cannot return a work error",
-	"xpathnode.go:362:StringWithBudget":      "String uses a background context and nil budget callbacks; serialization errors remain available through StringWithBudget",
+	"xpathnode.go:371:StringWithBudget":      "String uses a background context and nil budget callbacks; serialization errors remain available through StringWithBudget",
 }
 
 type auditImporter struct {

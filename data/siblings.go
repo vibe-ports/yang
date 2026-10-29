@@ -1757,7 +1757,8 @@ func (t *Tree) schemaFindAll(s *siblings, sn *schema.Node) (int, *Node) {
 // enforced quota before it reads the sibling. -1: no match, or a refused step (sticky in
 // t.work.hashErr, which callers check first).
 func (t *Tree) foreignScan(s *siblings, sn *schema.Node, charge bool) (int, *Node) {
-	for i, n := range s.SchemaAll() {
+	// without a children table the walk stops at the first opaque sibling (linearBound)
+	for i, n := range s.schemaSpan().Slice(0, s.linearBound()).All() {
 		if charge && t.work.chargeHash(1) != nil {
 			return -1, nil
 		}

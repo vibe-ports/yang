@@ -76,7 +76,8 @@ write takes the code path it took before (the counted-work and scaling tests are
   the first instance of the next schema sibling (tree_data.c:520-535), the logical default. The XML
   parser's key-order check uses the same stop (`walkStop`).
 - **Lookups.** `lyd_find_sibling_schema` without a children table stops at the first opaque sibling
-  (tree_data_common.c:1126-1131). `schemaFind`, `schemaLookup` and the first-instance lookup they
+  (tree_data_common.c:1126-1131). `schemaFind`, its foreign-name scan (`foreignScan`, also behind
+  `sortedLeaderIndex`), `schemaLookup` and the first-instance lookup they
   share with `opRun` and `runBounds` (`schemaLookupOperation`) therefore find nothing past it
   (`linearBound`). `lyd_validate_new` stops there too
   (validation.c:1023). `lyd_find_sibling_opaq_next` searches the trailing opaque block, or every sibling from
@@ -84,7 +85,9 @@ write takes the code path it took before (the counted-work and scaling tests are
   operation, never to a tree it only reads, such as `MergeDiff`'s source). XPath's hashed child
   lookup (`LookupPrepared`, and for the top level the root adapter `xroot` as
   `EvalContext.TreeLookup`) follows the same stops, matching a sibling of another context by
-  module and node name as the linear lookup does (`TestRootLookupMixedContexts`), and a children-table miss ends in that
+  module and node name as the linear lookup does (`TestRootLookupMixedContexts`), and translating
+  a keyed probe into the siblings' context as `lyd_compare_single` compares equivalent schemas
+  (`TestInterleavedLookupForeignInstance`), and a children-table miss ends in that
   fallback, not in the evaluator's scan of every child.
 - **Undefined merge refused.** From an opaque first sibling `lyd_find_sibling_opaq_next` compares
   `LYD_NAME`, so an opaque source node can find a data node of its name. libyang then merges an
@@ -116,7 +119,8 @@ write takes the code path it took before (the counted-work and scaling tests are
 
 ## Evidence
 
-- Oracle fixtures `protocol-v2/ordered-*` (34) cover:
+- Oracle fixtures `protocol-v2/ordered-*` (36; `ordered-split-list-merge-destruct` is unsupported,
+U-0113) cover:
   - parse order, JSON and XML;
   - the XML opaque anchor;
   - later insertions with and without a children table, crossing the table threshold, and a sorted
@@ -129,7 +133,8 @@ write takes the code path it took before (the counted-work and scaling tests are
     path past the first opaque sibling; Merge (no `LYD_MERGE_DESTRUCT`) into a split run;
   - a merge after the separator is gone; a sorted forest moved next to an opaque node; XPath name
     tests past the first opaque sibling, at the top level, and after a children-table miss with an
-    opaque node of the name in the middle; value changes of singleton pieces of a split run;
+    opaque node of the name in the middle; value changes of singleton pieces of a split run; an insertion from another schema context next
+    to a hidden run;
   - opaque appends; unlink and re-insert; merge; dup; diff; validation (implicit default, opaque
     error and the stop of `lyd_validate_new`);
   - XPath axes and positions; a key after an opaque child; a validated out-of-order parse.
@@ -150,8 +155,9 @@ write takes the code path it took before (the counted-work and scaling tests are
 instance (`lyds_insert2`, tree_data.c:2721-2760). The two agree unless a run is split. In
 `k2 | zz | k1`, merging `k0, k3` puts `k3` after `k1` without `DESTRUCT`, which is the port's and
 libyang's result (`protocol-v2/ordered-split-list-merge-into`, a `merge_into` step), and after
-`k2` with it. The port exports no destructive merge, so `protocol-v2/ordered-split-list-hashed`
-merges only `k1, k3` through the `edit merge` step.
+`k2` with it. The port exports no destructive merge (U-0113): the conformance engine reports an `edit merge`
+step unsupported when a destination run is split and at least two source instances of it are new
+(`protocol-v2/ordered-split-list-merge-destruct`, whose golden shows `k3` after `k2`).
 
 ## D-0058 after this change
 
