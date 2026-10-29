@@ -424,3 +424,27 @@ func TestPublishSparseDirtyRuns(t *testing.T) {
 		t.Fatal("publishing two small runs grew with the unrelated siblings")
 	}
 }
+
+// TestMergeSparseBatchChargesRebuild (design 14): a small sorted batch published beside N
+// unrelated siblings of an indexed set rebuilds the set's ordered index, a pass over all N
+// siblings whose build reports no work: rbPublish reserves and charges it with the publication.
+func TestMergeSparseBatchChargesRebuild(t *testing.T) {
+	set := opIndexSet(t, `module m { yang-version 1.1; namespace "urn:m"; prefix m;
+	  rpc r { input { leaf-list v { type uint32; } leaf-list z { type uint32; ordered-by user; } } } }`)
+	for _, n := range []int{256, 2048} {
+		dst, op := opIndexParseRPC(t, set, `{"m:r":{"v":[0,100],"z":[`+opIndexValues(n, false)+`]}}`)
+		src, _ := opIndexParseRPC(t, set, `{"m:r":{"v":[7,3]}}`)
+		dst.work.hashUsed = 0
+		if err := dst.Merge(src); err != nil {
+			t.Fatal(err)
+		}
+		if op.kids.order == nil {
+			t.Fatal("the destination lost its index")
+		}
+		// the merge's own work is charged about 13 units per sibling; the rebuild adds 8 more
+		if used := dst.work.hashUsed; used < 16*uint64(n) { //nolint:gosec // a small size
+			t.Fatalf("N=%d: the index rebuild was not charged (%d units)", n, used)
+		}
+		opidxAssertTreeInvariant(t, dst)
+	}
+}

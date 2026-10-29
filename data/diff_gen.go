@@ -580,11 +580,12 @@ func (t *Tree) metaDiffers(first, second *Node) bool {
 		return true
 	}
 	if first.schema.Kind == schema.List {
-		for i, k := range first.kids.SchemaAll() {
+		other := second.kids.schemaSpan().cursor()
+		for _, k := range first.kids.SchemaAll() {
 			if !k.isKey() {
 				break
 			}
-			if t.metaDiffers(k, second.kids.At(i)) {
+			if t.metaDiffers(k, other.next()) {
 				return true
 			}
 		}

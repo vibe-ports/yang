@@ -192,29 +192,18 @@ func (s *siblings) removalOrder(n, prev, next, tail *Node, around func(*Node) (*
 			if around != nil {
 				before, after = around(leader)
 			} else {
-				at := -1
-				for i, j := 0, s.SchemaLen()-1; i <= j; i, j = i+1, j-1 {
-					if err := w.chargeHash(1); err != nil {
-						return nil, nil, err
-					}
-					if s.At(i) == leader {
-						at = i
-						break
-					}
-					if s.At(j) == leader {
-						at = j
-						break
-					}
+				// the leader's storage neighbours, one charged step (design 14)
+				if err := w.chargeHash(1); err != nil {
+					return nil, nil, err
 				}
-				if at > 0 {
-					before = s.At(at - 1)
-				} else {
-					before = nil
-				}
-				if at >= 0 && at+1 < s.SchemaLen() {
-					after = s.At(at + 1)
-				} else {
-					after = nil
+				before, after = nil, nil
+				if h := s.handle(leader); h != nil {
+					if p := s.st.seq.Prev(h); p != nil {
+						before = p.Value
+					}
+					if q := s.st.seq.Next(h); q != nil && q.Value.schema != nil {
+						after = q.Value
+					}
 				}
 			}
 		}

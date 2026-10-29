@@ -202,8 +202,11 @@ func rbCompareLists(work *workCounter, n1, n2 *Node) (int, bool) {
 	if !ok || cmp != 0 {
 		return cmp, ok
 	}
+	c1, c2 := n1.kids.schemaSpan().cursor(), n2.kids.schemaSpan().cursor()
+	c1.next()
+	c2.next()
 	for i := 1; i < n1.kids.SchemaLen() && i < n2.kids.SchemaLen(); i++ {
-		k1, k2 = n1.kids.At(i), n2.kids.At(i)
+		k1, k2 = c1.next(), c2.next()
 		if !k1.isKey() || !k2.isKey() {
 			break
 		}
@@ -226,8 +229,9 @@ func listKeyProfile(work *workCounter, n1, n2 *Node) bool {
 	if !sortKeyProfile(work, n1.schema, n2.schema) {
 		return false
 	}
+	c1, c2 := n1.kids.schemaSpan().cursor(), n2.kids.schemaSpan().cursor()
 	for i, key := range keys {
-		a, b := n1.kids.At(i), n2.kids.At(i)
+		a, b := c1.next(), c2.next()
 		if a.schema != key || b.schema != n2.schema.Keys[i] || a.value.Type() == nil || b.value.Type() == nil {
 			return false
 		}
@@ -642,7 +646,10 @@ func (t *Tree) crossContextSortedPos(sib *siblings, n *Node, lo int) (int, bool)
 	leader := l.At(lo)
 	hi := lo + 1
 	if !sib.rbTree[leader] {
-		for hi < l.Len() && l.At(hi).schema == leader.schema {
+		for _, c := range l.Slice(hi, l.Len()).All() {
+			if c.schema != leader.schema {
+				break
+			}
 			t.work.Add(1)
 			hi++
 		}
@@ -1030,7 +1037,10 @@ func (t *Tree) runBounds(sib *siblings, n *Node) (lo, hi int) {
 		// first registered record (leaderFirstMixed).
 		if lo = t.sortedLeaderIndex(sib, n); lo >= 0 {
 			hi = lo
-			for hi < l.Len() && schemaLookupMatch(l.At(hi).schema, n.schema, sib.ht != nil) {
+			for _, c := range l.Slice(lo, l.Len()).All() {
+				if !schemaLookupMatch(c.schema, n.schema, sib.ht != nil) {
+					break
+				}
 				sib.visit()
 				hi++
 			}
@@ -1061,9 +1071,9 @@ func (t *Tree) runBounds(sib *siblings, n *Node) (lo, hi int) {
 			return 0, 0 // the read credit refused (sticky)
 		}
 		hi = lo
-		for hi < l.Len() {
+		for _, c := range l.Slice(lo, l.Len()).All() {
 			sib.visit()
-			if l.At(hi).schema != leader.schema {
+			if c.schema != leader.schema {
 				break
 			}
 			hi++
@@ -1186,9 +1196,9 @@ func (t *Tree) runEnd(sib *siblings, lo int) int {
 		return t.upper(sib.schemaSpan(), lo, func(n *Node) bool { return n.schema != sn })
 	}
 	hi := lo
-	for hi < sib.SchemaLen() {
+	for _, c := range sib.schemaSpan().Slice(lo, sib.SchemaLen()).All() {
 		t.work.Add(1)
-		if sib.At(hi).schema != sn {
+		if c.schema != sn {
 			break
 		}
 		hi++
@@ -1208,8 +1218,7 @@ func (t *Tree) retainedRunEnd(sib *siblings, lo int) int {
 		group = selected
 	}
 	hi := lo
-	for hi < sib.SchemaLen() {
-		n := sib.At(hi)
+	for _, n := range sib.schemaSpan().Slice(lo, sib.SchemaLen()).All() {
 		if n.schema != leader.schema && (group == nil || !n.inRB || n.rbGroup != group) {
 			break
 		}
@@ -2558,6 +2567,11 @@ func (t *Tree) rbPublish(parent *Node, sib *siblings, lo, hi int, group *rbGroup
 		// the visible neighbours of every attach, replayed backwards over the run (visibleNeighbours)
 		pub = addHashBound(pub, 4*members+4)
 	}
+	rebuild := spliceNeedsOrder(sib, attach) // publishRun drops a present index
+	if rebuild {
+		// opBuild registers every sibling again (its build reports no work: reserve it here)
+		pub = addHashBound(pub, 8*usize+8)
+	}
 	if err := t.work.chargeHash(pub); err != nil {
 		return err
 	}
@@ -2585,7 +2599,6 @@ func (t *Tree) rbPublish(parent *Node, sib *siblings, lo, hi int, group *rbGroup
 		return err
 	}
 	oldLeader := old.At(lo)
-	rebuild := spliceNeedsOrder(sib, attach) // publishRun drops a present index
 	if err := sib.publishRun(lo, hi, run); err != nil {
 		return err
 	}

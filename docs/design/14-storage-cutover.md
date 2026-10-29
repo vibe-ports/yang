@@ -140,3 +140,13 @@ reported no work and was not reserved by the link that builds the index.
 The second snapshot review (`240s5-snap2`) found three more, fixed: publication located its runs
 by a pass over the whole set; sequential consumers read by position (O(n log n), uncounted);
 the attach replay scanned past pending members (O(M²)).
+
+The third snapshot review (`240s5-snap3`) found two more: the index rebuild after a batch
+publication had lost its reservation when the publication charge became run-sized (now reserved
+with it: TestMergeSparseBatchChargesRebuild), and sequential readers remained (key comparisons,
+run ends, metadata walks, the removal neighbours), now threaded walks.
+
+**Open:** a point read by position (`At`) is an O(log n) descent counted as sibling visits but
+not charged to the enforced quota, as slice indexing was not; every remaining use reads O(1)
+positions per edit. Keeping the index across a batch publication (re-registering only the run
+instead of rebuilding it, O(N) charged) is left to step 6.
