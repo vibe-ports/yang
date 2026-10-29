@@ -424,6 +424,9 @@ secondary slots (33/33/32 slots, identical JSON).
 
 ## NewPath mutation journal
 
+#240 step 4 extends this journal to the ordered sibling index, with savepoint levels, prepaid
+suffixes and a suspension guard: [design 13](13-sibling-journal-step4.md).
+
 The maintainer chose option (b) of the c318 consult. `NewPath` no longer reserves a finite
 `newPathRecovery` allowance for a cleanup that runs outside the forward quota. Instead it
 records what it changes, at the moment it changes it, and a refusal restores those records.
