@@ -149,25 +149,13 @@ func TestApplyDiffRepeatedMoveFirstRollback(t *testing.T) {
 // TestRelocationForwardRecoveryInState: inside a state whose current level holds the set, a
 // relocation opens no level; a failure after its unlink rolls forward (the node returns to its
 // place, the moves before it stay), and the state's rollback still restores the tree exactly.
+// The fixtures: a plain set, an indexed one (an operation's children: the recovery relinks with
+// a fresh handle), and a separator between two runs whose removal marks the left run unsorted.
 func TestRelocationForwardRecoveryInState(t *testing.T) {
 	set := reviewDiffSet(t, relocationModule)
 	opSet := opIndexSet(t, `module m { yang-version 1.1; namespace "urn:m"; prefix m;
 	  rpc r { input { leaf-list v { type uint32; ordered-by user; } } } }`)
-	for _, commit := range []bool{false, true} {
-		tr, _ := relocationTrees(t, set, 16)
-		forwardRecoveryInState(t, tr, tr.top.first(), commit)
-		// an operation's children keep an ordered index: the recovery relinks with a fresh handle
-		tr, op := opIndexParseRPC(t, opSet, `{"m:r":{"v":[`+opIndexValues(16, false)+`]}}`)
-		if op.kids.order == nil {
-			t.Fatal("fixture: the operation's children are not indexed")
-		}
-		forwardRecoveryInState(t, tr, op, commit)
-	}
-}
-
-func forwardRecoveryInState(t *testing.T, tr *Tree, c *Node, commit bool) {
-	t.Helper()
-	value := func(v string) *Node {
+	byValue := func(t *testing.T, c *Node, v string) *Node {
 		for n := range c.kids.all() {
 			if n.value.Canonical() == v {
 				return n
@@ -176,25 +164,58 @@ func forwardRecoveryInState(t *testing.T, tr *Tree, c *Node, commit bool) {
 		t.Fatalf("no value %s", v)
 		return nil
 	}
+	// moveTwo moves 2 before the first instance: the state's current level captures the set
+	moveTwo := func(tr *Tree, c *Node) func(*testing.T) {
+		return func(t *testing.T) {
+			if err := tr.diffInsert(c, byValue(t, c, "2"), byValue(t, c, "2"), ""); err != nil {
+				t.Fatal(err)
+			}
+		}
+	}
+	for _, commit := range []bool{false, true} {
+		tr, _ := relocationTrees(t, set, 16)
+		c := tr.top.first()
+		forwardRecoveryInState(t, tr, moveTwo(tr, c), func() *Node { return byValue(t, c, "3") }, commit)
+		tr, op := opIndexParseRPC(t, opSet, `{"m:r":{"v":[`+opIndexValues(16, false)+`]}}`)
+		if op.kids.order == nil {
+			t.Fatal("fixture: the operation's children are not indexed")
+		}
+		forwardRecoveryInState(t, tr, moveTwo(tr, op), func() *Node { return byValue(t, op, "3") }, commit)
+		tr, sep := splitRunSeparator(t, 8)
+		if p, err := prepareUnlink(sep); err != nil || p == nil || p.left == nil {
+			t.Fatalf("fixture: the separator joins no RB run (%v)", err)
+		}
+		capture := func(t *testing.T) {
+			if err := sep.siblingsOf().touch(); err != nil {
+				t.Fatal(err)
+			}
+		}
+		forwardRecoveryInState(t, tr, capture, func() *Node { return sep }, commit)
+	}
+}
+
+// forwardRecoveryInState opens a state, runs prepare (which must capture the set), relocates
+// pick() within its set with a failure injected after the unlink, then ends the state.
+func forwardRecoveryInState(t *testing.T, tr *Tree, prepare func(*testing.T), pick func() *Node, commit bool) {
+	t.Helper()
 	original := snapshotHashBudgetTree(tr)
 	j := beginHashTransaction(tr)
-	if err := tr.diffInsert(c, value("2"), value("2"), ""); err != nil { // captures the set
-		t.Fatal(err)
-	}
-	if !captured(j, j.siblings, &c.kids) {
-		t.Fatal("the first move left the set uncaptured")
+	prepare(t)
+	n := pick()
+	sib := n.siblingsOf()
+	if !captured(j, j.siblings, sib) {
+		t.Fatal("prepare left the set uncaptured")
 	}
 	moved := snapshotHashBudgetTree(tr)
-	n := value("3")
 	restore, arm, err := tr.linkOrigin(n)
 	if err != nil {
 		t.Fatal(err)
 	}
-	disarm, err := arm(&c.kids)
+	disarm, err := arm(sib)
 	if err != nil {
 		t.Fatal(err)
 	}
-	finish, err := tr.relocation(n, &c.kids, restore)
+	finish, err := tr.relocation(n, sib, restore)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -208,12 +229,12 @@ func forwardRecoveryInState(t *testing.T, tr *Tree, c *Node, commit bool) {
 	finish(&failed)
 	disarm()
 	if !reflect.DeepEqual(snapshotHashBudgetTree(tr), moved) {
-		t.Fatal("the forward recovery did not restore the set as the earlier move left it")
+		t.Fatal("the forward recovery did not restore the set as prepare left it")
 	}
 	if commit {
 		j.end(nil)
 		if !reflect.DeepEqual(snapshotHashBudgetTree(tr), moved) {
-			t.Fatal("the kept operation lost the earlier move")
+			t.Fatal("the kept operation lost prepare's change")
 		}
 	} else {
 		j.rollback = true

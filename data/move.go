@@ -482,6 +482,8 @@ func (t *Tree) linkOrigin(n *Node) (restore func(), arm func(dst *siblings) (dis
 	var recovery uint64
 	disarm := func() {} // a refusal after arming drops the armed removal undos, restoring nothing
 	var journaled bool
+	var left *Node
+	var leftUns, leftHad bool
 	armOrigin := func() error {
 		plan, err := prepareUnlink(n)
 		if err != nil {
@@ -495,6 +497,11 @@ func (t *Tree) linkOrigin(n *Node) (restore func(), arm func(dst *siblings) (dis
 		var recordNext *Node
 		if plan != nil {
 			recordNext = plan.next
+			// a removed separator marks the left run it joins unsorted (unlink): relinking
+			// does not clear it, so the recovery restores the flag
+			if left = plan.left; left != nil {
+				leftUns, leftHad = sib.unsorted[left]
+			}
 		}
 		recordUndo, recordRecovery, err = linkRecordOrigin(sib, n, recordNext, &t.work)
 		if err != nil {
@@ -638,6 +645,13 @@ func (t *Tree) linkOrigin(n *Node) (restore func(), arm func(dst *siblings) (dis
 				markUnsorted(sib, leader)
 			} else {
 				delete(sib.unsorted, leader)
+			}
+			switch {
+			case left == nil:
+			case leftHad:
+				sib.unsorted[left] = leftUns
+			default:
+				delete(sib.unsorted, left)
 			}
 			recordUndo()
 			linksUndo() // unlink's freeLinks: both endpoints of every reciprocal link

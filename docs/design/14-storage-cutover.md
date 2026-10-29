@@ -215,9 +215,12 @@ be narrowed; this section is its plan.
    capture; before, N=256 to 2048 charged 0.9M to 55M units with one capture per move, and 4096
    exceeded the default budget), TestApplyDiffRepeatedMoveFirstRollback (every budget limit
    restores the tree exactly; an ordinary failure at a later entry keeps the moves before it),
-   TestRelocationForwardRecoveryInState (a failure injected after the unlink, in a plain and an
-   indexed set: the node returns, the earlier move stays, and the state then commits that or
-   restores the original exactly).
+   TestRelocationForwardRecoveryInState (a failure injected after the unlink, in a plain set, an
+   indexed one and for a separator between two runs: the node returns, the earlier change stays,
+   and the state then commits that or restores the original exactly). The second snapshot review
+   (`240s6-snap2`) found the forward recovery left the unsorted mark a removed separator puts on
+   the left run (the level had restored it); linkOrigin now saves and restores that mark, which
+   also fixes the unjournaled forward recovery.
 3. **D-0149 wording.** Rank and index reads on a mutation path are charged (read credits);
    point reads by position (`At`) are O(log n) descents counted as sibling visits but not
    charged, as slice indexing was not. The Open note is narrowed to that.
