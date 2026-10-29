@@ -472,12 +472,12 @@ func TestS4CounterpartCaptureRefusalScaling(t *testing.T) {
 	j.end(nil)
 	done()
 	for limit := uint64(1); limit < need; limit++ {
-		if raceEnabled && !fzFull && limit%8 != 1 {
-			continue
-		}
 		smallWork, smallAllocs, err := capture(8, limit)
 		if err == nil {
 			continue
+		}
+		if raceEnabled && !fzFull && limit > 1 {
+			break // swept in the normal suite
 		}
 		largeWork, largeAllocs, err := capture(4096, limit)
 		if !errors.Is(err, yang.ErrBudget) {

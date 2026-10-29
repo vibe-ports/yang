@@ -62,10 +62,7 @@ func TestS4PrepaidOverdraftProductionPolicy(t *testing.T) {
 	}
 	separate := fresh.work.hashUsed
 	exceeded := 0
-	for limit := uint64(1); limit < need; limit++ {
-		if !s4RaceLimit(limit, need) {
-			continue
-		}
+	for limit := uint64(1); limit < need; limit++ { // every limit, under race too: few, and the overdraft is at some
 		tr, op := s4OpTree(t, set, "5", "1", "9")
 		before := snapshotHashBudgetTree(tr)
 		over := false
