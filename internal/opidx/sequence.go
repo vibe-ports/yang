@@ -33,6 +33,7 @@ type seqHeader[T any] struct {
 	root, first, last *Handle[T]
 	length            int
 	scale             int
+	unlabeled         bool
 }
 
 type seqCheckpoint[T any] struct {
@@ -58,11 +59,14 @@ type Seq[T any] struct {
 	root, first, last *Handle[T]
 	length            int
 	scale             int
-	work              func(uint64)
-	hooks             Hooks
-	stamp             uint64 // the journal epoch of the last recorded header
-	checkpointID      uint64
-	checkpoints       []*seqCheckpoint[T]
+	// unlabeled: the order labels are not maintained (Compare falls back to ranks); a sequence
+	// without an ordered index over it does not pay for them (#240 step 5)
+	unlabeled    bool
+	work         func(uint64)
+	hooks        Hooks
+	stamp        uint64 // the journal epoch of the last recorded header
+	checkpointID uint64
+	checkpoints  []*seqCheckpoint[T]
 }
 
 // SetWorkHook sets a synchronous callback for node visits, rotations, splits,
@@ -91,7 +95,7 @@ func (s *Seq[T]) journal() *Journal {
 // touchHeader records the header before a mutation that may change it.
 func (s *Seq[T]) touchHeader() {
 	if j := s.journal(); j != nil && j.first(&s.stamp) {
-		j.image(Entry{obj: s, ptr: [6]any{s.root, s.first, s.last}, num: [3]uint64{uint64(s.length), uint64(s.scale)}}, s.hooks) //nolint:gosec // restored bit for bit
+		j.image(Entry{obj: s, ptr: [6]any{s.root, s.first, s.last}, num: [3]uint64{uint64(s.length), uint64(s.scale)}, had: s.unlabeled}, s.hooks) //nolint:gosec // restored bit for bit
 	}
 }
 
@@ -100,6 +104,7 @@ func (s *Seq[T]) undo(e *Entry) {
 	s.first, _ = e.ptr[1].(*Handle[T])
 	s.last, _ = e.ptr[2].(*Handle[T])
 	s.length, s.scale = int(e.num[0]), int(e.num[1]) //nolint:gosec // the recorded ints themselves
+	s.unlabeled = e.had
 }
 
 func (s *Seq[T]) purge(*Entry) {}
@@ -131,11 +136,11 @@ func (s *Seq[T]) created(h *Handle[T]) {
 }
 
 func (s *Seq[T]) header() seqHeader[T] {
-	return seqHeader[T]{s.root, s.first, s.last, s.length, s.scale}
+	return seqHeader[T]{s.root, s.first, s.last, s.length, s.scale, s.unlabeled}
 }
 
 func (s *Seq[T]) restoreHeader(h seqHeader[T]) {
-	s.root, s.first, s.last, s.length, s.scale = h.root, h.first, h.last, h.length, h.scale
+	s.root, s.first, s.last, s.length, s.scale, s.unlabeled = h.root, h.first, h.last, h.length, h.scale, h.unlabeled
 }
 
 // touch records h before its first mutation after every active checkpoint.
@@ -255,6 +260,18 @@ func (s *Seq[T]) Prev(h *Handle[T]) *Handle[T] {
 func (s *Seq[T]) Compare(a, b *Handle[T]) (int, bool) {
 	if a == nil || b == nil || a.owner != s || b.owner != s {
 		return 0, false
+	}
+	if s.unlabeled {
+		x, _ := s.Pos(a)
+		y, _ := s.Pos(b)
+		switch {
+		case x < y:
+			return -1, true
+		case x > y:
+			return 1, true
+		default:
+			return 0, true
+		}
 	}
 	switch {
 	case a.tag < b.tag:
@@ -902,6 +919,9 @@ func (s *Seq[T]) adjustScale() {
 // takes up to 2*scale appends at endStride before the next relabel, instead of halving one
 // step's gap at every append (#240 step 4: the relabel is now charged work).
 func (s *Seq[T]) rebuildTags() {
+	if s.unlabeled {
+		return
+	}
 	step := tagUniverse / 4 * 3 / uint64(s.length+1) //nolint:gosec
 	i := uint64(1)
 	for h := s.first; h != nil; h = h.next {
@@ -916,6 +936,9 @@ func (s *Seq[T]) rebuildTags() {
 func (s *Seq[T]) endStride() uint64 { return tagUniverse / 4 / uint64(2*s.scale+2) } //nolint:gosec // a scale is nonnegative
 
 func (s *Seq[T]) labelRange(first, last *Handle[T], count int) {
+	if s.unlabeled {
+		return
+	}
 	lo, hi := uint64(0), tagUniverse
 	if first.prev != nil {
 		lo = first.prev.tag
@@ -1080,7 +1103,7 @@ func (s *Seq[T]) CheckInvariants() error {
 		if h.owner != s || h.prev != previous {
 			return fmt.Errorf("thread handle has invalid owner or predecessor")
 		}
-		if previous != nil && previous.tag >= h.tag {
+		if !s.unlabeled && previous != nil && previous.tag >= h.tag {
 			return fmt.Errorf("order labels are not strictly increasing")
 		}
 		previous = h

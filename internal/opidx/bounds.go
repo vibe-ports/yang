@@ -59,6 +59,9 @@ func (s *Seq[T]) SelectBound() uint64 { return uint64(nodeHeight(s.root)) + 2 } 
 // InsertBound bounds InsertBefore(anchor, ·) (anchor nil: append), its relabel included;
 // journaled: its images too.
 func (s *Seq[T]) InsertBound(anchor *Handle[T], journaled bool, pay Pay) uint64 {
+	if s.unlabeled {
+		return avlUnits(nodeHeight(s.root)+1, journaled)
+	}
 	prev, next := s.last, (*Handle[T])(nil)
 	if anchor != nil {
 		prev, next = anchor.prev, anchor
@@ -79,7 +82,7 @@ func (s *Seq[T]) InsertBound(anchor *Handle[T], journaled bool, pay Pay) uint64 
 // RemoveBound bounds one Remove, a scale-change rebuild included.
 func (s *Seq[T]) RemoveBound(journaled bool) uint64 {
 	bound := avlUnits(nodeHeight(s.root), journaled)
-	if rest := uint64(s.length - 1); s.length > 1 && s.length-1 < s.scale/2 { //nolint:gosec // a length is nonnegative
+	if rest := uint64(s.length - 1); !s.unlabeled && s.length > 1 && s.length-1 < s.scale/2 { //nolint:gosec // a length is nonnegative
 		bound = saturatingAdd(bound, saturatingAdd(rest, images(rest, journaled)))
 	}
 	return bound
@@ -98,6 +101,9 @@ func (s *Seq[T]) MoveBound(h, anchor *Handle[T], journaled bool, pay Pay) uint64
 	}
 	if prev == h {
 		prev = h.prev
+	}
+	if s.unlabeled {
+		return moveUnits(nodeHeight(s.root), journaled)
 	}
 	charges, touched, ok := s.planLabel(prev, next, h, 1, max(s.scale, 1), s.length, pay)
 	if !ok {
@@ -266,12 +272,15 @@ func (s *Seq[T]) ReplaceHandlesBound(first, last *Handle[T], k int, journaled bo
 	if first == nil || last == nil || k < 2 {
 		return 0
 	}
+	kk := uint64(k)
+	bound := saturatingAdd(moveUnits(nodeHeight(s.root), journaled), saturatingAdd(4*kk, images(kk+2, journaled)))
+	bound = saturatingAdd(bound, 3*s.SelectBound())
+	if s.unlabeled {
+		return bound
+	}
 	charges, touched, ok := s.planLabel(first.prev, last.next, nil, k, max(s.scale, 1), s.length, pay)
 	if !ok {
 		return ^uint64(0)
 	}
-	kk := uint64(k)
-	bound := saturatingAdd(moveUnits(nodeHeight(s.root), journaled), saturatingAdd(4*kk, images(kk+2, journaled)))
-	bound = saturatingAdd(bound, 3*s.SelectBound())
 	return saturatingAdd(bound, saturatingAdd(charges, images(touched, journaled)))
 }
