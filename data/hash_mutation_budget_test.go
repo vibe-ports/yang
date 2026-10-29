@@ -88,6 +88,7 @@ func snapshotHashBudgetRoots(s *hashBudgetSnapshot, roots []*Node) {
 }
 
 func snapshotHashBudgetSiblings(s *siblings) string {
+	defer s4Inspect(s.work)() // inspection inside an open state is class C
 	var entries []string
 	for key, chain := range s.ht {
 		var records []string

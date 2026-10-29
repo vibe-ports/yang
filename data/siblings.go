@@ -337,6 +337,9 @@ func (s *siblings) position(n *Node) int {
 	if at := s.orderPosition(n); at >= 0 {
 		return at
 	}
+	if s.order != nil && s.work != nil && s.work.hashErr != nil {
+		return -1 // a refused read credit is sticky: no uncharged fallback scan
+	}
 	// No cache here: lookups run on read-only paths that concurrent readers share (doc.go), so
 	// they must not write sibling state. The parser keeps its own cache (lydCtx.position).
 	return s.schemaSpan().indexFromEnd(s.work, n)

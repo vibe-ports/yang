@@ -170,9 +170,29 @@ func (b *orderBinding) Work(units uint64) {
 		return
 	}
 	b.owner.orderWork(units)
-	if w := b.owner.work; w != nil && w.prepaid {
+	w := b.owner.work
+	switch {
+	case w == nil:
+	case w.prepaid:
 		w.draw(units)
+	case unpaidReadPanics && w.hashDepth > 0 && w.unpaidOK == 0:
+		panic("data: unpaid index read")
 	}
+}
+
+// unpaidIndexWrites lists the index writes outside the prepaid scopes: their work is counted, not
+// charged (their callers reserve the surrounding publication or validation as before), their
+// entries are charged as captures. The detector exempts exactly these.
+//   - orderReorder: a sorted or parser publication, reserved by reorderReplayCost and the
+//     publication's own charges;
+//   - refreshRB from rbPos: the run's new tree, reserved with the sorted insertion;
+//   - refreshExact from validateIncomplete: a completed value, reserved by its native rehash.
+func (w *workCounter) unpaidIndexWrites() func() {
+	if w == nil {
+		return func() {}
+	}
+	w.unpaidOK++
+	return func() { w.unpaidOK-- }
 }
 
 // Entries pays for recorded index entries: from the owner's open credit, else as a capture of
@@ -384,6 +404,7 @@ func (s *siblings) orderReorder(run siblingSpan) {
 	if s.order == nil || run.Len() < 2 {
 		return
 	}
+	defer s.work.unpaidIndexWrites()()
 	start := s.order.seq.Len()
 	for _, n := range run.All() {
 		if rank, ok := s.order.seq.Rank(s.order.byNode[n]); ok {
@@ -455,7 +476,13 @@ func (s *siblings) orderPosition(n *Node) int {
 		}
 		return -1
 	}
+	// a class-A read on a mutation path pays its rank walk, reserved before it runs
+	opened, err := s.work.openRead(rbHeight(s.Len()) + 1)
+	if err != nil {
+		return -1
+	}
 	rank, ok := s.order.seq.Rank(s.order.byNode[n])
+	s.work.closeRead(opened)
 	if !ok {
 		return -1
 	}
@@ -499,10 +526,16 @@ func (s *siblings) allInstances(sn *schema.Node) iter.Seq[*Node] {
 			}
 			return
 		}
-		for h := s.order.bySchema.First(sn, 0); h != nil; h = s.order.bySchema.Next(sn, 0, h) {
+		for h := s.order.bySchema.First(sn, 0); h != nil; {
 			if !yield(h.Value) {
 				return
 			}
+			opened, err := s.work.openRead(s.order.bySchema.ReadBound(sn, 0))
+			if err != nil {
+				return // the refusal is sticky; the walk ends here
+			}
+			h = s.order.bySchema.Next(sn, 0, h)
+			s.work.closeRead(opened)
 		}
 	}
 }
@@ -634,7 +667,13 @@ func (s *siblings) exactAtOrAfter(sn *schema.Node, target, first *Node) *Node {
 	if firstKey, exact := opExactValue(first); exact && first.schema == sn && firstKey == key {
 		return first
 	}
-	if next := s.order.byExact.Next(sn, key, h); next != nil {
+	opened, err := s.work.openRead(s.order.byExact.ReadBound(sn, key))
+	if err != nil {
+		return nil
+	}
+	next := s.order.byExact.Next(sn, key, h)
+	s.work.closeRead(opened)
+	if next != nil {
 		return next.Value
 	}
 	return nil
@@ -646,6 +685,7 @@ func (s *siblings) refreshRB(n *Node) {
 	if s.order == nil || n == nil || n.schema == nil {
 		return
 	}
+	defer s.work.unpaidIndexWrites()() // paid inside link's scope; rbPos's tree is exempt
 	if err := s.touch(); err != nil {
 		return
 	}
@@ -677,6 +717,7 @@ func (s *siblings) refreshExact(n *Node, change func()) {
 		change()
 		return
 	}
+	defer s.work.unpaidIndexWrites()() // paid inside the value change's scope; validateIncomplete is exempt
 	if err := s.touch(); err != nil {
 		if s.work != nil {
 			s.work.hashErr = err // the change is skipped: its caller tests the sticky error

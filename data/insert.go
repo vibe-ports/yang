@@ -950,11 +950,13 @@ func (t *Tree) rbPos(sib *siblings, n *Node, lo, hi int, compare func(*Node, *No
 // to the enforced quota.
 func (t *Tree) chargedIndex(sib *siblings, n *Node) (int, error) {
 	if sib.order != nil {
-		// the ordered sequence's rank walk (a balanced tree): reserved before it runs
-		if err := t.work.chargeHash(rbHeight(sib.Len()) + 1); err != nil {
+		// the ordered sequence's rank walk (a balanced tree): orderPosition's read credit reserves
+		// it before it runs, rbHeight+1 units as before, not refunded (design 13 §4.4)
+		at := sib.orderPosition(n)
+		if err := sib.work.hashErr; err != nil {
 			return -1, err
 		}
-		if at := sib.orderPosition(n); at >= 0 {
+		if at >= 0 {
 			return at, nil
 		}
 	}
@@ -1059,6 +1061,9 @@ func (t *Tree) runBounds(sib *siblings, n *Node) (lo, hi int) {
 		// selects one run and must walk it; charge those unavoidable visits.
 		lo = sib.orderPosition(leader)
 		if lo < 0 {
+			if t.work.hashErr != nil {
+				return 0, 0 // the read credit refused: no uncharged fallback scan
+			}
 			lo = l.indexFromEnd(&t.work, leader)
 		}
 		hi = lo
@@ -1588,10 +1593,24 @@ func (t *Tree) opAnchor(sib *siblings, n *Node) int {
 		if opts == schema.GetNextOutput {
 			d = 1
 		}
-		for r, ok := sib.order.ranks[d].Successor(t.schemaRank(n.schema)); ok && r < len(order); r, ok = sib.order.ranks[d].Successor(r) {
+		next := func(r int) (int, bool) { // a class-A read: each step paid before it walks
+			opened, err := sib.work.openRead(sib.order.ranks[d].ReadBound())
+			if err != nil {
+				return 0, false
+			}
+			r, ok := sib.order.ranks[d].Successor(r)
+			sib.work.closeRead(opened)
+			return r, ok
+		}
+		for r, ok := next(t.schemaRank(n.schema)); ok && r < len(order); r, ok = next(r) {
 			leader := physicalStart(sib, order[r], t.schemaLookupOperation(sib, order[r]))
 			if leader != nil {
-				// The record, not the document-first instance, is the anchor.
+				// The record, not the document-first instance, is the anchor. Its position is
+				// its rank (schema nodes precede the opaque ones): a paid O(log n) read, not an
+				// uncharged scan of the siblings (G10b).
+				if at := sib.orderPosition(leader); at >= 0 || t.work.hashErr != nil {
+					return max(at, 0) // a refused read credit is sticky: no fallback scan
+				}
 				return l.indexFromEnd(&t.work, leader)
 			}
 		}

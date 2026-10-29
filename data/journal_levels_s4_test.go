@@ -24,6 +24,7 @@ func s4IndexImage(s *siblings) string {
 	if s.order == nil {
 		return "no index"
 	}
+	defer s4Inspect(s.work)()
 	o := s.order
 	var b strings.Builder
 	for h := o.seq.First(); h != nil; h = o.seq.Next(h) {
@@ -55,6 +56,17 @@ func s4IndexImage(s *siblings) string {
 	}
 	fmt.Fprintf(&b, " | tombstones %d %d", o.bySchema.Tombstones(), o.byExact.Tombstones())
 	return b.String()
+}
+
+// s4Inspect hides an open hash-work scope from a test's inspection reads: they are class C
+// (design 13 §4.4), charged nothing and not paid by a credit.
+func s4Inspect(w *workCounter) func() {
+	if w == nil {
+		return func() {}
+	}
+	depth := w.hashDepth
+	w.hashDepth = 0
+	return func() { w.hashDepth = depth }
 }
 
 func sortStrings(s []string) {

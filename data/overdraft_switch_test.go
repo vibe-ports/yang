@@ -4,4 +4,4 @@ package data
 
 // Every test build checks every prepaid bound (design 13 §4.3): an overdrawn credit, or a
 // fallible check inside a prepaid scope, panics instead of debiting silently.
-func init() { overdraftPanics = true }
+func init() { overdraftPanics, unpaidReadPanics = true, true }

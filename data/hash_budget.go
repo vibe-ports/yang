@@ -35,8 +35,11 @@ var overdraftPanics bool
 // prepaySkew under-reserves link's apply bound and its index term by that many units each, and overdraftHook observes the
 // production overdraft path (tests of design 13 §4.3; zero and nil otherwise).
 var (
-	prepaySkew    uint64
-	overdraftHook func(*workCounter)
+	// unpaidReadPanics makes an index hook that fires with no credit inside a hash-work scope a
+	// panic (tests: an unpaid read on a mutation path, design 13 §4.4)
+	unpaidReadPanics bool
+	prepaySkew       uint64
+	overdraftHook    func(*workCounter)
 )
 
 // prepay opens a prepaid scope (design 13 §4.1): it debits amount now, refusing like any charge,
@@ -53,6 +56,27 @@ func (w *workCounter) prepay(amount uint64, read bool) (nested bool, err error) 
 	}
 	w.prepaid, w.credit, w.readCredit = true, amount, read
 	return false, nil
+}
+
+// openRead opens a read credit of bound for a class-A index read (design 13 §4.4): on a mutation
+// path (a hash-work scope open) outside a prepaid scope, the reads that follow draw from it and
+// the bound is their charge (not refunded). Inside a prepaid scope the write's bound pays them
+// (class B), and a read-only path (no scope) pays nothing (class C): opened is false then.
+func (w *workCounter) openRead(bound uint64) (opened bool, err error) {
+	if w == nil || w.prepaid || w.hashDepth == 0 {
+		return false, nil
+	}
+	if _, err := w.prepay(bound, true); err != nil {
+		return false, err
+	}
+	return true, nil
+}
+
+// closeRead ends a read credit openRead opened.
+func (w *workCounter) closeRead(opened bool) {
+	if opened {
+		w.closeCredit(false)
+	}
 }
 
 // closeCredit ends the scope prepay opened (nested: nothing to end).

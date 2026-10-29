@@ -220,3 +220,16 @@ func InsertBoundAny(length int, journaled bool) uint64 {
 func UpdateBoundAny(length int, journaled bool) uint64 {
 	return avlUnits(2*bits.Len(uint(length+2))+2, journaled) //nolint:gosec // a length is nonnegative
 }
+
+// ReadBound bounds one Next or LastWhere in the class (schema, key): its walk.
+func (o *Occurrences[T, S, K]) ReadBound(schema S, key K) uint64 {
+	return uint64(o.classHeight(schema, key)) + 2 //nolint:gosec // a height is nonnegative
+}
+
+// ReadBound bounds one Contains, Predecessor or Successor: its walk.
+func (r *Ranks) ReadBound() uint64 {
+	if r.root == nil {
+		return 1
+	}
+	return uint64(r.root.height) + 2 //nolint:gosec // a height is nonnegative
+}
