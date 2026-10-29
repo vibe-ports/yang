@@ -561,12 +561,12 @@ func TestS4BulkPrefixPublicationRefusal(t *testing.T) {
 	}
 }
 
-// TestS4CrossStateReachableFromCallback documents that two independently opened recovery states
-// can share objects through a public path today: an ApplyDiff callback (documented as "must not
-// modify the tree being changed") moves the changed tree's whole top level into another tree,
-// whose own transaction (moveNodes) then journals sibling sets the ApplyDiff transaction also
-// journals. Step 4 forbids this: the move must be refused with a logged LY_EINVAL before any
-// write. When the guard lands, flip the final assertion to expect that refusal.
+// TestS4CrossStateReachableFromCallback is G1's flip of the step-4 preparation test: an
+// ApplyDiff callback (documented as "must not modify the tree being changed") moves the changed
+// tree's whole top level into another tree, whose own transaction (moveNodes) would journal
+// sibling sets the suspended ApplyDiff state journals. The guard refuses it with LY_EINVAL
+// before any write: both trees are unchanged at that point, ApplyDiff then stops by its
+// callback contract, and each tree is mutated independently afterwards.
 func TestS4CrossStateReachableFromCallback(t *testing.T) {
 	set := reviewDiffSet(t, s4JournalModule)
 	before := s4DataTree(t, set, "3", "7", "11", "15", "19")
@@ -585,21 +585,48 @@ func TestS4CrossStateReachableFromCallback(t *testing.T) {
 	other := newTree(set)
 	called, open := false, false
 	var moveErr error
-	_ = tr.ApplyDiff(diff, ApplyDiffOptions{Callback: func(_, _ *Node) error {
+	stop := errors.New("stop")
+	err = tr.ApplyDiff(diff, ApplyDiffOptions{Callback: func(_, _ *Node) error {
 		if called {
 			return nil
 		}
 		called = true
 		open = tr.work.journal != nil
+		snapTr, snapOther := snapshotHashBudgetTree(tr), snapshotHashBudgetTree(other)
 		moveErr = other.Insert(nil, tr.top.first()) // moveNodes: a second transaction on other
-		return errors.New("stop")
+		if !reflect.DeepEqual(snapshotHashBudgetTree(tr), snapTr) || !reflect.DeepEqual(snapshotHashBudgetTree(other), snapOther) {
+			t.Error("the refused move changed a tree")
+		}
+		return stop
 	}})
 	if !called || !open {
 		t.Fatalf("callback called=%t, ApplyDiff transaction open=%t", called, open)
 	}
-	// Today: accepted, so two open states shared tr's top-level sibling set.
-	if moveErr != nil || other.top.len() < 2 {
-		t.Fatalf("cross-state move: %v (moved %d nodes); if refused, the step-4 guard landed: update this test",
-			moveErr, other.top.len())
+	if !s4Refused(moveErr) || other.top.len() != 0 {
+		t.Fatalf("cross-state move: %v (moved %d nodes), want the guard's logged LY_EINVAL", moveErr, other.top.len())
 	}
+	if !errors.Is(err, stop) {
+		t.Fatalf("ApplyDiff: %v, want the callback's own error", err)
+	}
+	if tr.work.journal != nil {
+		t.Fatal("the ApplyDiff state is still installed")
+	}
+	s4Check(t, "after", []*Tree{tr, other})
+	if _, err := tr.NewTerm(tr.top.first(), "u", "q", NewOptions{}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := other.NewTerm(nil, "s4j:t", "y", NewOptions{}); err != nil {
+		t.Fatal(err)
+	}
+	s4Check(t, "independent", []*Tree{tr, other})
+}
+
+// s4Refused reports the guard's refusal: a logged LY_EINVAL from a public call, the bare error
+// from an internal one.
+func s4Refused(err error) bool {
+	if errors.Is(err, errInProgress) {
+		return true
+	}
+	var ve *ValidationError
+	return errors.As(err, &ve) && ve.RC() == "LY_EINVAL" && strings.Contains(ve.Error(), errInProgress.Msg)
 }

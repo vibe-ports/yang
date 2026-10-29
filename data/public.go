@@ -18,7 +18,8 @@ import (
 // included; err is nil when only warnings were logged, else a *ValidationError, or an error
 // wrapping yang.ErrBudget (Budget, the input's nesting limits) or ctx.Err(). The tree keeps s:
 // a later Load into the context does not change it.
-func Parse(ctx context.Context, r io.Reader, f Format, s *yang.Schema, o ParseOptions) (*Tree, []yang.Diagnostic, error) {
+func Parse(ctx context.Context, r io.Reader, f Format, s *yang.Schema, o ParseOptions) (_ *Tree, _ []yang.Diagnostic, err error) {
+	defer func() { err = restoreUser(err) }() // a Reader's or context's own error, after the state ended
 	if s == nil {
 		lg := &logger{}
 		err := lg.done(argErr("ctx || parent", "lyd_parse_data"))
@@ -83,7 +84,9 @@ func (n *Node) Schema() *yang.SchemaNode {
 // tree, implicit default nodes (added to t), must, mandatory, min/max-elements, unique and
 // duplicate instances. A node whose when is false is removed silently if it was created as
 // valid earlier (FlagWhenTrue), else it is an error. Diagnostics and err as for Parse.
-func (t *Tree) Validate(ctx context.Context, o ValidateOptions) ([]yang.Diagnostic, error) {
+func (t *Tree) Validate(ctx context.Context, o ValidateOptions) (_ []yang.Diagnostic, err error) {
+	ctx = suspending(ctx, &t.work) // its polls run the user's context suspended (design 13 §2.4)
+	defer func() { err = restoreUser(err) }()
 	return t.validateAll(ctx, o, Budget{}, nil)
 }
 
@@ -94,7 +97,9 @@ func (t *Tree) Validate(ctx context.Context, o ValidateOptions) ([]yang.Diagnost
 // libyang's NULL-context argument check. An unknown or not implemented module also
 // returns LY_EINVAL without a diagnostic. Other diagnostics and err are as for Validate. See
 // ValidateModuleDiff for the diff-returning form and its mutation and error semantics.
-func (t *Tree) ValidateModule(ctx context.Context, module string, o ValidateOptions) ([]yang.Diagnostic, error) {
+func (t *Tree) ValidateModule(ctx context.Context, module string, o ValidateOptions) (_ []yang.Diagnostic, err error) {
+	ctx = suspending(ctx, &t.work) // its polls run the user's context suspended (design 13 §2.4)
+	defer func() { err = restoreUser(err) }()
 	mod, d, err := t.validateModuleArgs(module, o)
 	if err != nil {
 		return d, err

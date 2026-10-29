@@ -48,7 +48,8 @@ func (t *Tree) ApplyDiff(diff *Tree, o ApplyDiffOptions) error {
 func (t *Tree) applyDiffWithModule(diff *Tree, o ApplyDiffOptions, mod *schema.Module) (result error) {
 	defer t.work.beginHashWork()()
 	lg := &logger{set: t.context()}
-	defer func() { result = diffDone(lg, result) }() // a sticky D-0121 refusal returned as hashErr
+	// a sticky D-0121 refusal returned as hashErr; a callback's own error, after the state ended
+	defer func() { result = restoreUser(diffDone(lg, result)) }()
 	if split, op := splitOpRun(t.top.first(), true); split != nil {
 		fn := "lyd_diff_apply_all"
 		if o.Module != "" {
@@ -206,7 +207,7 @@ func (t *Tree) applyR(parent, dn *Node, cb func(diff, node *Node) error, cache *
 		return err
 	}
 	if cb != nil {
-		if err := cb(dn, match); err != nil {
+		if err := t.work.callUser(func() error { return cb(dn, match) }); err != nil {
 			return err
 		}
 	}

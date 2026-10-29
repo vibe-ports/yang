@@ -297,7 +297,7 @@ func (v xpathAnyValue) String() string {
 }
 
 func (v xpathAnyValue) StringWithBudget(ctx context.Context, step, byteStep func() error) (string, error) {
-	if err := ctx.Err(); err != nil {
+	if err := poll(ctx); err != nil {
 		return "", err
 	}
 	if v.n.any != nil && v.n.any.text != nil {

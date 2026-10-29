@@ -198,7 +198,7 @@ func newAnyWork(ctx context.Context, b Budget) *anyWork {
 // argument: tree_data_new.c:203-206 saves/disables logging for !log, and
 // :226-229 restores it. Required construction keeps them; speculative calls do not.
 func (w *anyWork) createAnyDatatree(set *schema.Set, value string) (*Tree, []yang.Diagnostic, error) {
-	if err := w.ctx.Err(); err != nil {
+	if err := poll(w.ctx); err != nil {
 		return nil, nil, err
 	}
 	left := orDefault(w.budget.MaxBytes, DefaultMaxBytes) - w.bytes
@@ -243,7 +243,7 @@ func (w *anyWork) createAny(t *Tree, sn *schema.Node, child *Node, value *string
 	if child != nil && value != nil {
 		return nil, nil, argErr("schema/child/value", "lyd_create_any")
 	}
-	if err := w.ctx.Err(); err != nil {
+	if err := poll(w.ctx); err != nil {
 		return nil, nil, err
 	}
 	// lyd_create_any works in schema->module->ctx, which in a mixed-context tree

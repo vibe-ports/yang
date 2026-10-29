@@ -201,7 +201,7 @@ func (t *Tree) dupWork(n, parent *Node, top bool, order insertOrder, opts dupOpt
 	// linking an outer node does not rebind the payloads below it again
 	payloadTrees := map[*schema.Set]*Tree{}
 	for len(stack) != 0 {
-		if err := w.ctx.Err(); err != nil {
+		if err := poll(w.ctx); err != nil {
 			return nil, err
 		}
 		f := stack[len(stack)-1]

@@ -47,7 +47,7 @@ func (vc *valCtx) xpathSet() *schema.Set {
 func (vc *valCtx) eval(e *xpath.Expr, ctx *Node, root xpath.RootKind, ignoreWhen bool, owner ...*schema.Set) (xpath.Result, error) {
 	b := &vc.budget
 	if b.ctx != nil {
-		if err := b.ctx.Err(); err != nil {
+		if err := poll(b.ctx); err != nil {
 			return xpath.Result{}, err
 		}
 	}

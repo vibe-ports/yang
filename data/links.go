@@ -42,19 +42,22 @@ func linksOf(set *schema.Set, n *Node) (*leafrefLinks, error) {
 
 // linkLeafrefNode is lyd_link_leafref_node: lref points to target. Like libyang it stops early
 // when lref is already among target's leafref nodes.
-func linkLeafrefNode(target, lref *Node) {
+func linkLeafrefNode(target, lref *Node) error {
+	if governing(target).suspendedState() || governing(lref).suspendedState() {
+		return errInProgress // before either record changes (design 13 §2.4)
+	}
 	if err := target.touch(); err != nil {
-		return
+		return err
 	}
 	if err := lref.touch(); err != nil {
-		return
+		return err
 	}
 	if target.links == nil {
 		target.links = &leafrefLinks{}
 	}
 	for _, l := range target.links.leafrefs {
 		if l == lref {
-			return
+			return nil
 		}
 	}
 	target.links.leafrefs = append(target.links.leafrefs, lref)
@@ -63,18 +66,18 @@ func linkLeafrefNode(target, lref *Node) {
 	}
 	for _, t := range lref.links.targets {
 		if t == target {
-			return
+			return nil
 		}
 	}
 	lref.links.targets = append(lref.links.targets, target)
+	return nil
 }
 
 func linkLeafrefNodeChecked(target, lref *Node) error {
 	if set := ctxOf(target); set != nil && !set.LeafrefLinking {
 		return errLinksDenied
 	}
-	linkLeafrefNode(target, lref)
-	return nil
+	return linkLeafrefNode(target, lref)
 }
 
 // removeValue is LY_ARRAY_REMOVE_VALUE: the first n leaves the array, the last item taking its
@@ -94,20 +97,26 @@ func removeValue(a []*Node, n *Node) []*Node {
 // the records of its leafref and target nodes, and a record left empty goes too. The arrays are
 // walked by index with their length re-read, as LY_ARRAY_FOR does, since the recursion may
 // remove from them.
-func freeLinks(n *Node) {
+func freeLinks(n *Node) error {
 	rec := n.links
 	if rec == nil {
-		return
+		return nil
+	}
+	// before any record changes: a counterpart governed by a suspended state refuses it
+	if err := linkGuard(n); err != nil {
+		return err
 	}
 	if err := n.touch(); err != nil {
-		return
+		return err // a refused capture: the caller fails the operation
 	}
 	for i := 0; i < len(rec.leafrefs); i++ {
 		l := rec.leafrefs[i]
 		if r2 := l.links; r2 != nil {
 			r2.targets = removeValue(r2.targets, n)
 			if len(r2.leafrefs) == 0 && len(r2.targets) == 0 {
-				freeLinks(l)
+				if err := freeLinks(l); err != nil {
+					return err
+				}
 			}
 		}
 	}
@@ -117,12 +126,15 @@ func freeLinks(n *Node) {
 		if r2 := t.links; r2 != nil {
 			r2.leafrefs = removeValue(r2.leafrefs, n)
 			if len(r2.leafrefs) == 0 && len(r2.targets) == 0 {
-				freeLinks(t)
+				if err := freeLinks(t); err != nil {
+					return err
+				}
 			}
 		}
 	}
 	rec.targets = nil
 	n.links = nil
+	return nil
 }
 
 // bulkLinkCleaner is freeLinks with lazy indexes for the large counterpart arrays a batch may
@@ -417,12 +429,14 @@ func (vc *valCtx) linkType(n *Node, v types.Value, t *schema.Type) error {
 // a non-empty tree (else an LY_EINVAL argument error, "tree"). The diagnostics are those logged
 // also on success: a leafref path whose evaluation fails (a dangling deref()) is logged at its
 // node and the link skipped. The XPath evaluations stop when ctx is done.
-func (t *Tree) LinkLeafrefs(ctx context.Context) ([]yang.Diagnostic, error) {
+func (t *Tree) LinkLeafrefs(ctx context.Context) (_ []yang.Diagnostic, err error) {
+	ctx = suspending(ctx, &t.work) // its polls run the user's context suspended (design 13 §2.4)
+	defer func() { err = restoreUser(err) }()
 	lg := &logger{set: t.context()}
 	if t.top.len() == 0 {
 		return nil, lg.done(argErr("tree", "lyd_leafref_link_node_tree"))
 	}
-	err := t.linkLeafrefs(ctx, lg)
+	err = t.linkLeafrefs(ctx, lg)
 	if errors.Is(err, errLinksDenied) {
 		return nil, lg.done(rcError("LY_EDENIED"))
 	}

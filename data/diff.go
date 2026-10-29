@@ -42,6 +42,8 @@ func (op diffOp) String() string { return [...]string{"create", "delete", "repla
 // validation to modules present in t. Validation observes ctx cancellation and fixed default
 // implicit-node and XPath budgets.
 func (t *Tree) ValidateDiff(ctx context.Context, o ValidateOptions) (diff *Tree, d []yang.Diagnostic, err error) {
+	ctx = suspending(ctx, &t.work) // its polls run the user's context suspended (design 13 §2.4)
+	defer func() { err = restoreUser(err) }()
 	journal := beginHashTransaction(t)
 	dt := newTree(t.context())
 	defer dt.work.beginHashWork()()
@@ -78,6 +80,8 @@ func (t *Tree) ValidateDiff(ctx context.Context, o ValidateOptions) (diff *Tree,
 // run; finalize each relevant module separately with ValidateModuleFinal.
 func (t *Tree) ValidateModuleDiff(ctx context.Context, module string, o ValidateOptions) (diff *Tree,
 	d []yang.Diagnostic, err error) {
+	ctx = suspending(ctx, &t.work) // its polls run the user's context suspended (design 13 §2.4)
+	defer func() { err = restoreUser(err) }()
 	mod, d, err := t.validateModuleArgs(module, o)
 	if err != nil {
 		return nil, d, err
@@ -622,7 +626,7 @@ func (t *Tree) diffMergeR(src, parent *Node, cache *dupCache, o mergeOpts) error
 			return err
 		}
 		if o.cb != nil {
-			if err := o.cb(src, dn); err != nil {
+			if err := t.work.callUser(func() error { return o.cb(src, dn) }); err != nil {
 				return err
 			}
 		}
@@ -667,7 +671,7 @@ func (t *Tree) diffMergeR(src, parent *Node, cache *dupCache, o mergeOpts) error
 			return err
 		}
 		if o.cb != nil {
-			if err := o.cb(nil, dn); err != nil {
+			if err := t.work.callUser(func() error { return o.cb(nil, dn) }); err != nil {
 				return err
 			}
 		}

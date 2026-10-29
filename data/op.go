@@ -78,7 +78,8 @@ type OpResult struct {
 // frees its parsed set, which for JSON holds only the last instance of each member (earlier
 // instances of a leaf-list or list stay in Request's tree) and for XML each top-level element,
 // so Request's tree may stay modified after a failure.
-func ParseOp(ctx context.Context, r io.Reader, f Format, s *yang.Schema, typ OpType, o ParseOpOptions) (OpResult, []yang.Diagnostic, error) {
+func ParseOp(ctx context.Context, r io.Reader, f Format, s *yang.Schema, typ OpType, o ParseOpOptions) (_ OpResult, _ []yang.Diagnostic, err error) {
+	defer func() { err = restoreUser(err) }() // a Reader's or context's own error, after the state ended
 	fail := func(set *schema.Set, err error) (OpResult, []yang.Diagnostic, error) {
 		lg := &logger{set: set}
 		err = lg.done(err)
@@ -160,7 +161,9 @@ type ValidateOpOptions struct {
 //
 // ValidateOp changes t and, while it runs, o.Operational (the operation is linked into it and
 // unlinked again): it needs exclusive access to both.
-func (t *Tree) ValidateOp(ctx context.Context, typ OpType, o ValidateOpOptions) ([]yang.Diagnostic, error) {
+func (t *Tree) ValidateOp(ctx context.Context, typ OpType, o ValidateOpOptions) (_ []yang.Diagnostic, err error) {
+	ctx = suspending(ctx, &t.work) // its polls run the user's context suspended (design 13 §2.4)
+	defer func() { err = restoreUser(err) }()
 	lg := &logger{set: t.context()}
 	fail := func(err error) ([]yang.Diagnostic, error) {
 		err = lg.done(err) // logs the argument error first

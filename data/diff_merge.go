@@ -102,6 +102,7 @@ func (t *Tree) MergeDiff(src *Tree, o MergeDiffOptions) error {
 }
 
 func (t *Tree) mergeDiffWithModule(src *Tree, o MergeDiffOptions, mod *schema.Module) (result error) {
+	defer func() { result = restoreUser(result) }() // a callback's own error, after the state ended
 	defer t.work.beginHashWork()()
 	t.diffLogs = nil
 	lg := &logger{set: t.context()}
@@ -132,6 +133,7 @@ func (t *Tree) mergeDiffWithModule(src *Tree, o MergeDiffOptions, mod *schema.Mo
 // merges nothing. Operation-child runs in either diff may be split by schema-anchor insertion
 // and are accepted in that stored order, as in libyang.
 func (t *Tree) MergeDiffTree(parent, src *Node, o MergeDiffOptions) (result error) {
+	defer func() { result = restoreUser(result) }() // a callback's own error, after the state ended
 	defer t.work.beginHashWork()()
 	t.diffLogs = nil
 	dest := t.context()

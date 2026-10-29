@@ -61,10 +61,11 @@ func (w *workCounter) prepay(amount uint64, read bool) (nested bool, err error) 
 // openRead opens a read credit of bound for a class-A index read (design 13 §4.4): on a mutation
 // path (a hash-work scope open) outside a prepaid scope, the reads that follow draw from it and
 // the bound is their charge (not refunded). Inside a prepaid scope the write's bound pays them
-// (class B), and a read-only path (no scope) pays nothing (class C): opened is false then.
+// (class B), and a read-only path (no scope) or user code under a suspended state pays nothing
+// (class C): opened is false then.
 func (w *workCounter) openRead(bound uint64) (opened bool, err error) {
-	if w == nil || w.prepaid || w.hashDepth == 0 {
-		return false, nil
+	if w == nil || w.prepaid || w.hashDepth == 0 || w.journal.suspendedState() {
+		return false, nil // user code reading while its state waits is class C too
 	}
 	if _, err := w.prepay(bound, true); err != nil {
 		return false, err

@@ -29,6 +29,11 @@ func prepareUnlink(n *Node) (*unlinkPlan, error) {
 	if p := w.unlinkPlan; p != nil && p.node == n && p.sib == sib && p.gen == sib.gen {
 		return p, nil
 	}
+	// the removal's freeLinks: a counterpart governed by a suspended state refuses it here,
+	// before any write (design 13 §2.4 (5))
+	if err := linkGuard(n); err != nil {
+		return nil, err
+	}
 	nodes := sib.schemaSpan()
 	if n.schema == nil {
 		nodes = sib.opaqueSpan()

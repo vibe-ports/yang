@@ -77,6 +77,17 @@ type hashTransaction struct {
 	// when the operation keeps its changes. bound are the index bindings that report to it.
 	index opidx.Journal
 	bound []*orderBinding
+	// suspendDepth counts the user-code sites the operation is waiting on (design 13 §2.4);
+	// refusing marks the detached state a begin on a suspended tree returns: it is not installed,
+	// opens no hash-work scope, and its end only reports the refusal
+	suspendDepth int
+	refusing     bool
+}
+
+// refusingState is what a begin returns inside a suspended state: the operation is refused
+// before any write, and the suspended state and its later rollback are untouched.
+func refusingState(t *Tree) *hashTransaction {
+	return &hashTransaction{tree: t, err: errInProgress, refusing: true}
 }
 
 type placedNode struct {
@@ -205,6 +216,9 @@ func (j *hashTransaction) endLevel(sp int, result error) {
 // the whole operation. The caller ends it with end.
 func beginHashTransaction(t *Tree) *hashTransaction {
 	if t.work.journal != nil {
+		if t.work.journal.suspendedState() {
+			return refusingState(t)
+		}
 		return nil
 	}
 	j := &hashTransaction{tree: t, done: t.work.beginHashWork(), rank: t.rank, orders: t.orders, set: t.set,
@@ -236,6 +250,9 @@ func beginHashTransaction(t *Tree) *hashTransaction {
 // entry they gain is the same for any later call, so nothing is copied up front.
 func beginNarrowTransaction(t *Tree) *hashTransaction {
 	if t.work.journal != nil {
+		if t.work.journal.suspendedState() {
+			return refusingState(t)
+		}
 		return nil
 	}
 	j := t.work.spare
@@ -283,8 +300,8 @@ func (j *hashTransaction) maps() {
 // image of s, so s gets entries again.
 func (s *siblings) narrow() *hashTransaction {
 	j := s.journal()
-	if j == nil || !j.narrow {
-		return nil
+	if j == nil || !j.narrow || j.suspendedState() {
+		return nil // a suspended state's objects refuse at touch
 	}
 	if _, whole := j.siblings[s]; whole {
 		return nil
@@ -440,6 +457,12 @@ func (j *hashTransaction) end(result *error) {
 	if j == nil {
 		return
 	}
+	if j.refusing {
+		if result != nil && (*result == nil || errors.Is(*result, errInProgress)) {
+			*result = j.err
+		}
+		return
+	}
 	j.tree.work.journal = nil
 	for _, w := range j.lent {
 		if w.journal == j {
@@ -448,7 +471,8 @@ func (j *hashTransaction) end(result *error) {
 	}
 	if result != nil {
 		j.fail(result)
-		if errors.Is(*result, yang.ErrBudget) || j.rollback && *result != nil {
+		// a guard refusal restores too: it may follow the operation's earlier writes
+		if errors.Is(*result, yang.ErrBudget) || errors.Is(*result, errInProgress) || j.rollback && *result != nil {
 			j.restore()
 		}
 	}
@@ -478,6 +502,9 @@ func (j *hashTransaction) fail(result *error) {
 // to them, like the hashing it protects. Reserve before copying; touch refuses the mutation
 // when reservation fails. Earlier completed captures remain available for rollback.
 func (j *hashTransaction) charge(objects uint64) error {
+	if j.refusing {
+		return j.err
+	}
 	if err := j.tree.work.chargeLimited(objects); err != nil {
 		if j.err == nil {
 			j.err = err
@@ -498,6 +525,9 @@ func (s *siblings) journal() *hashTransaction {
 // touch journals s before it changes: its indexes and the structs of the nodes in it.
 func (s *siblings) touch() error {
 	if j := s.journal(); j != nil {
+		if j.suspendedState() {
+			return errInProgress
+		}
 		return j.captureSiblings(s)
 	}
 	return nil
@@ -507,7 +537,13 @@ func (s *siblings) touch() error {
 // to t).
 func (t *Tree) touch(s *siblings) error {
 	if j := t.work.journal; j != nil {
+		if j.suspendedState() || s.journal().suspendedState() {
+			return errInProgress
+		}
 		return j.captureSiblings(s)
+	}
+	if s.journal().suspendedState() {
+		return errInProgress
 	}
 	return nil
 }
@@ -522,6 +558,9 @@ func (n *Node) touch() error {
 	}
 	if j == nil {
 		return nil
+	}
+	if j.suspendedState() {
+		return errInProgress
 	}
 	if j.fresh[n] {
 		return j.err // NewPath's own new nodes: a refusal leaves no reference to them
@@ -550,8 +589,14 @@ func joinLinkJournal(t *Tree, n *Node) error {
 	if from == nil && source != nil {
 		from = source.work.journal
 	}
+	if from.suspendedState() || t.work.journal.suspendedState() {
+		return errInProgress // a lend into, or from, an operation waiting on user code
+	}
 	lend := func(j *hashTransaction, w *workCounter) error {
 		if w.journal != nil {
+			if w.journal.suspendedState() {
+				return errInProgress
+			}
 			return nil
 		}
 		if err := j.charge(1); err != nil {
@@ -596,6 +641,9 @@ func (s *siblings) setWork(work *workCounter) {
 func (s *siblings) rebind(work *workCounter) error {
 	if s.work == work {
 		return nil
+	}
+	if s.journal().suspendedState() || work.journal.suspendedState() {
+		return errInProgress
 	}
 	if from := s.journal(); from != nil && work.journal == nil {
 		if err := from.charge(1); err != nil {
@@ -711,6 +759,13 @@ func (j *hashTransaction) captureNode(n *Node) error {
 		}
 	}
 	if n.links != nil {
+		for _, side := range [2][]*Node{n.links.leafrefs, n.links.targets} {
+			for _, c := range side {
+				if governing(c).suspendedState() {
+					return j.refuse() // freeLinks, the bulk cleaner or a link edit would reach it
+				}
+			}
+		}
 		if err := j.captureLinks(n.links); err != nil {
 			return err
 		}
@@ -746,8 +801,20 @@ func (j *hashTransaction) captureOwner(c *Node) error {
 	if captured(j, j.owners, c) {
 		return nil
 	}
+	g := governing(c)
+	if g.suspendedState() {
+		return j.refuse()
+	}
 	if err := j.charge(1); err != nil {
 		return err
+	}
+	if g == nil {
+		// enrollment (design 13 §2.4 (4)): c's tree joins this state until end, so a callback
+		// that later reaches it meets this state, suspended, even after the link is gone
+		if w := governingCounter(c); w != nil && w.journal == nil {
+			w.journal = j
+			j.lent = append(j.lent, w)
+		}
 	}
 	addWhole(j, j.owners, &j.img.owners, wholeOwner, c, c.links)
 	if c.links != nil {
@@ -1018,6 +1085,27 @@ func capturer(t *Tree, s *siblings) *hashTransaction {
 		if _, whole := j.siblings[s]; whole {
 			return j
 		}
+	}
+	return nil
+}
+
+// refuse makes the guard's refusal the operation's: it fails with it and restores whatever it
+// wrote before reaching the suspended state's object.
+func (j *hashTransaction) refuse() error {
+	if j.err == nil {
+		j.err = errInProgress
+	}
+	j.rollback = true
+	return errInProgress
+}
+
+// governingCounter is the counter whose state would govern c (Node.touch's resolution).
+func governingCounter(c *Node) *workCounter {
+	if w := childStorage(c).work; w != nil {
+		return w
+	}
+	if t := c.treeOf(); t != nil {
+		return &t.work
 	}
 	return nil
 }

@@ -2765,7 +2765,10 @@ func unlink(n *Node) error {
 		return err
 	}
 	if n.schema == nil {
-		freeLinks(n)
+		if err := freeLinks(n); err != nil {
+			sib.work.hashErr = err
+			return err
+		}
 		if i := plan.at; i >= 0 {
 			sib.orderRemoveOpaque(n)
 			moved, err := sib.DeleteAt(sib.SchemaLen() + i)
@@ -2789,7 +2792,10 @@ func unlink(n *Node) error {
 			sib.work.hashErr = err
 			return err
 		}
-		freeLinks(n)
+		if err := freeLinks(n); err != nil {
+			sib.work.hashErr = err
+			return err
+		}
 		if i > 0 && i+1 < sib.SchemaLen() && n.schema != sib.At(i-1).schema &&
 			sib.At(i-1).schema == sib.At(i+1).schema {
 			// Removing a separator joins physical runs, but their RB trees do not merge.
@@ -3122,7 +3128,10 @@ func (t *Tree) unlinkAllDefaults(ns, defaults []*Node) (result error) {
 		if err := sib.removeRBNode(n, prev, next, tail, func(c *Node) (*Node, *Node) { return l.prev[c], l.next[c] }); err != nil {
 			return err
 		}
-		freeLinks(n)
+		if err := freeLinks(n); err != nil {
+			t.work.hashErr = err
+			return err
+		}
 		if t.work.hashErr != nil {
 			return t.work.hashErr
 		}

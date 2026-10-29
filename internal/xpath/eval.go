@@ -217,7 +217,7 @@ func (ev *evaluator) tick() error {
 	if ev.steps--; ev.steps < 0 {
 		ev.err = ErrBudget
 	} else if ev.steps&1023 == 0 {
-		ev.err = ev.ctx.Err()
+		ev.err = poll(ev.ctx)
 	}
 	return ev.err
 }
@@ -233,7 +233,7 @@ func (ev *evaluator) probeCharge(work int64) error {
 		ev.err = ErrBudget
 	} else {
 		ev.steps -= int(work)
-		ev.err = ev.ctx.Err()
+		ev.err = poll(ev.ctx)
 	}
 	return ev.err
 }
@@ -1843,3 +1843,8 @@ func (ev *evaluator) compareItem(it item, other *value, op string, switched bool
 	}
 	return ev.compare(tmp, *other, op)
 }
+
+// poll is the one context poll of an evaluation (#240 step 4): data hands evaluations of its
+// operations a suspending context, whose Err runs the user's context with the operation's
+// state suspended.
+func poll(ctx context.Context) error { return ctx.Err() }

@@ -757,7 +757,13 @@ func (t *Tree) moveNodes(parent *Node, src *Tree) (result error) {
 	}
 	journal := beginHashTransaction(t)
 	defer journal.end(&result)
+	if journal != nil && journal.refusing {
+		return journal.err // t's operation waits on user code
+	}
 	j := t.work.journal
+	if src.work.journal.suspendedState() {
+		return errInProgress
+	}
 	defer src.work.beginHashWork()()
 	if src.work.journal == nil {
 		if err := j.charge(1); err != nil {

@@ -1,0 +1,344 @@
+// SPDX-License-Identifier: BSD-3-Clause
+
+package data
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"io"
+	"os"
+	"path/filepath"
+	"reflect"
+	"regexp"
+	"strings"
+	"testing"
+
+	"github.com/vibe-ports/yang"
+	"github.com/vibe-ports/yang/internal/schema"
+)
+
+// #240 step 4 (design 13 §2.4, G8 c, d, h, h2, j; G10e): user code reached through a Reader, a
+// context and the methods of returned errors.
+
+func s4OpsFixture(t *testing.T) (*schema.Set, func() (*Tree, *Node)) {
+	t.Helper()
+	set := opsSet(t, readOpsFixture(t, filepath.Join(opsManifest, "parse-xml-rpc-input.yaml")))
+	return set, func() (*Tree, *Node) { return opParent(t, set) }
+}
+
+// mutatingReader runs mutate on its first Read, then yields in.
+type mutatingReader struct {
+	in     io.Reader
+	mutate func()
+	done   bool
+}
+
+func (r *mutatingReader) Read(p []byte) (int, error) {
+	if !r.done {
+		r.done = true
+		r.mutate()
+	}
+	return r.in.Read(p)
+}
+
+// mutatingCtx runs mutate in every Err.
+type mutatingCtx struct {
+	context.Context
+	mutate func()
+	err    error
+	polls  int
+}
+
+func (c *mutatingCtx) Err() error {
+	c.polls++
+	c.mutate()
+	return c.err
+}
+
+// TestS4GuardReaderAndContextDuringParse is G8(c) and (d): a ParseOp with a parent whose Reader,
+// or whose context's Err, mutates the owner tree: every mutation is refused with LY_EINVAL and the
+// owner ends as in the reference without the attempts. Precedence is main's: with the owner's
+// startup capture exhausting the quota and the Reader failing, ErrBudget wins; an oversized
+// input is still the budget error.
+func TestS4GuardReaderAndContextDuringParse(t *testing.T) {
+	set, parent := s4OpsFixture(t)
+	ref, refOp := parent()
+	if _, _, _, err := parseOp(context.Background(), strings.NewReader(`{}`), set, FormatJSON, opReply, refOp, Reject); err != nil {
+		t.Fatal(err)
+	}
+	want := typedDump(ref)
+	t.Run("reader", func(t *testing.T) {
+		tree, op := parent()
+		var mutErr error
+		r := &mutatingReader{in: strings.NewReader(`{}`), mutate: func() { mutErr = tree.top.first().Remove() }}
+		if _, _, _, err := parseOp(context.Background(), r, set, FormatJSON, opReply, op, Reject); err != nil {
+			t.Fatal(err)
+		}
+		if !s4Refused(mutErr) {
+			t.Fatalf("the Reader's mutation: %v, want the guard's refusal", mutErr)
+		}
+		if got := typedDump(tree); !reflect.DeepEqual(got, want) {
+			t.Fatalf("owner %v, want %v", got, want)
+		}
+	})
+	t.Run("context", func(t *testing.T) {
+		tree, op := parent()
+		refusals := 0
+		ctx := &mutatingCtx{Context: context.Background()}
+		ctx.mutate = func() {
+			if err := tree.top.first().Remove(); s4Refused(err) {
+				refusals++
+			}
+		}
+		if _, _, _, err := parseOp(ctx, strings.NewReader(`{}`), set, FormatJSON, opReply, op, Reject); err != nil {
+			t.Fatal(err)
+		}
+		if ctx.polls == 0 || refusals != ctx.polls {
+			t.Fatalf("%d polls, %d refusals", ctx.polls, refusals)
+		}
+		if got := typedDump(tree); !reflect.DeepEqual(got, want) {
+			t.Fatalf("owner %v, want %v", got, want)
+		}
+	})
+	t.Run("precedence", func(t *testing.T) {
+		tree, op := parent()
+		for _, sn := range set.Modules[0].Top { // make the owner's startup capture exceed the quota
+			tree.schemaRank(sn)
+		}
+		tree.work.hashLimit = 1
+		readErr := errors.New("read failed")
+		_, _, _, err := parseOp(context.Background(), errReader{readErr}, set, FormatJSON, opReply, op, Reject)
+		if len(tree.rank) != 0 && !errors.Is(err, yang.ErrBudget) {
+			t.Fatalf("startup refusal and a Reader error: %v, want ErrBudget first", err)
+		}
+		tree.work.hashLimit = 0
+		big := strings.NewReader(`{"a:al":"` + strings.Repeat("1", DefaultMaxBytes) + `"}`)
+		if _, _, _, err := parseOp(context.Background(), big, set, FormatJSON, opReply, op, Reject); !errors.Is(err, yang.ErrBudget) {
+			t.Fatalf("oversized input: %v", err)
+		}
+		if tree.work.journal != nil {
+			t.Fatal("a journal stayed installed")
+		}
+	})
+}
+
+// trapErr records each method call with the state it ran under, and tries to mutate its tree.
+type trapErr struct {
+	tree   *Tree
+	calls  *[]string
+	panics bool
+}
+
+func (e *trapErr) Error() string { return "trap" }
+
+func (e *trapErr) visit(m string) {
+	state := "unsuspended"
+	if j := e.tree.work.journal; j == nil {
+		state = "ended"
+	} else if j.suspendDepth > 0 {
+		state = "suspended"
+	}
+	refused := "allowed"
+	if state == "ended" {
+		refused = "refused-or-ended"
+	} else if err := e.tree.top.first().Remove(); s4Refused(err) {
+		refused = "refused-or-ended"
+	}
+	*e.calls = append(*e.calls, m+":"+state+":"+refused)
+	if e.panics {
+		panic("trap " + m)
+	}
+}
+
+func (e *trapErr) Is(target error) bool {
+	e.visit("Is")
+	return false
+}
+
+func (e *trapErr) Unwrap() error {
+	e.visit("Unwrap")
+	return nil
+}
+
+// TestS4GuardUserErrorMethods is G8(h): a context's error, a callback's error and a Reader's
+// error whose Is/Unwrap record when they run and try to mutate the tree being changed. They run
+// only during classification, while suspended, and every mutation is refused; nothing calls them
+// during end, fail, restore or cleanup; the caller receives the original error.
+func TestS4GuardUserErrorMethods(t *testing.T) {
+	set, parent := s4OpsFixture(t)
+	check := func(t *testing.T, err error, trap *trapErr) {
+		t.Helper()
+		if err != trap { //nolint:errorlint // the original error itself
+			t.Fatalf("the caller got %v, want the original error", err)
+		}
+		if len(*trap.calls) == 0 {
+			t.Fatal("classification called no method")
+		}
+		for _, c := range *trap.calls {
+			if !strings.HasPrefix(strings.SplitN(c, ":", 2)[1], "suspended:refused") {
+				t.Fatalf("a user method ran outside classification: %v", *trap.calls)
+			}
+		}
+	}
+	t.Run("reader", func(t *testing.T) {
+		tree, op := parent()
+		trap := &trapErr{tree: tree, calls: &[]string{}}
+		_, _, _, err := parseOp(context.Background(), errReader{trap}, set, FormatJSON, opReply, op, Reject)
+		check(t, err, trap)
+	})
+	t.Run("context", func(t *testing.T) {
+		tree, op := parent()
+		trap := &trapErr{tree: tree, calls: &[]string{}}
+		ctx := &mutatingCtx{Context: context.Background(), mutate: func() {}, err: trap}
+		_, _, _, err := parseOp(ctx, strings.NewReader(`{}`), set, FormatJSON, opReply, op, Reject)
+		check(t, err, trap)
+	})
+	t.Run("callback", func(t *testing.T) {
+		lset := s4LinksSet(t)
+		a, _, _, _ := s4LinkedPair(t, lset)
+		before := typedDump(a)
+		trap := &trapErr{tree: a, calls: &[]string{}}
+		err := a.ApplyDiff(s4Diff(t, lset, a, false), ApplyDiffOptions{Callback: func(_, _ *Node) error { return trap }})
+		check(t, err, trap)
+		if got := typedDump(a); !reflect.DeepEqual(got, before) && len(*trap.calls) == 0 {
+			t.Fatal("unreachable")
+		}
+	})
+}
+
+// TestS4GuardUserPanics is G8(h2): a panicking Read, and a panicking Is on the Reader's error,
+// propagate; the suspension depth returns, no journal stays installed, the hash-work scope
+// closes, and the owner equals its state before the call. With the owner's startup capture
+// exhausting the quota first, a fresh operation afterwards starts from a reset allowance.
+func TestS4GuardUserPanics(t *testing.T) {
+	set, parent := s4OpsFixture(t)
+	for _, tc := range []string{"read", "is", "is-after-budget"} {
+		t.Run(tc, func(t *testing.T) {
+			tree, op := parent()
+			before := typedDump(tree)
+			depth := tree.work.hashDepth
+			var r io.Reader
+			switch tc {
+			case "read":
+				r = &mutatingReader{in: strings.NewReader(`{}`), mutate: func() { panic("read") }}
+			default:
+				r = errReader{&trapErr{tree: tree, calls: &[]string{}, panics: true}}
+			}
+			if tc == "is-after-budget" {
+				for _, sn := range set.Modules[0].Top {
+					tree.schemaRank(sn)
+				}
+				tree.work.hashLimit = 1
+			}
+			func() {
+				defer func() {
+					if recover() == nil {
+						t.Fatal("the panic did not propagate")
+					}
+				}()
+				_, _, _, _ = parseOp(context.Background(), r, set, FormatJSON, opReply, op, Reject)
+			}()
+			tree.work.hashLimit = 0
+			if tree.work.journal != nil || tree.work.hashDepth != depth {
+				t.Fatalf("after the panic: journal %v, hash-work depth %d (was %d)", tree.work.journal, tree.work.hashDepth, depth)
+			}
+			if got := typedDump(tree); !reflect.DeepEqual(got, before) {
+				t.Fatalf("owner %v, want %v", got, before)
+			}
+			if _, _, _, err := parseOp(context.Background(), strings.NewReader(`{}`), set, FormatJSON, opReply, op, Reject); err != nil {
+				t.Fatalf("a fresh operation after the panic: %v", err)
+			}
+		})
+	}
+}
+
+// TestS4GuardValidationPolls is G8(j): Validate with a context whose Err mutates the tree being
+// validated: every mutation is refused.
+func TestS4GuardValidationPolls(t *testing.T) {
+	set := s4LinksSet(t)
+	a, _, _, _ := s4LinkedPair(t, set)
+	allowed := 0
+	ctx := &mutatingCtx{Context: context.Background()}
+	ctx.mutate = func() {
+		if _, err := a.NewTerm(a.top.first(), "t", fmt.Sprint("v", ctx.polls), NewOptions{}); err == nil {
+			allowed++
+		}
+	}
+	if _, err := a.Validate(ctx, ValidateOptions{}); err != nil {
+		var ve *ValidationError
+		if !errors.As(err, &ve) {
+			t.Fatal(err)
+		}
+	}
+	if ctx.polls == 0 || allowed != 0 {
+		t.Fatalf("%d polls, %d mutations allowed", ctx.polls, allowed)
+	}
+}
+
+// TestS4ReadOnlyFindFromSuspendedCallback is G10e: a read-only lookup from a suspended callback
+// pays nothing (class C): no detector panic and an unchanged hashUsed.
+func TestS4ReadOnlyFindFromSuspendedCallback(t *testing.T) {
+	set := reviewDiffSet(t, s4JournalModule)
+	before := s4DataTree(t, set, "3", "7", "11")
+	after := s4DataTree(t, set, "3", "9", "11")
+	diff, err := Diff(before, after, DiffOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	tr, op := s4OpTree(t, set, "5", "1", "9")
+	_ = op
+	dtr := s4DataTree(t, set, "3", "7", "11")
+	err = dtr.ApplyDiff(diff, ApplyDiffOptions{Callback: func(_, _ *Node) error {
+		used := dtr.work.hashUsed
+		for k := range 12 {
+			if _, err := dtr.Find("/s4j:c/l[k='" + string(rune('0'+k%10)) + "']"); err != nil {
+				return err
+			}
+		}
+		if dtr.work.hashUsed != used {
+			t.Errorf("a read-only lookup charged %d units", dtr.work.hashUsed-used)
+		}
+		return nil
+	}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	_ = tr
+}
+
+// TestS4PollsGoThroughOneHelper checks that every context poll in data and internal/xpath is
+// the one poll helper's (design 13 §2.4): a public entry wraps the user's context, so no site
+// can run the user's Err unsuspended by hand-editing.
+func TestS4PollsGoThroughOneHelper(t *testing.T) {
+	allowed := map[string]bool{
+		"suspend.go:return ctx.Err()":                                       true,
+		"suspend.go:return classifyUser(c.user.Err())":                      true,
+		"eval.go:func poll(ctx context.Context) error { return ctx.Err() }": true,
+	}
+	re := regexp.MustCompile(`\.Err\(\)`)
+	for _, dir := range []string{".", "../internal/xpath"} {
+		files, err := filepath.Glob(filepath.Join(dir, "*.go"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, f := range files {
+			if strings.HasSuffix(f, "_test.go") {
+				continue
+			}
+			src, err := os.ReadFile(f)
+			if err != nil {
+				t.Fatal(err)
+			}
+			for _, line := range strings.Split(string(src), "\n") {
+				code := strings.TrimSpace(line)
+				if strings.HasPrefix(code, "//") || !re.MatchString(code) {
+					continue
+				}
+				if !allowed[filepath.Base(f)+":"+code] {
+					t.Errorf("%s: a context poll bypasses the helper: %s", filepath.Base(f), code)
+				}
+			}
+		}
+	}
+}

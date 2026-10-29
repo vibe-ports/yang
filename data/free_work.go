@@ -45,6 +45,9 @@ func reserveFreeLinks(nodes []*Node, work *workCounter) error {
 		return work.hashErr
 	}
 	for _, n := range nodes {
+		if err := linkGuard(n); err != nil { // the cleaner's link edits (design 13 §2.4 (5))
+			return err
+		}
 		if err := n.touch(); err != nil {
 			return err
 		}

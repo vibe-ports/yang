@@ -138,7 +138,7 @@ func (vc *valCtx) modules() ([]*schema.Module, error) {
 // to existing iterations without consuming a smaller, unrelated resource budget.
 func (vc *valCtx) checkContext() error {
 	if vc.budget.ctx != nil {
-		return vc.budget.ctx.Err()
+		return poll(vc.budget.ctx)
 	}
 	return nil
 }
@@ -671,7 +671,7 @@ type uniqDef struct {
 func (vc *valCtx) uniqStep() error {
 	b := &vc.budget
 	if b.ctx != nil {
-		if err := b.ctx.Err(); err != nil {
+		if err := poll(b.ctx); err != nil {
 			return err
 		}
 	}
@@ -900,7 +900,7 @@ func (t *Tree) validateModuleFinal(ctx context.Context, mod *schema.Module, o Va
 	if ctx == nil {
 		ctx = context.Background()
 	}
-	if err := ctx.Err(); err != nil {
+	if err := poll(ctx); err != nil {
 		return nil, err
 	}
 	vc := &valCtx{t: t, log: &logger{set: t.context()}, opts: o, module: mod, budget: xpathBudget{ctx: ctx, max: b.MaxXPathSteps}}
@@ -955,7 +955,7 @@ func (t *Tree) validateWith(ctx context.Context, mod *schema.Module, o ValidateO
 			return fmt.Errorf("%w: more than %d implicit data nodes", yang.ErrBudget, limit)
 		}
 		if charged%1024 == 0 {
-			return ctx.Err()
+			return poll(ctx)
 		}
 		return nil
 	}

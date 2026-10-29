@@ -20,7 +20,9 @@ import (
 // without a diagnostic. Other errors and diagnostics follow Validate's contract,
 // including cancellation and resource budgets. Validation errors may leave partial
 // mutations. Like Validate, this method requires exclusive access to t.
-func (t *Tree) ValidateModuleFinal(ctx context.Context, module string, o ValidateOptions) ([]yang.Diagnostic, error) {
+func (t *Tree) ValidateModuleFinal(ctx context.Context, module string, o ValidateOptions) (_ []yang.Diagnostic, err error) {
+	ctx = suspending(ctx, &t.work) // its polls run the user's context suspended (design 13 §2.4)
+	defer func() { err = restoreUser(err) }()
 	// validation.c:2322 uses a NULL logging context for both argument checks.
 	mod := t.context().Implemented(module)
 	if mod == nil {

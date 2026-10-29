@@ -252,7 +252,7 @@ func implicitCharge(ctx context.Context, b Budget) func() error {
 			return fmt.Errorf("%w: more than %d implicit data nodes", yang.ErrBudget, limit)
 		}
 		if charged%1024 == 0 {
-			return ctx.Err()
+			return poll(ctx)
 		}
 		return nil
 	}

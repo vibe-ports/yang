@@ -107,6 +107,9 @@ type parseOpts struct {
 	jsonNull bool
 	// LYD_PARSE_JSON_STRING_DATATYPES: numbers and booleans may come as JSON strings
 	jsonStringDatatypes bool
+	// owner is the counter of a ParseOp parent's tree, whose state is open while the Reader
+	// and the context run (suspended, design 13 §2.4)
+	owner *workCounter
 }
 
 // lydCtx is struct lyd_ctx: the state the format parsers share with the common helpers.
@@ -233,6 +236,23 @@ func parseOp(ctx context.Context, r io.Reader, s *schema.Set, f Format, t opType
 // returned also on error once the envelopes were parsed (lyd_parse_op's "special situation").
 func parseOpWith(ctx context.Context, r io.Reader, s *schema.Set, f Format, t opType, parent *Node,
 	unknown UnknownPolicy, b Budget) (tree *Tree, op *Node, env *Tree, diags []yang.Diagnostic, err error) {
+	// Panic-safe finalization (design 13 §2.4), armed before the journal opens: it ends whatever
+	// journal holds when it runs. On a panic (the Reader's, or its error's classification) the
+	// journal restores and detaches, its hash-work scope closes, and the panic goes on; on a
+	// normal return it is the former fail-then-end sequence, so precedence does not change.
+	var journal *hashTransaction
+	defer func() {
+		if p := recover(); p != nil {
+			if journal != nil {
+				journal.rollback = true
+				failed := error(errPanicked)
+				journal.end(&failed)
+			}
+			panic(p)
+		}
+		journal.end(&err)
+		err = restoreUser(err) // the Reader's or context's own error, the state having ended
+	}()
 	var oo opOpts
 	fp := parseJSON
 	if f == FormatXML {
@@ -257,14 +277,14 @@ func parseOpWith(ctx context.Context, r io.Reader, s *schema.Set, f Format, t op
 	if oo.any() {
 		oo.noSiblings = parent == nil
 	}
-	var journal *hashTransaction
+	o := parseOpts{ParseOptions: ParseOptions{Unknown: unknown, ParseOnly: true, Budget: b}}
 	if parent != nil {
 		if owner := parent.treeOf(); owner != nil {
 			journal = beginHashTransaction(owner)
+			o.owner = &owner.work
 		}
 	}
 	var lc *lydCtx
-	o := parseOpts{ParseOptions: ParseOptions{Unknown: unknown, ParseOnly: true, Budget: b}}
 	tree, diags, err = parseWith(ctx, r, s, o, fp, func(c *lydCtx) {
 		lc, c.op, c.parent, c.rcOnly, c.dataType = c, oo, parent, true, t
 		if parent != nil {
@@ -284,7 +304,6 @@ func parseOpWith(ctx context.Context, r io.Reader, s *schema.Set, f Format, t op
 		}
 	})
 	journal.fail(&err)
-	defer journal.end(&err)
 	if err != nil {
 		if lc != nil && parent != nil {
 			// Cleanup may log key refusals after the parse error; keep the parse RC.
@@ -408,7 +427,8 @@ func parseWith(ctx context.Context, r io.Reader, s *schema.Set, o parseOpts, fp 
 		ctx = context.Background()
 	}
 	maxBytes := orDefault(o.Budget.MaxBytes, DefaultMaxBytes)
-	in, err := io.ReadAll(io.LimitReader(r, int64(maxBytes)+1))
+	// the Reader is user code: it runs with the owner's state suspended, its error sealed inside
+	in, err := readUser(o.owner, io.LimitReader(r, int64(maxBytes)+1))
 	switch {
 	case err != nil:
 		return nil, nil, err
@@ -422,6 +442,7 @@ func parseWith(ctx context.Context, r io.Reader, s *schema.Set, o parseOpts, fp 
 	if setup != nil {
 		setup(lc)
 	}
+	lc.ctx = suspending(ctx, &lc.tree.work, o.owner) // every poll suspends the parse's states
 	defer lc.tree.work.beginHashWork()()
 	err = fp(lc, in)
 	if lc.tree.work.hashErr != nil {
@@ -440,7 +461,7 @@ func parseWith(ctx context.Context, r io.Reader, s *schema.Set, o parseOpts, fp 
 		}
 	}
 	if err == nil {
-		err = ctx.Err()
+		err = poll(lc.ctx)
 	}
 	if err == nil && !lc.rcOnly {
 		err = lc.log.result()
@@ -569,7 +590,7 @@ func (lc *lydCtx) countNode() error {
 		return fmt.Errorf("%w: more than %d data nodes", yang.ErrBudget, limit)
 	}
 	if lc.nodes%1024 == 0 {
-		return lc.ctx.Err()
+		return poll(lc.ctx)
 	}
 	return nil
 }
@@ -976,7 +997,7 @@ func (lc *lydCtx) markDirty(sib *siblings, sn *schema.Node, ord *dirtyOrder) {
 // order because childOrder and the leader chain are maintained per mutation. XML opaque anchors only
 // distinguish schema-run boundaries, also unchanged.
 func (lc *lydCtx) flushDirty(sib *siblings) error {
-	if err := lc.ctx.Err(); err != nil {
+	if err := poll(lc.ctx); err != nil {
 		return err
 	}
 	lc.publishDirty(sib)
@@ -1024,7 +1045,7 @@ func (lc *lydCtx) flushDirtyAll() error {
 		lc.publishDirty(sib)
 	}
 	lc.dirtySibs, lc.runOrd = nil, nil
-	return lc.ctx.Err()
+	return poll(lc.ctx)
 }
 
 // flushPath gives lydPath the sorted positions of deferred-run nodes without publishing them.
