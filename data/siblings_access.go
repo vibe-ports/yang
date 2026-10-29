@@ -396,6 +396,16 @@ func (s *siblings) opaqNextSpan() siblingSpan {
 	return s.opaqTail()
 }
 
+// docFrom is the siblings from the linked n on in document order: LYD_LIST_FOR_INST's next
+// pointers, which an opaque sibling ends (design 15). One O(log n) point read.
+func (s *siblings) docFrom(n *Node) siblingSpan {
+	at := s.docSpan().Index(n)
+	if at < 0 {
+		return siblingSpan{}
+	}
+	return s.docSpan().Slice(at, s.Len())
+}
+
 // docFirst and docLast are libyang's first child and its prev: the ends in document order.
 func (s *siblings) docFirst() *Node {
 	if s.st == nil {

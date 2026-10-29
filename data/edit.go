@@ -406,17 +406,13 @@ func (t *Tree) instanceRun(s *siblings, sn *schema.Node) iter.Seq2[int, *Node] {
 		switch {
 		case mixed && s.ht != nil && s.firstRecordSchema(sn):
 			if leader := s.leaderFirstMixed(sn); leader != nil {
-				if at := s.orderPosition(leader); at >= 0 {
-					run = s.schemaSpan().Slice(at, s.SchemaLen())
-				}
+				run = s.docFrom(leader)
 			}
 		case mixed:
 			// A single instance (leaf, container, ...) has no first-instance record: the
 			// schema lookup that matches other contexts by name finds it.
 			if n := t.schemaLookup(s, sn); n != nil {
-				if at := s.orderPosition(n); at >= 0 {
-					run = s.schemaSpan().Slice(at, s.SchemaLen())
-				}
+				run = s.docFrom(n)
 			}
 		case opChild(sn) || s.schemaUnordered:
 			// Keep the ordered run lazy even when a caller needs only its first node.
@@ -429,8 +425,8 @@ func (t *Tree) instanceRun(s *siblings, sn *schema.Node) iter.Seq2[int, *Node] {
 			}
 			return
 		default:
-			if i := t.schemaIndex(s, sn); i >= 0 {
-				run = s.schemaSpan().Slice(i, s.schemaSpan().Len())
+			if _, n := t.schemaFind(s, sn); n != nil {
+				run = s.docFrom(n)
 			}
 		}
 		for i, n := range run.All() {

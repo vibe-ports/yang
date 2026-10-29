@@ -13,4 +13,8 @@ module pv2-ordered3 {
   leaf b {
     type string;
   }
+  leaf-list st {
+    config false;
+    type uint8;
+  }
 }

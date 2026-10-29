@@ -158,7 +158,8 @@ func (s *siblings) removalOrder(n, prev, next, tail *Node, around func(*Node) (*
 				leader = s.leaderFirstMixed(n.schema)
 			} else {
 				leader = nil
-				for _, c := range s.SchemaAll() {
+				// lyd_find_sibling_schema's linear walk stops at the first opaque sibling
+				for _, c := range s.schemaSpan().Slice(0, s.linearBound()).All() {
 					if err := w.chargeHash(1); err != nil {
 						return nil, nil, err
 					}

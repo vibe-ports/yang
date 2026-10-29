@@ -194,12 +194,7 @@ func splitOpRun(first *Node, withSiblings bool) (split, op *Node) {
 			}
 			return nil
 		}
-		for _, c := range n.kids.SchemaAll() {
-			if found := visit(c); found != nil {
-				return found
-			}
-		}
-		for _, c := range n.kids.opaqueAll() {
+		for _, c := range n.kids.All() { // LYD_TREE_DFS: document order (design 15)
 			if found := visit(c); found != nil {
 				return found
 			}

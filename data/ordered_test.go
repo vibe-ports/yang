@@ -564,3 +564,109 @@ func TestInterleavedLookupForeignInstance(t *testing.T) {
 		}
 	}
 }
+
+// TestForestIntoSplitRunRecord: a sorted forest moved into the second piece of a split run
+// (lyd_move_nodes_by_schema, rbPublish) replaces that piece's first-instance record: the replay
+// reads lyd_insert_hash_add's node->prev in document order, which is the opaque separator, not the
+// first piece's last instance (visibleNeighbours, design 15).
+func TestForestIntoSplitRunRecord(t *testing.T) {
+	set := opIndexSet(t, orderedSchema)
+	tr, err := parseOrdered(t, set, true, `<c xmlns="urn:m"><a>x</a><b>y</b><ll>3</ll><ll>4</ll><ll>6</ll><zz>u</zz><ll>2</ll><ll>5</ll></c>`, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var c *Node
+	for c = range tr.Top() {
+		break
+	}
+	if _, err := tr.NewTerm(c, "ll", "1", NewOptions{}); err != nil { // the first piece's record moves to 1
+		t.Fatal(err)
+	}
+	srcTree, err := parseOrdered(t, set, false, `{"m:c":{"ll":[0,7]}}`, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var src *Node
+	for src = range srcTree.Top() {
+		break
+	}
+	var first *Node
+	for first = range src.Children() {
+		break
+	}
+	forest, _, err := srcTree.DupSiblings(first, nil, DupOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for n := range forest.tree.Top() { // the copies' tree also holds an empty c: the forest is ll 0, 7
+		if n.Name() == "c" {
+			if err := n.Unlink(); err != nil {
+				t.Fatal(err)
+			}
+			break
+		}
+	}
+	ll := c.kids.At(2).schema
+	if err := tr.Insert(c, forest); err != nil {
+		t.Fatal(err)
+	}
+	opidxAssertTreeInvariant(t, tr)
+	for _, r := range c.kids.records(ll) {
+		if p, _ := c.kids.docNeighbours(r); p != nil && p.schema == ll {
+			t.Fatalf("record %s does not start a run: %v", r.Value(), names(c.Children()))
+		}
+	}
+	if _, err := tr.NewTerm(c, "ll", "9", NewOptions{}); err != nil {
+		t.Fatal(err)
+	}
+	opidxAssertTreeInvariant(t, tr)
+}
+
+// TestForeignPositionPastOpaque: a positional lookup in a top level that holds a root of
+// another context walks LYD_LIST_FOR_INST's next pointers from the first instance, which the
+// opaque root ends: the second state leaf-list instance, past it, is not found (instanceRun,
+// design 15; oracle: protocol-v2/ordered-foreign-position-past-opaque).
+func TestForeignPositionPastOpaque(t *testing.T) {
+	owned := func() *schema.Set {
+		c, ds, err := yang.NewContext(yang.Options{NoYangLibrary: true}, os.DirFS("../conformance/corpus/protocol-v2/schemas"))
+		if err != nil {
+			t.Fatal(ds, err)
+		}
+		if ds, err := c.Load("pv2-ordered3", "", nil); err != nil {
+			t.Fatal(ds, err)
+		}
+		return snap.Set(c.Schema())
+	}
+	setA, setB := owned(), owned()
+	const ns = `xmlns="urn:vibe-ports:yang:conformance:pv2-ordered3"`
+	tr, err := parseOrdered(t, setA, true, `<a `+ns+`>x</a><st `+ns+`>1</st><zz `+ns+`>u</zz><st `+ns+`>2</st>`, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	trB, err := parseOrdered(t, setB, false, `{"pv2-ordered3:b":"y"}`, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var b *Node
+	for b = range trB.Top() {
+		break
+	}
+	if err := tr.Insert(nil, b); err != nil {
+		t.Fatal(err)
+	}
+	if n, _ := tr.Find("/pv2-ordered3:st[2]"); n != nil {
+		t.Fatalf("st[2] found past the opaque root: %v (%v)", n.Value(), names(tr.Top()))
+	}
+	// the walk behind positional predicates and lys_getnext_data, through the mixed-context branch
+	st := tr.top.At(2).schema
+	if !tr.top.foreignFor(st) {
+		t.Fatal("the top level does not take the mixed-context branch")
+	}
+	var got []string
+	for n := range tr.instances(&tr.top, st) {
+		got = append(got, n.Value())
+	}
+	if !slices.Equal(got, []string{"1"}) {
+		t.Fatalf("LYD_LIST_FOR_INST from the first instance = %v, want [1] (%v)", got, names(tr.Top()))
+	}
+}

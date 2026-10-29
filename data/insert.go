@@ -2787,11 +2787,14 @@ func (t *Tree) rbPublish(parent *Node, sib *siblings, lo, hi int, group *rbGroup
 func visibleNeighbours(sib *siblings, lo, count int, attach []*Node) map[*Node][2]*Node {
 	prev := make(map[*Node]*Node, count+1)
 	next := make(map[*Node]*Node, count+1)
+	// lyd_insert_hash_add reads node->prev and node->next: document order, an opaque separator
+	// included (design 15); the same as the schema positions unless sib is interleaved
+	plo, phi := sib.st.extent(lo, lo+count)
 	var last *Node
-	if lo > 0 {
-		last = sib.At(lo - 1)
+	if plo > 0 {
+		last = sib.docSpan().At(plo - 1)
 	}
-	for _, n := range sib.schemaSpan().Slice(lo, min(lo+count+1, sib.SchemaLen())).All() {
+	for _, n := range sib.docSpan().Slice(plo, min(phi+1, sib.Len())).All() {
 		prev[n], next[last] = last, n
 		last = n
 	}

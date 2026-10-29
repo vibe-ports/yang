@@ -119,7 +119,7 @@ write takes the code path it took before (the counted-work and scaling tests are
 
 ## Evidence
 
-- Oracle fixtures `protocol-v2/ordered-*` (36; `ordered-split-list-merge-destruct` is unsupported,
+- Oracle fixtures `protocol-v2/ordered-*` (38; `ordered-split-list-merge-destruct` is unsupported,
 U-0113) cover:
   - parse order, JSON and XML;
   - the XML opaque anchor;
@@ -146,6 +146,30 @@ U-0113) cover:
   `TestInterleavedEditBudgetPoints` (NewPath, sorted insertion, Merge, Unlink and Dup on interleaved
   trees, with and without a table, refused at every charge boundary). The storage invariant also
   checks the kinds, the kind threads and the document-order run gaps.
+
+## Sweep of schema-only walks (gate round 3)
+
+Every non-test use of `schemaSpan()`, `SchemaAll()`, a `SchemaLen`-bounded loop or a schema-only
+neighbour was classified. Code that models libyang's physical sibling list (`next`/`prev`,
+`LYD_LIST_FOR_INST`, `lyd_insert_hash_add`'s neighbours, the linear `lyd_find_sibling_schema`, a
+DFS) reads document order or stops at the run piece:
+- fixed in this round: `instanceRun` (all branches, `docFrom`), `visibleNeighbours` (document
+  order over the run's extent), `removalOrder`'s linear leader scan (`linearBound`),
+  `splitOpRun` (document order);
+- fixed earlier: run bounds and walks (`runPiece`, `runPieceStart`), first-instance records and
+  index gaps (`docNeighbours`, `opaqueSplit`), lookups (`linearBound`, `foreignScan`), key
+  prefixes, predicates and libyang's sibling lists (`docSpan`).
+
+The rest is a logical schema view and correct as is:
+- whole-set scans whose order does not matter: hash and work bounds, binding stacks,
+  `has`, `indexAnyOrderBound`, `dupIndex`, `foreignInstances`, the dup cache, `opInst`;
+- list keys, which an interleaved set cannot separate from their list's start: a key after an
+  opaque child fails `checkKeys`;
+- positions that `link` places physically afterwards (`schemaPos`, the cross-context and
+  operation anchors, `unorderedAnchor`, `rbPos`, `insertBefore`, `linkOrigin`, `ValidateOp`'s
+  origin), and runs whose bounds are already cut at the piece;
+- sets that are never interleaved (the parser's deferred runs, `logical()`'s plain branch, the
+  non-interleaved branches of `topList`/`slicesOf`).
 
 ## Merge and the destructive merge
 
