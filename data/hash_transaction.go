@@ -524,6 +524,28 @@ func (j *hashTransaction) end(result *error) {
 	j.spare()
 }
 
+// endKeeping ends the journal of an operation whose ordinary failures keep their changes
+// (validation, including its MaxNodes, XPath-step and cancellation failures): a guard refusal
+// (refuse: rollback with its error) restores and becomes the result instead of being committed;
+// otherwise the changes stay (a hash-budget failure is the caller's end(&err)).
+func (j *hashTransaction) endKeeping(result *error) {
+	if j != nil && j.rollback && j.err != nil {
+		j.end(result)
+		return
+	}
+	j.end(nil)
+}
+
+// abandonOnPanic is deferred right after a begin: a panic before the journal ends (user code in
+// a context's error classification, a callback) restores and detaches it, closing its hash-work
+// scope, and goes on. *j is nil once the journal ended normally.
+func abandonOnPanic(j **hashTransaction) {
+	if p := recover(); p != nil {
+		(*j).abandon()
+		panic(p)
+	}
+}
+
 // endPanicSafe is end for a deferred call: on a panic it restores and detaches the transaction
 // (rollback set) and lets the panic go on; otherwise it is end(result).
 // It must itself be the deferred function (recover works only there).

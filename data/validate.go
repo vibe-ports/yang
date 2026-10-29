@@ -925,13 +925,18 @@ func (t *Tree) validateModuleFinal(ctx context.Context, mod *schema.Module, o Va
 		top, first = siblingSpan{}, 0
 	}
 	journal := beginHashTransaction(t)
+	defer abandonOnPanic(&journal)
 	err := vc.finalR(nil, top.Slice(first, top.Len()), nil, mod)
 	if t.work.hashErr != nil {
 		err = t.work.hashErr
 		journal.end(&err)
+	} else {
+		journal.endKeeping(&err) // native validation errors retain preceding default-flag changes
+	}
+	journal = nil
+	if t.work.hashErr != nil || errors.Is(err, errInProgress) {
 		return vc.log.diags, err
 	}
-	journal.end(nil) // native validation errors retain preceding default-flag changes
 	if err == nil || errors.Is(err, errLogged) {
 		err = vc.log.result()
 	}
@@ -943,6 +948,7 @@ func (t *Tree) validateWith(ctx context.Context, mod *schema.Module, o ValidateO
 	diff func(*Node, diffOp) error) ([]yang.Diagnostic, error) {
 	defer t.work.beginHashWork()()
 	journal := beginHashTransaction(t)
+	defer abandonOnPanic(&journal)
 	if ctx == nil {
 		ctx = context.Background()
 	}
@@ -963,9 +969,13 @@ func (t *Tree) validateWith(ctx context.Context, mod *schema.Module, o ValidateO
 	if t.work.hashErr != nil { // a hash-budget failure, also of the journal's charge
 		err = t.work.hashErr
 		journal.end(&err)
+	} else {
+		journal.endKeeping(&err) // not rolled back otherwise (MaxNodes, cancellation)
+	}
+	journal = nil
+	if t.work.hashErr != nil || errors.Is(err, errInProgress) {
 		return vc.log.diags, err
 	}
-	journal.end(nil) // validation is not rolled back otherwise (MaxNodes, cancellation)
 	if err == nil || errors.Is(err, errLogged) {
 		err = vc.log.result() // nil when only warnings were logged
 	}

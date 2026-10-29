@@ -472,3 +472,37 @@ func TestS4ValidateOpPanickingContextError(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+// TestS4ValidatePanickingContextError: Validate and ValidateDiff with a context whose error's Is
+// panics end their journal panic-safely: after recovering, no journal is installed, the
+// hash-work scope is closed, and the next mutation runs from a reset quota (PR #327 review).
+func TestS4ValidatePanickingContextError(t *testing.T) {
+	set := s4LinksSet(t)
+	for _, diff := range []bool{false, true} {
+		a, _, _, _ := s4LinkedPair(t, set)
+		ctx := &mutatingCtx{Context: context.Background(), mutate: func() {}}
+		ctx.err = &trapErr{tree: a, calls: &[]string{}, panics: true}
+		func() {
+			defer func() {
+				if recover() == nil {
+					t.Fatalf("diff=%t: the panic did not propagate", diff)
+				}
+			}()
+			if diff {
+				_, _, _ = a.ValidateDiff(ctx, ValidateOptions{})
+			} else {
+				_, _ = a.Validate(ctx, ValidateOptions{})
+			}
+		}()
+		if a.work.journal != nil || a.work.hashDepth != 0 {
+			t.Fatalf("diff=%t: journal %v, hash-work depth %d left behind", diff, a.work.journal, a.work.hashDepth)
+		}
+		a.work.hashUsed = 1 << 40 // a stale total would refuse; the next operation resets it
+		if _, err := a.NewTerm(a.top.first(), "t", "after", NewOptions{}); err != nil {
+			t.Fatalf("diff=%t: the next mutation: %v", diff, err)
+		}
+		if a.work.journal != nil {
+			t.Fatalf("diff=%t: the next mutation left a journal", diff)
+		}
+	}
+}

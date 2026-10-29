@@ -490,3 +490,44 @@ func TestS4CounterpartCaptureRefusalScaling(t *testing.T) {
 		}
 	}
 }
+
+// TestS4GuardRefusedValidationRestores: B.Validate from a callback of A's ApplyDiff (B holds a
+// leafref linked into A) changes B's default flags, then reaches its linked leafref, governed by
+// A's suspended state: the refusal restores B completely instead of committing the earlier flag
+// change as an ordinary validation failure (PR #327 review).
+func TestS4GuardRefusedValidationRestores(t *testing.T) {
+	set := s4LinksSet(t)
+	for _, diff := range []bool{false, true} {
+		a, b, _, _ := s4LinkedPair(t, set)
+		var refused error
+		var before, after hashBudgetSnapshot
+		called := false
+		err := a.ApplyDiff(s4Diff(t, set, a, false), ApplyDiffOptions{Callback: func(_, _ *Node) error {
+			if called {
+				return nil
+			}
+			called = true
+			before = snapshotHashBudgetTree(b)
+			if diff {
+				_, _, refused = b.ValidateDiff(context.Background(), ValidateOptions{})
+			} else {
+				_, refused = b.Validate(context.Background(), ValidateOptions{})
+			}
+			after = snapshotHashBudgetTree(b)
+			return nil
+		}})
+		if err != nil || !called {
+			t.Fatalf("diff=%t: ApplyDiff %v, called %t", diff, err, called)
+		}
+		if !s4Refused(refused) {
+			t.Fatalf("diff=%t: validation from the callback: %v, want the guard's refusal", diff, refused)
+		}
+		if !reflect.DeepEqual(after, before) {
+			t.Fatalf("diff=%t: the refused validation kept changes to B", diff)
+		}
+		if b.work.journal != nil {
+			t.Fatalf("diff=%t: B's journal stayed installed", diff)
+		}
+		s4Check(t, "after", []*Tree{a, b})
+	}
+}

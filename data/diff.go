@@ -45,6 +45,7 @@ func (t *Tree) ValidateDiff(ctx context.Context, o ValidateOptions) (diff *Tree,
 	ctx = suspending(ctx, &t.work) // its polls run the user's context suspended (design 13 §2.4)
 	defer func() { err = restoreUser(err) }()
 	journal := beginHashTransaction(t)
+	defer abandonOnPanic(&journal)
 	dt := newTree(t.context())
 	defer dt.work.beginHashWork()()
 	d, err = t.validateAll(ctx, o, Budget{}, dt.valDiffAdd)
@@ -53,9 +54,14 @@ func (t *Tree) ValidateDiff(ctx context.Context, o ValidateOptions) (diff *Tree,
 	}
 	if t.work.hashErr != nil || dt.work.hashErr != nil { // validation returned t's hash error
 		journal.end(&err)
+		journal = nil
 		return nil, d, err
 	}
-	journal.end(nil)
+	journal.endKeeping(&err) // a guard refusal restores and fails; other failures keep
+	journal = nil
+	if errors.Is(err, errInProgress) {
+		return nil, d, err
+	}
 	if dt.top.len() == 0 {
 		dt = nil
 	}
@@ -87,6 +93,7 @@ func (t *Tree) ValidateModuleDiff(ctx context.Context, module string, o Validate
 		return nil, d, err
 	}
 	journal := beginHashTransaction(t)
+	defer abandonOnPanic(&journal)
 	dt := newTree(t.context())
 	defer dt.work.beginHashWork()()
 	d, err = t.validateModule(ctx, mod, o, Budget{}, dt.valDiffAdd)
@@ -95,9 +102,14 @@ func (t *Tree) ValidateModuleDiff(ctx context.Context, module string, o Validate
 	}
 	if t.work.hashErr != nil || dt.work.hashErr != nil { // validation returned t's hash error
 		journal.end(&err)
+		journal = nil
 		return nil, d, err
 	}
-	journal.end(nil)
+	journal.endKeeping(&err) // a guard refusal restores and fails; other failures keep
+	journal = nil
+	if errors.Is(err, errInProgress) {
+		return nil, d, err
+	}
 	if dt.top.len() == 0 {
 		dt = nil
 	}
