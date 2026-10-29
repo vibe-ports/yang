@@ -166,3 +166,39 @@ unlink position, run leaders and ends, a first or last sibling.
 not charged to the enforced quota, as slice indexing was not; every remaining use reads O(1)
 positions per edit. Keeping the index across a batch publication (re-registering only the run
 instead of rebuilding it, O(N) charged) is left to step 6.
+
+## Step 6: complexity of the index rebuild and of per-move recovery
+
+The step-6 consult (`c240-step6`) blocked two complexity defects and asked for D-0149's wording to
+be narrowed; this section is its plan.
+
+1. **Linear index build.** `orderBuild` registered every handle through an ordinary AVL insertion
+   from the root of its occurrence class, under an unbound binding that reports nothing: a
+   rebuild after a batch publication (`rbPublish`, reserved at 8 units per sibling) was
+   Θ(N log N) work charged as O(N). The build now groups the handles, which it visits in
+   sequence order (ascending labels), by occurrence class and builds each class's tree balanced
+   from its ordered slice (`Occurrences.Build`): O(N) for all five classes, one unit per handle.
+   The unbound binding counts the build's work (not charged: `rbPublish` and `indexAddBound`
+   reserve it), so a test sees the real structure work. Keeping the index across the
+   publication (re-registering only the run) is not needed for the bound and is not done.
+   Evidence: TestMergeSparseBatchChargesRebuild measures counted work per charged unit for
+   growing N (flat), and a budget one unit short refuses the merge before any write; an opidx
+   model test checks `Build` against insertion one by one.
+2. **Per-move recovery inside a state.** A one-node relocation inside a running state opened a
+   level, and a level captures every object afresh (design 13), so each move copied the whole
+   sibling set's compatibility records and node structs: an ApplyDiff of N moves before the
+   first instance of a user-ordered leaf-list of N was Θ(N²) capture work and storage. Now a
+   relocation within one set of the tree that the state's current level already holds whole
+   opens no level: it rolls forward on failure (linkOrigin's restore, its recovery reserved
+   before the unlink, as an unjournaled relocation does), and the state still restores a budget
+   or guard refusal. The first move of a set still opens a level and captures there; the level
+   commits into the enclosing one, so later moves find the set held. Savepoint semantics do not
+   change (journal_levels_s4_test's "successive sibling levels capture afresh" stands: a level
+   that captures is still exact); per-entry compat journaling of a level stays future work.
+   The forward recovery relinks the node with a fresh handle (deviation 3 above). Evidence:
+   TestApplyDiffRepeatedMoveFirstScaling (the consult's reproducer: work and charge per entry
+   flat, one whole capture) and TestApplyDiffRepeatedMoveFirstRollback (every budget limit
+   restores the tree exactly; an ordinary failure at a later entry keeps the moves before it).
+3. **D-0149 wording.** Rank and index reads on a mutation path are charged (read credits);
+   point reads by position (`At`) are O(log n) descents counted as sibling visits but not
+   charged, as slice indexing was not. The Open note is narrowed to that.
