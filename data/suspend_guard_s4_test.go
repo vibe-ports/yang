@@ -385,6 +385,7 @@ func TestS4IndexEditErrorsPropagate(t *testing.T) {
 // visits it, so a removal refused at its first units does the same work and allocations with 8
 // or 4,096 leafref counterparts (snapshot review 1, finding 5).
 func TestS4LinkGuardRefusalScaling(t *testing.T) {
+	s4SkipUnderRace(t)
 	set := reviewDiffSet(t, s4JournalModule)
 	measure := func(degree int, limit uint64) (int64, uint64) {
 		tr := s4DataTree(t, set, "3")
@@ -429,6 +430,7 @@ func TestS4LinkGuardRefusalScaling(t *testing.T) {
 // so a capture refused at any limit the 8-counterpart capture needs does the same work and
 // allocations with 4,096 counterparts (snapshot review 2, finding 3).
 func TestS4CounterpartCaptureRefusalScaling(t *testing.T) {
+	s4SkipUnderRace(t)
 	set := reviewDiffSet(t, s4JournalModule)
 	build := func(degree int) (*Tree, *siblings) {
 		a := s4DataTree(t, set, "3")

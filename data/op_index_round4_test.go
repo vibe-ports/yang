@@ -216,8 +216,10 @@ func testHashBudgetCopiedRPCSort(t *testing.T, values string) {
 	seenFailure := false
 	points = slices.Clone(points)
 	slices.Sort(points)
-	for _, point := range slices.Compact(points) {
-		if point == 0 {
+	for i, point := range slices.Compact(points) {
+		// under the race detector every other point (the index charges doubled them); all of
+		// them in the normal suite
+		if point == 0 || raceEnabled && !fzFull && i%2 == 1 {
 			continue
 		}
 		tr, edit := build()

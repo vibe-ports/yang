@@ -251,6 +251,7 @@ func TestS4LevelWholeCaptureSerials(t *testing.T) {
 // indexed children, near the growth boundaries of the index maps: every rollback allocates
 // nothing and restores the exact index state, and an outermost commit leaves no tombstone.
 func TestS4LevelIndexRollbackAllocs(t *testing.T) {
+	s4SkipUnderRace(t)
 	set := reviewDiffSet(t, s4JournalModule)
 	defer runtime.GOMAXPROCS(runtime.GOMAXPROCS(1)) // as AllocsPerRun
 	newTerms := func(t *testing.T, tr *Tree, op *Node, from, count int) {
@@ -367,6 +368,7 @@ func TestS4LevelIndexRollbackAllocs(t *testing.T) {
 // running state is refused at every budget point; the original source handle stays live (no
 // fresh handle), and then both owners are mutated independently.
 func TestS4RefusedLocalMoveRevivesHandle(t *testing.T) {
+	s4SkipUnderRace(t)
 	set := reviewDiffSet(t, s4JournalModule)
 	build := func(t *testing.T) (*Tree, *Node, *Tree, *Node, *Node) {
 		src, srcOp := s4OpTree(t, set, "4", "8", "12")
@@ -514,6 +516,7 @@ func TestS4TransferBindingCharges(t *testing.T) {
 // (index edits, an index rebuild, whole captures of both trees and a counter rebinding through
 // moveNodes) allocates nothing.
 func TestS4CompleteRollbackAllocs(t *testing.T) {
+	s4SkipUnderRace(t)
 	set := reviewDiffSet(t, s4JournalModule)
 	defer runtime.GOMAXPROCS(runtime.GOMAXPROCS(1))
 	dst, dop := s4OpTree(t, set, "5", "1", "9")
@@ -553,6 +556,7 @@ func TestS4CompleteRollbackAllocs(t *testing.T) {
 // refreshExact, outside the prepaid scopes). Every refusal of the ValidateOp leaves the index as
 // it was; the completed validation leaves a consistent index.
 func TestS4RefreshExactThroughValidation(t *testing.T) {
+	s4SkipUnderRace(t)
 	set := opIndexSet(t, `module m { yang-version 1.1; namespace "urn:m"; prefix m;
   rpc op { input { leaf target { type int32; }
     leaf-list v { ordered-by user; type union { type leafref { path "../target"; } type string; } } } } }`)
@@ -596,6 +600,7 @@ func TestS4RefreshExactThroughValidation(t *testing.T) {
 // instance; refused at every limit, it leaves the tree unchanged and neither its relocation
 // transaction nor its hash-work scope installed (snapshot review 1, finding 1).
 func TestS4KeyRelocationRefusalsEndTheirScope(t *testing.T) {
+	s4SkipUnderRace(t)
 	set := reviewDiffSet(t, s4JournalModule)
 	build := func() (*Tree, *Node) {
 		tr, op := s4OpTree(t, set, "5")

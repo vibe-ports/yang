@@ -36,6 +36,7 @@ func TestS4PrepaidSuffixPreconditions(t *testing.T) {
 // A separate operation afterwards starts from a reset quota and charges what it charges on a
 // fresh tree.
 func TestS4PrepaidOverdraftProductionPolicy(t *testing.T) {
+	s4SkipUnderRace(t)
 	set := reviewDiffSet(t, s4JournalModule)
 	run := func(tr *Tree, op *Node) (err error) {
 		j := beginHashTransaction(tr)
@@ -116,6 +117,7 @@ func TestS4PrepaidOverdraftProductionPolicy(t *testing.T) {
 // no-op (the suffix is prepaid, overdraftPanics on), and a further mutation matches the
 // reference.
 func TestS4PrepaidValueChangeAncestorReindex(t *testing.T) {
+	s4SkipUnderRace(t)
 	set := reviewDiffSet(t, s4JournalModule)
 	s4History(t, s4Scenario{name: "data/set-key-in-place", limited: []int{0},
 		build: func(t *testing.T) ([]*Tree, func() error, func() error) {
@@ -139,6 +141,7 @@ func TestS4PrepaidValueChangeAncestorReindex(t *testing.T) {
 // any write: the tree right after it equals the tree right before it (the state, still open,
 // has not restored anything yet).
 func TestS4PrepaidCumulativeEnforcement(t *testing.T) {
+	s4SkipUnderRace(t)
 	set := reviewDiffSet(t, s4JournalModule)
 	values := []string{"2", "4", "6", "8", "10", "12"}
 	run := func(tr *Tree, op *Node, check func(i int, before hashBudgetSnapshot, err error)) (err error) {

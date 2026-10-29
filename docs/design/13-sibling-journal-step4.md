@@ -230,7 +230,9 @@ removal limit from 128 to 192: the index removal's point bound is prepaid before
   TestS4KeyRelocationRefusalsEndTheirScope, TestPlannerPaysBeforeEachVisit,
   TestS4ValidateOpPanickingContextError, TestS4CounterpartCaptureRefusalScaling, and the 40-instance
   run of TestHashBudgetCopiedRPCSortReservesOrderedLink.
-- Under the race detector the S4 budget sweeps keep the first, a middle and the last limit
-  (`s4RaceLimit`); the normal suite sweeps every limit.
+- Under the race detector the single-goroutine S4 budget histories and scaling sweeps are skipped
+  (`s4SkipUnderRace`) and the S4 refusal histories keep three limits (`s4RaceLimit`); the normal
+  suite sweeps every limit, and `YANG_STAGE3_FUZZ_FULL=1` restores them under race. The ./data
+  race run on dell takes 877.7 s on main (cap 900 s).
 - The step-4 preparation histories (TestS4JournalRefusalHistories,
   TestS4BulkPrefixPublicationRefusal) pass unchanged.

@@ -21,6 +21,7 @@ import (
 // operation's indexed children does the same counted work and allocations with 8 or 2,048
 // children: no unpaid traversal runs before the refusal.
 func TestS4ReadCreditFirstUnitRefusal(t *testing.T) {
+	s4SkipUnderRace(t)
 	set := reviewDiffSet(t, s4JournalModule)
 	measure := func(children int, limit uint64) (int64, uint64) {
 		values := make([]string, children)

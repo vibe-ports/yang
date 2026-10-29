@@ -239,6 +239,7 @@ func s4History(t *testing.T, sc s4Scenario, limited int) {
 }
 
 func TestS4JournalRefusalHistories(t *testing.T) {
+	s4SkipUnderRace(t)
 	set := reviewDiffSet(t, s4JournalModule)
 	keys := []string{"3", "7", "11", "15", "19"}
 	// furtherData inserts into and removes from every sibling set the operations touch.
@@ -486,6 +487,7 @@ func TestS4JournalRefusalHistories(t *testing.T) {
 // followed by a further mutation and compared with its reference history. Step 4 must keep the
 // batch level open through publication and cleanup and commit only afterwards.
 func TestS4BulkPrefixPublicationRefusal(t *testing.T) {
+	s4SkipUnderRace(t)
 	a, b := retainedRBSets(t)
 	build := func() (*Tree, func() error, func() []string) {
 		tr := parseOnlyXML(t, a, retainedRBXML("top", 1, 3, 5))
@@ -645,4 +647,14 @@ func s4Refused(err error) bool {
 // first, a middle and the last limit (YANG_STAGE3_FUZZ_FULL=1 keeps all).
 func s4RaceLimit(limit, need uint64) bool {
 	return !raceEnabled || fzFull || limit == 1 || limit == need/2 || limit+1 == need
+}
+
+// s4SkipUnderRace skips a single-goroutine budget history under the race detector: the normal
+// suite sweeps it at every limit, and the ./data race run must stay within its time cap
+// (YANG_STAGE3_FUZZ_FULL=1 runs it anyway).
+func s4SkipUnderRace(t *testing.T) {
+	t.Helper()
+	if raceEnabled && !fzFull {
+		t.Skip("single-goroutine budget history: swept in the normal suite")
+	}
 }
