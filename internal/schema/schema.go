@@ -9,7 +9,9 @@ package schema
 
 import (
 	"iter"
+	"runtime"
 	"sync"
+	"weak"
 )
 
 // Set is every module of one context, in load order (libyang ly_ctx module list).
@@ -17,6 +19,9 @@ type Set struct {
 	Modules    []*Module
 	nameHashes sync.Map // *Node -> uint32, immutable module/name prefixes shared by trees
 	indexNames sync.Map // *Node -> [32]byte, immutable positional-index name digests
+	// equivalents maps a node of another set, weakly, to its equivalent in this one (nil: none):
+	// neither set keeps the other alive, and an entry goes with its node (CachedEquivalent)
+	equivalents sync.Map // weak.Pointer[Node] -> *Node
 	// LeafrefLinking is the context flag LY_CTX_LEAFREF_LINKING: data trees over the set keep
 	// leafref links (lyd_leafref_link_node_tree).
 	LeafrefLinking bool
@@ -34,6 +39,35 @@ func (s *Set) CachedNameHash(n *Node, compute func() (uint32, error)) (uint32, e
 	}
 	actual, _ := s.nameHashes.LoadOrStore(n, h)
 	return actual.(uint32), nil
+}
+
+// CachedEquivalent returns the node of this set equivalent to n, a node of another set, computing
+// it once per n. The key is a weak pointer, and an entry is deleted once n is collected, so the
+// cache keeps neither n's set nor this one alive; it lives as long as this set. Safe for
+// concurrent readers.
+func (s *Set) CachedEquivalent(n *Node, compute func() *Node) *Node {
+	key := weak.Make(n)
+	if v, ok := s.equivalents.Load(key); ok {
+		return v.(*Node)
+	}
+	k := compute()
+	if actual, loaded := s.equivalents.LoadOrStore(key, k); loaded {
+		return actual.(*Node)
+	}
+	ws := weak.Make(s)
+	runtime.AddCleanup(n, func(key weak.Pointer[Node]) {
+		if t := ws.Value(); t != nil {
+			t.equivalents.Delete(key)
+		}
+	}, key)
+	return k
+}
+
+// EquivalentsLen is the number of cached equivalents, for tests.
+func (s *Set) EquivalentsLen() int {
+	n := 0
+	s.equivalents.Range(func(any, any) bool { n++; return true })
+	return n
 }
 
 // CachedIndexName shares the immutable positional discriminator component across trees.

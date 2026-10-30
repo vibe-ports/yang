@@ -187,9 +187,10 @@ Read in document order (fixed):
   - the cross-context table probe returns the bucket's first record (`leaderFirstMixed`);
   - `runBounds` cuts a gap-free operation or unordered run at its piece;
 - round 16: the table primitive reads only the bucket's candidates, the equivalents of the
-  schema node in the set's few contexts (`equivalents`). Each equivalent is mapped once per
-  process (`equivalentIn`, a cache over immutable schemas), and `leaderFirstMixed` uses the same
-  candidates. A lookup no longer scans every schema of the level. A mutation charges its steps
+  schema node in the set's few contexts (`equivalents`). Each equivalent is mapped once and
+  cached on the target schema set, keyed weakly by the other context's node, so the cache keeps
+  no context alive (`equivalentIn`, `schema.Set.CachedEquivalent`; `TestEquivalentCacheKeepsNoContext`).
+  `leaderFirstMixed` uses the same candidates. A lookup no longer scans every schema of the level. A mutation charges its steps
   to its own counter (Merge, ApplyDiff, edits); a diff charges its lookup quota; read-only calls
   charge nothing (`TestMixedTableMergeScaling`: flat work per schema, refusal at every charge
   point);

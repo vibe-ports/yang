@@ -15,7 +15,6 @@ import (
 	"iter"
 	"slices"
 	"strings"
-	"sync"
 
 	"github.com/vibe-ports/yang/internal/schema"
 	"github.com/vibe-ports/yang/internal/types"
@@ -1292,28 +1291,18 @@ func (s *siblings) equivalents(sn *schema.Node) []*schema.Node {
 	return out
 }
 
-type equivalentKey struct {
-	sn  *schema.Node
-	set *schema.Set
-}
-
-// equivalentCache maps a schema node and a context to its equivalent there (nil: none). Compiled
-// schemas never change, so an entry stays valid; it is shared by all readers.
-var equivalentCache sync.Map // equivalentKey -> *schema.Node
-
 // equivalentIn is sn's equivalent in set: the node lyd_find_schema_ctx maps it to, kept when it
-// compares equal with all the parents, nil otherwise.
+// compares equal with all the parents, nil otherwise. It is cached on set, keyed weakly by sn
+// (schema.Set.CachedEquivalent): compiled schemas never change, and the cache keeps no context
+// alive.
 func equivalentIn(sn *schema.Node, set *schema.Set) *schema.Node {
-	key := equivalentKey{sn, set}
-	if v, ok := equivalentCache.Load(key); ok {
-		return v.(*schema.Node)
-	}
-	k, err := findSchemaCtx(sn, set, nil)
-	if err != nil || k == nil || !compareSchemaEqual(k, sn, true) {
-		k = nil
-	}
-	equivalentCache.Store(key, k)
-	return k
+	return set.CachedEquivalent(sn, func() *schema.Node {
+		k, err := findSchemaCtx(sn, set, nil)
+		if err != nil || k == nil || !compareSchemaEqual(k, sn, true) {
+			return nil
+		}
+		return k
+	})
 }
 
 func (s *siblings) leaderDrop(sn *schema.Node, n *Node) bool {

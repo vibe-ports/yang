@@ -7,10 +7,13 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"runtime"
 	"slices"
 	"strings"
 	"sync"
 	"testing"
+	"time"
+	"weak"
 
 	"github.com/vibe-ports/yang"
 	"github.com/vibe-ports/yang/internal/schema"
@@ -1740,4 +1743,58 @@ func TestMixedTableMergeScaling(t *testing.T) {
 	}
 	build, _ := setup(6)
 	checkEveryHashBudgetPoint(t, build)
+}
+
+// TestEquivalentCacheKeepsNoContext: equivalentIn's cache lives on the target set and is keyed
+// weakly by the other set's node, so concurrent readers share it safely, and a dropped context
+// becomes collectable after lookups: the source context (its entry then goes) and the target one.
+func TestEquivalentCacheKeepsNoContext(t *testing.T) {
+	first := func(set *schema.Set) *schema.Node { return set.Implemented("pv2-ordered2").Top[0].Children[0] }
+	collected := func(w func() bool, stale func() bool) bool {
+		for range 50 {
+			runtime.GC()
+			if w() && !stale() {
+				return true
+			}
+			time.Sleep(10 * time.Millisecond)
+		}
+		return false
+	}
+	setA := ordered2Set(t)
+	var wb weak.Pointer[schema.Set]
+	func() {
+		setB := ordered2Set(t)
+		wb = weak.Make(setB)
+		snB := first(setB)
+		if equivalentIn(snB, setA) != first(setA) {
+			t.Fatal("no equivalent")
+		}
+		var wg sync.WaitGroup
+		for range 16 {
+			wg.Go(func() {
+				for range 500 {
+					if equivalentIn(snB, setA) != first(setA) {
+						t.Error("a concurrent reader saw another equivalent")
+						return
+					}
+				}
+			})
+		}
+		wg.Wait()
+	}()
+	if !collected(func() bool { return wb.Value() == nil }, func() bool { return setA.EquivalentsLen() != 0 }) {
+		t.Fatalf("the dropped source context: reachable %v, %d cached entries", wb.Value() != nil, setA.EquivalentsLen())
+	}
+	var wc weak.Pointer[schema.Set]
+	func() {
+		setC := ordered2Set(t)
+		wc = weak.Make(setC)
+		if equivalentIn(first(setA), setC) != first(setC) {
+			t.Fatal("no equivalent")
+		}
+	}()
+	if !collected(func() bool { return wc.Value() == nil }, func() bool { return false }) {
+		t.Fatal("the dropped target context is still reachable")
+	}
+	runtime.KeepAlive(setA)
 }
