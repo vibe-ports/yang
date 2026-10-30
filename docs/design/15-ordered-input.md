@@ -119,7 +119,7 @@ write takes the code path it took before (the counted-work and scaling tests are
 
 ## Evidence
 
-- Oracle fixtures `protocol-v2/ordered-*` (53; `ordered-split-list-merge-destruct` is unsupported,
+- Oracle fixtures `protocol-v2/ordered-*` (54; `ordered-split-list-merge-destruct` is unsupported,
 U-0113) cover:
   - parse order, JSON and XML;
   - the XML opaque anchor;
@@ -146,7 +146,7 @@ U-0113) cover:
     diff insertion after an anchor followed by an opaque node (D-0058); module validation of
     duplicates and of a leafref after an opaque root; a replaced case holding the module's first
     node; a diff of another context applied past an opaque sibling; top-level leaf-list defaults
-    past an opaque root.
+    past an opaque root; a list key run cut by an opaque child.
   The `seq/trim-*` and `ops/opidx-split-run-leader-switch` fixtures, which parse ordered, now run.
   The request-differential `ordered-input` class runs against the live oracle.
 - Go: `TestSequenceKindModel` (opidx), `TestSiblingFacadeInterleavedModel`,
@@ -184,6 +184,14 @@ Read in document order (fixed):
     `lyd_find_sibling_first`);
   - the cross-context table probe returns the bucket's first record (`leaderFirstMixed`);
   - `runBounds` cuts a gap-free operation or unordered run at its piece;
+- round 11: a list's key run is its leading key children in document order, stopping at an
+  opaque or non-key child, as `lyd_hash` reads it; ParseOnly skips `checkKeys`, so an opaque child
+  can sit between keys (`ordered-list-key-past-opaque`). `keyRun` (the logical run `keyN` cut at
+  the first opaque child) sets the hashed prefix on link and reset. `keyPrefix` (the schema
+  children before the first opaque one) bounds every key walk: the key hashes,
+  `rb_compare_lists` and its D-0121 profile, `HashKeyValuesEqual`, the instance keys of
+  comparisons, the dup and diff key loops, and the key-change and hash bounds. An unlink that
+  joins the run does not rehash (`TestKeyRunPastOpaque`);
 - round 10: an implicit sorted instance whose leader exists takes the ordinary sorted insertion
   (lyds_insert) also in an interleaved top level; only without a leader does the anchor walk
   from the module's first node place it;
@@ -233,8 +241,6 @@ Kept logical, with the proof of equivalence:
 - Context routing: `mixedSortedLookup`, `foreignFor`, `mixedSwitch` and the refusal modes.
   Opaque nodes are never candidates of `lyd_find_sibling_schema`, and `contexts` counts only
   schema nodes.
-- Keys. A list's keys are its first children, and a key after an opaque child fails `checkKeys`
-  (`ordered-xml-key-after-opaque`). Key prefixes, key hashes and key compares are the same.
 - Comparisons: `compareSiblingFrames` walks document order. The narrowing digest is built over
   the logical order. Pairwise-equal document sequences partition into pairwise-equal logical
   ones, so the digest never rejects an equal pair.

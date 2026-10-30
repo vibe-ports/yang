@@ -2262,7 +2262,7 @@ func compareInstanceKey(n *Node, typed, members bool) string {
 	if n.schema.Kind == schema.LeafList {
 		value(n.value)
 	} else {
-		for _, k := range n.kids.SchemaAll() {
+		for _, k := range keyPrefix(n).All() {
 			if !k.isKey() {
 				break
 			}

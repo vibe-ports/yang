@@ -1193,3 +1193,45 @@ func TestCaseReplacedReversedFirst(t *testing.T) {
 		t.Fatalf("%v", got)
 	}
 }
+
+// TestKeyRunPastOpaque: an Ordered ParseOnly list instance k=x, zz, k=y hashes the leading key
+// run in document order, which stops at zz (lyd_hash). Unlinking zz joins the run without a
+// rehash (lyd_unlink does not rehash the parent); the next native rehash, a changed key value,
+// takes both keys (oracle: protocol-v2/ordered-list-key-past-opaque for the lookup and the dup).
+func TestKeyRunPastOpaque(t *testing.T) {
+	set := ordered2Set(t)
+	tr, err := parseOrdered(t, set, false, `{"pv2-ordered2:c":{"l":[{"k":"x","zz":"u","k":"y"}]}}`, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	l, err := tr.Find("/pv2-ordered2:c/l[k='x']")
+	if err != nil || l == nil {
+		t.Fatalf("lookup by the hashed key: %v %v", l, err)
+	}
+	if l.keyRun() != 1 || l.lkeyN != 1 {
+		t.Fatalf("run %d, hashed %d", l.keyRun(), l.lkeyN)
+	}
+	hash := l.hash
+	var zz, k *Node
+	for c := range l.Children() {
+		switch {
+		case c.schema == nil:
+			zz = c
+		case k == nil:
+			k = c
+		}
+	}
+	if err := zz.Unlink(); err != nil {
+		t.Fatal(err)
+	}
+	if l.keyRun() != 2 || l.lkeyN != 1 || l.hash != hash {
+		t.Fatalf("after the unlink: run %d, hashed %d, hash changed %v", l.keyRun(), l.lkeyN, l.hash != hash)
+	}
+	if _, err := k.SetValue("z"); err != nil {
+		t.Fatal(err)
+	}
+	if l.lkeyN != 2 {
+		t.Fatalf("after the rehash: hashed %d", l.lkeyN)
+	}
+	opidxAssertTreeInvariant(t, tr)
+}

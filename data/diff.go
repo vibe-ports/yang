@@ -986,7 +986,7 @@ func (t *Tree) diffIsRedundant(n *Node) (bool, error) {
 				return false, nil
 			}
 		}
-		for _, k := range n.kids.SchemaAll() { // … and on its keys
+		for _, k := range keyPrefix(n).All() { // … and on its keys
 			if !k.isKey() {
 				break
 			}

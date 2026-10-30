@@ -798,7 +798,7 @@ func (t *Tree) preflightDupHash(n, parent *Node, o DupOptions, siblings bool) er
 		if child.schema != nil && child.schema.Kind == schema.List && !child.schema.Keyless() {
 			// lyd_dup_r hashes the completed list once more after copying its
 			// children, independently of each key-link hash event.
-			for _, key := range child.kids.SchemaAll() {
+			for _, key := range keyPrefix(child).All() {
 				if !key.isKey() {
 					break
 				}
@@ -825,7 +825,7 @@ func (t *Tree) preflightDupHash(n, parent *Node, o DupOptions, siblings bool) er
 			}
 			if root.schema != nil && root.schema.Kind == schema.List {
 				indexed := root.kids.ht != nil || len(root.schema.Keys) >= htMinItems
-				for _, child := range root.kids.SchemaAll() {
+				for _, child := range keyPrefix(root).All() {
 					if !child.isKey() {
 						break
 					}
@@ -845,7 +845,7 @@ func (t *Tree) preflightDupHash(n, parent *Node, o DupOptions, siblings bool) er
 				return err
 			}
 			if ancestor.schema != nil && ancestor.schema.Kind == schema.List {
-				for _, key := range ancestor.kids.SchemaAll() {
+				for _, key := range keyPrefix(ancestor).All() {
 					if !key.isKey() {
 						break
 					}
@@ -864,7 +864,7 @@ func (t *Tree) preflightDupHash(n, parent *Node, o DupOptions, siblings bool) er
 			}
 		}
 		if parent.schema != nil && parent.schema.Kind == schema.List {
-			if ps := parent.siblingsOf(); ps != nil && ps.ht != nil && parent.keyN < len(parent.schema.Keys) {
+			if ps := parent.siblingsOf(); ps != nil && ps.ht != nil && parent.keyRun() < len(parent.schema.Keys) {
 				amount = addHashBound(amount, indexBatchInsertedBound(parent, orig, &t.work))
 			}
 		}

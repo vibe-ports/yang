@@ -202,10 +202,11 @@ func rbCompareLists(work *workCounter, n1, n2 *Node) (int, bool) {
 	if !ok || cmp != 0 {
 		return cmp, ok
 	}
-	c1, c2 := n1.kids.schemaSpan().cursor(), n2.kids.schemaSpan().cursor()
+	p1, p2 := keyPrefix(n1), keyPrefix(n2) // the walk stops at an opaque sibling
+	c1, c2 := p1.cursor(), p2.cursor()
 	c1.next()
 	c2.next()
-	for i := 1; i < n1.kids.SchemaLen() && i < n2.kids.SchemaLen(); i++ {
+	for i := 1; i < p1.Len() && i < p2.Len(); i++ {
 		k1, k2 = c1.next(), c2.next()
 		if !k1.isKey() || !k2.isKey() {
 			break
@@ -223,13 +224,14 @@ func rbCompareLists(work *workCounter, n1, n2 *Node) (int, bool) {
 // invokes no value callback: a key that is never compared is never sorted.
 func listKeyProfile(work *workCounter, n1, n2 *Node) bool {
 	keys := n1.schema.Keys
-	if len(keys) == 0 || len(keys) != len(n2.schema.Keys) || n1.kids.SchemaLen() < len(keys) || n2.kids.SchemaLen() < len(keys) {
+	p1, p2 := keyPrefix(n1), keyPrefix(n2)
+	if len(keys) == 0 || len(keys) != len(n2.schema.Keys) || p1.Len() < len(keys) || p2.Len() < len(keys) {
 		return false
 	}
 	if !sortKeyProfile(work, n1.schema, n2.schema) {
 		return false
 	}
-	c1, c2 := n1.kids.schemaSpan().cursor(), n2.kids.schemaSpan().cursor()
+	c1, c2 := p1.cursor(), p2.cursor()
 	for i, key := range keys {
 		a, b := c1.next(), c2.next()
 		if a.schema != key || b.schema != n2.schema.Keys[i] || a.value.Type() == nil || b.value.Type() == nil {
@@ -803,8 +805,9 @@ func rbCompareCost(a, b *Node) uint64 {
 		return 1 + types.CompareCost(a.value, b.value)
 	}
 	cost := uint64(1)
-	ca, cb := a.kids.schemaSpan().cursor(), b.kids.schemaSpan().cursor()
-	for i := range min(a.kids.SchemaLen(), b.kids.SchemaLen()) {
+	pa, pb := keyPrefix(a), keyPrefix(b)
+	ca, cb := pa.cursor(), pb.cursor()
+	for i := range min(pa.Len(), pb.Len()) {
 		ka, kb := ca.next(), cb.next()
 		if i > 0 && (!ka.isKey() || !kb.isKey()) {
 			break
@@ -823,8 +826,9 @@ func chargeCompareCost(w *workCounter, a, b *Node) error {
 	if err := w.chargeHash(1); err != nil {
 		return err
 	}
-	ca, cb := a.kids.schemaSpan().cursor(), b.kids.schemaSpan().cursor()
-	for i := range min(a.kids.SchemaLen(), b.kids.SchemaLen()) {
+	pa, pb := keyPrefix(a), keyPrefix(b)
+	ca, cb := pa.cursor(), pb.cursor()
+	for i := range min(pa.Len(), pb.Len()) {
 		ka, kb := ca.next(), cb.next()
 		if i > 0 && (!ka.isKey() || !kb.isKey()) {
 			break
@@ -2056,7 +2060,7 @@ func (t *Tree) insertPositionBound(sib *siblings, n *Node, order insertOrder) (u
 	if parent != nil && parent.schema != nil && parent.schema.Kind == schema.List {
 		if ps := parent.siblingsOf(); ps != nil && ps.ht != nil {
 			amount = addHashBound(amount, indexBatchInsertedBound(parent, []*Node{n}, &t.work))
-			if parent.keyN < len(parent.schema.Keys) {
+			if parent.keyRun() < len(parent.schema.Keys) {
 				// The sort can move any child into the incomplete compared prefix.
 				amount = addHashBound(amount, indexAnyOrderBound(parent, n, &t.work))
 			}
@@ -2307,7 +2311,7 @@ func (t *Tree) linkApplyBound(parent *Node, sib *siblings, n *Node, at int) (uin
 		amount = addHashBound(amount, a)
 	}
 	if n.schema != nil && !n.schema.IsKey() && parent != nil && parent.schema != nil &&
-		parent.schema.Kind == schema.List && (parent.keyN < len(parent.schema.Keys) || at < len(parent.schema.Keys)) {
+		parent.schema.Kind == schema.List && (parent.keyRun() < len(parent.schema.Keys) || at < len(parent.schema.Keys)) {
 		// keyLinked → reindexComparedParent: a non-key can enter the compared prefix (incomplete,
 		// or made so by its position among the keys) and reindex the list in its own siblings
 		// (a term the prepaid scope exposed)
@@ -2334,7 +2338,7 @@ func (t *Tree) linkIndexBound(parent *Node, sib *siblings, n *Node, at int) uint
 		}
 	}
 	if parent != nil && parent.schema != nil && parent.schema.Kind == schema.List &&
-		(n.schema == nil || n.schema.IsKey() || parent.keyN < len(parent.schema.Keys)) {
+		(n.schema == nil || n.schema.IsKey() || parent.keyRun() < len(parent.schema.Keys)) {
 		if ps := parent.siblingsOf(); ps != nil && ps.ht != nil {
 			position := at
 			if n.schema == nil {
@@ -2388,7 +2392,7 @@ func (t *Tree) preflightMoveDestination(parent, n *Node) error {
 		}
 	}
 	if parent != nil && parent.schema != nil && parent.schema.Kind == schema.List && n.schema != nil &&
-		(n.schema.IsKey() || parent.keyN < len(parent.schema.Keys)) {
+		(n.schema.IsKey() || parent.keyRun() < len(parent.schema.Keys)) {
 		if ps := parent.siblingsOf(); ps != nil && ps.ht != nil {
 			amount = addHashBound(amount, indexWorkBound(parent, nil, nil, &t.work))
 			amount = addHashBound(amount, indexInsertedBound(parent, n, 0, &t.work))
@@ -2623,7 +2627,7 @@ func (t *Tree) preflightSplice(parent *Node, sib *siblings, ns []*Node) error {
 			}
 		}
 		if ps := parent.siblingsOf(); ps != nil && ps.ht != nil && parent.schema.Kind == schema.List &&
-			parent.keyN < len(parent.schema.Keys) {
+			parent.keyRun() < len(parent.schema.Keys) {
 			amount = addHashBound(amount, indexBatchInsertedBound(parent, ns, &t.work))
 		}
 	}
@@ -3007,11 +3011,11 @@ func detach(n *Node) *Node {
 		// lyd_unlink_ignore_lyds (tree_data.c:1187-1239).
 	}
 	if parent != nil && parent.schema != nil && parent.schema.Kind == schema.List {
-		oldKeyN := parent.keyN
+		oldKeyN := parent.keyRun()
 		if !wasKey {
 			exposeListKeys(parent.kids.work, parent)
 		}
-		if wasKey || oldKeyN < len(parent.schema.Keys) || parent.keyN != oldKeyN {
+		if wasKey || oldKeyN < len(parent.schema.Keys) || parent.keyRun() != oldKeyN {
 			reindexList(parent)
 		}
 	}
@@ -3062,7 +3066,7 @@ func unlinkSuffixBound(sib *siblings, n *Node) uint64 {
 	amount := sib.orderRemoveBound(n, sib.indexJournaled(sib.work))
 	parent := n.parent
 	if parent == nil || parent.schema == nil || parent.schema.Kind != schema.List ||
-		!n.isKey() && parent.keyN >= len(parent.schema.Keys) {
+		!n.isKey() && parent.keyRun() >= len(parent.schema.Keys) {
 		return amount
 	}
 	if ps := parent.siblingsOf(); ps != nil && ps.ht != nil && ps.work != nil {
@@ -3089,7 +3093,7 @@ func preflightUnlink(n *Node) error {
 	if parent == nil || parent.schema == nil || parent.schema.Kind != schema.List {
 		return nil
 	}
-	if !n.isKey() && parent.keyN >= len(parent.schema.Keys) {
+	if !n.isKey() && parent.keyRun() >= len(parent.schema.Keys) {
 		return nil
 	}
 	sib := parent.siblingsOf()
@@ -3229,9 +3233,9 @@ func (t *Tree) unlinkAllDefaults(ns, defaults []*Node) (result error) {
 			}
 		}
 		for parent := range affectedLists {
-			oldKeyN := parent.keyN
+			oldKeyN := parent.keyRun()
 			exposeListKeys(parent.kids.work, parent)
-			if oldKeyN < len(parent.schema.Keys) || parent.keyN != oldKeyN {
+			if oldKeyN < len(parent.schema.Keys) || parent.keyRun() != oldKeyN {
 				reindexList(parent)
 			}
 		}
@@ -3342,7 +3346,7 @@ func (t *Tree) preflightUnlinkAll(ns []*Node) error {
 		if parent == nil || removed[parent] || parent.schema == nil || parent.schema.Kind != schema.List {
 			continue
 		}
-		if !n.isKey() && parent.keyN >= len(parent.schema.Keys) {
+		if !n.isKey() && parent.keyRun() >= len(parent.schema.Keys) {
 			continue
 		}
 		if sib := parent.siblingsOf(); sib != nil && sib.ht != nil && !parents[parent] {

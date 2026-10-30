@@ -347,10 +347,10 @@ func (x xn) HashKeyValuesEqual(sn xpath.SchemaNode, vals []string) bool {
 	}
 	s, ok := sn.(xs)
 	if !ok || x.n.schema == nil || x.n.schema.Kind != schema.List ||
-		len(s.s.Keys) < len(vals) || x.n.kids.SchemaLen() < len(vals) {
+		len(s.s.Keys) < len(vals) || keyPrefix(x.n).Len() < len(vals) {
 		return false
 	}
-	prefix := x.n.kids.schemaSpan().cursor()
+	prefix := keyPrefix(x.n).cursor() // lyd_hash's run stops at an opaque child
 	for i, text := range vals {
 		key := s.s.Keys[i]
 		value, diag := types.StoreOnly(key.Type, text, types.FormatCanon, types.HintData,

@@ -249,7 +249,7 @@ func (w *workCounter) termHashBound(parent *Node, sn *schema.Node, value types.V
 	// keyLinked ends with reindexComparedParent(parent): an outer list whose
 	// compared prefix exposes parent is reindexed in its own siblings.
 	if gp := parent.parent; gp != nil && gp.schema != nil && gp.schema.Kind == schema.List &&
-		gp.keyN < len(gp.schema.Keys) {
+		gp.keyRun() < len(gp.schema.Keys) {
 		if gs := gp.siblingsOf(); gs != nil && gs.ht != nil {
 			children := positionalChildren(gp)
 			for range gp.schema.Keys {
@@ -292,7 +292,7 @@ func (w *workCounter) checkChangedHash(n *Node, value types.Value) (uint64, erro
 		}
 	}
 	var amount uint64
-	for _, key := range n.parent.kids.SchemaAll() {
+	for _, key := range keyPrefix(n.parent).All() {
 		w.Add(1)
 		if err := w.chargeHash(1); err != nil {
 			return 0, err
@@ -358,7 +358,7 @@ func (w *workCounter) checkRefreshHash(n *Node) error {
 		return nil
 	}
 	var amount uint64
-	for _, key := range n.kids.SchemaAll() {
+	for _, key := range keyPrefix(n).All() {
 		w.Add(1)
 		if err := w.chargeHash(1); err != nil {
 			return err
