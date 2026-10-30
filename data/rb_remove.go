@@ -155,7 +155,10 @@ func (s *siblings) removalOrder(n, prev, next, tail *Node, around func(*Node) (*
 				if err := w.chargeHash(uint64(len(s.leaders))); err != nil {
 					return nil, nil, err
 				}
-				leader = s.leaderFirstMixed(n.schema)
+				var err error
+				if leader, err = s.leaderFirstMixedCharged(n.schema, chargeOf(w)); err != nil {
+					return nil, nil, err
+				}
 			} else {
 				leader = nil
 				// lyd_find_sibling_schema's linear walk stops at the first opaque sibling

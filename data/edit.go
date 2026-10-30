@@ -1212,14 +1212,15 @@ func (t *Tree) keylessFirst(c *dupCache, sib *siblings, target *Node) (*Node, er
 	}
 	// lyd_find_sibling_first rejects a schema-parent mismatch before finding the
 	// first sibling, resolving a foreign schema, or touching the children table.
-	if sib.SchemaLen() > 0 && sib.At(0).schema != nil && target.schema != nil &&
-		!compareSchemaEqual(sib.At(0).schema.DataParent(), target.schema.DataParent(), true) {
+	// The check reads the physical first sibling; an opaque one skips it.
+	if f := sib.docFirst(); f != nil && f.schema != nil && target.schema != nil &&
+		!compareSchemaEqual(f.schema.DataParent(), target.schema.DataParent(), true) {
 		return nil, nil
 	}
 	sn := target.schema
 	if sib.SchemaLen() != 0 {
-		first := sib.docFirst() // LYD_CTX(siblings): the physical first sibling, an opaque one included
-		if !sameSet(ctxOf(first), ctxOf(target)) {
+		// the context of the schema siblings, not of an opaque first one, decides
+		if ctx := sib.schemaContext(); !sameSet(ctx, ctxOf(target)) {
 			// lyd_find_sibling_first maps no schema in its linear branch. In
 			// particular, lyd_find_schema_ctx always walks operation input, so it
 			// cannot map an output child unless the table branch actually needs it.
@@ -1232,9 +1233,10 @@ func (t *Tree) keylessFirst(c *dupCache, sib *siblings, target *Node) (*Node, er
 				}
 				return nil, nil
 			}
+			// the table's lyd_hash_table_val_equal matches by full lineage, outputs included
 			var err error
-			if sn, err = findSchemaCtx(target.schema, ctxOf(first), first.parent); err != nil {
-				return nil, nil
+			if sn, err = equivalentIn(target.schema, sib.schemaContext(), chargeOf(&t.work)); err != nil || sn == nil {
+				return nil, err
 			}
 		}
 	}

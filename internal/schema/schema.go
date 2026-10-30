@@ -9,7 +9,6 @@ package schema
 
 import (
 	"iter"
-	"strings"
 	"sync"
 )
 
@@ -18,10 +17,10 @@ type Set struct {
 	Modules    []*Module
 	nameHashes sync.Map // *Node -> uint32, immutable module/name prefixes shared by trees
 	indexNames sync.Map // *Node -> [32]byte, immutable positional-index name digests
-	// lineage indexes this set's nodes by LineageKey, built once (ByLineage); it holds only the
+	// children indexes the children of one of this set's nodes (nil: the top level) by node type,
+	// module name and node name, built per parent on first use (ChildByName); it holds only the
 	// set's own nodes
-	lineageOnce sync.Once
-	lineage     map[string]*Node
+	children sync.Map // *Node -> map[ChildKey]*Node
 	// LeafrefLinking is the context flag LY_CTX_LEAFREF_LINKING: data trees over the set keep
 	// leafref links (lyd_leafref_link_node_tree).
 	LeafrefLinking bool
@@ -41,57 +40,54 @@ func (s *Set) CachedNameHash(n *Node, compute func() (uint32, error)) (uint32, e
 	return actual.(uint32), nil
 }
 
-// LineageKey is the full schema lineage of n: the node type, module name and node name of n and
-// of every schema parent up to the top, input, output, choice and case nodes included. Two nodes
-// of different contexts have equal keys exactly when lyd_compare_schema_equal with parents holds.
-func LineageKey(n *Node) string {
-	var b strings.Builder
-	for p := n; p != nil; p = p.Parent {
-		var mod string
-		if p.Module != nil {
-			mod = p.Module.Name
-		}
-		b.WriteByte(byte(p.Kind >> 8))
-		b.WriteByte(byte(p.Kind & 0xff))
-		b.WriteString(mod)
-		b.WriteByte(0)
-		b.WriteString(p.Name)
-		b.WriteByte(0)
-	}
-	return b.String()
+// ChildKey identifies a schema child under its parent: node type, module name and node name, the
+// fields lyd_compare_schema_equal compares at one level.
+type ChildKey struct {
+	Kind Kind
+	Mod  string
+	Name string
 }
 
-// ByLineage is the node of this set with the given LineageKey, nil if none. The index covers the
-// data nodes, rpcs and notifications of every module, the input and output of operations, actions
-// and notifications in containers and lists, and the schema trees of extension instances (a node
-// of the module's own tree wins a shared key). It is built once per set, linear in the schema, and
-// read concurrently afterwards.
-func (s *Set) ByLineage(key string) *Node {
-	s.lineageOnce.Do(func() {
-		s.lineage = map[string]*Node{}
-		var exts []*ExtInstance
-		var walk func(nodes []*Node)
-		walk = func(nodes []*Node) {
-			for _, n := range nodes {
-				if _, dup := s.lineage[LineageKey(n)]; !dup {
-					s.lineage[LineageKey(n)] = n
-				}
-				exts = append(exts, n.Exts...)
-				walk(n.Children)
-				walk(n.Actions)
-				walk(n.Notifs)
+// ChildByName is the child of parent (a node of this set, nil: the top level of every module)
+// with the given key: data children, the cases of a choice, the input and output of an operation,
+// and actions and notifications in containers and lists; nil if none. The parent's index is
+// built on first use, paying its size through charge first (a refusal builds nothing and is
+// returned); afterwards a lookup is one map read. Extension-instance schema trees are not indexed.
+func (s *Set) ChildByName(parent *Node, key ChildKey, charge func(int64) error) (*Node, error) {
+	if v, ok := s.children.Load(parent); ok {
+		return v.(map[ChildKey]*Node)[key], nil
+	}
+	var kids [][]*Node
+	if parent == nil {
+		for _, m := range s.Modules {
+			kids = append(kids, m.Top)
+		}
+	} else {
+		kids = [][]*Node{parent.Children, parent.Actions, parent.Notifs}
+	}
+	size := 0
+	for _, k := range kids {
+		size += len(k)
+	}
+	if charge != nil {
+		if err := charge(int64(size) + 1); err != nil {
+			return nil, err
+		}
+	}
+	idx := make(map[ChildKey]*Node, size)
+	for _, k := range kids {
+		for _, n := range k {
+			var mod string
+			if n.Module != nil {
+				mod = n.Module.Name
+			}
+			if key := (ChildKey{n.Kind, mod, n.Name}); idx[key] == nil {
+				idx[key] = n
 			}
 		}
-		for _, m := range s.Modules {
-			walk(m.Top)
-		}
-		for len(exts) > 0 {
-			e := exts[0]
-			exts = exts[1:]
-			walk(e.Nodes)
-		}
-	})
-	return s.lineage[key]
+	}
+	v, _ := s.children.LoadOrStore(parent, idx)
+	return v.(map[ChildKey]*Node)[key], nil
 }
 
 // CachedIndexName shares the immutable positional discriminator component across trees.

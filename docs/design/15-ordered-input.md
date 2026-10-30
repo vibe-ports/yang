@@ -187,14 +187,25 @@ Read in document order (fixed):
   - the cross-context table probe returns the bucket's first record (`leaderFirstMixed`);
   - `runBounds` cuts a gap-free operation or unordered run at its piece;
 - round 16: the table primitive reads only the bucket's candidates, the equivalents of the
-  schema node in the set's few contexts (`equivalents`). Each equivalent is read from the target
-  set's lineage index, keyed by the full lineage `lyd_compare_schema_equal` compares (node type,
-  module and name of the node and every parent, input, output, choice and case included). The
-  index is built once per set, linear in the schema, holds only that set's nodes, and is read
-  concurrently; a lookup costs O(depth) (`equivalentIn`, `schema.Set.ByLineage`;
+  schema node in the set's few contexts (`equivalents`). Each equivalent is found level by level:
+  the parent's equivalent first, then that parent's child index in the target set, keyed by node
+  type, module name and node name (`equivalentIn`, `schema.Set.ChildByName`). An index is built
+  per parent on first use and paid before it is built; each level is paid through the caller's
+  charge (a diff's lookup quota, a mutation's hash quota, XPath's step budget; read-only calls
+  charge nothing), and a refusal is returned, never taken for a miss. Memory is linear in the
+  schema, holds only the target set's nodes, and the cost is O(depth) (`TestEquivalentInColdBudgetAndDepth`,
   `TestEquivalentInOutputAndScaling`, `TestEquivalentCacheKeepsNoContext`). `leaderFirstMixed`
-  uses the same candidates. `findSchemaCtx` stays the model of `lyd_find_schema_ctx` (its
-  input-only walk included) for dup and the foreign probes of lookups. A lookup no longer scans every schema of the level. A mutation charges its steps
+  uses the same candidates.
+- round 18 (class-wide cross-context audit): a foreign match is chosen from the contexts of the
+  schema nodes the siblings hold (`schemaContext`), not from an opaque first sibling or the
+  parent (`findFirstWork`, `keylessFirst`, the XPath lookups, `FirstChild`); a probe of another
+  context is compared with the candidate directly, as `lyd_find_sibling_first` does
+  (`xprobe.crossEqual`, no translation through `lyd_find_schema_ctx`, so outputs are found); the
+  instance lookups apply `lyd_find_sibling_first`'s schema-parent check on the physical first
+  sibling, skipped when it is opaque (`parentMismatch`); schema-only lookups inside a mutation
+  pay its quota. `findSchemaCtx` stays the model of `lyd_find_schema_ctx` for dup.
+  (`TestHomogeneousForeignBehindOpaque`, `TestForeignOutputXPath`, `TestFirstSiblingParentGuard`,
+  `TestMutationSchemaLookupCharged`, `TestThreeContextRegistrationOrder`). A lookup no longer scans every schema of the level. A mutation charges its steps
   to its own counter (Merge, ApplyDiff, edits); a diff charges its lookup quota; read-only calls
   charge nothing (`TestMixedTableMergeScaling`: flat work per schema, refusal at every charge
   point);

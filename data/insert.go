@@ -1245,7 +1245,10 @@ func (t *Tree) sortedLeaderIndex(sib *siblings, n *Node) int {
 	}
 	var leader *Node
 	if sib.schemaUnordered {
-		leader = sib.leaderFirstMixed(n.schema)
+		var err error
+		if leader, err = sib.leaderFirstMixedCharged(n.schema, chargeOf(&t.work)); err != nil {
+			return -1 // the refusal is sticky in t.work.hashErr
+		}
 	} else {
 		leader = sib.mixedLeaderProbe(n.schema, &t.work) // reserves its own sibling scan
 	}
