@@ -224,8 +224,9 @@ func interleavedTableLookup(sib *siblings, set *schema.Set, p *xprobe) ([]xpath.
 	return opaqFallback(sib, set, p)
 }
 
-// tableFirst is the children table's answer for p in an interleaved set holding siblings of
-// several contexts or a duplicate-instance list. The table's buckets hash module and node names,
+// tableFirst is THE children-table lookup out of schema order (tableFind wraps it for real target
+// nodes): lyd_find_sibling_schema (p.schemaOnly) and lyd_find_sibling_first's table branch over a
+// set holding siblings of several contexts or a duplicate-instance list. The table's buckets hash module and node names,
 // so lyd_hash_table_(schema_)val_equal sees the equivalent schema nodes of every context in one
 // bucket and takes the first registered match. Here each equivalent schema node's bucket is read
 // and the earliest registration wins, one charged step per distinct schema node and per bucket
@@ -244,6 +245,13 @@ func tableFirst(sib *siblings, set *schema.Set, p *xprobe) (*Node, error) {
 		for ; c != nil && c.schema != nil && compareSchemaEqual(c.schema, sn, false); c = sib.docNext(c) {
 			if err := p.work(1); err != nil {
 				return nil, err
+			}
+			if p.eq != nil {
+				m, err := p.eq(c) // lyd_compare_single(target, iter, LYD_COMPARE_FULL_RECURSION)
+				if err != nil || m {
+					return live(c), err
+				}
+				continue
 			}
 			q := p
 			if c.schema != sn {
@@ -276,8 +284,12 @@ func tableFirst(sib *siblings, set *schema.Set, p *xprobe) (*Node, error) {
 		if !compareSchemaEqual(sn, k, true) {
 			continue
 		}
+		// lyd_hash_table_val_equal: a list by its keys, a leaf-list by its value, any other node
+		// by its schema alone (htValEqual); the bucket hashes module and node names (and keys or
+		// value), so a probe of another context reads the bucket of each equivalent schema node
+		byValue := !p.schemaOnly && (sn.Kind == schema.List || sn.Kind == schema.LeafList)
 		q := p
-		if k != sn && !p.schemaOnly {
+		if k != sn && byValue && p.eq == nil {
 			if q = p.toCtx(k.Module.Owner); q == nil {
 				continue
 			}
@@ -291,10 +303,15 @@ func tableFirst(sib *siblings, set *schema.Set, p *xprobe) (*Node, error) {
 			if n.flags&flagDead != 0 {
 				continue
 			}
-			m := p.schemaOnly
+			m := !byValue
 			if !m {
 				var err error
-				if m, err = q.Match(xn{n, set}); err != nil {
+				if p.eq != nil {
+					m, err = p.eq(n)
+				} else {
+					m, err = q.Match(xn{n, set})
+				}
+				if err != nil {
 					return nil, err
 				}
 			}
@@ -693,6 +710,9 @@ type xprobe struct {
 	key        idxKey
 	charge     func(int64) error
 	bytes      int64
+	// eq, when set, is the comparison of a real target node (tableFind's instance lookups of
+	// merge, diff and edits) in place of Match: it compares across contexts itself
+	eq func(*Node) (bool, error)
 }
 
 // PrepareInstance follows xpath.c:6343-6345 before the parent loop. Re-storing

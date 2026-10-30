@@ -641,13 +641,15 @@ func (t *Tree) crossContextInsertPos(sib *siblings, n *Node, newCtx *schema.Set,
 					}
 					if schemaLookupMatch(c.schema, sn, true) {
 						if sib.schemaUnordered {
-							// out of schema order a run may split, schema nodes alone included: the
-							// table returns the bucket's first registered record, not the
-							// document-first instance (design 15)
-							if t.work.chargeHash(uint64(len(sib.leaders))) != nil {
-								return l.Len(), true
+							// out of schema order the table answers by registration, for every
+							// node kind: a run may split, a singleton may repeat (design 15)
+							r, ok := t.tableSchemaFirstCharged(sib, sn, func(n int64) error {
+								return t.work.chargeHash(uint64(n)) //nolint:gosec // a charge is nonnegative
+							})
+							if t.work.hashErr != nil {
+								return l.Len(), true // the sticky refusal fails the link
 							}
-							if r := sib.leaderFirstMixed(sn); r != nil {
+							if ok && r != nil {
 								return max(sib.orderPosition(r), 0), true
 							}
 						}

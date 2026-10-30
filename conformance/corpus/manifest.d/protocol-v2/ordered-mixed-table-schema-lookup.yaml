@@ -1,4 +1,4 @@
-# a children table holding siblings of two contexts, out of schema order: lyd_find_sibling_schema returns the bucket's first registered x (lyd_hash_table_schema_val_equal), which after an unlink and reinsertion of the first x is the second one, for a path, an XPath query and an update
+# a children table holding siblings of two contexts, out of schema order: lyd_find_sibling_schema returns the bucket's first registered x (lyd_hash_table_schema_val_equal), which after an unlink and reinsertion of the first x is the second one, for a path, an XPath query, an update and the anchor of an insertion of a
 fixtures:
   - id: protocol-v2/ordered-mixed-table-schema-lookup
     dir: protocol-v2
@@ -20,5 +20,7 @@ fixtures:
         - {do: dump}
         - {do: xpath, xpath: /pv2-ordered8:c/x}
         - {do: edit, set: {path: /pv2-ordered8:c/x, value: "upd"}}
+        - {do: dump}
+        - {do: edit, insert_term: {parent: /pv2-ordered8:c, name: a, value: "v"}}
         - {do: dump}
     golden: golden/ordered-mixed-table-schema-lookup.json

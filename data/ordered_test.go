@@ -1501,6 +1501,15 @@ func TestMixedTableReadsShareNothing(t *testing.T) {
 	if tr.work.lookupUsed != used || tr.work.lookupErr != nil {
 		t.Fatal("a read-only lookup wrote the tree's lookup quota")
 	}
+	// an instance lookup of x (lyd_find_sibling_first): a leaf matches by schema alone in the
+	// table (lyd_hash_table_val_equal), so a probe with the first one's value finds the second
+	probe, _, err := parseJSONString(ctxOf(first), `{"pv2-ordered8:c":{"x":"first"}}`, Reject, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if m, err := tr.findFirstWork(&c.kids, probe.top.first().kids.first(), nil); err != nil || m == nil || m.Value() != "second" {
+		t.Fatalf("instance lookup: %v %v", m, err)
+	}
 	var wg sync.WaitGroup
 	for range 32 {
 		wg.Go(func() {
@@ -1518,4 +1527,133 @@ func TestMixedTableReadsShareNothing(t *testing.T) {
 		})
 	}
 	wg.Wait()
+	// an insertion anchor (lyd_insert_get_next_anchor's lyd_find_sibling_schema) is the table's
+	// first registered x as well: a goes right before the second x
+	if _, err := tr.NewTerm(c, "a", "v", NewOptions{}); err != nil {
+		t.Fatal(err)
+	}
+	opidxAssertTreeInvariant(t, tr)
+	var seq []string
+	for n := range c.Children() {
+		seq = append(seq, n.Name()+"="+n.Value())
+	}
+	if i := slices.Index(seq, "a=v"); i < 0 || i+1 >= len(seq) || seq[i+1] != "x=second" {
+		t.Fatalf("a's anchor: %v", seq)
+	}
+}
+
+// TestTableLookupCallersAgree: every caller of the children-table lookup answers alike, for each
+// node kind (a repeated leaf, a leaf-list split by another node, a state leaf-list), siblings of
+// one or two contexts, in or out of schema order: Find, schemaLookup, FirstChild and the keyed
+// XPath lookup, and for a value Find, findFirstWork and LookupChild. Out of schema order with a
+// re-registered first x the answer is the second x, libyang's first registered one.
+func TestTableLookupCallersAgree(t *testing.T) {
+	for _, ordered := range []bool{false, true} {
+		for _, mixed := range []bool{false, true} {
+			setA, setB := ordered2Set(t, "pv2-ordered8"), ordered2Set(t, "pv2-ordered8")
+			in := `{"pv2-ordered8:c":{"p":"p","x":"first","ll":[2],"b":"b","st":[1,2]}}`
+			if ordered {
+				in = `{"pv2-ordered8:c":{"p":"p","x":"first","ll":[2],"st":[1],"b":"b","x":"second","ll":[4],"st":[2]}}`
+			}
+			var tr *Tree
+			var err error
+			if ordered {
+				tr, err = parseOrdered(t, setA, false, in, nil)
+			} else {
+				tr, _, err = parseJSONString(setA, in, Opaque, true)
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+			var c *Node
+			for c = range tr.Top() {
+				break
+			}
+			if mixed {
+				fb, _, err := parseJSONString(setB, `{"pv2-ordered8:c":{"z":"zz"}}`, Reject, false)
+				if err != nil {
+					t.Fatal(err)
+				}
+				z := fb.top.first().kids.first()
+				if err := unlink(z); err != nil {
+					t.Fatal(err)
+				}
+				if err := tr.link(c, &c.kids, z, c.kids.SchemaLen()); err != nil {
+					t.Fatal(err)
+				}
+			}
+			if ordered { // re-register the first x
+				for n := range c.Children() {
+					if n.Name() == "x" {
+						if err := n.Unlink(); err != nil {
+							t.Fatal(err)
+						}
+						if err := tr.Insert(c, n); err != nil {
+							t.Fatal(err)
+						}
+						break
+					}
+				}
+			}
+			label := fmt.Sprintf("ordered %v, mixed %v", ordered, mixed)
+			for _, name := range []string{"x", "ll", "st"} {
+				var sn *schema.Node
+				for _, k := range setA.Implemented("pv2-ordered8").Top[0].Children {
+					if k.Name == name {
+						sn = k
+					}
+				}
+				direct := tr.schemaLookup(&c.kids, sn)
+				byPath := direct
+				if name == "x" { // a leaf-list path needs a predicate
+					if byPath, err = tr.Find("/pv2-ordered8:c/" + name); err != nil {
+						t.Fatal(label, name, err)
+					}
+				}
+				fc, ok := (xn{c, setA}).FirstChild(xs{sn, setA}, nil)
+				var first *Node
+				if ok && fc != nil {
+					first = fc.(xn).n
+				} else {
+					first = direct // declined: the evaluator's charged scan
+				}
+				if byPath != direct || first != direct {
+					t.Fatalf("%s %s: Find %v, schemaLookup %v, FirstChild %v", label, name, byPath, direct, first)
+				}
+				if name == "x" && ordered && mixed && direct.Value() != "second" {
+					t.Fatalf("%s: the first registered x is the second one, got %s", label, direct.Value())
+				}
+			}
+			for _, v := range []string{"2", "4"} {
+				byPath, err := tr.Find("/pv2-ordered8:c/ll[.='" + v + "']")
+				if err != nil {
+					t.Fatal(label, err)
+				}
+				var sn *schema.Node
+				for _, k := range setA.Implemented("pv2-ordered8").Top[0].Children {
+					if k.Name == "ll" {
+						sn = k
+					}
+				}
+				got, handled := (xn{c, setA}).LookupChild(xs{sn, setA}, []string{v})
+				var viaXPath *Node
+				if handled && len(got) == 1 {
+					viaXPath = got[0].(xn).n
+				} else if !handled {
+					viaXPath = byPath // declined: the evaluator's scan
+				}
+				probe, _, err := parseJSONString(setA, `{"pv2-ordered8:c":{"ll":[`+v+`]}}`, Reject, false)
+				if err != nil {
+					t.Fatal(err)
+				}
+				inst, err := tr.findFirstWork(&c.kids, probe.top.first().kids.first(), nil)
+				if err != nil {
+					t.Fatal(err)
+				}
+				if byPath != inst || viaXPath != inst {
+					t.Fatalf("%s ll=%s: Find %v, findFirstWork %v, LookupChild %v", label, v, byPath, inst, viaXPath)
+				}
+			}
+		}
+	}
 }

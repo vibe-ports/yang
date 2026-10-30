@@ -119,7 +119,7 @@ write takes the code path it took before (the counted-work and scaling tests are
 
 ## Evidence
 
-- Oracle fixtures `protocol-v2/ordered-*` (60; `ordered-split-list-merge-destruct` is unsupported,
+- Oracle fixtures `protocol-v2/ordered-*` (61; `ordered-split-list-merge-destruct` is unsupported,
 U-0113) cover:
   - parse order, JSON and XML;
   - the XML opaque anchor;
@@ -186,6 +186,13 @@ Read in document order (fixed):
     `lyd_find_sibling_first`);
   - the cross-context table probe returns the bucket's first record (`leaderFirstMixed`);
   - `runBounds` cuts a gap-free operation or unordered run at its piece;
+- round 15: one children-table primitive, `tableFirst`, mirrors `lyd_find_sibling_schema` and
+  `lyd_find_sibling_first`'s table branch out of schema order. It reads the bucket of each
+  equivalent schema node, takes the earliest registration, and matches by
+  `lyd_hash_table_val_equal`: a list by its keys, a leaf-list by its value, any other node by its
+  schema alone. Schema lookups (`tableSchemaFirst`), instance lookups (`findFirstMixedTable`,
+  which compares a real target itself), XPath, the printer and insertion anchors all go through
+  it; the anchor's walk is charged to the mutation (`TestTableLookupCallersAgree`);
 - round 14:
   - `tableSchemaFirst` charges only inside an operation that runs a lookup quota (a diff), and
     its exhaustion is a miss with that operation's error, never another answer; read-only

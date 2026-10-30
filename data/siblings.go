@@ -1730,13 +1730,20 @@ func (t *Tree) schemaFind(s *siblings, sn *schema.Node) (int, *Node) {
 // error the operation returns; a read-only call writes no shared state (no charge). ok is false
 // when the set keeps no ordered index to read it from.
 func (t *Tree) tableSchemaFirst(s *siblings, sn *schema.Node) (n *Node, ok bool) {
+	var charge func(int64) error
+	if t.work.lookupDepth != 0 {
+		charge = func(n int64) error { return t.work.chargeLookup(uint64(n)) } //nolint:gosec // a charge is nonnegative
+	}
+	return t.tableSchemaFirstCharged(s, sn, charge)
+}
+
+// tableSchemaFirstCharged is tableSchemaFirst paying each step through charge (nil: uncharged), a
+// mutation's hash quota for insertion anchors.
+func (t *Tree) tableSchemaFirstCharged(s *siblings, sn *schema.Node, charge func(int64) error) (n *Node, ok bool) {
 	if s.ht == nil || !s.schemaUnordered || s.order == nil && !s.firstRecordSchema(sn) {
 		return nil, false
 	}
-	p := &xprobe{node: newInner(sn), set: sn.Module.Owner, schemaOnly: true}
-	if t.work.lookupDepth != 0 {
-		p.charge = func(n int64) error { return t.work.chargeLookup(uint64(n)) } //nolint:gosec // a charge is nonnegative
-	}
+	p := &xprobe{node: newInner(sn), set: sn.Module.Owner, schemaOnly: true, charge: charge}
 	p.key, _ = hashOf(p.node)
 	n, err := tableFirst(s, p.set, p)
 	if err != nil {
@@ -2064,35 +2071,18 @@ func (t *Tree) findFirstChecked(s *siblings, target *Node) (*Node, error) {
 // table's first registered equal instance: the bucket hashes module and node names, so equal
 // instances of every context share it, in registration order.
 func (t *Tree) findFirstMixedTable(s *siblings, target *Node, work *workCounter, dup bool) (*Node, error) {
-	if dup {
-		_, c := t.schemaFindAll(s, target.schema)
-		for ; c != nil && c.schema != nil && compareSchemaEqual(c.schema, target.schema, false); c = s.docNext(c) {
-			equal, err := compareSingleWork(t, work, target, c, true)
-			if err != nil || equal {
-				return c, err
-			}
+	p := &xprobe{node: target, set: ctxOf(target)}
+	p.key, _ = indexedKey(target, work)
+	if t.work.lookupDepth != 0 {
+		p.charge = func(n int64) error { return t.work.chargeLookup(uint64(n)) } //nolint:gosec // a charge is nonnegative
+	}
+	p.eq = func(c *Node) (bool, error) {
+		if dup {
+			return compareSingleWork(t, work, target, c, true)
 		}
-		return nil, t.work.lookupErr
+		return htValEqual(t, work, target, c)
 	}
-	candidates, err := t.foreignInstances(s, target)
-	if err != nil {
-		return nil, err
-	}
-	var found *Node
-	var best uint64
-	for n := range candidates {
-		equal, err := compareSingleWork(t, work, target, n, false)
-		if err != nil {
-			return nil, err
-		}
-		if r := s.exactByNode[n]; equal && r != nil && (found == nil || r.order < best) {
-			found, best = n, r.order
-		}
-	}
-	if found == nil {
-		return nil, t.foreignInstancesErr()
-	}
-	return found, nil
+	return tableFirst(s, ctxOf(target), p)
 }
 
 func (t *Tree) findFirstWork(s *siblings, target *Node, work *workCounter) (*Node, error) {
