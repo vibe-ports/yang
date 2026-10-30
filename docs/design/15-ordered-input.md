@@ -187,10 +187,14 @@ Read in document order (fixed):
   - the cross-context table probe returns the bucket's first record (`leaderFirstMixed`);
   - `runBounds` cuts a gap-free operation or unordered run at its piece;
 - round 16: the table primitive reads only the bucket's candidates, the equivalents of the
-  schema node in the set's few contexts (`equivalents`). Each equivalent is mapped once and
-  cached on the target schema set, keyed weakly by the other context's node, so the cache keeps
-  no context alive (`equivalentIn`, `schema.Set.CachedEquivalent`; `TestEquivalentCacheKeepsNoContext`).
-  `leaderFirstMixed` uses the same candidates. A lookup no longer scans every schema of the level. A mutation charges its steps
+  schema node in the set's few contexts (`equivalents`). Each equivalent is read from the target
+  set's lineage index, keyed by the full lineage `lyd_compare_schema_equal` compares (node type,
+  module and name of the node and every parent, input, output, choice and case included). The
+  index is built once per set, linear in the schema, holds only that set's nodes, and is read
+  concurrently; a lookup costs O(depth) (`equivalentIn`, `schema.Set.ByLineage`;
+  `TestEquivalentInOutputAndScaling`, `TestEquivalentCacheKeepsNoContext`). `leaderFirstMixed`
+  uses the same candidates. `findSchemaCtx` stays the model of `lyd_find_schema_ctx` (its
+  input-only walk included) for dup and the foreign probes of lookups. A lookup no longer scans every schema of the level. A mutation charges its steps
   to its own counter (Merge, ApplyDiff, edits); a diff charges its lookup quota; read-only calls
   charge nothing (`TestMixedTableMergeScaling`: flat work per schema, refusal at every charge
   point);

@@ -1745,9 +1745,9 @@ func TestMixedTableMergeScaling(t *testing.T) {
 	checkEveryHashBudgetPoint(t, build)
 }
 
-// TestEquivalentCacheKeepsNoContext: equivalentIn's cache lives on the target set and is keyed
-// weakly by the other set's node, so concurrent readers share it safely, and a dropped context
-// becomes collectable after lookups: the source context (its entry then goes) and the target one.
+// TestEquivalentCacheKeepsNoContext: equivalentIn reads the target set's lineage index, which holds
+// only that set's own nodes, so concurrent readers share it safely, and a dropped context becomes
+// collectable after lookups, as a source and as a target.
 func TestEquivalentCacheKeepsNoContext(t *testing.T) {
 	first := func(set *schema.Set) *schema.Node { return set.Implemented("pv2-ordered2").Top[0].Children[0] }
 	collected := func(w func() bool, stale func() bool) bool {
@@ -1782,8 +1782,8 @@ func TestEquivalentCacheKeepsNoContext(t *testing.T) {
 		}
 		wg.Wait()
 	}()
-	if !collected(func() bool { return wb.Value() == nil }, func() bool { return setA.EquivalentsLen() != 0 }) {
-		t.Fatalf("the dropped source context: reachable %v, %d cached entries", wb.Value() != nil, setA.EquivalentsLen())
+	if !collected(func() bool { return wb.Value() == nil }, func() bool { return false }) {
+		t.Fatal("the dropped source context is still reachable")
 	}
 	var wc weak.Pointer[schema.Set]
 	func() {
@@ -1797,4 +1797,52 @@ func TestEquivalentCacheKeepsNoContext(t *testing.T) {
 		t.Fatal("the dropped target context is still reachable")
 	}
 	runtime.KeepAlive(setA)
+}
+
+// TestEquivalentInOutputAndScaling: equivalentIn resolves a node by its full lineage, an rpc
+// output descendant included (lyd_find_schema_ctx's input-only walk would miss it). Each lookup reads the lineage index, so mapping many distinct schemas of a wide context costs
+// O(depth) apiece after one linear build of the index.
+func TestEquivalentInOutputAndScaling(t *testing.T) {
+	const module = `module rb { yang-version 1.1; namespace "urn:rb"; prefix rb;
+  rpc r { input { leaf in { type string; } } output { leaf-list v { type uint32; } leaf w { type string; } } } }`
+	setA, setB := reviewDiffSet(t, module), reviewDiffSet(t, module)
+	out := func(set *schema.Set, name string) *schema.Node {
+		for _, n := range set.Implemented("rb").Top[0].Children {
+			if n.Kind == schema.Output {
+				for _, c := range n.Children {
+					if c.Name == name {
+						return c
+					}
+				}
+			}
+		}
+		t.Fatalf("no output %s", name)
+		return nil
+	}
+	for _, name := range []string{"v", "w"} {
+		if got := equivalentIn(out(setA, name), setB); got != out(setB, name) {
+			t.Fatalf("output %s: %v", name, got)
+		}
+	}
+	if got := equivalentIn(setA.Implemented("rb").Top[0].Children[0].Children[0], setB); got == nil || got.Name != "in" {
+		t.Fatalf("input in: %v", got)
+	}
+	// many distinct schemas of a wide context: each lookup reads the index
+	var mod strings.Builder
+	mod.WriteString(`module w { yang-version 1.1; namespace "urn:w"; prefix w; container c {`)
+	const n = 4000
+	for i := range n {
+		fmt.Fprintf(&mod, " leaf l%d { type string; }", i)
+	}
+	mod.WriteString(" } }")
+	wa, wb := reviewDiffSet(t, mod.String()), reviewDiffSet(t, mod.String())
+	start := time.Now()
+	for _, c := range wa.Implemented("w").Top[0].Children {
+		if equivalentIn(c, wb) == nil {
+			t.Fatalf("no equivalent of %s", c.Name)
+		}
+	}
+	if d := time.Since(start); d > 2*time.Second {
+		t.Fatalf("%d cold lookups in a wide context took %v", n, d)
+	}
 }

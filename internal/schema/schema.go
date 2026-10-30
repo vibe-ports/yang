@@ -9,9 +9,8 @@ package schema
 
 import (
 	"iter"
-	"runtime"
+	"strings"
 	"sync"
-	"weak"
 )
 
 // Set is every module of one context, in load order (libyang ly_ctx module list).
@@ -19,9 +18,10 @@ type Set struct {
 	Modules    []*Module
 	nameHashes sync.Map // *Node -> uint32, immutable module/name prefixes shared by trees
 	indexNames sync.Map // *Node -> [32]byte, immutable positional-index name digests
-	// equivalents maps a node of another set, weakly, to its equivalent in this one (nil: none):
-	// neither set keeps the other alive, and an entry goes with its node (CachedEquivalent)
-	equivalents sync.Map // weak.Pointer[Node] -> *Node
+	// lineage indexes this set's nodes by LineageKey, built once (ByLineage); it holds only the
+	// set's own nodes
+	lineageOnce sync.Once
+	lineage     map[string]*Node
 	// LeafrefLinking is the context flag LY_CTX_LEAFREF_LINKING: data trees over the set keep
 	// leafref links (lyd_leafref_link_node_tree).
 	LeafrefLinking bool
@@ -41,33 +41,57 @@ func (s *Set) CachedNameHash(n *Node, compute func() (uint32, error)) (uint32, e
 	return actual.(uint32), nil
 }
 
-// CachedEquivalent returns the node of this set equivalent to n, a node of another set, computing
-// it once per n. The key is a weak pointer, and an entry is deleted once n is collected, so the
-// cache keeps neither n's set nor this one alive; it lives as long as this set. Safe for
-// concurrent readers.
-func (s *Set) CachedEquivalent(n *Node, compute func() *Node) *Node {
-	key := weak.Make(n)
-	if v, ok := s.equivalents.Load(key); ok {
-		return v.(*Node)
-	}
-	k := compute()
-	if actual, loaded := s.equivalents.LoadOrStore(key, k); loaded {
-		return actual.(*Node)
-	}
-	ws := weak.Make(s)
-	runtime.AddCleanup(n, func(key weak.Pointer[Node]) {
-		if t := ws.Value(); t != nil {
-			t.equivalents.Delete(key)
+// LineageKey is the full schema lineage of n: the node type, module name and node name of n and
+// of every schema parent up to the top, input, output, choice and case nodes included. Two nodes
+// of different contexts have equal keys exactly when lyd_compare_schema_equal with parents holds.
+func LineageKey(n *Node) string {
+	var b strings.Builder
+	for p := n; p != nil; p = p.Parent {
+		var mod string
+		if p.Module != nil {
+			mod = p.Module.Name
 		}
-	}, key)
-	return k
+		b.WriteByte(byte(p.Kind >> 8))
+		b.WriteByte(byte(p.Kind & 0xff))
+		b.WriteString(mod)
+		b.WriteByte(0)
+		b.WriteString(p.Name)
+		b.WriteByte(0)
+	}
+	return b.String()
 }
 
-// EquivalentsLen is the number of cached equivalents, for tests.
-func (s *Set) EquivalentsLen() int {
-	n := 0
-	s.equivalents.Range(func(any, any) bool { n++; return true })
-	return n
+// ByLineage is the node of this set with the given LineageKey, nil if none. The index covers the
+// data nodes, rpcs and notifications of every module, the input and output of operations, actions
+// and notifications in containers and lists, and the schema trees of extension instances (a node
+// of the module's own tree wins a shared key). It is built once per set, linear in the schema, and
+// read concurrently afterwards.
+func (s *Set) ByLineage(key string) *Node {
+	s.lineageOnce.Do(func() {
+		s.lineage = map[string]*Node{}
+		var exts []*ExtInstance
+		var walk func(nodes []*Node)
+		walk = func(nodes []*Node) {
+			for _, n := range nodes {
+				if _, dup := s.lineage[LineageKey(n)]; !dup {
+					s.lineage[LineageKey(n)] = n
+				}
+				exts = append(exts, n.Exts...)
+				walk(n.Children)
+				walk(n.Actions)
+				walk(n.Notifs)
+			}
+		}
+		for _, m := range s.Modules {
+			walk(m.Top)
+		}
+		for len(exts) > 0 {
+			e := exts[0]
+			exts = exts[1:]
+			walk(e.Nodes)
+		}
+	})
+	return s.lineage[key]
 }
 
 // CachedIndexName shares the immutable positional discriminator component across trees.

@@ -1277,7 +1277,7 @@ func (s *siblings) leaderFirstMixed(sn *schema.Node) *Node {
 // equivalents is the schema nodes of the siblings' contexts that compare equal with sn with all
 // their parents (lyd_compare_schema_equal), sn first: the candidates libyang's children-table
 // bucket of sn's module and node names holds, one per context. Its work is bounded by the
-// set's retained contexts, each mapped once per process (equivalentIn).
+// set's retained contexts, each read from that context's lineage index (equivalentIn).
 func (s *siblings) equivalents(sn *schema.Node) []*schema.Node {
 	out := []*schema.Node{sn}
 	for set := range s.contexts {
@@ -1291,18 +1291,16 @@ func (s *siblings) equivalents(sn *schema.Node) []*schema.Node {
 	return out
 }
 
-// equivalentIn is sn's equivalent in set: the node lyd_find_schema_ctx maps it to, kept when it
-// compares equal with all the parents, nil otherwise. It is cached on set, keyed weakly by sn
-// (schema.Set.CachedEquivalent): compiled schemas never change, and the cache keeps no context
-// alive.
+// equivalentIn is sn's equivalent in set, the node lyd_hash_table_(schema_)val_equal accepts
+// for it: the one with the same full lineage (lyd_compare_schema_equal with all parents),
+// operation outputs and choice/case nodes included, nil if none. It reads set's lineage index:
+// O(depth) per lookup, no data, no tree state, nothing kept for another context.
 func equivalentIn(sn *schema.Node, set *schema.Set) *schema.Node {
-	return set.CachedEquivalent(sn, func() *schema.Node {
-		k, err := findSchemaCtx(sn, set, nil)
-		if err != nil || k == nil || !compareSchemaEqual(k, sn, true) {
-			return nil
-		}
-		return k
-	})
+	k := set.ByLineage(schema.LineageKey(sn))
+	if k == nil || !compareSchemaEqual(k, sn, true) {
+		return nil
+	}
+	return k
 }
 
 func (s *siblings) leaderDrop(sn *schema.Node, n *Node) bool {
