@@ -185,6 +185,11 @@ func interleavedLookup(sib *siblings, set *schema.Set, p *xprobe) ([]xpath.Node,
 			// contexts: a probe of another context is translated into the sibling's once
 			q := p
 			if c.schema != p.node.schema {
+				// lyd_compare_single compares the schemas with all their parents
+				// (lyd_compare_single_schema): the name match above is not enough
+				if !compareSchemaEqual(c.schema, p.node.schema, true) {
+					continue
+				}
 				if foreign == nil || foreign.set != ctxOf(c) {
 					if foreign = p.toCtx(ctxOf(c)); foreign == nil {
 						continue // the instance does not store there
@@ -242,6 +247,9 @@ func tableFirst(sib *siblings, set *schema.Set, p *xprobe) (*Node, error) {
 			}
 			q := p
 			if c.schema != sn {
+				if !compareSchemaEqual(c.schema, sn, true) {
+					continue // lyd_compare_single compares the parents too
+				}
 				if q = p.toCtx(ctxOf(c)); q == nil {
 					continue
 				}

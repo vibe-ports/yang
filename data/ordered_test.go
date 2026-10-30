@@ -1462,3 +1462,60 @@ func TestMixedTableInsertLeader(t *testing.T) {
 		t.Fatalf("%v", got)
 	}
 }
+
+// TestMixedTableReadsShareNothing: Find in a table level of two contexts out of schema order
+// answers by the table's registration order (tableSchemaFirst) without writing shared tree
+// state: concurrent readers race on nothing, and any number of repeated lookups gives the same
+// node, the second x, re-registered after the first one's unlink and reinsertion.
+func TestMixedTableReadsShareNothing(t *testing.T) {
+	tr, c := mixedTableLevel(t, `{"pv2-ordered8:c":{"p":"p","x":"first","b":"b","x":"second"}}`)
+	var first *Node
+	for n := range c.Children() {
+		if n.Name() == "x" {
+			first = n
+			break
+		}
+	}
+	if err := first.Unlink(); err != nil {
+		t.Fatal(err)
+	}
+	if err := tr.Insert(c, first); err != nil {
+		t.Fatal(err)
+	}
+	want := func() string {
+		n, err := tr.Find("/pv2-ordered8:c/x")
+		if err != nil || n == nil {
+			t.Fatalf("%v %v", n, err)
+		}
+		return n.Value()
+	}()
+	if want != "second" {
+		t.Fatalf("the table's first registered x: %s", want)
+	}
+	used := tr.work.lookupUsed
+	for range 20000 {
+		if n, err := tr.Find("/pv2-ordered8:c/x"); err != nil || n == nil || n.Value() != want {
+			t.Fatalf("a repeated lookup: %v %v", n, err)
+		}
+	}
+	if tr.work.lookupUsed != used || tr.work.lookupErr != nil {
+		t.Fatal("a read-only lookup wrote the tree's lookup quota")
+	}
+	var wg sync.WaitGroup
+	for range 32 {
+		wg.Go(func() {
+			for range 200 {
+				if n, err := tr.Find("/pv2-ordered8:c/x"); err != nil || n == nil || n.Value() != want {
+					t.Errorf("a concurrent lookup: %v %v", n, err)
+					return
+				}
+				var b strings.Builder
+				if err := tr.PrintJSON(&b, PrintOptions{EmptyLeafList: true}); err != nil {
+					t.Error(err)
+					return
+				}
+			}
+		})
+	}
+	wg.Wait()
+}

@@ -1724,17 +1724,25 @@ func (t *Tree) schemaFind(s *siblings, sn *schema.Node) (int, *Node) {
 // lineage matching (another context), in a set out of schema order, where runs may split and
 // registrations may differ from document order: the bucket of sn's module and node name holds the
 // records of the equivalent schema nodes in registration order, and the first whose schema
-// compares equal with its parents wins (lyd_hash_table_schema_val_equal; tableFirst). Each step is
-// charged to the lookup quota. ok is false when the set keeps no ordered index to read it from.
+// compares equal with its parents wins (lyd_hash_table_schema_val_equal; tableFirst). Its work is
+// bounded by the distinct schema nodes and one bucket. Inside an operation that runs a lookup
+// quota (a diff: lookupDepth) each step is charged to it, and its exhaustion is a miss whose
+// error the operation returns; a read-only call writes no shared state (no charge). ok is false
+// when the set keeps no ordered index to read it from.
 func (t *Tree) tableSchemaFirst(s *siblings, sn *schema.Node) (n *Node, ok bool) {
 	if s.ht == nil || !s.schemaUnordered || s.order == nil && !s.firstRecordSchema(sn) {
 		return nil, false
 	}
-	p := &xprobe{node: newInner(sn), set: sn.Module.Owner, schemaOnly: true,
-		charge: func(n int64) error { return t.work.chargeLookup(uint64(n)) }} //nolint:gosec // a charge is nonnegative
+	p := &xprobe{node: newInner(sn), set: sn.Module.Owner, schemaOnly: true}
+	if t.work.lookupDepth != 0 {
+		p.charge = func(n int64) error { return t.work.chargeLookup(uint64(n)) } //nolint:gosec // a charge is nonnegative
+	}
 	p.key, _ = hashOf(p.node)
 	n, err := tableFirst(s, p.set, p)
-	return n, err == nil
+	if err != nil {
+		return nil, true // the quota's error (lookupErr), never another answer
+	}
+	return n, true
 }
 
 func (t *Tree) schemaFindAll(s *siblings, sn *schema.Node) (int, *Node) {
