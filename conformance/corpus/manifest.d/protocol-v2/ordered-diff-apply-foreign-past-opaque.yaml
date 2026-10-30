@@ -1,0 +1,20 @@
+# lyd_diff_apply of a diff made in another context of the same schemas: the delete of c/b looks b up in the copy (no children table) by lyd_find_sibling_val, whose linear walk stops at the opaque zz in front of b, so the target is missing
+fixtures:
+  - id: protocol-v2/ordered-diff-apply-foreign-past-opaque
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: []   # libyang lyd_diff_apply across contexts: no RFC behaviour
+    areas: [diff]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      context_options: ["no_yanglibrary"]
+      modules: [{name: "pv2-ordered2"}]
+      steps:
+        - {do: parse, format: json, data_type: get, unknown: opaque, parse_options: [ordered], data: '{"pv2-ordered2:c": {"a": "x", "zz": "u", "b": "y"}}'}
+        - {do: diff, format: json, data_type: get, unknown: opaque, parse_options: [ordered], data: '{"pv2-ordered2:c": {"a": "x", "zz": "u"}}'}
+        - {do: dup, node: /pv2-ordered2:c, options: [recursive], target: {searchdirs: [schemas], modules: [{name: "pv2-ordered2"}], context_options: ["no_yanglibrary"]}}
+        - {do: dump}
+        - {do: diff_apply}
+        - {do: dump}
+    golden: golden/ordered-diff-apply-foreign-past-opaque.json

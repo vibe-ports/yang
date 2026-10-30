@@ -206,13 +206,16 @@ func (vc *valCtx) validate(validateSubtree bool) error {
 		}
 		// first2: &first when the module's first node is not the tree's first, else tree
 		first := run.first
-		if first == nil && !vc.opts.Present {
+		if first != nil && first.siblingsOf() != &vc.t.top {
+			first = nil // deleted by an earlier module's validation: found again below
+		}
+		if first == nil {
 			var err error
 			if first, err = vc.moduleFirst(next, mod); err != nil {
 				return err
 			}
 		}
-		vc.modFirst = nil
+		vc.modFirst, vc.modCur = nil, mod
 		if first != nil && first != vc.t.top.docFirst() {
 			vc.modFirst = first
 		}

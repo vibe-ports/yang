@@ -298,7 +298,9 @@ func (t *Tree) findMatch(sib *siblings, target *Node, defaults bool, cache *dupC
 		// ownerless schema can instead take schemaLookup's ordinary pointer path; retain its full
 		// lineage fallback, but charge every candidate to the same bounded lookup quota.
 		if m == nil && !indexed && len(sib.contexts) == 1 && ctxOf(sib.At(0)) != ctxOf(target) {
-			for _, candidate := range sib.SchemaAll() {
+			// lyd_find_sibling_schema's walk: without a children table it stops at the first
+			// opaque sibling (linearBound, design 15)
+			for _, candidate := range sib.schemaSpan().Slice(0, sib.linearBound()).All() {
 				if err := t.work.chargeLookup(1); err != nil {
 					return nil, err
 				}

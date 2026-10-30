@@ -71,6 +71,7 @@ type valCtx struct {
 	// modFirst is lyd_validate's *first2 when it is &first: the first top-level node of the
 	// module being validated when that is not the tree's first node, else nil (see modInsert).
 	modFirst *Node
+	modCur   *schema.Module // the module lyd_validate validates now (lyd_del_move_root's mod)
 	// module is the module of lyd_validate_module: only its data is validated (nil: every
 	// module, lyd_validate_all)
 	module *schema.Module
@@ -428,6 +429,26 @@ walk:
 		vc.modFirst = n // lyd_insert_before_node of the first sibling moves first
 	}
 	return nil
+}
+
+// delMoveRoot is lyd_del_move_root for lyd_validate's first (modFirst) before the top-level node
+// del is deleted: first moves to its next sibling, or back to the tree's first sibling (nil)
+// when del was the module's last node.
+func (vc *valCtx) delMoveRoot(del *Node) {
+	first := vc.modFirst
+	if first == nil || first != del || del.parent != nil {
+		return
+	}
+	mod := vc.modCur
+	if ownerModule(vc.t.context(), first) != mod {
+		mod = nil // no data of mod: simply the first top-level sibling
+	}
+	next := vc.t.top.docNext(first)
+	if mod != nil && (next == nil || ownerModule(vc.t.context(), del) != ownerModule(vc.t.context(), next)) {
+		vc.modFirst = nil // no more nodes of mod: the first top-level sibling
+		return
+	}
+	vc.modFirst = next
 }
 
 // modStart is the document position of lyd_validate's *first2 in the top level: modFirst, else 0.

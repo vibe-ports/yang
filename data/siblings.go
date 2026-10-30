@@ -1842,6 +1842,9 @@ func (t *Tree) foreignSchemaFind(s *siblings, sn *schema.Node, table bool) (int,
 			return -1, nil
 		}
 		if schemaLookupMatch(c.n.schema, sn, table) {
+			if !table && c.at >= s.linearBound() {
+				break // the linear walk stops at the first opaque sibling (design 15)
+			}
 			return c.at, c.n
 		}
 	}
