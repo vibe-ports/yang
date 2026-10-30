@@ -1657,3 +1657,87 @@ func TestTableLookupCallersAgree(t *testing.T) {
 		}
 	}
 }
+
+// TestMixedTableMergeScaling: merging instances of n distinct list schemas into a table level of
+// two contexts out of schema order looks each one up in the children table's bucket of its own
+// module and node names (equivalents: one candidate per context), so the work per schema stays
+// flat; every lookup step is charged to the merge, and a refusal at any charge point leaves the
+// tree as it was.
+func TestMixedTableMergeScaling(t *testing.T) {
+	setup := func(n int) (func() (*Tree, func() error), *schema.Set) {
+		var mod, have, add strings.Builder
+		mod.WriteString("module m { yang-version 1.1; namespace \"urn:m\"; prefix m; leaf top { type string; } container c { leaf a { type string; } leaf z { type string; }")
+		have.WriteString(`{"m:c":{"z":"z0","a":"x"`)
+		add.WriteString(`{"m:c":{`)
+		for i := range n {
+			fmt.Fprintf(&mod, " list l%d { key k; leaf k { type string; } }", i)
+			fmt.Fprintf(&have, `,"l%d":[{"k":"1"}]`, i)
+			if i > 0 {
+				add.WriteString(",")
+			}
+			fmt.Fprintf(&add, `"l%d":[{"k":"2"}]`, i)
+		}
+		mod.WriteString(" } }")
+		have.WriteString("}}")
+		add.WriteString("}}")
+		dir := t.TempDir()
+		if err := os.WriteFile(dir+"/m.yang", []byte(mod.String()), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		load := func() *schema.Set {
+			c, ds, err := yang.NewContext(yang.Options{NoYangLibrary: true}, os.DirFS(dir))
+			if err != nil {
+				t.Fatal(ds, err)
+			}
+			if ds, err := c.Load("m", "", nil); err != nil {
+				t.Fatal(ds, err)
+			}
+			return snap.Set(c.Schema())
+		}
+		setA, setB := load(), load()
+		return func() (*Tree, func() error) {
+			tr, err := parseOrdered(t, setA, false, have.String(), nil)
+			if err != nil {
+				t.Fatal(err)
+			}
+			var c *Node
+			for c = range tr.Top() {
+				break
+			}
+			fb, _, err := parseJSONString(setB, `{"m:c":{"a":"y"}}`, Reject, false)
+			if err != nil {
+				t.Fatal(err)
+			}
+			f := fb.top.first().kids.first()
+			if err := unlink(f); err != nil {
+				t.Fatal(err)
+			}
+			if err := tr.link(c, &c.kids, f, c.kids.SchemaLen()); err != nil {
+				t.Fatal(err)
+			}
+			if c.kids.ht == nil || !c.kids.mixedContexts() || !c.kids.schemaUnordered {
+				t.Fatal("fixture: want a table level of two contexts out of schema order")
+			}
+			src, _, err := parseJSONString(setA, add.String(), Reject, false)
+			if err != nil {
+				t.Fatal(err)
+			}
+			return tr, func() error { return tr.Merge(src) }
+		}, setA
+	}
+	work := func(n int) float64 {
+		build, _ := setup(n)
+		tr, merge := build()
+		tr.work.Store(0)
+		tr.work.visits = true
+		if err := merge(); err != nil {
+			t.Fatal(err)
+		}
+		return float64(tr.work.Load()) / float64(n)
+	}
+	if small, large := work(100), work(800); large > 2*small {
+		t.Fatalf("merge work per schema: %.1f at 100, %.1f at 800", small, large)
+	}
+	build, _ := setup(6)
+	checkEveryHashBudgetPoint(t, build)
+}

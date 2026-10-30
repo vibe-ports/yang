@@ -277,11 +277,11 @@ func tableFirst(sib *siblings, set *schema.Set, p *xprobe) (*Node, error) {
 	}
 	var found *Node
 	var best uint64
-	for k := range sib.order.entries {
+	for _, k := range sib.equivalents(sn) { // the bucket's candidates, one per context
 		if err := p.work(1); err != nil {
 			return nil, err
 		}
-		if !compareSchemaEqual(sn, k, true) {
+		if sib.order.entries[k] == nil {
 			continue
 		}
 		// lyd_hash_table_val_equal: a list by its keys, a leaf-list by its value, any other node

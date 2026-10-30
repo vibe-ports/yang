@@ -15,6 +15,7 @@ import (
 	"iter"
 	"slices"
 	"strings"
+	"sync"
 
 	"github.com/vibe-ports/yang/internal/schema"
 	"github.com/vibe-ports/yang/internal/types"
@@ -1258,11 +1259,13 @@ func (s *siblings) leaderAppend(sn *schema.Node, n *Node) bool {
 // contexts: the bucket holds the first instances of every schema node with sn's module and
 // node names, in registration order, and lyd_hash_table_schema_val_equal accepts the first one
 // whose schema compares equal with its parents (tree_data_common.c:1069-1112).
+// Only the equivalents of sn in the set's few contexts are read (equivalents): the bucket's
+// candidates, not every first-instance chain.
 func (s *siblings) leaderFirstMixed(sn *schema.Node) *Node {
 	var best *record
-	for k, c := range s.leaders {
+	for _, k := range s.equivalents(sn) {
 		s.visit()
-		if c.first != nil && (best == nil || c.first.seq < best.seq) && compareSchemaEqual(sn, k, true) {
+		if c := s.leaders[k]; c != nil && c.first != nil && (best == nil || c.first.seq < best.seq) {
 			best = c.first
 		}
 	}
@@ -1270,6 +1273,47 @@ func (s *siblings) leaderFirstMixed(sn *schema.Node) *Node {
 		return nil
 	}
 	return best.node
+}
+
+// equivalents is the schema nodes of the siblings' contexts that compare equal with sn with all
+// their parents (lyd_compare_schema_equal), sn first: the candidates libyang's children-table
+// bucket of sn's module and node names holds, one per context. Its work is bounded by the
+// set's retained contexts, each mapped once per process (equivalentIn).
+func (s *siblings) equivalents(sn *schema.Node) []*schema.Node {
+	out := []*schema.Node{sn}
+	for set := range s.contexts {
+		if set == nil || set == sn.Module.Owner {
+			continue
+		}
+		if k := equivalentIn(sn, set); k != nil && k != sn {
+			out = append(out, k)
+		}
+	}
+	return out
+}
+
+type equivalentKey struct {
+	sn  *schema.Node
+	set *schema.Set
+}
+
+// equivalentCache maps a schema node and a context to its equivalent there (nil: none). Compiled
+// schemas never change, so an entry stays valid; it is shared by all readers.
+var equivalentCache sync.Map // equivalentKey -> *schema.Node
+
+// equivalentIn is sn's equivalent in set: the node lyd_find_schema_ctx maps it to, kept when it
+// compares equal with all the parents, nil otherwise.
+func equivalentIn(sn *schema.Node, set *schema.Set) *schema.Node {
+	key := equivalentKey{sn, set}
+	if v, ok := equivalentCache.Load(key); ok {
+		return v.(*schema.Node)
+	}
+	k, err := findSchemaCtx(sn, set, nil)
+	if err != nil || k == nil || !compareSchemaEqual(k, sn, true) {
+		k = nil
+	}
+	equivalentCache.Store(key, k)
+	return k
 }
 
 func (s *siblings) leaderDrop(sn *schema.Node, n *Node) bool {
@@ -2073,8 +2117,11 @@ func (t *Tree) findFirstChecked(s *siblings, target *Node) (*Node, error) {
 func (t *Tree) findFirstMixedTable(s *siblings, target *Node, work *workCounter, dup bool) (*Node, error) {
 	p := &xprobe{node: target, set: ctxOf(target)}
 	p.key, _ = indexedKey(target, work)
-	if t.work.lookupDepth != 0 {
+	switch {
+	case t.work.lookupDepth != 0: // a diff's lookup quota
 		p.charge = func(n int64) error { return t.work.chargeLookup(uint64(n)) } //nolint:gosec // a charge is nonnegative
+	case work != nil: // the mutation's own counter (Merge, ApplyDiff, edits), before each step
+		p.charge = func(n int64) error { return work.chargeHash(uint64(n)) } //nolint:gosec // a charge is nonnegative
 	}
 	p.eq = func(c *Node) (bool, error) {
 		if dup {

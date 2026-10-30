@@ -186,6 +186,13 @@ Read in document order (fixed):
     `lyd_find_sibling_first`);
   - the cross-context table probe returns the bucket's first record (`leaderFirstMixed`);
   - `runBounds` cuts a gap-free operation or unordered run at its piece;
+- round 16: the table primitive reads only the bucket's candidates, the equivalents of the
+  schema node in the set's few contexts (`equivalents`). Each equivalent is mapped once per
+  process (`equivalentIn`, a cache over immutable schemas), and `leaderFirstMixed` uses the same
+  candidates. A lookup no longer scans every schema of the level. A mutation charges its steps
+  to its own counter (Merge, ApplyDiff, edits); a diff charges its lookup quota; read-only calls
+  charge nothing (`TestMixedTableMergeScaling`: flat work per schema, refusal at every charge
+  point);
 - round 15: one children-table primitive, `tableFirst`, mirrors `lyd_find_sibling_schema` and
   `lyd_find_sibling_first`'s table branch out of schema order. It reads the bucket of each
   equivalent schema node, takes the earliest registration, and matches by

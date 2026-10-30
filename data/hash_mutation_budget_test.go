@@ -255,6 +255,11 @@ func checkFindAgainstLinear(t *testing.T, tr *Tree) {
 			if n.schema == nil || hiddenFromLookup(n) {
 				continue
 			}
+			if sib := n.siblingsOf(); sib != nil && sib.mixedContexts() {
+				// equivalent nodes of two contexts print distinct paths, but a lookup of either
+				// returns the table's first registered one, as in libyang
+				continue
+			}
 			path := lydPath(tr.set, n, false)
 			if paths[path] != nil {
 				duplicates[path] = true
