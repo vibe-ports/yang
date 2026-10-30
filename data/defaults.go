@@ -336,7 +336,9 @@ func (vc *valCtx) modInsert(n *Node) error {
 }
 
 // modInsertInterleaved is modInsert in an interleaved top level (design 15): libyang's
-// lyd_insert_node_ordby_schema with first_sibling at the module's first node, in document order.
+// lyd_insert_node with first_sibling at the module's first node, in document order. A sorted
+// instance with a leader takes the ordinary sorted insertion; otherwise
+// lyd_insert_node_ordby_schema:
 // lyd_insert_get_next_anchor walks from first past the data of preceding modules, then the
 // module's data along its schema order, stopping at an opaque node or another module's node.
 // Without an anchor, a trailing opaque block before first (first->prev) is the anchor; else the
@@ -344,6 +346,17 @@ func (vc *valCtx) modInsert(n *Node) error {
 // only when the node lands right before it.
 func (vc *valCtx) modInsertInterleaved(n *Node) error {
 	t, sib := vc.t, &vc.t.top
+	if sortedSupported(n) && t.schemaLookup(sib, n.schema) != nil {
+		// lyd_insert_node: a leader found by lyd_find_sibling_schema takes lyds_insert, the path
+		// an ordinary insertion takes; lyds_insert moves first when n lands right before it
+		if err := t.insert(nil, n, insertDefault); err != nil {
+			return err
+		}
+		if sib.docNext(n) == vc.modFirst {
+			vc.modFirst = n
+		}
+		return nil
+	}
 	first := vc.modFirst
 	own := ownerModule(t.context(), n)
 	mname := func(c *Node) string {

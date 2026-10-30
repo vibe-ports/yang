@@ -119,7 +119,7 @@ write takes the code path it took before (the counted-work and scaling tests are
 
 ## Evidence
 
-- Oracle fixtures `protocol-v2/ordered-*` (52; `ordered-split-list-merge-destruct` is unsupported,
+- Oracle fixtures `protocol-v2/ordered-*` (53; `ordered-split-list-merge-destruct` is unsupported,
 U-0113) cover:
   - parse order, JSON and XML;
   - the XML opaque anchor;
@@ -145,7 +145,8 @@ U-0113) cover:
   - a Merge into a list run split by a schema node; XPath in a table level of two contexts; a
     diff insertion after an anchor followed by an opaque node (D-0058); module validation of
     duplicates and of a leafref after an opaque root; a replaced case holding the module's first
-    node; a diff of another context applied past an opaque sibling.
+    node; a diff of another context applied past an opaque sibling; top-level leaf-list defaults
+    past an opaque root.
   The `seq/trim-*` and `ops/opidx-split-run-leader-switch` fixtures, which parse ordered, now run.
   The request-differential `ordered-input` class runs against the live oracle.
 - Go: `TestSequenceKindModel` (opidx), `TestSiblingFacadeInterleavedModel`,
@@ -183,6 +184,9 @@ Read in document order (fixed):
     `lyd_find_sibling_first`);
   - the cross-context table probe returns the bucket's first record (`leaderFirstMixed`);
   - `runBounds` cuts a gap-free operation or unordered run at its piece;
+- round 10: an implicit sorted instance whose leader exists takes the ordinary sorted insertion
+  (lyds_insert) also in an interleaved top level; only without a leader does the anchor walk
+  from the module's first node place it;
 - round 8:
   - an auto-deletion moves lyd_validate's first on before it unlinks the node, as
     `lyd_del_move_root` does (`delMoveRoots`, for choice cases and defaults). libyang frees each

@@ -1,0 +1,19 @@
+# lyd_validate_module creates a module's top-level leaf-list defaults in an ordered top level whose module data follows an opaque root: the second default finds the first as its leader and lyd_insert_node sorts it in (lyds_insert)
+fixtures:
+  - id: protocol-v2/ordered-implicit-leaflist-past-opaque
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#7.7.4"]
+    areas: [validation]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      context_options: ["no_yanglibrary"]
+      modules: [{name: "pv2-lyds"}, {name: "pv2-ordered7"}]
+      steps:
+        - {do: parse, format: xml, data_type: data, parse_only: true, unknown: opaque, parse_options: [ordered], data: '<ll xmlns="urn:vibe-ports:yang:conformance:pv2-lyds">1</ll><zz xmlns="urn:unknown">u</zz><x xmlns="urn:vibe-ports:yang:conformance:pv2-ordered7">x</x>'}
+        - {do: validate, module: pv2-ordered7, validate_options: [not_final]}
+        - {do: dump}
+        - {do: edit, insert_term: {module: pv2-ordered7, name: d, value: "2"}}
+        - {do: dump}
+    golden: golden/ordered-implicit-leaflist-past-opaque.json
