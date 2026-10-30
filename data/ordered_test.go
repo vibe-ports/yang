@@ -2115,3 +2115,62 @@ func TestThreeContextRegistrationOrder(t *testing.T) {
 		}
 	}
 }
+
+// TestForeignCompareCharged: a foreign candidate's direct comparison (crossEqual) is charged
+// like Match charges a local one, one step and the probe's key bytes, through the probe's own
+// budget: a long key is paid per candidate, a refused or cancelled budget stops the lookup, and
+// the queried tree's counters stay untouched.
+func TestForeignCompareCharged(t *testing.T) {
+	setA, setB := xctxSets(t, `module m { yang-version 1.1; namespace "urn:m"; prefix m;
+	  container c { leaf a { type string; } list l { key k; leaf k { type string; } } } }`)
+	key := strings.Repeat("k", 4096)
+	for _, n := range []int{2, 6} { // without and with a children table
+		tr, err := parseOrdered(t, setA, false, `{"m:c":{"zz":"u","a":"x"}}`, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		c := tr.top.first()
+		var ls strings.Builder
+		for i := range n {
+			if i > 0 {
+				ls.WriteString(",")
+			}
+			fmt.Fprintf(&ls, `{"k":"%s%d"}`, key, i)
+		}
+		linkForeign(t, tr, c, setB, `{"m:c":{"l":[`+ls.String()+`]}}`)
+		l := setA.Implemented("m").Top[0].Children[1]
+		var charged int64
+		probe, err := (xs{l, setA}).PrepareInstance([]string{key + "1"}, func(k int64) error { charged += k; return nil })
+		if err != nil {
+			t.Fatal(err)
+		}
+		prepared := charged
+		used, load := tr.work.hashUsed, tr.work.Load()
+		got, handled, err := (xn{c, setA}).LookupPrepared(probe)
+		if err != nil || !handled || len(got) != 1 {
+			t.Fatalf("n=%d: %v %v %v", n, got, handled, err)
+		}
+		if charged-prepared < int64(len(key)) {
+			t.Fatalf("n=%d (table %v): the comparison charged %d for a %d-byte key", n, c.kids.ht != nil, charged-prepared, len(key))
+		}
+		if tr.work.hashUsed != used || tr.work.Load() != load {
+			t.Fatal("the lookup wrote the queried tree's counters")
+		}
+		for _, refusal := range []error{xpath.ErrBudget, context.Canceled} {
+			budget := prepared + 2 // the comparison does not fit
+			spent := int64(0)
+			probe, err := (xs{l, setA}).PrepareInstance([]string{key + "1"}, func(k int64) error {
+				if spent += k; spent > budget {
+					return refusal
+				}
+				return nil
+			})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if _, _, err := (xn{c, setA}).LookupPrepared(probe); !errors.Is(err, refusal) {
+				t.Fatalf("n=%d: a %v during the comparison: %v", n, refusal, err)
+			}
+		}
+	}
+}

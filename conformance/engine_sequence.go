@@ -1062,16 +1062,20 @@ func stepEdit(r Request, s *yang.Schema, st map[string]any, tree *data.Tree, det
 // 2721-2760), Merge looks it up again per instance. They differ only when a destination run is
 // split into pieces (by an opaque node or another schema node, design 15) and at least two
 // source instances of it are new (U-0113).
+// schemaKey identifies a data node's schema by module and node name: an augmented node of
+// another module with the same local name is a different schema, and so ends a run.
+func schemaKey(n *data.Node) string { return n.Schema().Module().Name() + ":" + n.Name() }
+
 func destructDiverges(dst, src *data.Tree) bool {
 	type set struct{ parent, name string }
 	pieces := map[set]int{}
 	var walk func(parent string, kids iter.Seq[*data.Node])
 	walk = func(parent string, kids iter.Seq[*data.Node]) {
-		prev := "" // the previous sibling's name, "" for an opaque one
+		prev := "" // the previous sibling's schema, "" for an opaque one
 		for n := range kids {
 			name := ""
 			if n.Schema() != nil {
-				name = n.Name()
+				name = schemaKey(n)
 				if name != prev {
 					pieces[set{parent, name}]++
 				}
@@ -1089,7 +1093,7 @@ func destructDiverges(dst, src *data.Tree) bool {
 				continue
 			}
 			if m, err := dst.Find(n.Path()); err != nil || m == nil {
-				fresh[set{parent, n.Name()}]++ // copied whole: nothing below merges
+				fresh[set{parent, schemaKey(n)}]++ // copied whole: nothing below merges
 				continue
 			}
 			count(n.Path(), n.Children())

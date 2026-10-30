@@ -804,18 +804,25 @@ func (x xs) PrepareInstance(vals []string, charge func(int64) error) (xpath.Inst
 // list by keys, a leaf-list by value, a duplicate-instance list whole, anything else by schema),
 // else lyd_compare_single(sibling, target).
 func (p *xprobe) crossEqual(c *Node, table bool) (bool, error) {
+	// charged as Match charges a candidate: one step and the probe's bytes (the comparison never
+	// reads more of the candidate than the probe holds), through the probe's own budget
+	if err := p.work(1 + p.bytes); err != nil {
+		return false, err
+	}
 	t := treeOf(c)
 	if t == nil {
 		t = newTree(ctxOf(c))
 	}
+	// the comparison's own counter is local: the queried tree's counters are not touched
+	var work workCounter
 	dup := isDupInstList(p.node.schema)
 	if table && !dup {
-		return htValEqual(t, nil, p.node, c)
+		return htValEqual(t, &work, p.node, c)
 	}
 	if table {
-		return compareSingleWork(t, nil, p.node, c, true)
+		return compareSingleWork(t, &work, p.node, c, true)
 	}
-	return compareSingleWork(t, nil, c, p.node, dup)
+	return compareSingleWork(t, &work, c, p.node, dup)
 }
 
 // parentMismatch is lyd_find_sibling_first's schema-parent check for an instance probe: read on

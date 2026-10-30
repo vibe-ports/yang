@@ -119,7 +119,7 @@ write takes the code path it took before (the counted-work and scaling tests are
 
 ## Evidence
 
-- Oracle fixtures `protocol-v2/ordered-*` (61; `ordered-split-list-merge-destruct` is unsupported,
+- Oracle fixtures `protocol-v2/ordered-*` (62; `ordered-split-list-merge-destruct` is unsupported,
 U-0113) cover:
   - parse order, JSON and XML;
   - the XML opaque anchor;
@@ -196,6 +196,10 @@ Read in document order (fixed):
   schema, holds only the target set's nodes, and the cost is O(depth) (`TestEquivalentInColdBudgetAndDepth`,
   `TestEquivalentInOutputAndScaling`, `TestEquivalentCacheKeepsNoContext`). `leaderFirstMixed`
   uses the same candidates.
+- round 19: a foreign candidate's direct comparison is charged as `Match` charges a local one (one
+  step and the probe's key bytes, through the probe's budget; `TestForeignCompareCharged`), and
+  the engine's U-0113 guard tells run pieces apart by module and node name
+  (`ordered-split-list-merge-destruct-augmented`);
 - round 18 (class-wide cross-context audit): a foreign match is chosen from the contexts of the
   schema nodes the siblings hold (`schemaContext`), not from an opaque first sibling or the
   parent (`findFirstWork`, `keylessFirst`, the XPath lookups, `FirstChild`); a probe of another
