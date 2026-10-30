@@ -80,8 +80,9 @@ func prepareUnlink(n *Node) (*unlinkPlan, error) {
 		}
 		left = l.Value
 	}
-	if p := n.parent; n.schema != nil && !n.isKey() && p != nil && p.schema != nil &&
-		p.schema.Kind == schema.List && at == p.keyN {
+	if p := n.parent; p != nil && p.schema != nil && p.schema.Kind == schema.List &&
+		(n.schema != nil && !n.isKey() && at == p.keyN ||
+			n.schema == nil && sib.st.seq.FirstKind(false) == h) { // the first opaque child ends keyRun
 		// detach exposes the keys n preceded (exposeListKeys), however many repeat: this walk
 		// pays for itself and for that one, before any write
 		for c := sib.st.seq.Next(h); c != nil && c.Value.isKey(); c = sib.st.seq.Next(c) {

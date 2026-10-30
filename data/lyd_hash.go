@@ -235,7 +235,7 @@ func resetListKey(work *workCounter, list *Node) {
 		return
 	}
 	list.keyN = 0
-	for _, key := range list.kids.SchemaAll() {
+	for _, key := range keyPrefix(list).All() { // past an opaque child no key is in lyd_hash's run
 		if work != nil {
 			work.Add(1)
 		}
@@ -282,8 +282,9 @@ func exposeListKeys(work *workCounter, list *Node) {
 	if err := list.touch(); err != nil {
 		return
 	}
-	// a removal reserves the walk: prepareUnlink, or a batch's charge per sibling set
-	for _, key := range list.kids.Range(list.keyN, list.kids.SchemaLen()) {
+	// a removal reserves the walk: prepareUnlink, or a batch's charge per sibling set. It stops at
+	// the first opaque child, where keyRun stops (design 15)
+	for _, key := range list.kids.Range(list.keyN, max(list.keyN, list.kids.beforeOpaque())) {
 		if work != nil {
 			work.Add(1)
 		}

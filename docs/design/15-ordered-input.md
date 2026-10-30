@@ -119,7 +119,7 @@ write takes the code path it took before (the counted-work and scaling tests are
 
 ## Evidence
 
-- Oracle fixtures `protocol-v2/ordered-*` (55; `ordered-split-list-merge-destruct` is unsupported,
+- Oracle fixtures `protocol-v2/ordered-*` (59; `ordered-split-list-merge-destruct` is unsupported,
 U-0113) cover:
   - parse order, JSON and XML;
   - the XML opaque anchor;
@@ -147,7 +147,8 @@ U-0113) cover:
     duplicates and of a leafref after an opaque root; a replaced case holding the module's first
     node; a diff of another context applied past an opaque sibling; top-level leaf-list defaults
     past an opaque root; a list key run cut by an opaque child; a default in a top level out of
-    module order.
+    module order; empty leaf-lists printed past an opaque node; lookups, an update, a
+    duplicate-instance run and an insertion anchor in a table level of two contexts.
   The `seq/trim-*` and `ops/opidx-split-run-leader-switch` fixtures, which parse ordered, now run.
   The request-differential `ordered-input` class runs against the live oracle.
 - Go: `TestSequenceKindModel` (opidx), `TestSiblingFacadeInterleavedModel`,
@@ -185,6 +186,21 @@ Read in document order (fixed):
     `lyd_find_sibling_first`);
   - the cross-context table probe returns the bucket's first record (`leaderFirstMixed`);
   - `runBounds` cuts a gap-free operation or unordered run at its piece;
+- round 13 (exhaustive audit):
+  - in every set out of schema order (interleaved or `schemaUnordered`), lookups among
+    siblings of several contexts with a children table follow the table's registration order
+    and native boundaries:
+    - schema lookups take the bucket's first registered equivalent record (`tableSchemaFirst`,
+      also for XPath and `FirstChild`);
+    - instance lookups take the first registered equal instance, and a duplicate-instance list
+      walks only the run of its record (`findFirstMixedTable`);
+    - insertion anchors take the records (`crossContextInsertPos`);
+  - the JSON printer's empty-(leaf-)list check uses `lyd_find_sibling_schema` (`nextEmpty`);
+  - `exposeListKeys` and `resetListKey` walk only up to the first opaque child; `prepareUnlink`
+    reserves the exposure that removing that opaque child causes;
+  - `unorderedAnchor` charges every step and stops at the first opaque sibling;
+  - `termHashBound` reserves only the key run after the insertion;
+  - the forward-metadata merge polls the context, also on a reused index;
 - round 12: every top level out of schema order, interleaved or only `schemaUnordered`, takes
   the one module-relative implicit insertion (`modInsertInterleaved`). libyang's walks from the
   module's first node read the physical order with or without opaque nodes

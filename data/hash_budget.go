@@ -223,9 +223,18 @@ func (w *workCounter) termHashBound(parent *Node, sn *schema.Node, value types.V
 		start = 0
 	}
 	var amount uint64
+	// lyd_hash's key run ends at the first opaque child (design 15): after the insertion it holds
+	// at most the schema children before that one and the new key
+	limit := parent.kids.SchemaLen() + 1 // the schema children after the insertion
+	if bo := parent.kids.beforeOpaque(); bo < parent.kids.SchemaLen() {
+		limit = bo
+		if at <= bo {
+			limit = bo + 1
+		}
+	}
 	// the old children from start, in order, with the new one at at (start <= at)
 	old := parent.kids.schemaSpan().Slice(start, parent.kids.SchemaLen()).cursor()
-	for i := start; i <= parent.kids.SchemaLen(); i++ {
+	for i := start; i < limit; i++ {
 		w.Add(1)
 		if err := w.chargeHash(1); err != nil {
 			return 0, err

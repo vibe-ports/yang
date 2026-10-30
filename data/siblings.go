@@ -1720,6 +1720,23 @@ func (t *Tree) schemaFind(s *siblings, sn *schema.Node) (int, *Node) {
 	return at, n
 }
 
+// tableSchemaFirst is lyd_find_sibling_schema's children-table lookup of sn in siblings that need
+// lineage matching (another context), in a set out of schema order, where runs may split and
+// registrations may differ from document order: the bucket of sn's module and node name holds the
+// records of the equivalent schema nodes in registration order, and the first whose schema
+// compares equal with its parents wins (lyd_hash_table_schema_val_equal; tableFirst). Each step is
+// charged to the lookup quota. ok is false when the set keeps no ordered index to read it from.
+func (t *Tree) tableSchemaFirst(s *siblings, sn *schema.Node) (n *Node, ok bool) {
+	if s.ht == nil || !s.schemaUnordered || s.order == nil && !s.firstRecordSchema(sn) {
+		return nil, false
+	}
+	p := &xprobe{node: newInner(sn), set: sn.Module.Owner, schemaOnly: true,
+		charge: func(n int64) error { return t.work.chargeLookup(uint64(n)) }} //nolint:gosec // a charge is nonnegative
+	p.key, _ = hashOf(p.node)
+	n, err := tableFirst(s, p.set, p)
+	return n, err == nil
+}
+
 func (t *Tree) schemaFindAll(s *siblings, sn *schema.Node) (int, *Node) {
 	if s.SchemaLen() == 0 {
 		return -1, nil
@@ -1727,6 +1744,12 @@ func (t *Tree) schemaFindAll(s *siblings, sn *schema.Node) (int, *Node) {
 	// The linear branch of lyd_find_sibling_schema compares only module and
 	// node names for foreign contexts. Its table callback compares schema lineage.
 	if s.foreignFor(sn) {
+		if n, ok := t.tableSchemaFirst(s, sn); ok {
+			if n == nil {
+				return -1, nil
+			}
+			return s.orderPosition(n), n
+		}
 		if t.work.lookupDepth != 0 && t.foreignSchemaInput[s] {
 			return t.foreignSchemaFind(s, sn, s.ht != nil)
 		}
@@ -2026,6 +2049,44 @@ func (t *Tree) findFirstChecked(s *siblings, target *Node) (*Node, error) {
 	return t.findFirstWork(s, target, &t.work)
 }
 
+// findFirstMixedTable is lyd_find_sibling_first with a children table among siblings of several
+// contexts in a set out of schema order (tree_data.c:3207-3236). A duplicate-instance list starts
+// at the first-instance record lyd_find_sibling_val finds and walks node->next while the schema
+// compares equal, so a later piece of a split run is not searched. Any other target is the
+// table's first registered equal instance: the bucket hashes module and node names, so equal
+// instances of every context share it, in registration order.
+func (t *Tree) findFirstMixedTable(s *siblings, target *Node, work *workCounter, dup bool) (*Node, error) {
+	if dup {
+		_, c := t.schemaFindAll(s, target.schema)
+		for ; c != nil && c.schema != nil && compareSchemaEqual(c.schema, target.schema, false); c = s.docNext(c) {
+			equal, err := compareSingleWork(t, work, target, c, true)
+			if err != nil || equal {
+				return c, err
+			}
+		}
+		return nil, t.work.lookupErr
+	}
+	candidates, err := t.foreignInstances(s, target)
+	if err != nil {
+		return nil, err
+	}
+	var found *Node
+	var best uint64
+	for n := range candidates {
+		equal, err := compareSingleWork(t, work, target, n, false)
+		if err != nil {
+			return nil, err
+		}
+		if r := s.exactByNode[n]; equal && r != nil && (found == nil || r.order < best) {
+			found, best = n, r.order
+		}
+	}
+	if found == nil {
+		return nil, t.foreignInstancesErr()
+	}
+	return found, nil
+}
+
 func (t *Tree) findFirstWork(s *siblings, target *Node, work *workCounter) (*Node, error) {
 	if s.len() == 0 {
 		return nil, nil
@@ -2036,6 +2097,9 @@ func (t *Tree) findFirstWork(s *siblings, target *Node, work *workCounter) (*Nod
 	}
 	dup := isDupInstList(target.schema)
 	if target.schema != nil && s.mixedContexts() {
+		if s.ht != nil && s.schemaUnordered {
+			return t.findFirstMixedTable(s, target, work, dup)
+		}
 		candidates, err := t.foreignInstances(s, target)
 		if err != nil {
 			return nil, err

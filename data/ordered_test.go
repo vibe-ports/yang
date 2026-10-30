@@ -1235,3 +1235,230 @@ func TestKeyRunPastOpaque(t *testing.T) {
 	}
 	opidxAssertTreeInvariant(t, tr)
 }
+
+// TestMetaDocIndexReuseCancelled: the forward-metadata matching polls the parse's context also
+// when it reuses the document index another container built, before and while it merges the
+// candidate lists.
+func TestMetaDocIndexReuseCancelled(t *testing.T) {
+	set := opIndexSet(t, orderedSchema)
+	var in strings.Builder
+	in.WriteString(`{"m:c":{"zz":"u","a":"x","u":"1"`)
+	for range 3000 {
+		in.WriteString(`,"v":"1"`)
+	}
+	in.WriteString("}}")
+	tr, err := parseOrdered(t, set, false, in.String(), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var c *Node
+	for c = range tr.Top() {
+		break
+	}
+	var x metaDocIndex
+	if _, err := x.match(&lydCtx{ctx: context.Background(), tree: tr}, &c.kids, nil, "u"); err != nil {
+		t.Fatal(err)
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	if _, err := x.match(&lydCtx{ctx: ctx, tree: tr}, &c.kids, nil, "v"); !errors.Is(err, context.Canceled) {
+		t.Fatalf("reused index: %v", err)
+	}
+	// cancelled during the merge: the poll before it passes, a later one fails
+	at := &cancelAtContext{Context: context.Background(), at: 2}
+	if _, err := x.match(&lydCtx{ctx: at, tree: tr}, &c.kids, nil, "v"); !errors.Is(err, context.Canceled) {
+		t.Fatalf("during the merge: %v", err)
+	}
+}
+
+// TestRepeatedKeysPastOpaqueScaling: Ordered ParseOnly k=x, zz, then many repeated k=y. lyd_hash's
+// key run stops at zz, so each repeated key's link reserves and hashes only that run: the work
+// per key stays flat, and the parse stays inside the default quota.
+func TestRepeatedKeysPastOpaqueScaling(t *testing.T) {
+	set := ordered2Set(t)
+	work := func(n int) float64 {
+		var in strings.Builder
+		in.WriteString(`{"pv2-ordered2:c":{"l":[{"k":"x","zz":"u"`)
+		for range n {
+			in.WriteString(`,"k":"y"`)
+		}
+		in.WriteString(`}]}}`)
+		var tr *Tree
+		if _, err := parseOrdered(t, set, false, in.String(), func(lc *lydCtx) { tr = lc.tree }); err != nil {
+			t.Fatal(n, err)
+		}
+		return float64(tr.work.hashUsed) / float64(n)
+	}
+	small, large := work(1000), work(8000)
+	if large > 2*small {
+		t.Fatalf("reserved work per key: %.1f at 1000, %.1f at 8000", small, large)
+	}
+}
+
+// TestKeyBookkeepingPastOpaque: in an Ordered ParseOnly list instance k=x, v, zz, then many
+// repeated k=y, unlinking v and changing the first key walk the keys only up to zz (keyRun),
+// so their work does not grow with the repeated keys, and every walk is reserved before the
+// change: a refusal at any charge point leaves the tree as it was.
+func TestKeyBookkeepingPastOpaque(t *testing.T) {
+	set := opIndexSet(t, orderedSchema)
+	build := func(n int) (*Tree, *Node, *Node) {
+		var in strings.Builder
+		in.WriteString(`{"m:c":{"l":[{"k":"x","v":"v","zz":"u"`)
+		for range n {
+			in.WriteString(`,"k":"y"`)
+		}
+		in.WriteString(`}]}}`)
+		tr, err := parseOrdered(t, set, false, in.String(), nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var l *Node
+		for c := range tr.Top() {
+			for l = range c.Children() {
+				break
+			}
+		}
+		var key, v *Node
+		for c := range l.Children() {
+			switch c.Name() {
+			case "k":
+				if key == nil {
+					key = c
+				}
+			case "v":
+				v = c
+			}
+		}
+		return tr, key, v
+	}
+	edit := func(key, v *Node) error {
+		if err := v.Unlink(); err != nil {
+			return err
+		}
+		_, err := key.SetValue("z")
+		return err
+	}
+	work := func(n int) int64 {
+		tr, key, v := build(n)
+		before := tr.work.Load()
+		if err := edit(key, v); err != nil {
+			t.Fatal(err)
+		}
+		return tr.work.Load() - before
+	}
+	if small, large := work(200), work(3200); large > 2*small {
+		t.Fatalf("bookkeeping work: %d at 200 keys, %d at 3200", small, large)
+	}
+	checkEveryHashBudgetPoint(t, func() (*Tree, func() error) {
+		tr, key, v := build(64)
+		return tr, func() error { return edit(key, v) }
+	})
+}
+
+// TestUnorderedAnchorCharged: lyd_insert_get_next_anchor's linear walk over a top level out of
+// schema order is charged step by step, so a small enforced quota refuses a long walk; in an
+// interleaved top level the walk stops at the first opaque sibling and stays cheap.
+func TestUnorderedAnchorCharged(t *testing.T) {
+	set := opIndexSet(t, `module m { yang-version 1.1; namespace "urn:m"; prefix m;
+	  leaf a { type string; } leaf-list u { type uint32; ordered-by user; } leaf b { type string; } }`)
+	const n = 20000
+	parse := func(opaque bool) *Tree {
+		var in strings.Builder
+		in.WriteString(`{`)
+		if opaque {
+			in.WriteString(`"m:a":"a","m:zz":"u",`)
+		}
+		in.WriteString(`"m:u":[`)
+		for i := range n {
+			if i > 0 {
+				in.WriteString(",")
+			}
+			fmt.Fprint(&in, i)
+		}
+		in.WriteString(`]`)
+		if !opaque {
+			in.WriteString(`,"m:a":"a"`)
+		}
+		in.WriteString(`}`)
+		tr, err := parseOrdered(t, set, false, in.String(), nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return tr
+	}
+	tr := parse(false)
+	tr.work.hashLimit = 8192 // per operation (beginHashWork)
+	if _, err := tr.NewTerm(nil, "m:b", "x", NewOptions{}); !errors.Is(err, yang.ErrBudget) {
+		t.Fatalf("a walk over %d siblings under a small quota: %v", n, err)
+	}
+	opidxAssertTreeInvariant(t, tr)
+	tr = parse(true)
+	tr.work.hashLimit = 8192 // per operation (beginHashWork)
+	if _, err := tr.NewTerm(nil, "m:b", "x", NewOptions{}); err != nil {
+		t.Fatalf("the walk stops at the opaque sibling: %v", err)
+	}
+	if got := names(tr.Top())[:3]; !slices.Equal(got, []string{"a=a", "b=x", "zz"}) {
+		t.Fatalf("%v", got)
+	}
+}
+
+// mixedTableLevel parses an Ordered c of pv2-ordered8 in context A (a children table) and links a
+// child z of context B last, the layout of the merge construction of protocol-v2/merge-foreign-child
+// once the foreign child no longer leads.
+func mixedTableLevel(t *testing.T, in string) (*Tree, *Node) {
+	t.Helper()
+	setA, setB := ordered2Set(t, "pv2-ordered8"), ordered2Set(t, "pv2-ordered8")
+	tr, err := parseOrdered(t, setA, false, in, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var c *Node
+	for c = range tr.Top() {
+		break
+	}
+	fb, _, err := parseJSONString(setB, `{"pv2-ordered8:c":{"z":"zz"}}`, Reject, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	z := fb.top.first().kids.first()
+	if err := unlink(z); err != nil {
+		t.Fatal(err)
+	}
+	if err := tr.link(c, &c.kids, z, c.kids.SchemaLen()); err != nil {
+		t.Fatal(err)
+	}
+	if c.kids.ht == nil || !c.kids.mixedContexts() || !c.kids.schemaUnordered || c.kids.st.interleaved() {
+		t.Fatal("fixture: want a table level of two contexts out of schema order, not interleaved")
+	}
+	return tr, c
+}
+
+// TestMixedTableDupInstRun: lyd_find_sibling_first of a duplicate-instance list with a children
+// table starts at the first-instance record and walks node->next while the schema matches, so
+// the value of the piece after b is not found, also among siblings of two contexts.
+func TestMixedTableDupInstRun(t *testing.T) {
+	tr, _ := mixedTableLevel(t, `{"pv2-ordered8:c":{"p":"p","st":[1],"b":"b","st":[2]}}`)
+	if n, err := tr.Find("/pv2-ordered8:c/st[.='2']"); err != nil || n != nil {
+		t.Fatalf("the later piece: %v %v", n, err)
+	}
+	if n, err := tr.Find("/pv2-ordered8:c/st[.='1']"); err != nil || n == nil {
+		t.Fatalf("the first piece: %v %v", n, err)
+	}
+}
+
+// TestMixedTableInsertLeader: inserting 0 replaces the first ll piece's record, so the anchor of a
+// later insertion of a (lyd_insert_get_next_anchor's lyd_find_sibling_schema) is the other piece's
+// record, also when only a schema node splits the run among siblings of two contexts.
+func TestMixedTableInsertLeader(t *testing.T) {
+	tr, c := mixedTableLevel(t, `{"pv2-ordered8:c":{"p":"p","ll":[2],"b":"b","ll":[4]}}`)
+	if _, err := tr.NewTerm(c, "ll", "0", NewOptions{}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := tr.NewTerm(c, "a", "x", NewOptions{}); err != nil {
+		t.Fatal(err)
+	}
+	opidxAssertTreeInvariant(t, tr)
+	if got := names(c.Children()); !slices.Equal(got, []string{"p=p", "ll=0", "ll=2", "b=b", "a=x", "ll=4", "z=zz"}) {
+		t.Fatalf("%v", got)
+	}
+}

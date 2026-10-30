@@ -579,8 +579,16 @@ func (x *metaDocIndex) match(lc *lydCtx, sib *siblings, sn *schema.Node, name st
 	if err := w.chargeHash(uint64(len(a)+len(b)) + 1); err != nil {
 		return docMatch{}, err
 	}
+	if err := poll(lc.ctx); err != nil { // also when the index is reused
+		return docMatch{}, err
+	}
 	mx := docMatch{nodes: make([]*Node, 0, len(a)+len(b)), list: -1}
-	for len(a) > 0 || len(b) > 0 {
+	for steps := 1; len(a) > 0 || len(b) > 0; steps++ {
+		if steps%1024 == 0 {
+			if err := poll(lc.ctx); err != nil {
+				return docMatch{}, err
+			}
+		}
 		if len(b) == 0 || len(a) > 0 && a[0].at < b[0].at {
 			mx.nodes, a = append(mx.nodes, a[0].n), a[1:]
 			continue

@@ -466,8 +466,10 @@ func TestMixedFirstChildDefersToChargedXPathScan(t *testing.T) {
 	if _, ok := child.FirstChild(probe, nil); ok {
 		t.Fatal("mixed FirstChild must defer to the charged XPath scan")
 	}
-	if _, ok := child.LookupChild(probe, []string{"a"}); ok {
-		t.Fatal("mixed keyed lookup must defer to the charged XPath scan")
+	// out of schema order (base after l) the keyed lookup answers by libyang's walk without a
+	// children table, charged step by step (interleavedLookup, design 15)
+	if got, ok := child.LookupChild(probe, []string{"a"}); !ok || len(got) != 1 || got[0].(xn).n != parent.kids.first() {
+		t.Fatalf("mixed keyed lookup out of schema order: %v %v", got, ok)
 	}
 }
 

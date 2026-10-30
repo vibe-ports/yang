@@ -640,9 +640,10 @@ func (t *Tree) crossContextInsertPos(sib *siblings, n *Node, newCtx *schema.Set,
 						return l.Len(), true
 					}
 					if schemaLookupMatch(c.schema, sn, true) {
-						if sib.st.interleaved() {
-							// a split run has a record per piece: the table returns the bucket's
-							// first registered one, not the document-first instance (design 15)
+						if sib.schemaUnordered {
+							// out of schema order a run may split, schema nodes alone included: the
+							// table returns the bucket's first registered record, not the
+							// document-first instance (design 15)
 							if t.work.chargeHash(uint64(len(sib.leaders))) != nil {
 								return l.Len(), true
 							}
@@ -1467,7 +1468,9 @@ func (t *Tree) unorderedAnchor(sib *siblings, n *Node) int {
 			}
 		}
 		for r := from; r < len(order); r++ {
-			t.work.Add(1)
+			if t.work.chargeHash(1) != nil {
+				return sib.SchemaLen() // the sticky refusal fails the link
+			}
 			if leader := physicalStart(sib, order[r], t.schemaLookup(sib, order[r])); leader != nil {
 				return max(sib.orderPosition(leader), 0) // a refused read credit is sticky
 			}
@@ -1487,8 +1490,12 @@ func (t *Tree) unorderedAnchor(sib *siblings, n *Node) int {
 	found := false
 	started := dp != nil
 	own := ownerModule(t.set, n)
-	for i, a := range sib.SchemaAll() {
-		t.work.Add(1)
+	// lyd_insert_get_next_anchor's walk stops at the first opaque sibling (walkStop then makes it
+	// the anchor, design 15); each step is charged before it reads a sibling
+	for i, a := range sib.schemaSpan().Slice(0, sib.beforeOpaque()).All() {
+		if t.work.chargeHash(1) != nil {
+			return sib.SchemaLen()
+		}
 		am := ownerModule(t.set, a)
 		if !started {
 			if am.Name < own.Name {
@@ -1500,7 +1507,9 @@ func (t *Tree) unorderedAnchor(sib *siblings, n *Node) int {
 			return i
 		}
 		for !found {
-			t.work.Add(1)
+			if t.work.chargeHash(1) != nil {
+				return sib.SchemaLen()
+			}
 			if !ok {
 				return sib.SchemaLen()
 			}
@@ -1517,7 +1526,7 @@ func (t *Tree) unorderedAnchor(sib *siblings, n *Node) int {
 			return i
 		}
 	}
-	return sib.SchemaLen()
+	return sib.beforeOpaque() // the opaque sibling the walk stopped at, else the end
 }
 
 // opChild reports whether s is a child of an rpc or action's input or output. Such siblings are

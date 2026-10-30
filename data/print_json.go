@@ -460,10 +460,21 @@ func (j *jsonPrinter) leafListEmpty(sn *schema.Node) {
 // nextEmpty is json_print_next_empty_leaf_list: the rest of the schema siblings sl from the first
 // list or leaf-list, unless an instance in sibs that will be printed comes first; nil if none.
 func (j *jsonPrinter) nextEmpty(sl []*schema.Node, sibs []*Node) []*schema.Node {
+	var s *siblings
+	var t *Tree
+	if len(sibs) > 0 {
+		s, t = sibsOf(sibs[0]), treeOf(sibs[0])
+		if t == nil {
+			t = newTree(ctxOf(sibs[0])) // a detached subtree: the lookup's counters only
+		}
+	}
 	for k, sn := range sl {
-		// lyd_find_sibling_schema: the first instance
-		if i := slices.IndexFunc(sibs, func(n *Node) bool { return n.schema == sn }); i >= 0 && j.shouldPrint(sibs[i]) {
-			return nil
+		// lyd_find_sibling_schema: the children table's record, else the walk that stops at
+		// the first opaque sibling (design 15)
+		if s != nil {
+			if m := t.schemaLookup(s, sn); m != nil && j.shouldPrint(m) {
+				return nil
+			}
 		}
 		if sn.Kind == schema.LeafList || sn.Kind == schema.List {
 			return sl[k:]

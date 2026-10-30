@@ -101,7 +101,7 @@ func (x xn) LookupPrepared(prepared xpath.InstanceProbe) ([]xpath.Node, bool, er
 	}
 	p, ok := prepared.(*xprobe)
 	sib := &x.n.kids
-	if ok && sib.st != nil && sib.st.interleaved() && x.n.flags&flagDead == 0 {
+	if ok && sib.st != nil && (sib.st.interleaved() || sib.schemaUnordered) && x.n.flags&flagDead == 0 {
 		if sib.ht == nil {
 			return interleavedLookup(sib, x.set, p)
 		}
@@ -374,7 +374,7 @@ func (x xn) FirstChild(sn xpath.SchemaNode, charge func(int64) error) (xpath.Nod
 	}
 	sib := x.childSiblings()
 	if sib.mixedContexts() {
-		if sib.ht != nil && sib.st != nil && sib.st.interleaved() && x.n.any == nil {
+		if sib.ht != nil && sib.st != nil && (sib.st.interleaved() || sib.schemaUnordered) && x.n.any == nil {
 			// the evaluator's walk stops at the first opaque sibling; the table does not (design 15)
 			p := &xprobe{node: newInner(s.s), set: s.set, schemaOnly: true, charge: charge}
 			p.key, _ = hashOf(p.node)
