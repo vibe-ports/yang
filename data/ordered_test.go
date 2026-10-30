@@ -1034,3 +1034,40 @@ func TestInterleavedLookupMatrix(t *testing.T) {
 		check("root", r, probeSet, "pv2-ordered3", "b", nil, false) // past the first opaque root
 	}
 }
+
+// TestInterleavedForwardRecovery: a relocation within an interleaved set that the running state's
+// current level holds rolls forward (design 14, step 6); restoreLink puts the node back between
+// its document neighbours (originPlace), a schema node between two opaque ones and an opaque
+// node between two schema ones, and the state's rollback restores the tree exactly.
+func TestInterleavedForwardRecovery(t *testing.T) {
+	set := opIndexSet(t, orderedSchema)
+	for _, pick := range []string{"c", "zz", "yy"} {
+		for _, commit := range []bool{false, true} {
+			tr, err := parseOrdered(t, set, false, `{"m:c":{"a":"x","zz":"u","c":"z","yy":"t","ll":[3]}}`, nil)
+			if err != nil {
+				t.Fatal(err)
+			}
+			var c *Node
+			for c = range tr.Top() {
+				break
+			}
+			capture := func(t *testing.T) {
+				if err := c.kids.touch(); err != nil {
+					t.Fatal(err)
+				}
+			}
+			forwardRecoveryInState(t, tr, capture, func() *Node {
+				for n := range c.Children() {
+					if n.Name() == pick {
+						return n
+					}
+				}
+				t.Fatalf("no %s", pick)
+				return nil
+			}, commit)
+			if got := orderedChildren(t, tr); !slices.Equal(got, []string{"a=x", "zz", "c=z", "yy", "ll=3"}) {
+				t.Fatalf("%s: %v", pick, got)
+			}
+		}
+	}
+}
