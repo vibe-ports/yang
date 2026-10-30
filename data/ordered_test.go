@@ -1153,3 +1153,43 @@ func TestFirstChildMixedCharged(t *testing.T) {
 		}
 	}
 }
+
+// TestCaseReplacedReversedFirst: an old case kept as b, a (ordered input) whose b is the module's
+// first node is replaced. lyd_validate_cases frees a, then b, moving lyd_validate's first after
+// each free (lyd_del_move_root): past b it skips a, already freed, so the duplicate replacement
+// leaves are still checked. The deletion is one batch here (delMoveRoots counts the earlier
+// members as freed). The tree holding both cases' data comes from a MultiError validation that
+// fails yet clears FlagNew, which no oracle sequence continues past; the fixture
+// protocol-v2/ordered-validate-case-reversed-first covers the replacement placed between b and a.
+func TestCaseReplacedReversedFirst(t *testing.T) {
+	set := ordered2Set(t, "pv2-lyds", "pv2-ordered6")
+	tr, err := parseOrdered(t, set, false, `{"pv2-lyds:ll":[1],"pv2-ordered6:b":"b","pv2-ordered6:a":"a","pv2-ordered6:c":"1","pv2-ordered6:c":"2"}`, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := tr.Validate(context.Background(), ValidateOptions{MultiError: true}); err == nil {
+		t.Fatal("both cases validated")
+	}
+	o6 := func(n *Node) bool { return n.schema != nil && n.schema.Module.Name == "pv2-ordered6" }
+	for n := range tr.Top() {
+		if o6(n) && n.Name() == "c" {
+			if _, err := n.SetValue("3"); err != nil {
+				t.Fatal(err)
+			}
+			break
+		}
+	}
+	d, err := tr.ValidateModule(context.Background(), "pv2-ordered6", ValidateOptions{})
+	if err == nil || !slices.ContainsFunc(d, func(x yang.Diagnostic) bool { return strings.Contains(x.Msg, `Duplicate instance of "c"`) }) {
+		t.Fatalf("%v %v", d, err)
+	}
+	var got []string
+	for n := range tr.Top() {
+		if o6(n) {
+			got = append(got, n.Name()+"="+n.Value())
+		}
+	}
+	if !slices.Equal(got, []string{"c=3", "c=2"}) {
+		t.Fatalf("%v", got)
+	}
+}

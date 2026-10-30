@@ -188,9 +188,7 @@ func (vc *valCtx) validateCases(sib *siblings, ch *schema.Node) error {
 				}
 			}
 		}
-		for _, n := range del {
-			vc.delMoveRoot(n) // lyd_del_move_root before each lyd_free_tree
-		}
+		vc.delMoveRoots(del) // lyd_del_move_root before each lyd_free_tree
 		if err := vc.t.unlinkAll(del); err != nil {
 			return err
 		}
@@ -357,9 +355,7 @@ func (vc *valCtx) autodel(del []*Node, npContDiff bool) error {
 			return err
 		}
 	}
-	for _, n := range del {
-		vc.delMoveRoot(n) // lyd_validate_autodel_node_del: lyd_del_move_root
-	}
+	vc.delMoveRoots(del) // lyd_validate_autodel_node_del: lyd_del_move_root
 	if err := vc.t.unlinkAll(del); err != nil {
 		vc.t.work.hashErr = err
 		return err

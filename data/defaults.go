@@ -431,19 +431,45 @@ walk:
 	return nil
 }
 
-// delMoveRoot is lyd_del_move_root for lyd_validate's first (modFirst) before the top-level node
-// del is deleted: first moves to its next sibling, or back to the tree's first sibling (nil)
-// when del was the module's last node.
-func (vc *valCtx) delMoveRoot(del *Node) {
-	first := vc.modFirst
-	if first == nil || first != del || del.parent != nil {
+// delMoveRoots is lyd_del_move_root for lyd_validate's first (modFirst) before each top-level
+// node of del is freed, in del's order, which libyang interleaves with the frees: first moves to
+// the next sibling that is still linked, or back to the tree's first sibling (nil) when the node
+// was the module's last. del is unlinked in one batch afterwards (one compaction), so the nodes
+// before the one at hand count as freed already.
+func (vc *valCtx) delMoveRoots(del []*Node) {
+	if vc.modFirst == nil {
 		return
 	}
+	var gone map[*Node]bool
+	for i, n := range del {
+		if vc.modFirst == n && n.parent == nil {
+			if gone == nil {
+				gone = make(map[*Node]bool, i)
+				for _, d := range del[:i] {
+					gone[d] = true
+				}
+			}
+			vc.delMoveRoot(n, gone)
+			if vc.modFirst == nil {
+				return
+			}
+		}
+		if gone != nil {
+			gone[n] = true
+		}
+	}
+}
+
+// delMoveRoot is lyd_del_move_root for first == del, the nodes of gone already freed.
+func (vc *valCtx) delMoveRoot(del *Node, gone map[*Node]bool) {
 	mod := vc.modCur
-	if ownerModule(vc.t.context(), first) != mod {
+	if ownerModule(vc.t.context(), del) != mod {
 		mod = nil // no data of mod: simply the first top-level sibling
 	}
-	next := vc.t.top.docNext(first)
+	next := vc.t.top.docNext(del)
+	for next != nil && gone[next] {
+		next = vc.t.top.docNext(next)
+	}
 	if mod != nil && (next == nil || ownerModule(vc.t.context(), del) != ownerModule(vc.t.context(), next)) {
 		vc.modFirst = nil // no more nodes of mod: the first top-level sibling
 		return

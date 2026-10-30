@@ -119,7 +119,7 @@ write takes the code path it took before (the counted-work and scaling tests are
 
 ## Evidence
 
-- Oracle fixtures `protocol-v2/ordered-*` (51; `ordered-split-list-merge-destruct` is unsupported,
+- Oracle fixtures `protocol-v2/ordered-*` (52; `ordered-split-list-merge-destruct` is unsupported,
 U-0113) cover:
   - parse order, JSON and XML;
   - the XML opaque anchor;
@@ -185,7 +185,10 @@ Read in document order (fixed):
   - `runBounds` cuts a gap-free operation or unordered run at its piece;
 - round 8:
   - an auto-deletion moves lyd_validate's first on before it unlinks the node, as
-    `lyd_del_move_root` does (`delMoveRoot`, for choice cases and defaults);
+    `lyd_del_move_root` does (`delMoveRoots`, for choice cases and defaults). libyang frees each
+    node right after; the port unlinks the batch afterwards in one compaction, so the root
+    update counts the batch members before the node as freed. An old case kept out of schema
+    order (b, a) then moves first past a to the replacement (round 9);
   - a Present run's first node that an earlier module's validation deleted is found again;
   - the lookup fallbacks of other contexts honour the linear walk's stop at the first opaque
     sibling (`diff_gen`'s lineage fallback, `foreignSchemaFind` without a table);

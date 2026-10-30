@@ -1,0 +1,20 @@
+# lyd_validate_module replaces an old case kept as b, a (ordered input, b the module's first node) by two new leaves of the other case, which the insertion places between b and a: lyd_validate_cases frees a, then b, moving first after each free (lyd_del_move_root), and the duplicate new leaves are found
+fixtures:
+  - id: protocol-v2/ordered-validate-case-reversed-first
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#7.9"]
+    areas: [validation]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      context_options: ["no_yanglibrary"]
+      modules: [{name: "pv2-lyds"}, {name: "pv2-ordered6"}]
+      steps:
+        - {do: parse, format: json, data_type: data, parse_only: true, parse_options: [ordered], data: '{"pv2-lyds:ll": [1], "pv2-ordered6:b": "b", "pv2-ordered6:a": "a"}'}
+        - {do: validate}
+        - {do: insert, format: json, data_type: data, parse_only: true, parse_options: [ordered], data: '{"pv2-ordered6:c": "1", "pv2-ordered6:c": "2"}'}
+        - {do: dump}
+        - {do: validate, module: pv2-ordered6}
+        - {do: dump}
+    golden: golden/ordered-validate-case-reversed-first.json
