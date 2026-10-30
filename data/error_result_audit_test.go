@@ -109,14 +109,14 @@ var ignoredErrorAllowlist = map[string]string{
 	"unres.go:923:xpathErr":                  "deref logs the evaluator error before returning the plugin-level error that names it",
 	"unres.go:976:logErr":                    allowLoggedMarker,
 	"unres.go:1046:logErr":                   allowLoggedMarker,
-	"validate.go:734:val":                    allowLoggedMarker,
-	"validate.go:760:WriteByte":              allowNoFailWriter,
-	"validate.go:762:WriteString":            allowNoFailWriter,
-	"validate.go:821:WriteString":            allowNoFailWriter,
-	"validate.go:822:WriteByte":              allowNoFailWriter,
+	"validate.go:766:val":                    allowLoggedMarker,
+	"validate.go:792:WriteByte":              allowNoFailWriter,
+	"validate.go:794:WriteString":            allowNoFailWriter,
+	"validate.go:853:WriteString":            allowNoFailWriter,
+	"validate.go:854:WriteByte":              allowNoFailWriter,
 	"xpathnode.go:83:LookupPrepared":         "LookupChild prepares without a charge callback, so LookupPrepared cannot return a work error",
 	"xpathnode.go:88:LookupPrepared":         "the schema-only probe has no charge callback, so LookupPrepared cannot return a work error",
-	"xpathnode.go:495:StringWithBudget":      "String uses a background context and nil budget callbacks; serialization errors remain available through StringWithBudget",
+	"xpathnode.go:496:StringWithBudget":      "String uses a background context and nil budget callbacks; serialization errors remain available through StringWithBudget",
 }
 
 type auditImporter struct {

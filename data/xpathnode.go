@@ -364,8 +364,9 @@ func (x xn) HashKeyValuesEqual(sn xpath.SchemaNode, vals []string) bool {
 
 // FirstChild is lyd_find_sibling_schema over lyd_child_any(x): the first live instance of sn.
 // It uses the index within one context and matches schema paths across contexts; a node outside
-// a tree or a dead instance declines to the evaluator's charged scan.
-func (x xn) FirstChild(sn xpath.SchemaNode) (xpath.Node, bool) {
+// a tree or a dead instance declines to the evaluator's charged scan. charge pays the lookups
+// whose length depends on the data (tableFirst).
+func (x xn) FirstChild(sn xpath.SchemaNode, charge func(int64) error) (xpath.Node, bool) {
 	s, ok := sn.(xs)
 	t := treeOf(x.n)
 	if !ok || t == nil || x.n.flags&flagDead != 0 {
@@ -375,7 +376,7 @@ func (x xn) FirstChild(sn xpath.SchemaNode) (xpath.Node, bool) {
 	if sib.mixedContexts() {
 		if sib.ht != nil && sib.st != nil && sib.st.interleaved() && x.n.any == nil {
 			// the evaluator's walk stops at the first opaque sibling; the table does not (design 15)
-			p := &xprobe{node: newInner(s.s), set: s.set, schemaOnly: true}
+			p := &xprobe{node: newInner(s.s), set: s.set, schemaOnly: true, charge: charge}
 			p.key, _ = hashOf(p.node)
 			c, err := tableFirst(sib, x.set, p)
 			if err != nil || c == nil {

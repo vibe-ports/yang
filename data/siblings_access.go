@@ -414,6 +414,18 @@ func (s *siblings) docFirst() *Node {
 	return handleValue(s.st.seq.First())
 }
 
+// schemaBefore is the number of schema siblings before n in document order: n's logical position
+// when it is a schema node.
+func (s *siblings) schemaBefore(n *Node) int {
+	h := s.handle(n)
+	at, _ := s.st.seq.Pos(h)
+	k, _ := s.st.seq.PosKind(h)
+	if n.schema != nil {
+		return k
+	}
+	return at - k
+}
+
 func (s *siblings) docLast() *Node {
 	if s.st == nil {
 		return nil

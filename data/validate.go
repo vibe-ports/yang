@@ -99,14 +99,22 @@ func (vc *valCtx) firstModuleSibling(top siblingSpan, start int, mod *schema.Mod
 	return start, nil
 }
 
+// modRun is one module lyd_validate traverses, with first: lyd_data_next_module's first node of
+// its run of top-level data (Present), else nil (lyd_mod_next_module finds it when the module
+// comes up: moduleFirst).
+type modRun struct {
+	mod   *schema.Module
+	first *Node
+}
+
 // modules lists the modules lyd_validate traverses: the implemented ones in context order
 // (lyd_mod_next_module), only vc.module for lyd_validate_module, or with Present those of the
-// top-level data in tree order (lyd_data_next_module, which stops at a top-level node of no
+// top-level runs in tree order (lyd_data_next_module, which stops at a top-level node of no
 // module).
-func (vc *valCtx) modules() ([]*schema.Module, error) {
-	var out []*schema.Module
+func (vc *valCtx) modules() ([]modRun, error) {
+	var out []modRun
 	if vc.module != nil {
-		return []*schema.Module{vc.module}, nil
+		return []modRun{{mod: vc.module}}, nil
 	}
 	if !vc.opts.Present {
 		for _, m := range vc.t.context().Modules {
@@ -114,7 +122,7 @@ func (vc *valCtx) modules() ([]*schema.Module, error) {
 				return nil, err
 			}
 			if m.Implemented {
-				out = append(out, m)
+				out = append(out, modRun{mod: m})
 			}
 		}
 		return out, nil
@@ -126,13 +134,32 @@ func (vc *valCtx) modules() ([]*schema.Module, error) {
 			break
 		}
 		if mod != last {
-			out, last = append(out, mod), mod
+			out, last = append(out, modRun{mod, c}), mod
 		}
 		if err := vc.checkContext(); err != nil {
 			return nil, err
 		}
 	}
 	return out, nil
+}
+
+// moduleFirst is lyd_mod_next_module's search: the first top-level node of mod in document
+// order from from (lyd_validate's next, the tree's first node when it started), an opaque one of
+// the module included; nil when there is none.
+func (vc *valCtx) moduleFirst(from *Node, mod *schema.Module) (*Node, error) {
+	top := &vc.t.top
+	if from == nil || from.siblingsOf() != top {
+		from = top.docFirst()
+	}
+	for c := from; c != nil; c = top.docNext(c) {
+		if err := vc.checkContext(); err != nil {
+			return nil, err
+		}
+		if ownerModule(vc.t.context(), c) == mod {
+			return c, nil
+		}
+	}
+	return nil, nil
 }
 
 // checkContext polls independently of XPath and implicit-node accounting: even a
@@ -171,23 +198,27 @@ func (vc *valCtx) validate(validateSubtree bool) error {
 		return err
 	}
 	defer func() { vc.modFirst = nil }()
-	for _, mod := range mods {
+	next := vc.t.top.docFirst() // lyd_validate's next = *tree
+	for _, run := range mods {
+		mod := run.mod
 		if err := vc.checkContext(); err != nil {
 			return err
 		}
+		// first2: &first when the module's first node is not the tree's first, else tree
+		first := run.first
+		if first == nil && !vc.opts.Present {
+			var err error
+			if first, err = vc.moduleFirst(next, mod); err != nil {
+				return err
+			}
+		}
 		vc.modFirst = nil
+		if first != nil && first != vc.t.top.docFirst() {
+			vc.modFirst = first
+		}
 		if err := vc.validateNew(nil, nil, mod); err != nil {
 			if rc = err; vc.stop(err) {
 				return rc
-			}
-		}
-		if top := vc.topList(); top.Len() > 0 {
-			i, err := vc.firstModuleSibling(top, 0, mod)
-			if err != nil {
-				return err
-			}
-			if i > 0 && i < top.Len() && ownerModule(vc.t.context(), top.At(i)) == mod {
-				vc.modFirst = top.At(i)
 			}
 		}
 		var err error
@@ -249,7 +280,8 @@ func (vc *valCtx) validate(validateSubtree bool) error {
 	if vc.opts.NotFinal {
 		return rc
 	}
-	for _, mod := range mods {
+	for _, run := range mods {
+		mod := run.mod
 		top := vc.topList()
 		first, err := vc.firstModuleSibling(top, 0, mod)
 		if err != nil {

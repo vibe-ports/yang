@@ -7,6 +7,7 @@ package data
 
 import (
 	"errors"
+	"iter"
 
 	"github.com/vibe-ports/yang/internal/schema"
 	"github.com/vibe-ports/yang/internal/types"
@@ -308,6 +309,9 @@ func (vc *valCtx) addImplicit(parent, n *Node) error {
 // agree while the module's nodes are in schema order).
 func (vc *valCtx) modInsert(n *Node) error {
 	t, sib := vc.t, &vc.t.top
+	if sib.st != nil && sib.st.interleaved() {
+		return vc.modInsertInterleaved(n)
+	}
 	fi, err := vc.siblingIndex(sib.schemaSpan(), vc.modFirst)
 	if err != nil {
 		return err
@@ -330,12 +334,108 @@ func (vc *valCtx) modInsert(n *Node) error {
 	return nil
 }
 
-// modStart is the index of lyd_validate's *first2 in the top level: modFirst, else 0.
+// modInsertInterleaved is modInsert in an interleaved top level (design 15): libyang's
+// lyd_insert_node_ordby_schema with first_sibling at the module's first node, in document order.
+// lyd_insert_get_next_anchor walks from first past the data of preceding modules, then the
+// module's data along its schema order, stopping at an opaque node or another module's node.
+// Without an anchor, a trailing opaque block before first (first->prev) is the anchor; else the
+// node goes after first->prev (the last sibling when first is the tree's first). first moves
+// only when the node lands right before it.
+func (vc *valCtx) modInsertInterleaved(n *Node) error {
+	t, sib := vc.t, &vc.t.top
+	first := vc.modFirst
+	own := ownerModule(t.context(), n)
+	mname := func(c *Node) string {
+		if m := ownerModule(t.context(), c); m != nil {
+			return m.Name
+		}
+		return ""
+	}
+	match := first
+	for match != nil && match.schema != nil && mname(match) < own.Name {
+		if err := vc.checkContext(); err != nil {
+			return err
+		}
+		match = sib.docNext(match)
+	}
+	next, stop := iter.Pull(schema.GetNext(nil, n.schema.Module.Top, 0))
+	defer stop()
+	sn, ok := next()
+	found := false
+walk:
+	for ; match != nil; match = sib.docNext(match) {
+		if err := vc.checkContext(); err != nil {
+			return err
+		}
+		if match.schema == nil || ownerModule(t.context(), match) != own {
+			break
+		}
+		for !found {
+			if !ok {
+				match = nil // extension instance data: no anchor
+				break walk
+			}
+			if sn == n.schema {
+				found = true
+				break
+			}
+			if match.schema == sn {
+				break
+			}
+			sn, ok = next()
+		}
+		if found && match.schema != n.schema {
+			break
+		}
+	}
+	anchor := match
+	prev := func(c *Node) *Node {
+		if c == sib.docFirst() {
+			return sib.docLast()
+		}
+		p, _ := sib.docNeighbours(c)
+		return p
+	}
+	if anchor == nil {
+		// cannot insert data node after opaque nodes: the opaque block before first
+		if p := prev(first); p != nil && p.schema == nil {
+			anchor = p
+			for anchor != first && prev(anchor).schema == nil {
+				anchor = prev(anchor)
+			}
+		}
+	}
+	var at int
+	switch {
+	case anchor != nil:
+		sib.setPlace(placement{mode: placeBefore, node: anchor, target: n})
+		at = sib.schemaBefore(anchor)
+	case first == sib.docFirst():
+		sib.setPlace(placement{mode: placeEnd, target: n})
+		at = sib.SchemaLen()
+	default:
+		p := prev(first)
+		sib.setPlace(placement{mode: placeAfter, node: p, target: n})
+		at = sib.schemaBefore(p)
+		if p.schema != nil {
+			at++
+		}
+	}
+	if err := t.link(nil, sib, n, at); err != nil {
+		return err
+	}
+	if anchor == first {
+		vc.modFirst = n // lyd_insert_before_node of the first sibling moves first
+	}
+	return nil
+}
+
+// modStart is the document position of lyd_validate's *first2 in the top level: modFirst, else 0.
 func (vc *valCtx) modStart() (int, error) {
 	if vc.modFirst == nil {
 		return 0, nil
 	}
-	i, err := vc.siblingIndex(vc.t.top.schemaSpan(), vc.modFirst)
+	i, err := vc.siblingIndex(vc.topList(), vc.modFirst) // a document position (topList)
 	return max(0, i), err
 }
 
@@ -357,19 +457,22 @@ func (vc *valCtx) newImplicitR(parent *Node, sparent *schema.Node, mod *schema.M
 	if err := vc.newImplicit(parent, sparent, mod, o); err != nil {
 		return err
 	}
-	kids := vc.t.childrenOf(parent).schemaSpan()
+	// LY_LIST_FOR in document order: the children (lyd_child_no_keys: keys are not containers), or
+	// at the top level from lyd_validate's first2
+	kids := spanOf(vc.t.childrenOf(parent).docNodes())
 	if parent == nil {
+		kids = vc.topList()
 		start, err := vc.modStart()
 		if err != nil {
 			return err
 		}
-		kids = kids.Slice(start, kids.Len()) // LY_LIST_FOR(*first): from lyd_validate's first2
+		kids = kids.Slice(start, kids.Len())
 	}
-	for _, c := range kids.All() { // lyd_child_no_keys: keys are not containers
+	for _, c := range kids.All() {
 		if err := vc.checkContext(); err != nil {
 			return err
 		}
-		if c.flags&FlagDefault != 0 && c.schema.Kind == schema.Container {
+		if c.schema != nil && c.flags&FlagDefault != 0 && c.schema.Kind == schema.Container {
 			if err := vc.newImplicitR(c, nil, mod, o); err != nil {
 				return err
 			}

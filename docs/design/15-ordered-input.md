@@ -119,7 +119,7 @@ write takes the code path it took before (the counted-work and scaling tests are
 
 ## Evidence
 
-- Oracle fixtures `protocol-v2/ordered-*` (47; `ordered-split-list-merge-destruct` is unsupported,
+- Oracle fixtures `protocol-v2/ordered-*` (49; `ordered-split-list-merge-destruct` is unsupported,
 U-0113) cover:
   - parse order, JSON and XML;
   - the XML opaque anchor;
@@ -143,7 +143,8 @@ U-0113) cover:
     threshold; a local insertion whose first sibling is opaque while the first schema node is
     foreign.
   - a Merge into a list run split by a schema node; XPath in a table level of two contexts; a
-    diff insertion after an anchor followed by an opaque node (D-0058).
+    diff insertion after an anchor followed by an opaque node (D-0058); module validation of
+    duplicates and of a leafref after an opaque root.
   The `seq/trim-*` and `ops/opidx-split-run-leader-switch` fixtures, which parse ordered, now run.
   The request-differential `ordered-input` class runs against the live oracle.
 - Go: `TestSequenceKindModel` (opidx), `TestSiblingFacadeInterleavedModel`,
@@ -181,6 +182,13 @@ Read in document order (fixed):
     `lyd_find_sibling_first`);
   - the cross-context table probe returns the bucket's first record (`leaderFirstMixed`);
   - `runBounds` cuts a gap-free operation or unordered run at its piece;
+- round 7: top-level validation follows `lyd_validate` in document order:
+  - each module starts at its first node (`lyd_mod_next_module`, `moduleFirst`);
+  - `lyd_validate_new` walks from that node to an opaque node or another module's node;
+  - `modStart`, the implicit-node walk and the subtree walk use document positions;
+  - an implicit top-level node is placed by the anchor walk from the module's first node, and
+    `first` moves only when the node lands right before it (`modInsertInterleaved`);
+  - `FirstChild` charges its table lookup to the evaluation (the `FirstLookup` charge);
 - round 6: XPath child lookups in an interleaved set with a children table, either holding
   siblings of several contexts or looking up a duplicate-instance list, read the table's
   buckets of every equivalent schema node (`tableFirst`), then `lyd_find_sibling_opaq_next`.

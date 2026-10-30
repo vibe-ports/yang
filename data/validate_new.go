@@ -33,21 +33,23 @@ func (vc *valCtx) validateNew(parent *Node, sparent *schema.Node, mod *schema.Mo
 			return rc
 		}
 	}
-	// up to the first opaque sibling (validation.c:1023); autodelete only removes, removed nodes
-	// are skipped below
-	nodes := sib.schemaSpan().Slice(0, sib.beforeOpaque()).Collect()
-	if mod != nil {
-		// lyd_owner_module: an augment's node in mod's top-level choice is mod's data
-		kept := nodes[:0]
-		for _, n := range nodes {
-			if err := vc.checkContext(); err != nil {
-				return err
-			}
-			if ownerModule(vc.t.context(), n) == mod {
-				kept = append(kept, n)
-			}
+	// from *first up to the first opaque sibling or, at the top level, the first node of another
+	// module (validation.c:1023-1027; lyd_owner_module: an augment's node in mod's top-level choice
+	// is mod's data); *first is lyd_validate's first2, the module's first node (modFirst) or the
+	// tree's. Autodelete only removes, removed nodes are skipped below.
+	var nodes []*Node
+	start := sib.docFirst()
+	if parent == nil && vc.modFirst != nil {
+		start = vc.modFirst
+	}
+	for c := start; c != nil && c.schema != nil; c = sib.docNext(c) {
+		if err := vc.checkContext(); err != nil {
+			return err
 		}
-		nodes = kept
+		if mod != nil && ownerModule(vc.t.context(), c) != mod {
+			break
+		}
+		nodes = append(nodes, c)
 	}
 	dups := dupIndex{sib: sib}
 	explicit := map[*schema.Node]bool{}

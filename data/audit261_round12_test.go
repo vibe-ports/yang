@@ -463,7 +463,7 @@ func TestMixedFirstChildDefersToChargedXPathScan(t *testing.T) {
 	}
 	probe := xs{s: parent.kids.first().schema, set: a}
 	child := wrap(a, parent).(xn)
-	if _, ok := child.FirstChild(probe); ok {
+	if _, ok := child.FirstChild(probe, nil); ok {
 		t.Fatal("mixed FirstChild must defer to the charged XPath scan")
 	}
 	if _, ok := child.LookupChild(probe, []string{"a"}); ok {

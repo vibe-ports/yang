@@ -58,7 +58,7 @@ func TestAnyXPathHashExcludesPayload(t *testing.T) {
 	if got, ok := (xn{a, set}).LookupChild(xs{value, set}, nil); !ok || len(got) != 0 {
 		t.Fatalf("any hash lookup = %v, handled=%t", got, ok)
 	}
-	if got, ok := (xn{a, set}).FirstChild(xs{value, set}); !ok || got == nil || got.(xn).n.schema != value {
+	if got, ok := (xn{a, set}).FirstChild(xs{value, set}, nil); !ok || got == nil || got.(xn).n.schema != value {
 		t.Fatalf("any first-child lookup = %v, handled=%t", got, ok)
 	}
 	for _, tc := range []struct {
@@ -101,7 +101,7 @@ func TestAnyXPathPredicateFirstInstanceIncludesPayload(t *testing.T) {
 			payload = ln
 		}
 	}
-	if got, ok := (xn{an, set}).FirstChild(xs{l, set}); !ok || got != (xn{payload, set}) {
+	if got, ok := (xn{an, set}).FirstChild(xs{l, set}, nil); !ok || got != (xn{payload, set}) {
 		t.Fatalf("first payload list = %v, handled=%t", got, ok)
 	}
 	if got, ok := (xn{an, set}).LookupChild(xs{l, set}, []string{"x"}); !ok || len(got) != 0 {
@@ -154,7 +154,7 @@ func TestAnyXPathCopiedPayloadFirstInstance(t *testing.T) {
 	mustLink(t, tr.insert(other, newTerm(tk, tv), insertDefault))
 	mustLink(t, tr.insert(c, other, insertDefault))
 	// a payload has no children table: the evaluator's charged walk finds the payload's l
-	if got, ok := (xn{dup, target}).FirstChild(xs{tl, target}); ok {
+	if got, ok := (xn{dup, target}).FirstChild(xs{tl, target}, nil); ok {
 		t.Fatalf("cross-context first payload list = %v, handled=%t", got, ok)
 	}
 	r, diags, err := tr.EvalXPath("count((/ac-lookup:a | /ac-lookup:c)/ac-lookup:l[k='x'])", XPathOptions{})
@@ -249,7 +249,7 @@ func TestAnyXPathFirstInstanceByNameAcrossContexts(t *testing.T) {
 	mustLink(t, tr.insert(nil, c, insertDefault))
 	cl := c.schema.Children[0]
 	mustLink(t, tr.insert(c, xpTestList(t, tr, cl, "x"), insertDefault))
-	if got, ok := (xn{dup, target}).FirstChild(xs{cl, target}); ok { // declined: the charged walk
+	if got, ok := (xn{dup, target}).FirstChild(xs{cl, target}, nil); ok { // declined: the charged walk
 		t.Fatalf("cross-context first instance by name = %v, handled=%t", got, ok)
 	}
 	xpTestCount(t, tr, "count((/ac-shadow:a | /ac-shadow:c)/ac-shadow:l[k='x'])", 1)
@@ -494,7 +494,7 @@ func TestAnyXPathCrossContextFirstChildCharged(t *testing.T) {
 		tr.work.visits = true
 		q.kids.work = &tr.work
 		tr.work.Store(0)
-		got, ok := wrap(a, q).(xn).FirstChild(l)
+		got, ok := wrap(a, q).(xn).FirstChild(l, nil)
 		switch {
 		case got != nil, ok != (n >= htMinItems):
 			t.Errorf("n=%d: FirstChild = %v, %t", n, got, ok)

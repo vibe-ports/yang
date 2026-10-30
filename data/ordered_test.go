@@ -858,7 +858,7 @@ func TestForwardMetadataScaling(t *testing.T) {
 }
 
 // TestForwardMetadataCancel: the document-order index polls the parse's context, and a parse
-// cancelled at any check, that one included, leaves a consistent tree.
+// cancelled at its checks, the index's included, fails and leaves a consistent tree.
 func TestForwardMetadataCancel(t *testing.T) {
 	set := opIndexSet(t, orderedSchema)
 	polls := func(before bool, m int) (total int) {
@@ -873,15 +873,18 @@ func TestForwardMetadataCancel(t *testing.T) {
 	if forward, after := polls(true, 3000)-polls(true, 0), polls(false, 3000)-polls(false, 0); forward < after+2 {
 		t.Fatalf("the metadata index does not poll: %d more checks, %d without forward metadata", forward, after)
 	}
-	eachCancelPoint(t, func(ctx *cancelAtContext) {
+	// cancelled at a sample of the checks, the index's last ones (at the end of the parse) included
+	total := polls(true, 3000)
+	for _, at := range []int{1, total / 4, total / 2, total - 3, total - 2, total - 1, total} {
+		ctx := &cancelAtContext{Context: context.Background(), at: at}
 		var tr *Tree
 		o := parseOpts{ParseOptions: ParseOptions{Unknown: Opaque, ParseOnly: true, Ordered: true}, ordered: true}
 		_, _, err := parseWith(ctx, strings.NewReader(forwardMetaInput(4, 3000, true)), set, o, parseJSON, func(lc *lydCtx) { tr = lc.tree })
-		if err != nil && !errors.Is(err, context.Canceled) {
-			t.Fatalf("cancel at %d: %v", ctx.at, err)
+		if !errors.Is(err, context.Canceled) {
+			t.Fatalf("cancel at %d of %d: %v", at, total, err)
 		}
 		opidxAssertTreeInvariant(t, tr)
-	})
+	}
 }
 
 // TestSchemaSplitMergeUnbatched: Merge into a list run that another schema node splits looks each
@@ -1068,6 +1071,85 @@ func TestInterleavedForwardRecovery(t *testing.T) {
 			if got := orderedChildren(t, tr); !slices.Equal(got, []string{"a=x", "zz", "c=z", "yy", "ll=3"}) {
 				t.Fatalf("%s: %v", pick, got)
 			}
+		}
+	}
+}
+
+// TestFirstChildMixedCharged: FirstChild in an interleaved child level with a table and siblings
+// of two contexts reads every first-instance record bucket (tableFirst); that work goes to the
+// evaluation's charge, so the XPath budget refuses it and a cancelled context stops it, however
+// many distinct list schemas the level holds.
+func TestFirstChildMixedCharged(t *testing.T) {
+	const lists = 300
+	var mod, data strings.Builder
+	mod.WriteString("module m { yang-version 1.1; namespace \"urn:m\"; prefix m; leaf top { type string; } container c { leaf a { type string; } leaf b { type string; }")
+	data.WriteString(`{"m:c":{"a":"x","zz":"u"`)
+	for i := range lists {
+		fmt.Fprintf(&mod, " list l%d { key k; leaf k { type string; } }", i)
+		fmt.Fprintf(&data, `,"l%d":[{"k":"1"}]`, i)
+	}
+	mod.WriteString(" } }")
+	data.WriteString("}}")
+	dir := t.TempDir()
+	if err := os.WriteFile(dir+"/m.yang", []byte(mod.String()), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	load := func() *schema.Set {
+		c, ds, err := yang.NewContext(yang.Options{NoYangLibrary: true}, os.DirFS(dir))
+		if err != nil {
+			t.Fatal(ds, err)
+		}
+		if ds, err := c.Load("m", "", nil); err != nil {
+			t.Fatal(ds, err)
+		}
+		return snap.Set(c.Schema())
+	}
+	setA, setB := load(), load()
+	tr, err := parseOrdered(t, setA, false, data.String(), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	src, err := parseOrdered(t, setA, false, `{"m:top":"t"}`, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	fb, _, err := parseJSONString(setB, `{"m:c":{"b":"y"}}`, Reject, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	f := fb.top.first()
+	if err := unlink(f); err != nil {
+		t.Fatal(err)
+	}
+	if err := src.link(nil, &src.top, f, src.top.SchemaLen()); err != nil {
+		t.Fatal(err)
+	}
+	if err := tr.Merge(src); err != nil {
+		t.Fatal(err)
+	}
+	var c *Node
+	for n := range tr.Top() {
+		if n.Name() == "c" {
+			c = n
+		}
+	}
+	if !c.kids.st.interleaved() || c.kids.ht == nil || !c.kids.mixedContexts() {
+		t.Fatal("fixture: want an interleaved level with a table and two contexts")
+	}
+	var l7 *schema.Node
+	for _, k := range setA.Implemented("m").Top[1].Children {
+		if k.Name == "l7" {
+			l7 = k
+		}
+	}
+	var charged int64
+	got, ok := (xn{c, setA}).FirstChild(xs{l7, setA}, func(n int64) error { charged += n; return nil })
+	if !ok || got == nil || got.(xn).n.schema != l7 || charged < lists {
+		t.Fatalf("found %v %v, charged %d", got, ok, charged)
+	}
+	for _, refusal := range []error{xpath.ErrBudget, context.Canceled} {
+		if _, ok := (xn{c, setA}).FirstChild(xs{l7, setA}, func(int64) error { return refusal }); ok {
+			t.Fatalf("%v: the lookup went on", refusal)
 		}
 	}
 }

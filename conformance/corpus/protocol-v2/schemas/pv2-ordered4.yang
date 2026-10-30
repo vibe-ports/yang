@@ -1,0 +1,23 @@
+module pv2-ordered4 {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:pv2-ordered4";
+  prefix o4;
+
+  description
+    "Hand-written (this repo): top-level data validated after an opaque
+     LYD_PARSE_ORDERED root (design 15).";
+
+  leaf target {
+    type string;
+  }
+  leaf r {
+    type leafref {
+      path "/o4:target";
+    }
+  }
+  container c {
+    leaf v {
+      type string;
+    }
+  }
+}

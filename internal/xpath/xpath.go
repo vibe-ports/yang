@@ -137,8 +137,10 @@ type OpaqueSchema interface {
 
 // FirstLookup is an optional interface of a Node: its first lyd_child_any instance of sn found
 // through an index (lyd_find_sibling_schema), nil if it has none. ok=false declines: the evaluator scans.
+// charge pays data-dependent lookup work to the evaluation's budget and polls its context; its
+// error sticks in the evaluation.
 type FirstLookup interface {
-	FirstChild(sn SchemaNode) (n Node, ok bool)
+	FirstChild(sn SchemaNode, charge func(int64) error) (n Node, ok bool)
 }
 
 // contextSchema is an optional interface of a SchemaNode that knows its context
