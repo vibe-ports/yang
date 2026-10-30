@@ -1,0 +1,17 @@
+# lyd_validate_module of a module whose data follows another module's root (ordered input, no opaque node): the implicit default's anchor search starts at the module's first node, finds no anchor, and the default goes after first->prev, between the two roots
+fixtures:
+  - id: protocol-v2/ordered-implicit-reversed-modules
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#7.6.1"]
+    areas: [validation]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      context_options: ["no_yanglibrary"]
+      modules: [{name: "pv2-ordered0"}, {name: "pv2-ordered7"}]
+      steps:
+        - {do: parse, format: json, data_type: data, parse_only: true, parse_options: [ordered], data: '{"pv2-ordered7:x": "x", "pv2-ordered0:b": "b"}'}
+        - {do: validate, module: pv2-ordered0, validate_options: [not_final]}
+        - {do: dump}
+    golden: golden/ordered-implicit-reversed-modules.json

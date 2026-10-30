@@ -119,7 +119,7 @@ write takes the code path it took before (the counted-work and scaling tests are
 
 ## Evidence
 
-- Oracle fixtures `protocol-v2/ordered-*` (54; `ordered-split-list-merge-destruct` is unsupported,
+- Oracle fixtures `protocol-v2/ordered-*` (55; `ordered-split-list-merge-destruct` is unsupported,
 U-0113) cover:
   - parse order, JSON and XML;
   - the XML opaque anchor;
@@ -146,7 +146,8 @@ U-0113) cover:
     diff insertion after an anchor followed by an opaque node (D-0058); module validation of
     duplicates and of a leafref after an opaque root; a replaced case holding the module's first
     node; a diff of another context applied past an opaque sibling; top-level leaf-list defaults
-    past an opaque root; a list key run cut by an opaque child.
+    past an opaque root; a list key run cut by an opaque child; a default in a top level out of
+    module order.
   The `seq/trim-*` and `ops/opidx-split-run-leader-switch` fixtures, which parse ordered, now run.
   The request-differential `ordered-input` class runs against the live oracle.
 - Go: `TestSequenceKindModel` (opidx), `TestSiblingFacadeInterleavedModel`,
@@ -184,6 +185,11 @@ Read in document order (fixed):
     `lyd_find_sibling_first`);
   - the cross-context table probe returns the bucket's first record (`leaderFirstMixed`);
   - `runBounds` cuts a gap-free operation or unordered run at its piece;
+- round 12: every top level out of schema order, interleaved or only `schemaUnordered`, takes
+  the one module-relative implicit insertion (`modInsertInterleaved`). libyang's walks from the
+  module's first node read the physical order with or without opaque nodes
+  (`ordered-implicit-reversed-modules`). The other branches on `interleaved()` choose between
+  logical and document order, which are the same order when the set is not interleaved;
 - round 11: a list's key run is its leading key children in document order, stopping at an
   opaque or non-key child, as `lyd_hash` reads it; ParseOnly skips `checkKeys`, so an opaque child
   can sit between keys (`ordered-list-key-past-opaque`). `keyRun` (the logical run `keyN` cut at

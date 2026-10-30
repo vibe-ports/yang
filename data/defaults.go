@@ -310,7 +310,9 @@ func (vc *valCtx) addImplicit(parent, n *Node) error {
 // agree while the module's nodes are in schema order).
 func (vc *valCtx) modInsert(n *Node) error {
 	t, sib := vc.t, &vc.t.top
-	if sib.st != nil && sib.st.interleaved() {
+	if sib.st != nil && (sib.st.interleaved() || sib.schemaUnordered) {
+		// out of schema order (an Ordered parse, copies): libyang's walks from first read the
+		// physical order, opaque nodes or not
 		return vc.modInsertInterleaved(n)
 	}
 	fi, err := vc.siblingIndex(sib.schemaSpan(), vc.modFirst)
@@ -335,7 +337,8 @@ func (vc *valCtx) modInsert(n *Node) error {
 	return nil
 }
 
-// modInsertInterleaved is modInsert in an interleaved top level (design 15): libyang's
+// modInsertInterleaved is modInsert in a top level out of schema order, interleaved or not
+// (design 15): libyang's
 // lyd_insert_node with first_sibling at the module's first node, in document order. A sorted
 // instance with a leader takes the ordinary sorted insertion; otherwise
 // lyd_insert_node_ordby_schema:
