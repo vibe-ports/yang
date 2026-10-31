@@ -196,6 +196,10 @@ Read in document order (fixed):
   schema, holds only the target set's nodes, and the cost is O(depth) (`TestEquivalentInColdBudgetAndDepth`,
   `TestEquivalentInOutputAndScaling`, `TestEquivalentCacheKeepsNoContext`). `leaderFirstMixed`
   uses the same candidates.
+- round 20: every charge equals the reads it pays for. The record lookups pay one unit per
+  candidate record (one per equivalent schema node), not every first-instance record of the
+  level (`TestMixedIdentityDiffManyStateLeafLists`: an identity diff over 2000 distinct state
+  leaf-lists and a foreign child stays within the default lookup quota);
 - round 19: a foreign candidate's direct comparison is charged as `Match` charges a local one (one
   step and the probe's key bytes, through the probe's budget; `TestForeignCompareCharged`), and
   the engine's U-0113 guard tells run pieces apart by module and node name

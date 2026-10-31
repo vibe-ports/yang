@@ -259,10 +259,7 @@ func interleavedTableLookup(sib *siblings, set *schema.Set, p *xprobe) ([]xpath.
 func tableFirst(sib *siblings, set *schema.Set, p *xprobe) (*Node, error) {
 	sn := p.node.schema
 	if sib.firstRecordSchema(sn) && (p.schemaOnly || isDupInstList(sn)) {
-		if err := p.work(int64(len(sib.leaders)) + 1); err != nil {
-			return nil, err
-		}
-		c, err := sib.leaderFirstMixedCharged(sn, p.charge)
+		c, err := sib.leaderFirstMixedCharged(sn, p.charge) // pays the candidates it reads
 		if err != nil {
 			return nil, err
 		}

@@ -1297,6 +1297,11 @@ func (s *siblings) leaderFirstMixedCharged(sn *schema.Node, charge func(int64) e
 	}
 	var best *record
 	for _, k := range ks {
+		if charge != nil {
+			if err := charge(1); err != nil { // one candidate record read
+				return nil, err
+			}
+		}
 		s.visit()
 		if c := s.leaders[k]; c != nil && c.first != nil && (best == nil || c.first.seq < best.seq) {
 			best = c.first

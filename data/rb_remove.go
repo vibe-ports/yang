@@ -152,10 +152,7 @@ func (s *siblings) removalOrder(n, prev, next, tail *Node, around func(*Node) (*
 		leader = s.runLeader(n.schema)
 		if len(s.contexts) > 1 {
 			if s.ht != nil {
-				if err := w.chargeHash(uint64(len(s.leaders))); err != nil {
-					return nil, nil, err
-				}
-				var err error
+				var err error // the lookup pays the candidate records it reads
 				if leader, err = s.leaderFirstMixedCharged(n.schema, chargeOf(w)); err != nil {
 					return nil, nil, err
 				}

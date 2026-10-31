@@ -97,11 +97,11 @@ var ignoredErrorAllowlist = map[string]string{
 	"siblings.go:795:Write":                  allowNoFailWriter,
 	"siblings.go:793:Write":                  allowNoFailWriter,
 	"siblings.go:794:Write":                  allowNoFailWriter,
-	"siblings.go:2143:findFirstWork":         allowNoWork,
-	"siblings.go:2335:compareSingleWork":     allowNoWork,
-	"siblings.go:2404:Fprintf":               "fmt writes to a strings.Builder, whose Write method cannot fail",
+	"siblings.go:2148:findFirstWork":         allowNoWork,
+	"siblings.go:2340:compareSingleWork":     allowNoWork,
+	"siblings.go:2411:Fprintf":               "fmt writes to a strings.Builder, whose Write method cannot fail",
 	"siblings.go:2409:Fprintf":               "fmt writes to a strings.Builder, whose Write method cannot fail",
-	"siblings.go:2406:Fprintf":               "fmt writes to a strings.Builder, whose Write method cannot fail",
+	"siblings.go:2414:Fprintf":               "fmt writes to a strings.Builder, whose Write method cannot fail",
 	"unres.go:105:logErr":                    allowLoggedMarker,
 	"unres.go:187:item":                      allowLoggedMarker,
 	"unres.go:595:xpathErr":                  "validation commits each saved probe diagnostic before returning the final type diagnostic",
@@ -116,7 +116,7 @@ var ignoredErrorAllowlist = map[string]string{
 	"validate.go:857:WriteByte":              allowNoFailWriter,
 	"xpathnode.go:83:LookupPrepared":         "LookupChild prepares without a charge callback, so LookupPrepared cannot return a work error",
 	"xpathnode.go:88:LookupPrepared":         "the schema-only probe has no charge callback, so LookupPrepared cannot return a work error",
-	"xpathnode.go:553:StringWithBudget":      "String uses a background context and nil budget callbacks; serialization errors remain available through StringWithBudget",
+	"xpathnode.go:550:StringWithBudget":      "String uses a background context and nil budget callbacks; serialization errors remain available through StringWithBudget",
 }
 
 type auditImporter struct {

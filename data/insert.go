@@ -1237,10 +1237,11 @@ func (t *Tree) sortedLeaderIndex(sib *siblings, n *Node) int {
 		}
 		return t.schemaIndex(sib, n.schema)
 	}
-	// The record lookup reads every first-instance record: reserve it first. The position search
-	// is charged step by step (chargedIndex), not reserved for every sibling: a reservation of the
-	// whole set per insertion made a run of insertions quadratic.
-	if err := t.work.chargeHash(uint64(len(sib.leaders)) + 1); err != nil {
+	// The record lookup pays the candidate records it reads (leaderFirstMixedCharged, one per
+	// equivalent schema node); the position search is charged step by step (chargedIndex), not
+	// reserved for every sibling: a reservation of the whole set per insertion made a run of
+	// insertions quadratic.
+	if err := t.work.chargeHash(1); err != nil {
 		return -1
 	}
 	var leader *Node

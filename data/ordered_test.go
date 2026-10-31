@@ -1390,6 +1390,10 @@ func TestUnorderedAnchorCharged(t *testing.T) {
 		return tr
 	}
 	tr := parse(false)
+	if _, err := tr.NewTerm(nil, "m:b", "x", NewOptions{}); err != nil { // the default quota: a legitimate walk
+		t.Fatalf("a walk over %d siblings under the default quota: %v", n, err)
+	}
+	tr = parse(false)
 	tr.work.hashLimit = 8192 // per operation (beginHashWork)
 	if _, err := tr.NewTerm(nil, "m:b", "x", NewOptions{}); !errors.Is(err, yang.ErrBudget) {
 		t.Fatalf("a walk over %d siblings under a small quota: %v", n, err)
@@ -2172,5 +2176,35 @@ func TestForeignCompareCharged(t *testing.T) {
 				t.Fatalf("n=%d: a %v during the comparison: %v", n, refusal, err)
 			}
 		}
+	}
+}
+
+// TestMixedIdentityDiffManyStateLeafLists: Diff of a tree with itself, whose hashed child level
+// out of schema order holds 2000 distinct state leaf-lists and a child of another context, stays
+// within the default lookup quota: each lookup pays the candidate records it reads (one per
+// equivalent schema node), not every first-instance record of the level.
+func TestMixedIdentityDiffManyStateLeafLists(t *testing.T) {
+	const n = 2000 // the audit's 260 already exceeded the quota when every record was charged
+	var mod, data strings.Builder
+	mod.WriteString(`module m { yang-version 1.1; namespace "urn:m"; prefix m; container c { leaf a { type string; } leaf z { type string; }`)
+	data.WriteString(`{"m:c":{"z":"z0"`)
+	for i := range n {
+		fmt.Fprintf(&mod, " leaf-list s%d { config false; type uint8; }", i)
+		fmt.Fprintf(&data, `,"s%d":[1,2]`, i)
+	}
+	mod.WriteString(" } }")
+	data.WriteString(`}}`)
+	setA, setB := xctxSets(t, mod.String())
+	tr, err := parseOrdered(t, setA, false, data.String(), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	c := tr.top.first()
+	linkForeign(t, tr, c, setB, `{"m:c":{"a":"y"}}`)
+	if c.kids.ht == nil || !c.kids.mixedContexts() || !c.kids.schemaUnordered {
+		t.Fatal("fixture: want a hashed level of two contexts out of schema order")
+	}
+	if diff, err := Diff(tr, tr, DiffOptions{}); err != nil || diff != nil {
+		t.Fatalf("identity diff: %v %v", diff, err)
 	}
 }
