@@ -119,7 +119,7 @@ write takes the code path it took before (the counted-work and scaling tests are
 
 ## Evidence
 
-- Oracle fixtures `protocol-v2/ordered-*` (62; `ordered-split-list-merge-destruct` is unsupported,
+- Oracle fixtures `protocol-v2/ordered-*` (65; `ordered-split-list-merge-destruct` is unsupported,
 U-0113) cover:
   - parse order, JSON and XML;
   - the XML opaque anchor;
@@ -196,9 +196,16 @@ Read in document order (fixed):
   schema, holds only the target set's nodes, and the cost is O(depth) (`TestEquivalentInColdBudgetAndDepth`,
   `TestEquivalentInOutputAndScaling`, `TestEquivalentCacheKeepsNoContext`). `leaderFirstMixed`
   uses the same candidates.
+- round 22: `lyd_new_implicit` does not create a module's defaults in schema order: choices
+  first (the default case, or the case that has data, whose own choices come first again), then
+  NP containers and leaf defaults; every module does this in turn. The walk resumes only when the
+  new node's schema comes at or after the last one's in the module's schema order
+  (`valCtx.schemaRank`, read once per module), else it starts afresh from the module's first
+  node, so each choice costs at most one fresh walk (`ordered-implicit-choice-first`,
+  `-case-nested`, `-all-modules`);
 - round 21: a module-relative implicit insertion resumes the anchor walk where the previous one
-  ended (`modWalk`: the anchor, the node inserted before it, the schema iterator), since defaults
-  come in schema order and the next walk would pass the same nodes again; every remaining step,
+  ended (`modWalk`: the anchor, the node inserted before it, the schema iterator), since the next
+  default in schema order would pass the same nodes again; every remaining step,
   the backward opaque-anchor walk included, is charged to the validation's quota. The other
   validation walks (`moduleFirst`, the Present run scan, the `validateNew` walk, the
   `newImplicitR` walk) charge one unit per sibling visited (`valCtx.step`)

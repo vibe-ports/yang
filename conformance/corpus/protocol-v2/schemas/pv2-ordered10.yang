@@ -1,0 +1,52 @@
+module pv2-ordered10 {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:pv2-ordered10";
+  prefix o10;
+
+  description
+    "Hand-written (this repo): top-level defaults that lyd_new_implicit
+     creates out of schema order, choices first (design 15).";
+
+  leaf a {
+    type string;
+    default "a";
+  }
+  container npc {
+    leaf c {
+      type string;
+      default "c";
+    }
+  }
+  choice ch {
+    default cs;
+    case cs {
+      leaf b {
+        type string;
+        default "b";
+      }
+    }
+  }
+  choice ch2 {
+    case p {
+      leaf p1 {
+        type string;
+      }
+      leaf p2 {
+        type string;
+        default "p2";
+      }
+      choice inner {
+        default ic;
+        case ic {
+          leaf q {
+            type string;
+            default "q";
+          }
+        }
+      }
+    }
+  }
+  leaf marker {
+    type string;
+  }
+}

@@ -1,0 +1,30 @@
+module pv2-ordered11 {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:pv2-ordered11";
+  prefix o11;
+
+  description
+    "Hand-written (this repo): the other module around pv2-ordered10's data, with
+     its own out-of-order defaults
+     (design 15).";
+
+  leaf x {
+    type string;
+  }
+  leaf w {
+    type string;
+    default "w";
+  }
+  choice zc {
+    default zcs;
+    case zcs {
+      leaf zb {
+        type string;
+        default "zb";
+      }
+    }
+  }
+  leaf y {
+    type string;
+  }
+}

@@ -73,6 +73,9 @@ type valCtx struct {
 	modFirst *Node
 	modCur   *schema.Module // the module lyd_validate validates now (lyd_del_move_root's mod)
 	modWalk  *modWalk       // the anchor walk the last module-relative implicit insertion ended
+	// modRank is each module's top-level schema order (schema.GetNext), the ranks modWalk's
+	// resumption compares
+	modRank map[*schema.Module]map[*schema.Node]int
 	// module is the module of lyd_validate_module: only its data is validated (nil: every
 	// module, lyd_validate_all)
 	module *schema.Module
@@ -349,9 +352,10 @@ func (vc *valCtx) modInsert(n *Node) error {
 // node goes after first->prev (the last sibling when first is the tree's first). first moves
 // only when the node lands right before it.
 // modWalk is where a module-relative anchor walk ended (modInsertInterleaved): its anchor, the
-// node inserted right before it, and the schema iterator standing at that node's schema. Defaults
-// are created in schema order, so the next walk would pass exactly the nodes this one passed and
-// the node it inserted; it resumes here instead, which keeps a module's defaults linear.
+// node inserted right before it, and the schema iterator standing at that node's schema. A next
+// default at or after that schema in schema order would pass exactly the nodes this walk passed
+// and the node it inserted; it resumes here instead, which keeps a module's defaults linear. An
+// earlier one (choices' defaults come first) walks afresh.
 type modWalk struct {
 	gen          uint64 // the top level's generation right after the insertion
 	last, anchor *Node
@@ -366,6 +370,30 @@ func (vc *valCtx) dropModWalk() {
 		w.stop()
 		vc.modWalk = nil
 	}
+}
+
+// schemaRank is sn's index in its module's top-level schema order (schema.GetNext), -1 when the
+// order does not have it; a module's order is read once per validation, a step per schema node.
+func (vc *valCtx) schemaRank(sn *schema.Node) (int, error) {
+	m := sn.Module
+	r := vc.modRank[m]
+	if r == nil {
+		r = map[*schema.Node]int{}
+		for s := range schema.GetNext(nil, m.Top, 0) {
+			if err := vc.step(); err != nil {
+				return 0, err // a refusal is not cached
+			}
+			r[s] = len(r)
+		}
+		if vc.modRank == nil {
+			vc.modRank = map[*schema.Module]map[*schema.Node]int{}
+		}
+		vc.modRank[m] = r
+	}
+	if i, ok := r[sn]; ok {
+		return i, nil
+	}
+	return -1, nil
 }
 
 func (vc *valCtx) modInsertInterleaved(n *Node) error {
@@ -395,8 +423,22 @@ func (vc *valCtx) modInsertInterleaved(n *Node) error {
 	var stop func()
 	var sn *schema.Node
 	var ok bool
+	resume := false
 	if w := vc.modWalk; w != nil && w.gen == sib.gen && w.last.siblingsOf() == sib && sib.docNext(w.last) == w.anchor &&
-		ownerModule(t.context(), w.last) == own {
+		ownerModule(t.context(), w.last) == own && w.last.schema.Module == n.schema.Module {
+		// the iterator stands at last's schema: only a node at or after it in schema order finds
+		// its anchor past last (newImplicit creates choices' defaults first, so the order breaks)
+		rn, err := vc.schemaRank(n.schema)
+		if err != nil {
+			return err
+		}
+		rl, err := vc.schemaRank(w.last.schema)
+		if err != nil {
+			return err
+		}
+		resume = rn >= 0 && rl >= 0 && rn >= rl
+	}
+	if w := vc.modWalk; resume {
 		// the nodes up to the last inserted one pass again: resume at its anchor
 		match, next, stop, sn, ok = w.anchor, w.next, w.stop, w.sn, w.ok
 		vc.modWalk = nil
