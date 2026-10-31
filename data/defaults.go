@@ -280,11 +280,18 @@ func (vc *valCtx) addImplicit(parent, n *Node) error {
 	if hasWhen(n.schema) {
 		n.flags |= FlagWhenTrue
 	}
-	if parent == nil && vc.modFirst != nil {
+	switch top := &vc.t.top; {
+	case parent == nil && vc.modFirst != nil:
 		if err := vc.modInsert(n); err != nil {
 			return err
 		}
-	} else {
+	case parent == nil && vc.modCur != nil && top.st != nil && (top.st.interleaved() || top.schemaUnordered):
+		// lyd_validate's first2 is the tree itself (the module starts at its first root): the
+		// same anchor walk from the tree's first node, resumable (modInsertInterleaved)
+		if err := vc.modInsertInterleaved(n); err != nil {
+			return err
+		}
+	default:
 		if err := vc.t.insert(parent, n, insertDefault); err != nil {
 			return err
 		}
@@ -413,12 +420,17 @@ func (vc *valCtx) modInsertInterleaved(n *Node) error {
 		if err := t.insert(nil, n, insertDefault); err != nil {
 			return err
 		}
-		if sib.docNext(n) == vc.modFirst {
+		if vc.modFirst != nil && sib.docNext(n) == vc.modFirst {
 			vc.modFirst = n
 		}
 		return nil
 	}
+	// first: the module's first node, or the tree's first when lyd_validate passes the tree
+	// (modFirst nil), which moves with the document by itself
 	first := vc.modFirst
+	if first == nil {
+		first = sib.docFirst()
+	}
 	own := ownerModule(t.context(), n)
 	var match *Node
 	var next func() (*schema.Node, bool)
@@ -542,13 +554,19 @@ walk:
 	if err := t.link(nil, sib, n, at); err != nil {
 		return err
 	}
-	if anchor == first {
-		vc.modFirst = n // lyd_insert_before_node of the first sibling moves first
+	nextFirst := sib.docFirst()
+	if vc.modFirst != nil {
+		if anchor == first {
+			vc.modFirst = n // lyd_insert_before_node of the first sibling moves first
+		}
+		nextFirst = vc.modFirst
 	}
-	w := &modWalk{gen: sib.gen, last: n, first: vc.modFirst, next: next, stop: stop, sn: sn, ok: ok}
+	w := &modWalk{gen: sib.gen, last: n, first: nextFirst, next: next, stop: stop, sn: sn, ok: ok}
 	switch {
-	case found && anchor != nil && anchor == match && sib.docNext(n) == anchor:
-		w.tail, w.anchor = n, anchor // n went right before the anchor
+	case anchor != nil && anchor == match && sib.docNext(n) == anchor:
+		// n went right before the anchor: a node of the module after n's schema (found), or the
+		// opaque or other module's node the walk stopped at, where every later walk stops too
+		w.tail, w.anchor = n, anchor
 	case match == nil && !exhausted && end && sib.docNext(n) == nil:
 		w.tail = n // the walk ran off the end, and n went after it
 	case match == nil && !exhausted && !end && seen != nil && sib.docNext(seen) == nil:

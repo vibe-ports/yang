@@ -2318,7 +2318,7 @@ func (t *Tree) linkApplyBound(parent *Node, sib *siblings, n *Node, at int) (uin
 		}
 	}
 	if n.schema != nil && n.schema.IsKey() && parent != nil {
-		a, err := t.work.termHashBound(parent, n.schema, n.value, at)
+		a, err := t.work.termHashBound(parent, n.schema, n.value, n, at)
 		if err != nil {
 			t.work.hashErr = err
 			return 0, err

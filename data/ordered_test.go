@@ -1202,6 +1202,34 @@ func TestCaseReplacedReversedFirst(t *testing.T) {
 // run in document order, which stops at zz (lyd_hash). Unlinking zz joins the run without a
 // rehash (lyd_unlink does not rehash the parent); the next native rehash, a changed key value,
 // takes both keys (oracle: protocol-v2/ordered-list-key-past-opaque for the lookup and the dup).
+// TestKeyPastTrailingOpaqueReserve: a key appended behind a trailing opaque child (the link that
+// first interleaves the set) is outside lyd_hash's key run, so the link reserves no hashing for
+// its value: a large value parses within a quota well below its size.
+func TestKeyPastTrailingOpaqueReserve(t *testing.T) {
+	set := ordered2Set(t)
+	big := strings.Repeat("y", 1<<20)
+	in := `{"pv2-ordered2:c":{"l":[{"k":"x","zz":"u","k":"` + big + `"}]}}`
+	parse := func(limit uint64) (*Tree, error) {
+		o := parseOpts{ParseOptions: ParseOptions{Unknown: Opaque, ParseOnly: true, Ordered: true}, ordered: true}
+		tr, _, err := parseWith(context.Background(), strings.NewReader(in), set, o, parseJSON, func(lc *lydCtx) {
+			lc.tree.work.hashLimit = limit
+		})
+		return tr, err
+	}
+	tr, err := parse(0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	used := tr.work.hashUsed
+	if used >= uint64(len(big)) {
+		t.Fatalf("the parse hashed %d units for a key outside the run", used)
+	}
+	// the reservations of the other links are conservative bounds; none is the value's size
+	if _, err := parse(used + uint64(len(big))/2); err != nil {
+		t.Fatalf("a quota of %d plus half the value: %v", used, err)
+	}
+}
+
 func TestKeyRunPastOpaque(t *testing.T) {
 	set := ordered2Set(t)
 	tr, err := parseOrdered(t, set, false, `{"pv2-ordered2:c":{"l":[{"k":"x","zz":"u","k":"y"}]}}`, nil)
@@ -2178,6 +2206,93 @@ func TestThreeContextRegistrationOrder(t *testing.T) {
 // like Match charges a local one, one step and the probe's key bytes, through the probe's own
 // budget: a long key is paid per candidate, a refused or cancelled budget stops the lookup, and
 // the queried tree's counters stay untouched.
+// TestLongProbeMissCharged: a long probe against short candidates is rejected on the stored hash
+// before its bytes are charged, same-context (Match) and foreign (crossEqual), with and without a
+// children table, so a cheap miss stays within a budget that the probe's bytes per candidate
+// would exceed.
+func TestLongProbeMissCharged(t *testing.T) {
+	setA, setB := xctxSets(t, `module m { yang-version 1.1; namespace "urn:m"; prefix m;
+	  container c { leaf a { type string; } list l { key k; ordered-by user; leaf k { type string; } } } }`)
+	key := strings.Repeat("X", 16<<10)
+	const n = 256
+	var ls strings.Builder
+	for i := range n {
+		if i > 0 {
+			ls.WriteString(",")
+		}
+		fmt.Fprintf(&ls, `{"k":"%d"}`, i)
+	}
+	for _, foreign := range []bool{false, true} {
+		in := `{"m:c":{"a":"x","zz":"u"}}` // a schema first sibling: no opaque fallback match
+		if !foreign {
+			in = `{"m:c":{"a":"x","zz":"u","l":[` + ls.String() + `]}}`
+		}
+		tr, err := parseOrdered(t, setA, false, in, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		c := tr.top.first()
+		if foreign {
+			linkForeign(t, tr, c, setB, `{"m:c":{"l":[`+ls.String()+`]}}`)
+		}
+		l := setA.Implemented("m").Top[0].Children[1]
+		var charged int64
+		probe, err := (xs{l, setA}).PrepareInstance([]string{key}, func(k int64) error { charged += k; return nil })
+		if err != nil {
+			t.Fatal(err)
+		}
+		prepared := charged
+		got, handled, err := (xn{c, setA}).LookupPrepared(probe)
+		if err != nil || !handled || len(got) != 0 {
+			t.Fatalf("foreign %v: %v %v %v", foreign, got, handled, err)
+		}
+		if spent := charged - prepared; spent >= int64(len(key)) {
+			t.Fatalf("foreign %v: a miss over %d short candidates charged %d", foreign, n, spent)
+		}
+	}
+	// the top level has no children table: every candidate is compared, linear branch
+	topA, topB := xctxSets(t, `module m { yang-version 1.1; namespace "urn:m"; prefix m;
+	  leaf x { type string; } list l { key k; ordered-by user; leaf k { type string; } } leaf z { type string; } }`)
+	for _, foreign := range []bool{false, true} {
+		in := `{"m:x":"x","m:zz":"u","m:z":"z"}`
+		if !foreign {
+			in = `{"m:x":"x","m:zz":"u","m:l":[` + ls.String() + `],"m:z":"z"}`
+		}
+		tr, err := parseOrdered(t, topA, false, in, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if foreign {
+			fb, _, err := parseJSONString(topB, `{"m:l":[`+ls.String()+`]}`, Reject, false)
+			if err != nil {
+				t.Fatal(err)
+			}
+			for _, n := range slices.Collect(fb.Top()) {
+				if err := unlink(n); err != nil {
+					t.Fatal(err)
+				}
+				if err := tr.link(nil, &tr.top, n, tr.top.SchemaLen()); err != nil {
+					t.Fatal(err)
+				}
+			}
+		}
+		l := topA.Implemented("m").Top[1]
+		var charged int64
+		probe, err := (xs{l, topA}).PrepareInstance([]string{key}, func(k int64) error { charged += k; return nil })
+		if err != nil {
+			t.Fatal(err)
+		}
+		prepared := charged
+		got, handled, err := xroot{sib: &tr.top, set: topA}.LookupPrepared(probe)
+		if err != nil || !handled || len(got) != 0 {
+			t.Fatalf("top, foreign %v: %v %v %v", foreign, got, handled, err)
+		}
+		if spent := charged - prepared; spent >= int64(len(key)) {
+			t.Fatalf("top, foreign %v: a miss over %d short candidates charged %d", foreign, n, spent)
+		}
+	}
+}
+
 func TestForeignCompareCharged(t *testing.T) {
 	setA, setB := xctxSets(t, `module m { yang-version 1.1; namespace "urn:m"; prefix m;
 	  container c { leaf a { type string; } list l { key k; leaf k { type string; } } } }`)
@@ -2269,12 +2384,28 @@ func TestMixedIdentityDiffManyStateLeafLists(t *testing.T) {
 // under the default quota; every step is charged, so a small quota refuses.
 func TestModuleRelativeDefaultsScaling(t *testing.T) {
 	// before: an instance run (a leaf-list of n entries) precedes every default in schema and
-	// document order, so no walk finds an anchor (each default goes after first->prev)
-	build := func(n int, before bool) *Tree {
+	// document order, so no walk finds an anchor (each default goes after first->prev); first:
+	// the module starts at the tree's first root (lyd_validate passes the tree as first), and
+	// every walk stops at an opaque root; firstEnd: marker before a, then marker unlinked (the
+	// top level stays out of schema order), so every walk runs off the end and appends
+	const (
+		anchored = iota
+		before
+		first
+		firstEnd
+	)
+	build := func(n int, shape int) *Tree {
 		var m strings.Builder
 		m.WriteString(`module m { yang-version 1.1; namespace "urn:m"; prefix m;`)
 		in := `{"z:x":"x","m:marker":"x"}`
-		if before {
+		if shape == first || shape == firstEnd {
+			m.WriteString(` leaf a { type string; }`)
+			in = `{"m:a":"a","m:zz":"u","m:marker":"m"}`
+			if shape == firstEnd {
+				in = `{"m:marker":"m","m:a":"a"}`
+			}
+		}
+		if shape == before {
 			m.WriteString(` leaf-list u { type uint32; ordered-by user; }`)
 			vals := make([]string, n)
 			for i := range vals {
@@ -2306,17 +2437,38 @@ func TestModuleRelativeDefaultsScaling(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
+		if shape == firstEnd {
+			if err := tr.top.docFirst().Unlink(); err != nil {
+				t.Fatal(err)
+			}
+			if !tr.top.schemaUnordered {
+				t.Fatal("the top level is in schema order again")
+			}
+		}
 		return tr
 	}
-	work := func(n int, before bool) float64 {
-		tr := build(n, before)
+	work := func(n int, shape int) float64 {
+		tr := build(n, shape)
 		load := tr.work.Load()
 		if _, err := tr.ValidateModule(context.Background(), "m", ValidateOptions{NotFinal: true}); err != nil {
-			t.Fatal(n, before, err)
+			t.Fatal(n, shape, err)
 		}
 		top := slices.Collect(tr.Top())
 		want := n + 2
-		if before {
+		if shape == first {
+			want = n + 3
+			// a, then the defaults in schema order before zz (the anchor every walk stops at)
+			if top[1].Name() != "d0" || top[2].Name() != "d1" || top[n+1].Name() != "zz" {
+				t.Fatalf("order: %s %s %s", top[1].Name(), top[2].Name(), top[n+1].Name())
+			}
+		}
+		if shape == firstEnd {
+			want = n + 1
+			if top[1].Name() != "d0" || top[n].Name() != fmt.Sprintf("d%d", n-1) {
+				t.Fatalf("order: %s %s", top[1].Name(), top[n].Name())
+			}
+		}
+		if shape == before {
 			want = 2*n + 1
 			// x, then the defaults in schema order, then the run: each after first->prev
 			if top[1].Name() != "d0" || top[2].Name() != "d1" || top[n+1].Name() != "u" {
@@ -2330,13 +2482,13 @@ func TestModuleRelativeDefaultsScaling(t *testing.T) {
 	}
 	// flat up to the O(log n) index operations of each link: 4x the defaults, at most 1.5x the
 	// work per default (the walk alone, rescanned, grew 4x), an anchor or none
-	for _, before := range []bool{false, true} {
-		small, large := work(2400, before), work(9600, before)
+	for _, shape := range []int{anchored, before, first, firstEnd} {
+		small, large := work(2400, shape), work(9600, shape)
 		if large > 1.5*small {
-			t.Fatalf("work per default (run before: %v): %.1f at 2400, %.1f at 9600", before, small, large)
+			t.Fatalf("work per default (shape %d): %.1f at 2400, %.1f at 9600", shape, small, large)
 		}
 	}
-	tr := build(300, false)
+	tr := build(300, anchored)
 	tr.work.hashLimit = 64
 	if _, err := tr.ValidateModule(context.Background(), "m", ValidateOptions{NotFinal: true}); !errors.Is(err, yang.ErrBudget) {
 		t.Fatalf("a small quota: %v", err)

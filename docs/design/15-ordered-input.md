@@ -119,7 +119,7 @@ write takes the code path it took before (the counted-work and scaling tests are
 
 ## Evidence
 
-- Oracle fixtures `protocol-v2/ordered-*` (66; `ordered-split-list-merge-destruct` is unsupported,
+- Oracle fixtures `protocol-v2/ordered-*` (69; `ordered-split-list-merge-destruct` is unsupported,
 U-0113) cover:
   - parse order, JSON and XML;
   - the XML opaque anchor;
@@ -196,6 +196,16 @@ Read in document order (fixed):
   schema, holds only the target set's nodes, and the cost is O(depth) (`TestEquivalentInColdBudgetAndDepth`,
   `TestEquivalentInOutputAndScaling`, `TestEquivalentCacheKeepsNoContext`). `leaderFirstMixed`
   uses the same candidates.
+- round 24: the snapshot interns a module's name once (`Module.NameID`) and each node's name
+  on its own, and a node's `Ident` is the pair of handles, so no module name is copied per node
+  (`TestSnapshotInternAllocs`). `crossEqual` rejects an unequal stored hash before it charges
+  the probe's bytes, as `Match` does (`TestLongProbeMissCharged`). A key link reserves hashing
+  for its value only when its pending physical placement puts it before the first opaque child
+  (`siblings.landsBeforeOpaque`; `TestKeyPastTrailingOpaqueReserve`). Defaults of a module that
+  starts at the tree's first root, in a top level out of schema order, take the same resumable
+  walk from the tree's first node (`ordered-implicit-first-root`, `-first-root-all`,
+  `-first-root-end`), and a walk that stopped at an opaque or another module's root is kept
+  too: every later walk stops there (`TestModuleRelativeDefaultsScaling`);
 - round 23: a public read from user code while an operation waits on it (suspended) is
   read-only: the lookups pick an operation's quota only through `opLookup`/`opHash`, which
   exclude a held counter as `openRead` does, so the read neither pays from nor fails the waiting

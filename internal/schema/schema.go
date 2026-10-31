@@ -42,38 +42,46 @@ func (s *Set) CachedNameHash(n *Node, compute func() (uint32, error)) (uint32, e
 }
 
 // Ident is a schema node's module and node name, the identifiers lyd_compare_schema_equal
-// compares at one level.
-type Ident struct{ Mod, Name string }
+// compares at one level, each interned on its own: equal names have equal handles, so comparing
+// or hashing an Ident is O(1) whatever the names' length, and a module's name is interned once
+// for all its nodes (a pair handle would clone it per node).
+type Ident struct{ Mod, Name unique.Handle[string] }
 
-// ID is n's interned Ident: equal identifiers have equal handles, so comparing or hashing them is
-// O(1) whatever their length. Snapshot nodes carry it (interned once, at the copy); another node
-// interns it here.
-func (n *Node) ID() unique.Handle[Ident] {
+// ID is n's Ident. Snapshot nodes carry it (interned once, at the copy); another node interns its
+// names here.
+func (n *Node) ID() Ident {
 	if n.Interned() {
 		return n.ident
 	}
-	return unique.Make(n.identOf())
+	return Ident{n.Module.NameID(), unique.Make(n.Name)}
 }
 
-// Interned reports whether n carries its interned Ident (SetID).
-func (n *Node) Interned() bool { return n.ident != (unique.Handle[Ident]{}) }
+// Interned reports whether n carries its Ident (SetID).
+func (n *Node) Interned() bool { return n.ident != (Ident{}) }
 
-// SetID interns n's Ident into n (the snapshot copy, before the set is shared).
-func (n *Node) SetID() { n.ident = unique.Make(n.identOf()) }
+// SetID interns n's Ident into n (the snapshot copy, before the set is shared); n's module is
+// interned first (Module.SetID).
+func (n *Node) SetID() { n.ident = Ident{n.Module.NameID(), unique.Make(n.Name)} }
 
-func (n *Node) identOf() Ident {
-	var mod string
-	if n.Module != nil {
-		mod = n.Module.Name
+// NameID is m's interned name ("" for a nil module).
+func (m *Module) NameID() unique.Handle[string] {
+	switch {
+	case m == nil:
+		return unique.Make("")
+	case m.nameID != (unique.Handle[string]{}):
+		return m.nameID
 	}
-	return Ident{mod, n.Name}
+	return unique.Make(m.Name)
 }
+
+// SetID interns m's name into m (the snapshot copy, before the set is shared).
+func (m *Module) SetID() { m.nameID = unique.Make(m.Name) }
 
 // ChildKey identifies a schema child under its parent: node type and interned identifiers, the
 // fields lyd_compare_schema_equal compares at one level.
 type ChildKey struct {
 	Kind Kind
-	ID   unique.Handle[Ident]
+	ID   Ident
 }
 
 // ChildByName is the child of parent (a node of this set, nil: the top level of every module)
@@ -209,6 +217,7 @@ type Module struct {
 	// a data node whatever its tree (LYD_CTX: the schema node's module context), nil for modules of
 	// hand-built sets.
 	Owner                             *Set
+	nameID                            unique.Handle[string] // NameID, interned by the snapshot
 	Name, Revision, Namespace, Prefix string
 	Version                           uint8 // Version1 (also when yang-version is absent) or Version11
 	Implemented                       bool
@@ -344,8 +353,8 @@ const (
 type Node struct {
 	Kind   Kind
 	Name   string
-	ident  unique.Handle[Ident] // ID, interned by the snapshot
-	Module *Module              // module whose namespace the node is in (the augmenting module for augments)
+	ident  Ident   // ID, interned by the snapshot
+	Module *Module // module whose namespace the node is in (the augmenting module for augments)
 	Parent *Node
 	// Children are the data children (for a choice its cases, for an rpc/action its input and
 	// output). Actions and notifications defined in a container or list are kept apart in

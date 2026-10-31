@@ -15,7 +15,6 @@ import (
 	"iter"
 	"slices"
 	"strings"
-	"unique"
 
 	"github.com/vibe-ports/yang/internal/schema"
 	"github.com/vibe-ports/yang/internal/types"
@@ -1770,6 +1769,26 @@ func (s *siblings) beforeOpaque() int {
 	return at - light
 }
 
+// landsBeforeOpaque reports whether the schema node n, linked at logical position at with the
+// placement pending for it, lands physically before the first opaque sibling (always, when there
+// is none): whether lyd_hash's key run after the link can reach it (design 15).
+func (s *siblings) landsBeforeOpaque(n *Node, at int) bool {
+	if s.OpaqueLen() == 0 {
+		return true
+	}
+	h := s.linkAnchor(n, at)
+	if h == nil {
+		return false // appended, after the opaque siblings
+	}
+	if !s.st.interleaved() { // the opaque siblings trail: before a schema node or the first of them
+		a := h.Value
+		return a.schema != nil || a == s.At(s.SchemaLen())
+	}
+	ap, _ := s.st.seq.Pos(h)
+	fp, _ := s.st.seq.Pos(s.st.seq.FirstKind(false))
+	return ap <= fp
+}
+
 // A diff create can leave sibling roots compiled in different contexts. The
 // hash and schema-order indexes use Go schema pointers, while libyang's
 // sibling lookup also compares schema names across contexts.
@@ -1908,12 +1927,12 @@ type schemaLineageID uint32
 
 type schemaLineageComponent struct {
 	parent schemaLineageID
-	id     unique.Handle[schema.Ident]
+	id     schema.Ident
 	kind   schema.Kind
 }
 
 type foreignSchemaIndexKey struct {
-	id      unique.Handle[schema.Ident]
+	id      schema.Ident
 	lineage schemaLineageID
 }
 
@@ -1979,7 +1998,7 @@ func (t *Tree) foreignSchemaFind(s *siblings, sn *schema.Node, table bool) (int,
 }
 
 type foreignInstanceKey struct {
-	id   unique.Handle[schema.Ident] // interned: hashing it is O(1)
+	id   schema.Ident // interned: hashing it is O(1)
 	hash uint32
 }
 

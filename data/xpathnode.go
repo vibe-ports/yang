@@ -801,6 +801,13 @@ func (x xs) PrepareInstance(vals []string, charge func(int64) error) (xpath.Inst
 // list by keys, a leaf-list by value, a duplicate-instance list whole, anything else by schema),
 // else lyd_compare_single(sibling, target).
 func (p *xprobe) crossEqual(c *Node, table bool) (bool, error) {
+	dup := isDupInstList(p.node.schema)
+	k := p.node.schema.Kind
+	if (!table || dup || k == schema.List || k == schema.LeafList) && c.hash != p.node.hash {
+		// the comparison rejects unequal stored hashes before it reads a value
+		// (lyd_compare_single_data), as Match does: one step, not the probe's bytes
+		return false, p.work(1)
+	}
 	// charged as Match charges a candidate: one step and the probe's bytes (the comparison never
 	// reads more of the candidate than the probe holds), through the probe's own budget
 	if err := p.work(1 + p.bytes); err != nil {
@@ -812,7 +819,6 @@ func (p *xprobe) crossEqual(c *Node, table bool) (bool, error) {
 	}
 	// the comparison's own counter is local: the queried tree's counters are not touched
 	var work workCounter
-	dup := isDupInstList(p.node.schema)
 	if table && !dup {
 		return htValEqual(t, &work, p.node, c)
 	}

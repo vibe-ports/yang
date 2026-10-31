@@ -3,7 +3,10 @@
 package compile_test
 
 import (
+	"fmt"
 	"reflect"
+	"runtime"
+	"strings"
 	"sync"
 	"testing"
 	"testing/fstest"
@@ -177,7 +180,8 @@ func TestSnapshotInternsIdents(t *testing.T) {
 	var walk func(n *schema.Node)
 	walk = func(n *schema.Node) {
 		nodes++
-		if !n.Interned() || n.ID().Value() != (schema.Ident{Mod: n.Module.Name, Name: n.Name}) {
+		if id := n.ID(); !n.Interned() || id.Mod != n.Module.NameID() || id.Mod.Value() != n.Module.Name ||
+			id.Name.Value() != n.Name {
 			t.Fatalf("%s: not interned", n.Name)
 		}
 		for _, l := range [][]*schema.Node{n.Children, n.Actions, n.Notifs} {
@@ -193,5 +197,35 @@ func TestSnapshotInternsIdents(t *testing.T) {
 	}
 	if nodes == 0 {
 		t.Fatal("no nodes")
+	}
+}
+
+// TestSnapshotInternAllocs: interning keeps one copy of a module's name for all its nodes, so a
+// snapshot's allocation does not grow with module-name length times node count.
+func TestSnapshotInternAllocs(t *testing.T) {
+	const leaves = 1024
+	alloc := func(name string) uint64 {
+		var m strings.Builder
+		fmt.Fprintf(&m, "module %s { yang-version 1.1; namespace urn:%s; prefix p;", name, name)
+		for i := range leaves {
+			fmt.Fprintf(&m, " leaf l%d { type string; }", i)
+		}
+		m.WriteString(" }")
+		c := snapHarness(t, map[string]string{name + ".yang": m.String()})
+		if _, diags, err := c.Load(name, "", nil); err != nil {
+			t.Fatal(err, diags)
+		}
+		runtime.GC()
+		var before, after runtime.MemStats
+		runtime.ReadMemStats(&before)
+		s := c.Snapshot()
+		runtime.ReadMemStats(&after)
+		runtime.KeepAlive(s)
+		return after.TotalAlloc - before.TotalAlloc
+	}
+	short, long := alloc("s"), alloc("l"+strings.Repeat("m", 32<<10))
+	// a copy per node would be 32 MiB more
+	if long > short+4<<20 {
+		t.Fatalf("snapshot allocated %d bytes with a 32 KiB module name, %d with a short one", long, short)
 	}
 }

@@ -1,0 +1,17 @@
+# lyd_validate_all with the first module's data at the tree's first root, before an opaque root and the other module's root (ordered input): each module's defaults, choices first, by the anchor search from that module's first node
+fixtures:
+  - id: protocol-v2/ordered-implicit-first-root-all
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#7.9.3"]
+    areas: [validation]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      context_options: ["no_yanglibrary"]
+      modules: [{name: "pv2-ordered10"}, {name: "pv2-ordered11"}]
+      steps:
+        - {do: parse, format: json, data_type: data, parse_only: true, unknown: opaque, parse_options: [ordered], data: '{"pv2-ordered10:p1": "p", "pv2-ordered10:zz": "u", "pv2-ordered11:x": "x"}'}
+        - {do: validate, validate_options: [not_final]}
+        - {do: dump}
+    golden: golden/ordered-implicit-first-root-all.json

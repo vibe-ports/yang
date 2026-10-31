@@ -167,8 +167,8 @@ func addHashBound(total, next uint64) uint64 {
 
 // checkTermHash preflights a key link at its final position. A partial positional
 // prefix has no native hash event, even if many copies of its first key follow it.
-func (w *workCounter) checkTermHash(parent *Node, sn *schema.Node, value types.Value, insertionAt ...int) error {
-	amount, err := w.termHashBound(parent, sn, value, insertionAt...)
+func (w *workCounter) checkTermHash(parent *Node, sn *schema.Node, value types.Value) error {
+	amount, err := w.termHashBound(parent, sn, value, nil, 0)
 	if err != nil {
 		return err
 	}
@@ -176,15 +176,15 @@ func (w *workCounter) checkTermHash(parent *Node, sn *schema.Node, value types.V
 }
 
 // termHashBound is the hash work checkTermHash reserves, for callers that add
-// it to the rest of one link's work and check the total once.
-func (w *workCounter) termHashBound(parent *Node, sn *schema.Node, value types.Value, insertionAt ...int) (uint64, error) {
+// it to the rest of one link's work and check the total once. n is the node linked at logical
+// position at (nil: no position, a key reserves nothing).
+func (w *workCounter) termHashBound(parent *Node, sn *schema.Node, value types.Value, n *Node, at int) (uint64, error) {
 	if sn.Kind == schema.LeafList {
 		return types.HashLYBWorkBound(value), nil
 	}
-	if !sn.IsKey() || parent == nil || parent.schema == nil || len(insertionAt) == 0 {
+	if !sn.IsKey() || parent == nil || parent.schema == nil || n == nil {
 		return 0, nil
 	}
-	at := insertionAt[0]
 	if at < parent.lkeyN && parent.lkeyFrozen == nil {
 		// beforeKeyLink copies the captured prefix before publishing the key.
 		prefix := uint64(parent.lkeyN) //nolint:gosec // a count of existing nodes cannot be negative
@@ -224,13 +224,11 @@ func (w *workCounter) termHashBound(parent *Node, sn *schema.Node, value types.V
 	}
 	var amount uint64
 	// lyd_hash's key run ends at the first opaque child (design 15): after the insertion it holds
-	// at most the schema children before that one and the new key
-	limit := parent.kids.SchemaLen() + 1 // the schema children after the insertion
-	if bo := parent.kids.beforeOpaque(); bo < parent.kids.SchemaLen() {
-		limit = bo
-		if at <= bo {
-			limit = bo + 1
-		}
+	// the schema children before that one, and the new key only when its pending physical
+	// placement puts it there (an append behind a trailing opaque child does not)
+	limit := parent.kids.beforeOpaque()
+	if parent.kids.landsBeforeOpaque(n, at) {
+		limit++
 	}
 	// the old children from start, in order, with the new one at at (start <= at)
 	old := parent.kids.schemaSpan().Slice(start, parent.kids.SchemaLen()).cursor()
