@@ -42,13 +42,13 @@ func ownerModule(set *schema.Set, n *Node) *schema.Module {
 	return s.Module
 }
 
-// topList is the top level as libyang's sibling list: the schema nodes, then the opaque nodes.
+// topList is the top level as libyang's sibling list, in document order.
 func (vc *valCtx) topList() siblingSpan {
 	t := &vc.t.top
 	if t.OpaqueLen() == 0 {
 		return t.schemaSpan()
 	}
-	return spanOf(t.CollectRange(0, t.Len()))
+	return spanOf(t.docNodes())
 }
 
 // firstModuleSibling is lyd_first_module_sibling: the index of the first top-level node of mod,
@@ -99,14 +99,22 @@ func (vc *valCtx) firstModuleSibling(top siblingSpan, start int, mod *schema.Mod
 	return start, nil
 }
 
+// modRun is one module lyd_validate traverses, with first: lyd_data_next_module's first node of
+// its run of top-level data (Present), else nil (lyd_mod_next_module finds it when the module
+// comes up: moduleFirst).
+type modRun struct {
+	mod   *schema.Module
+	first *Node
+}
+
 // modules lists the modules lyd_validate traverses: the implemented ones in context order
 // (lyd_mod_next_module), only vc.module for lyd_validate_module, or with Present those of the
-// top-level data in tree order (lyd_data_next_module, which stops at a top-level node of no
+// top-level runs in tree order (lyd_data_next_module, which stops at a top-level node of no
 // module).
-func (vc *valCtx) modules() ([]*schema.Module, error) {
-	var out []*schema.Module
+func (vc *valCtx) modules() ([]modRun, error) {
+	var out []modRun
 	if vc.module != nil {
-		return []*schema.Module{vc.module}, nil
+		return []modRun{{mod: vc.module}}, nil
 	}
 	if !vc.opts.Present {
 		for _, m := range vc.t.context().Modules {
@@ -114,7 +122,7 @@ func (vc *valCtx) modules() ([]*schema.Module, error) {
 				return nil, err
 			}
 			if m.Implemented {
-				out = append(out, m)
+				out = append(out, modRun{mod: m})
 			}
 		}
 		return out, nil
@@ -126,18 +134,46 @@ func (vc *valCtx) modules() ([]*schema.Module, error) {
 			break
 		}
 		if mod != last {
-			out, last = append(out, mod), mod
+			out, last = append(out, modRun{mod, c}), mod
 		}
-		if err := vc.checkContext(); err != nil {
+		if err := vc.step(); err != nil {
 			return nil, err
 		}
 	}
 	return out, nil
 }
 
+// moduleFirst is lyd_mod_next_module's search: the first top-level node of mod in document
+// order from from (lyd_validate's next, the tree's first node when it started), an opaque one of
+// the module included; nil when there is none.
+func (vc *valCtx) moduleFirst(from *Node, mod *schema.Module) (*Node, error) {
+	top := &vc.t.top
+	if from == nil || from.siblingsOf() != top {
+		from = top.docFirst()
+	}
+	for c := from; c != nil; c = top.docNext(c) {
+		if err := vc.step(); err != nil {
+			return nil, err
+		}
+		if ownerModule(vc.t.context(), c) == mod {
+			return c, nil
+		}
+	}
+	return nil, nil
+}
+
 // checkContext polls independently of XPath and implicit-node accounting: even a
 // tree of ordinary retained leaves must be cancellable. It adds constant work
 // to existing iterations without consuming a smaller, unrelated resource budget.
+// step is one sibling visit of a validation walk: charged to the validation's enforced hash quota,
+// then polled.
+func (vc *valCtx) step() error {
+	if err := vc.t.work.chargeHash(1); err != nil {
+		return err
+	}
+	return vc.checkContext()
+}
+
 func (vc *valCtx) checkContext() error {
 	if vc.budget.ctx != nil {
 		return poll(vc.budget.ctx)
@@ -170,24 +206,31 @@ func (vc *valCtx) validate(validateSubtree bool) error {
 	if err != nil {
 		return err
 	}
-	defer func() { vc.modFirst = nil }()
-	for _, mod := range mods {
+	defer func() { vc.modFirst = nil; vc.dropModWalk() }()
+	next := vc.t.top.docFirst() // lyd_validate's next = *tree
+	for _, run := range mods {
+		mod := run.mod
 		if err := vc.checkContext(); err != nil {
 			return err
 		}
-		vc.modFirst = nil
+		// first2: &first when the module's first node is not the tree's first, else tree
+		first := run.first
+		if first != nil && first.siblingsOf() != &vc.t.top {
+			first = nil // deleted by an earlier module's validation: found again below
+		}
+		if first == nil {
+			var err error
+			if first, err = vc.moduleFirst(next, mod); err != nil {
+				return err
+			}
+		}
+		vc.modFirst, vc.modCur = nil, mod
+		if first != nil && first != vc.t.top.docFirst() {
+			vc.modFirst = first
+		}
 		if err := vc.validateNew(nil, nil, mod); err != nil {
 			if rc = err; vc.stop(err) {
 				return rc
-			}
-		}
-		if top := vc.topList(); top.Len() > 0 {
-			i, err := vc.firstModuleSibling(top, 0, mod)
-			if err != nil {
-				return err
-			}
-			if i > 0 && i < top.Len() && ownerModule(vc.t.context(), top.At(i)) == mod {
-				vc.modFirst = top.At(i)
 			}
 		}
 		var err error
@@ -249,7 +292,8 @@ func (vc *valCtx) validate(validateSubtree bool) error {
 	if vc.opts.NotFinal {
 		return rc
 	}
-	for _, mod := range mods {
+	for _, run := range mods {
+		mod := run.mod
 		top := vc.topList()
 		first, err := vc.firstModuleSibling(top, 0, mod)
 		if err != nil {
@@ -411,12 +455,12 @@ func (vc *valCtx) setContainerDefault(p *Node) error {
 	return nil
 }
 
-// slicesOf is the sibling list of s as libyang links it: schema nodes, then opaque nodes.
+// slicesOf is the sibling list of s as libyang links it, in document order.
 func slicesOf(s *siblings) siblingSpan {
 	if s.OpaqueLen() == 0 {
 		return s.schemaSpan()
 	}
-	return spanOf(s.CollectRange(0, s.Len()))
+	return spanOf(s.docNodes())
 }
 
 // unexpected is the "no state/input/output/op data" check of lyd_validate_final_r: the kind of

@@ -59,6 +59,10 @@ func (s *Seq[T]) SelectBound() uint64 { return uint64(nodeHeight(s.root)) + 2 } 
 // InsertBound bounds InsertBefore(anchor, ·) (anchor nil: append), its relabel included;
 // journaled: its images too.
 func (s *Seq[T]) InsertBound(anchor *Handle[T], journaled bool, pay Pay) uint64 {
+	return saturatingAdd(s.insertBound(anchor, journaled, pay), s.kindLinkBound(1, 0, journaled))
+}
+
+func (s *Seq[T]) insertBound(anchor *Handle[T], journaled bool, pay Pay) uint64 {
 	if s.unlabeled {
 		return avlUnits(nodeHeight(s.root)+1, journaled)
 	}
@@ -81,7 +85,7 @@ func (s *Seq[T]) InsertBound(anchor *Handle[T], journaled bool, pay Pay) uint64 
 
 // RemoveBound bounds one Remove, a scale-change rebuild included.
 func (s *Seq[T]) RemoveBound(journaled bool) uint64 {
-	bound := avlUnits(nodeHeight(s.root), journaled)
+	bound := saturatingAdd(avlUnits(nodeHeight(s.root), journaled), s.kindLinkBound(0, 1, journaled))
 	if rest := uint64(s.length - 1); !s.unlabeled && s.length > 1 && s.length-1 < s.scale/2 { //nolint:gosec // a length is nonnegative
 		bound = saturatingAdd(bound, saturatingAdd(rest, images(rest, journaled)))
 	}
@@ -102,14 +106,15 @@ func (s *Seq[T]) MoveBound(h, anchor *Handle[T], journaled bool, pay Pay) uint64
 	if prev == h {
 		prev = h.prev
 	}
+	kinds := s.kindLinkBound(1, 1, journaled)
 	if s.unlabeled {
-		return moveUnits(nodeHeight(s.root), journaled)
+		return saturatingAdd(moveUnits(nodeHeight(s.root), journaled), kinds)
 	}
 	charges, touched, ok := s.planLabel(prev, next, h, 1, max(s.scale, 1), s.length, pay)
 	if !ok {
 		return ^uint64(0)
 	}
-	return saturatingAdd(moveUnits(nodeHeight(s.root), journaled), saturatingAdd(charges, images(touched, journaled)))
+	return saturatingAdd(saturatingAdd(moveUnits(nodeHeight(s.root), journaled), kinds), saturatingAdd(charges, images(touched, journaled)))
 }
 
 // planLabel counts the charges and the touched handles of labelRange for count new handles

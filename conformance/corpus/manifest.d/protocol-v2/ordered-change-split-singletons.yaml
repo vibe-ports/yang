@@ -1,0 +1,19 @@
+# value changes of leaf-list instances that are alone in their pieces of a run an opaque node splits: LYD_NODE_IS_ALONE reads the physical neighbours, so neither moves
+fixtures:
+  - id: protocol-v2/ordered-change-split-singletons
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#7.5.7"]
+    areas: [codecs]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      context_options: ["no_yanglibrary"]
+      modules: [{name: "pv2-ordered2"}]
+      steps:
+        - {do: parse, format: xml, data_type: get, unknown: opaque, parse_options: [ordered], data: '<c xmlns="urn:vibe-ports:yang:conformance:pv2-ordered2"><a>x</a><ll>1</ll><zz>u</zz><ll>3</ll><b>y</b></c>'}
+        - {do: change_term, node: "/pv2-ordered2:c/ll[.='1']", value: "2"}
+        - {do: dump}
+        - {do: change_term, node: "/pv2-ordered2:c/ll[.='3']", value: "0"}
+        - {do: dump}
+    golden: golden/ordered-change-split-singletons.json

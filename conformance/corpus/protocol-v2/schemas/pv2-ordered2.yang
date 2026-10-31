@@ -1,0 +1,42 @@
+module pv2-ordered2 {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:pv2-ordered2";
+  prefix o2;
+
+  description
+    "Hand-written (this repo): LYD_PARSE_ORDERED trees whose opaque siblings
+     lie between schema nodes, and the insertions, copies and prints that
+     follow (design 15).";
+
+  container c {
+    leaf a {
+      type string;
+    }
+    leaf b {
+      type string;
+    }
+    leaf c {
+      type string;
+    }
+    leaf d {
+      type string;
+      default "dflt";
+    }
+    leaf-list ll {
+      type uint8;
+    }
+    leaf-list st {
+      config false;
+      type uint8;
+    }
+    list l {
+      key "k";
+      leaf k {
+        type string;
+      }
+      leaf v {
+        type string;
+      }
+    }
+  }
+}

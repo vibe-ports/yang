@@ -1,0 +1,20 @@
+# LYD_PRINT_EMPTY_LEAF_LIST in a child level without a children table whose leaf-list instance follows an opaque node: json_print_next_empty_leaf_list's lyd_find_sibling_schema stops at the opaque node, so the leaf-list is also printed empty before it
+fixtures:
+  - id: protocol-v2/ordered-print-empty-leaflist-past-opaque
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: []   # libyang LYD_PRINT_EMPTY_LEAF_LIST: no RFC behaviour
+    areas: [codecs]
+    request:
+      op: data
+      searchdirs: [schemas]
+      context_options: ["no_yanglibrary"]
+      modules: [{name: "pv2-ordered2"}]
+      format: json
+      data_type: get
+      parse_only: true
+      unknown: opaque
+      parse_options: [ordered]
+      data: '{"pv2-ordered2:c": {"a": "x", "zz": "u", "ll": [1]}}'
+      print_options: [shrink, empty_leaf_list]
+    golden: golden/ordered-print-empty-leaflist-past-opaque.json

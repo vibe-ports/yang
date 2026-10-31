@@ -7,6 +7,7 @@ package data
 
 import (
 	"errors"
+	"iter"
 
 	"github.com/vibe-ports/yang/internal/schema"
 	"github.com/vibe-ports/yang/internal/types"
@@ -70,6 +71,8 @@ type valCtx struct {
 	// modFirst is lyd_validate's *first2 when it is &first: the first top-level node of the
 	// module being validated when that is not the tree's first node, else nil (see modInsert).
 	modFirst *Node
+	modCur   *schema.Module // the module lyd_validate validates now (lyd_del_move_root's mod)
+	modWalk  *modWalk       // the anchor walk the last module-relative implicit insertion ended
 	// module is the module of lyd_validate_module: only its data is validated (nil: every
 	// module, lyd_validate_all)
 	module *schema.Module
@@ -308,6 +311,11 @@ func (vc *valCtx) addImplicit(parent, n *Node) error {
 // agree while the module's nodes are in schema order).
 func (vc *valCtx) modInsert(n *Node) error {
 	t, sib := vc.t, &vc.t.top
+	if sib.st != nil && (sib.st.interleaved() || sib.schemaUnordered) {
+		// out of schema order (an Ordered parse, copies): libyang's walks from first read the
+		// physical order, opaque nodes or not
+		return vc.modInsertInterleaved(n)
+	}
 	fi, err := vc.siblingIndex(sib.schemaSpan(), vc.modFirst)
 	if err != nil {
 		return err
@@ -330,12 +338,223 @@ func (vc *valCtx) modInsert(n *Node) error {
 	return nil
 }
 
-// modStart is the index of lyd_validate's *first2 in the top level: modFirst, else 0.
+// modInsertInterleaved is modInsert in a top level out of schema order, interleaved or not
+// (design 15): libyang's
+// lyd_insert_node with first_sibling at the module's first node, in document order. A sorted
+// instance with a leader takes the ordinary sorted insertion; otherwise
+// lyd_insert_node_ordby_schema:
+// lyd_insert_get_next_anchor walks from first past the data of preceding modules, then the
+// module's data along its schema order, stopping at an opaque node or another module's node.
+// Without an anchor, a trailing opaque block before first (first->prev) is the anchor; else the
+// node goes after first->prev (the last sibling when first is the tree's first). first moves
+// only when the node lands right before it.
+// modWalk is where a module-relative anchor walk ended (modInsertInterleaved): its anchor, the
+// node inserted right before it, and the schema iterator standing at that node's schema. Defaults
+// are created in schema order, so the next walk would pass exactly the nodes this one passed and
+// the node it inserted; it resumes here instead, which keeps a module's defaults linear.
+type modWalk struct {
+	gen          uint64 // the top level's generation right after the insertion
+	last, anchor *Node
+	next         func() (*schema.Node, bool)
+	stop         func()
+	sn           *schema.Node
+	ok           bool
+}
+
+func (vc *valCtx) dropModWalk() {
+	if w := vc.modWalk; w != nil {
+		w.stop()
+		vc.modWalk = nil
+	}
+}
+
+func (vc *valCtx) modInsertInterleaved(n *Node) error {
+	t, sib := vc.t, &vc.t.top
+	step := func() error { // every sibling and schema step: the validation's enforced quota, polled
+		if err := t.work.chargeHash(1); err != nil {
+			return err
+		}
+		return vc.checkContext()
+	}
+	if sortedSupported(n) && t.schemaLookup(sib, n.schema) != nil {
+		vc.dropModWalk()
+		// lyd_insert_node: a leader found by lyd_find_sibling_schema takes lyds_insert, the path
+		// an ordinary insertion takes; lyds_insert moves first when n lands right before it
+		if err := t.insert(nil, n, insertDefault); err != nil {
+			return err
+		}
+		if sib.docNext(n) == vc.modFirst {
+			vc.modFirst = n
+		}
+		return nil
+	}
+	first := vc.modFirst
+	own := ownerModule(t.context(), n)
+	var match *Node
+	var next func() (*schema.Node, bool)
+	var stop func()
+	var sn *schema.Node
+	var ok bool
+	if w := vc.modWalk; w != nil && w.gen == sib.gen && w.last.siblingsOf() == sib && sib.docNext(w.last) == w.anchor &&
+		ownerModule(t.context(), w.last) == own {
+		// the nodes up to the last inserted one pass again: resume at its anchor
+		match, next, stop, sn, ok = w.anchor, w.next, w.stop, w.sn, w.ok
+		vc.modWalk = nil
+	} else {
+		vc.dropModWalk()
+		mname := func(c *Node) string {
+			if m := ownerModule(t.context(), c); m != nil {
+				return m.Name
+			}
+			return ""
+		}
+		match = first
+		for match != nil && match.schema != nil && mname(match) < own.Name {
+			if err := step(); err != nil {
+				return err
+			}
+			match = sib.docNext(match)
+		}
+		next, stop = iter.Pull(schema.GetNext(nil, n.schema.Module.Top, 0))
+		sn, ok = next()
+	}
+	keep := false
+	defer func() {
+		if !keep {
+			stop()
+		}
+	}()
+	found := false
+walk:
+	for ; match != nil; match = sib.docNext(match) {
+		if err := step(); err != nil {
+			return err
+		}
+		if match.schema == nil || ownerModule(t.context(), match) != own {
+			break
+		}
+		for !found {
+			if !ok {
+				match = nil // extension instance data, or a schema before the resumed one: no anchor
+				break walk
+			}
+			if sn == n.schema {
+				found = true
+				break
+			}
+			if match.schema == sn {
+				break
+			}
+			if err := step(); err != nil {
+				return err
+			}
+			sn, ok = next()
+		}
+		if found && match.schema != n.schema {
+			break
+		}
+	}
+	anchor := match
+	prev := func(c *Node) *Node {
+		if c == sib.docFirst() {
+			return sib.docLast()
+		}
+		p, _ := sib.docNeighbours(c)
+		return p
+	}
+	if anchor == nil {
+		// cannot insert data node after opaque nodes: the opaque block before first
+		if p := prev(first); p != nil && p.schema == nil {
+			anchor = p
+			for anchor != first && prev(anchor).schema == nil {
+				if err := step(); err != nil {
+					return err
+				}
+				anchor = prev(anchor)
+			}
+		}
+	}
+	var at int
+	switch {
+	case anchor != nil:
+		sib.setPlace(placement{mode: placeBefore, node: anchor, target: n})
+		at = sib.schemaBefore(anchor)
+	case first == sib.docFirst():
+		sib.setPlace(placement{mode: placeEnd, target: n})
+		at = sib.SchemaLen()
+	default:
+		p := prev(first)
+		sib.setPlace(placement{mode: placeAfter, node: p, target: n})
+		at = sib.schemaBefore(p)
+		if p.schema != nil {
+			at++
+		}
+	}
+	if err := t.link(nil, sib, n, at); err != nil {
+		return err
+	}
+	if anchor == first {
+		vc.modFirst = n // lyd_insert_before_node of the first sibling moves first
+	}
+	if found && anchor != nil && anchor == match && sib.docNext(n) == anchor {
+		keep = true
+		vc.modWalk = &modWalk{gen: sib.gen, last: n, anchor: anchor, next: next, stop: stop, sn: sn, ok: ok}
+	}
+	return nil
+}
+
+// delMoveRoots is lyd_del_move_root for lyd_validate's first (modFirst) before each top-level
+// node of del is freed, in del's order, which libyang interleaves with the frees: first moves to
+// the next sibling that is still linked, or back to the tree's first sibling (nil) when the node
+// was the module's last. del is unlinked in one batch afterwards (one compaction), so the nodes
+// before the one at hand count as freed already.
+func (vc *valCtx) delMoveRoots(del []*Node) {
+	if vc.modFirst == nil {
+		return
+	}
+	var gone map[*Node]bool
+	for i, n := range del {
+		if vc.modFirst == n && n.parent == nil {
+			if gone == nil {
+				gone = make(map[*Node]bool, i)
+				for _, d := range del[:i] {
+					gone[d] = true
+				}
+			}
+			vc.delMoveRoot(n, gone)
+			if vc.modFirst == nil {
+				return
+			}
+		}
+		if gone != nil {
+			gone[n] = true
+		}
+	}
+}
+
+// delMoveRoot is lyd_del_move_root for first == del, the nodes of gone already freed.
+func (vc *valCtx) delMoveRoot(del *Node, gone map[*Node]bool) {
+	mod := vc.modCur
+	if ownerModule(vc.t.context(), del) != mod {
+		mod = nil // no data of mod: simply the first top-level sibling
+	}
+	next := vc.t.top.docNext(del)
+	for next != nil && gone[next] {
+		next = vc.t.top.docNext(next)
+	}
+	if mod != nil && (next == nil || ownerModule(vc.t.context(), del) != ownerModule(vc.t.context(), next)) {
+		vc.modFirst = nil // no more nodes of mod: the first top-level sibling
+		return
+	}
+	vc.modFirst = next
+}
+
+// modStart is the document position of lyd_validate's *first2 in the top level: modFirst, else 0.
 func (vc *valCtx) modStart() (int, error) {
 	if vc.modFirst == nil {
 		return 0, nil
 	}
-	i, err := vc.siblingIndex(vc.t.top.schemaSpan(), vc.modFirst)
+	i, err := vc.siblingIndex(vc.topList(), vc.modFirst) // a document position (topList)
 	return max(0, i), err
 }
 
@@ -357,19 +576,22 @@ func (vc *valCtx) newImplicitR(parent *Node, sparent *schema.Node, mod *schema.M
 	if err := vc.newImplicit(parent, sparent, mod, o); err != nil {
 		return err
 	}
-	kids := vc.t.childrenOf(parent).schemaSpan()
+	// LY_LIST_FOR in document order: the children (lyd_child_no_keys: keys are not containers), or
+	// at the top level from lyd_validate's first2
+	kids := spanOf(vc.t.childrenOf(parent).docNodes())
 	if parent == nil {
+		kids = vc.topList()
 		start, err := vc.modStart()
 		if err != nil {
 			return err
 		}
-		kids = kids.Slice(start, kids.Len()) // LY_LIST_FOR(*first): from lyd_validate's first2
+		kids = kids.Slice(start, kids.Len())
 	}
-	for _, c := range kids.All() { // lyd_child_no_keys: keys are not containers
-		if err := vc.checkContext(); err != nil {
+	for _, c := range kids.All() {
+		if err := vc.step(); err != nil {
 			return err
 		}
-		if c.flags&FlagDefault != 0 && c.schema.Kind == schema.Container {
+		if c.schema != nil && c.flags&FlagDefault != 0 && c.schema.Kind == schema.Container {
 			if err := vc.newImplicitR(c, nil, mod, o); err != nil {
 				return err
 			}

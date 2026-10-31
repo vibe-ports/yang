@@ -1,0 +1,17 @@
+# lyd_validate_module after an ordered parse whose module data follows an opaque root of another module: lyd_validate passes the module's first node to lyd_validate_new, so the opaque node before it does not end the walk and the duplicate container is found
+fixtures:
+  - id: protocol-v2/ordered-validate-module-dup
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#7.5.7"]
+    areas: [validation]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      context_options: ["no_yanglibrary"]
+      modules: [{name: "pv2-lyds"}, {name: "pv2-ordered4"}]
+      steps:
+        - {do: parse, format: xml, data_type: data, parse_only: true, unknown: opaque, parse_options: [ordered], data: '<ll xmlns="urn:vibe-ports:yang:conformance:pv2-lyds">1</ll><zz xmlns="urn:vibe-ports:yang:conformance:pv2-lyds">u</zz><c xmlns="urn:vibe-ports:yang:conformance:pv2-ordered4"><v>1</v></c><c xmlns="urn:vibe-ports:yang:conformance:pv2-ordered4"><v>2</v></c>'}
+        - {do: validate, module: pv2-ordered4}
+        - {do: dump}
+    golden: golden/ordered-validate-module-dup.json

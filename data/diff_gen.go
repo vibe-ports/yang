@@ -194,12 +194,7 @@ func splitOpRun(first *Node, withSiblings bool) (split, op *Node) {
 			}
 			return nil
 		}
-		for _, c := range n.kids.SchemaAll() {
-			if found := visit(c); found != nil {
-				return found
-			}
-		}
-		for _, c := range n.kids.opaqueAll() {
+		for _, c := range n.kids.All() { // LYD_TREE_DFS: document order (design 15)
 			if found := visit(c); found != nil {
 				return found
 			}
@@ -249,7 +244,7 @@ func fromNode(n *Node) []*Node {
 	if sib == nil {
 		return []*Node{n}
 	}
-	all := sib.CollectRange(0, sib.Len())
+	all := sib.docNodes()
 	return all[slices.Index(all, n):]
 }
 
@@ -286,7 +281,10 @@ func (t *Tree) findMatch(sib *siblings, target *Node, defaults bool, cache *dupC
 	var m *Node
 	switch {
 	case target.schema == nil:
-		m = opaqNext(sib, target.Name())
+		var err error
+		if m, err = opaqNext(&t.work, sib, target.Name()); err != nil {
+			return nil, err
+		}
 	case target.schema.Kind == schema.List || target.schema.Kind == schema.LeafList:
 		var err error
 		if m, err = t.findFirstChecked(sib, target); err != nil {
@@ -300,7 +298,9 @@ func (t *Tree) findMatch(sib *siblings, target *Node, defaults bool, cache *dupC
 		// ownerless schema can instead take schemaLookup's ordinary pointer path; retain its full
 		// lineage fallback, but charge every candidate to the same bounded lookup quota.
 		if m == nil && !indexed && len(sib.contexts) == 1 && ctxOf(sib.At(0)) != ctxOf(target) {
-			for _, candidate := range sib.SchemaAll() {
+			// lyd_find_sibling_schema's walk: without a children table it stops at the first
+			// opaque sibling (linearBound, design 15)
+			for _, candidate := range sib.schemaSpan().Slice(0, sib.linearBound()).All() {
 				if err := t.work.chargeLookup(1); err != nil {
 					return nil, err
 				}
@@ -580,12 +580,13 @@ func (t *Tree) metaDiffers(first, second *Node) bool {
 		return true
 	}
 	if first.schema.Kind == schema.List {
-		other := second.kids.schemaSpan().cursor()
-		for _, k := range first.kids.SchemaAll() {
-			if !k.isKey() {
+		other := keyPrefix(second).cursor()
+		for _, k := range keyPrefix(first).All() {
+			o := other.next()
+			if !k.isKey() || o == nil {
 				break
 			}
-			if t.metaDiffers(k, other.next()) {
+			if t.metaDiffers(k, o) {
 				return true
 			}
 		}

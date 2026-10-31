@@ -1,0 +1,18 @@
+# JSON metadata after the data names b, which an opaque node and a schema node share: lydjson's target search takes the first in document order, the opaque one, and attaches a generic attribute
+fixtures:
+  - id: protocol-v2/ordered-json-meta-opaque-first
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7952#5.2.1"]
+    areas: [codecs]
+    request:
+      op: "data"
+      searchdirs: [schemas]
+      context_options: ["no_yanglibrary"]
+      modules: [{name: "pv2-ordered2"}, {name: "pv2-mdapi"}]
+      format: "json"
+      data_type: "get"
+      unknown: "opaque"
+      parse_options: [ordered]
+      data: '{"pv2-ordered2:c":{"b":false,"b":"ok","@b":{"pv2-mdapi:num":300}}}'
+    golden: golden/ordered-json-meta-opaque-first.json

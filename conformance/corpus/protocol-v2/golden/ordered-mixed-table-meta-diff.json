@@ -1,0 +1,964 @@
+{
+  "context_diagnostics": [],
+  "failed_step": null,
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "pv2-lyds",
+      "revision": null
+    },
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "pv2-ordered8",
+      "revision": null
+    },
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "pv2-find-meta",
+      "revision": "2021-01-01"
+    }
+  ],
+  "op": "sequence",
+  "protocol": 2,
+  "rc": {
+    "err": 0,
+    "name": "LY_SUCCESS"
+  },
+  "steps": [
+    {
+      "diagnostics": [],
+      "do": "parse",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-ordered8:c",
+          "schema": "/pv2-ordered8:c",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-ordered8:c/z",
+          "schema": "/pv2-ordered8:c/z",
+          "value": {
+            "canonical": "zz",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        }
+      ]
+    },
+    {
+      "diagnostics": [],
+      "do": "insert",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-lyds:ll[.='5']",
+          "schema": "/pv2-lyds:ll",
+          "value": {
+            "canonical": "5",
+            "type": "uint8",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-ordered8:c",
+          "schema": "/pv2-ordered8:c",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-ordered8:c/z",
+          "schema": "/pv2-ordered8:c/z",
+          "value": {
+            "canonical": "zz",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        }
+      ]
+    },
+    {
+      "diagnostics": [],
+      "do": "edit",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-lyds:ll[.='5']",
+          "schema": "/pv2-lyds:ll",
+          "value": {
+            "canonical": "5",
+            "type": "uint8",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-ordered8:c",
+          "schema": "/pv2-ordered8:c",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-ordered8:c/pv2-ordered8:z",
+          "schema": "/pv2-ordered8:c/z",
+          "value": {
+            "canonical": "zz",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-ordered8:c/p",
+          "schema": "/pv2-ordered8:c/p",
+          "value": {
+            "canonical": "p",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [
+            {
+              "module": "pv2-find-meta",
+              "name": "note",
+              "value": "one"
+            }
+          ],
+          "opaque": null,
+          "path": "/pv2-ordered8:c/x",
+          "schema": "/pv2-ordered8:c/x",
+          "value": {
+            "canonical": "first",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-ordered8:c/b",
+          "schema": "/pv2-ordered8:c/b",
+          "value": {
+            "canonical": "b",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [
+            {
+              "module": "pv2-find-meta",
+              "name": "note",
+              "value": "two"
+            }
+          ],
+          "opaque": null,
+          "path": "/pv2-ordered8:c/x",
+          "schema": "/pv2-ordered8:c/x",
+          "value": {
+            "canonical": "second",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        }
+      ]
+    },
+    {
+      "diagnostics": [],
+      "do": "unlink",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-lyds:ll[.='5']",
+          "schema": "/pv2-lyds:ll",
+          "value": {
+            "canonical": "5",
+            "type": "uint8",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-ordered8:c",
+          "schema": "/pv2-ordered8:c",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-ordered8:c/pv2-ordered8:z",
+          "schema": "/pv2-ordered8:c/z",
+          "value": {
+            "canonical": "zz",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-ordered8:c/p",
+          "schema": "/pv2-ordered8:c/p",
+          "value": {
+            "canonical": "p",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-ordered8:c/b",
+          "schema": "/pv2-ordered8:c/b",
+          "value": {
+            "canonical": "b",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [
+            {
+              "module": "pv2-find-meta",
+              "name": "note",
+              "value": "two"
+            }
+          ],
+          "opaque": null,
+          "path": "/pv2-ordered8:c/x",
+          "schema": "/pv2-ordered8:c/x",
+          "value": {
+            "canonical": "second",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        }
+      ]
+    },
+    {
+      "diagnostics": [],
+      "do": "insert",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-lyds:ll[.='5']",
+          "schema": "/pv2-lyds:ll",
+          "value": {
+            "canonical": "5",
+            "type": "uint8",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-ordered8:c",
+          "schema": "/pv2-ordered8:c",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [
+            {
+              "module": "pv2-find-meta",
+              "name": "note",
+              "value": "one"
+            }
+          ],
+          "opaque": null,
+          "path": "/pv2-ordered8:c/x",
+          "schema": "/pv2-ordered8:c/x",
+          "value": {
+            "canonical": "first",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-ordered8:c/pv2-ordered8:z",
+          "schema": "/pv2-ordered8:c/z",
+          "value": {
+            "canonical": "zz",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-ordered8:c/p",
+          "schema": "/pv2-ordered8:c/p",
+          "value": {
+            "canonical": "p",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-ordered8:c/b",
+          "schema": "/pv2-ordered8:c/b",
+          "value": {
+            "canonical": "b",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [
+            {
+              "module": "pv2-find-meta",
+              "name": "note",
+              "value": "two"
+            }
+          ],
+          "opaque": null,
+          "path": "/pv2-ordered8:c/x",
+          "schema": "/pv2-ordered8:c/x",
+          "value": {
+            "canonical": "second",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        }
+      ]
+    },
+    {
+      "diagnostics": [],
+      "do": "dump",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "tree": {
+        "json": "{\n  \"pv2-lyds:ll\": [\n    5\n  ],\n  \"pv2-ordered8:c\": {\n    \"x\": \"first\",\n    \"@x\": {\n      \"pv2-find-meta:note\": \"one\"\n    },\n    \"pv2-ordered8:z\": \"zz\",\n    \"p\": \"p\",\n    \"b\": \"b\",\n    \"x\": \"second\",\n    \"@x\": {\n      \"pv2-find-meta:note\": \"two\"\n    }\n  }\n}\n",
+        "xml": "<ll xmlns=\"urn:vibe-ports:yang:conformance:pv2-lyds\">5</ll>\n<c xmlns=\"urn:vibe-ports:yang:conformance:pv2-ordered8\">\n  <x xmlns:pfm=\"urn:vibe-ports:yang:conformance:pv2-find-meta\" pfm:note=\"one\">first</x>\n  <z>zz</z>\n  <p>p</p>\n  <b>b</b>\n  <x xmlns:pfm=\"urn:vibe-ports:yang:conformance:pv2-find-meta\" pfm:note=\"two\">second</x>\n</c>\n"
+      },
+      "typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-lyds:ll[.='5']",
+          "schema": "/pv2-lyds:ll",
+          "value": {
+            "canonical": "5",
+            "type": "uint8",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-ordered8:c",
+          "schema": "/pv2-ordered8:c",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [
+            {
+              "module": "pv2-find-meta",
+              "name": "note",
+              "value": "one"
+            }
+          ],
+          "opaque": null,
+          "path": "/pv2-ordered8:c/x",
+          "schema": "/pv2-ordered8:c/x",
+          "value": {
+            "canonical": "first",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-ordered8:c/pv2-ordered8:z",
+          "schema": "/pv2-ordered8:c/z",
+          "value": {
+            "canonical": "zz",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-ordered8:c/p",
+          "schema": "/pv2-ordered8:c/p",
+          "value": {
+            "canonical": "p",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-ordered8:c/b",
+          "schema": "/pv2-ordered8:c/b",
+          "value": {
+            "canonical": "b",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [
+            {
+              "module": "pv2-find-meta",
+              "name": "note",
+              "value": "two"
+            }
+          ],
+          "opaque": null,
+          "path": "/pv2-ordered8:c/x",
+          "schema": "/pv2-ordered8:c/x",
+          "value": {
+            "canonical": "second",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        }
+      ]
+    },
+    {
+      "diagnostics": [],
+      "diff": {
+        "json": "{\n  \"pv2-lyds:ll\": [\n    5\n  ],\n  \"@pv2-lyds:ll\": [\n    {\n      \"yang:operation\": \"delete\"\n    }\n  ],\n  \"pv2-ordered8:c\": {\n    \"@\": {\n      \"yang:operation\": \"none\"\n    },\n    \"x\": \"first\",\n    \"@x\": {\n      \"yang:operation\": \"replace\",\n      \"yang:orig-default\": false,\n      \"yang:orig-value\": \"second\",\n      \"yang:meta-replace\": \"pv2-find-meta:note=one\",\n      \"yang:meta-orig\": \"pv2-find-meta:note=two\"\n    }\n  }\n}\n",
+        "xml": "<ll xmlns=\"urn:vibe-ports:yang:conformance:pv2-lyds\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"delete\">5</ll>\n<c xmlns=\"urn:vibe-ports:yang:conformance:pv2-ordered8\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\">\n  <x yang:operation=\"replace\" yang:orig-default=\"false\" yang:orig-value=\"second\" yang:meta-replace=\"pv2-find-meta:note=one\" yang:meta-orig=\"pv2-find-meta:note=two\">first</x>\n</c>\n"
+      },
+      "diff_typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [
+            {
+              "module": "yang",
+              "name": "operation",
+              "value": "delete"
+            }
+          ],
+          "opaque": null,
+          "path": "/pv2-lyds:ll[.='5']",
+          "schema": "/pv2-lyds:ll",
+          "value": {
+            "canonical": "5",
+            "type": "uint8",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [
+            {
+              "module": "yang",
+              "name": "operation",
+              "value": "none"
+            }
+          ],
+          "opaque": null,
+          "path": "/pv2-ordered8:c",
+          "schema": "/pv2-ordered8:c",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [
+            {
+              "module": "yang",
+              "name": "operation",
+              "value": "replace"
+            },
+            {
+              "module": "yang",
+              "name": "orig-default",
+              "value": "false"
+            },
+            {
+              "module": "yang",
+              "name": "orig-value",
+              "value": "second"
+            },
+            {
+              "module": "yang",
+              "name": "meta-replace",
+              "value": "pv2-find-meta:note=one"
+            },
+            {
+              "module": "yang",
+              "name": "meta-orig",
+              "value": "pv2-find-meta:note=two"
+            }
+          ],
+          "opaque": null,
+          "path": "/pv2-ordered8:c/x",
+          "schema": "/pv2-ordered8:c/x",
+          "value": {
+            "canonical": "first",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        }
+      ],
+      "do": "diff",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-lyds:ll[.='5']",
+          "schema": "/pv2-lyds:ll",
+          "value": {
+            "canonical": "5",
+            "type": "uint8",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-ordered8:c",
+          "schema": "/pv2-ordered8:c",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [
+            {
+              "module": "pv2-find-meta",
+              "name": "note",
+              "value": "one"
+            }
+          ],
+          "opaque": null,
+          "path": "/pv2-ordered8:c/x",
+          "schema": "/pv2-ordered8:c/x",
+          "value": {
+            "canonical": "first",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-ordered8:c/pv2-ordered8:z",
+          "schema": "/pv2-ordered8:c/z",
+          "value": {
+            "canonical": "zz",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-ordered8:c/p",
+          "schema": "/pv2-ordered8:c/p",
+          "value": {
+            "canonical": "p",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-ordered8:c/b",
+          "schema": "/pv2-ordered8:c/b",
+          "value": {
+            "canonical": "b",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [
+            {
+              "module": "pv2-find-meta",
+              "name": "note",
+              "value": "two"
+            }
+          ],
+          "opaque": null,
+          "path": "/pv2-ordered8:c/x",
+          "schema": "/pv2-ordered8:c/x",
+          "value": {
+            "canonical": "second",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        }
+      ]
+    }
+  ],
+  "verdict": "valid"
+}

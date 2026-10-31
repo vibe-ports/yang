@@ -1,0 +1,18 @@
+# LYD_PARSE_ORDERED JSON input out of schema order, validated: input order kept, the implicit default placed by libyang's anchor walk
+fixtures:
+  - id: protocol-v2/ordered-json-out-of-order-validated
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#7.5.7"]
+    areas: [codecs]
+    request:
+      op: "data"
+      searchdirs: [schemas]
+      context_options: ["no_yanglibrary"]
+      modules: [{name: "pv2-ordered2"}]
+      format: json
+      data_type: data
+      unknown: reject
+      parse_options: [ordered]
+      data: '{"pv2-ordered2:c": {"ll": [2, 1], "c": "z", "l": [{"v": "w", "k": "k1"}], "a": "x"}}'
+    golden: golden/ordered-json-out-of-order-validated.json

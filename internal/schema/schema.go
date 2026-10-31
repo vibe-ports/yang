@@ -17,6 +17,10 @@ type Set struct {
 	Modules    []*Module
 	nameHashes sync.Map // *Node -> uint32, immutable module/name prefixes shared by trees
 	indexNames sync.Map // *Node -> [32]byte, immutable positional-index name digests
+	// children indexes the children of one of this set's nodes (nil: the top level) by node type,
+	// module name and node name, built per parent on first use (ChildByName); it holds only the
+	// set's own nodes
+	children sync.Map // *Node -> map[ChildKey]*Node
 	// LeafrefLinking is the context flag LY_CTX_LEAFREF_LINKING: data trees over the set keep
 	// leafref links (lyd_leafref_link_node_tree).
 	LeafrefLinking bool
@@ -34,6 +38,56 @@ func (s *Set) CachedNameHash(n *Node, compute func() (uint32, error)) (uint32, e
 	}
 	actual, _ := s.nameHashes.LoadOrStore(n, h)
 	return actual.(uint32), nil
+}
+
+// ChildKey identifies a schema child under its parent: node type, module name and node name, the
+// fields lyd_compare_schema_equal compares at one level.
+type ChildKey struct {
+	Kind Kind
+	Mod  string
+	Name string
+}
+
+// ChildByName is the child of parent (a node of this set, nil: the top level of every module)
+// with the given key: data children, the cases of a choice, the input and output of an operation,
+// and actions and notifications in containers and lists; nil if none. The parent's index is
+// built on first use, paying its size through charge first (a refusal builds nothing and is
+// returned); afterwards a lookup is one map read. Extension-instance schema trees are not indexed.
+func (s *Set) ChildByName(parent *Node, key ChildKey, charge func(int64) error) (*Node, error) {
+	if v, ok := s.children.Load(parent); ok {
+		return v.(map[ChildKey]*Node)[key], nil
+	}
+	var kids [][]*Node
+	if parent == nil {
+		for _, m := range s.Modules {
+			kids = append(kids, m.Top)
+		}
+	} else {
+		kids = [][]*Node{parent.Children, parent.Actions, parent.Notifs}
+	}
+	size := 0
+	for _, k := range kids {
+		size += len(k)
+	}
+	if charge != nil {
+		if err := charge(int64(size) + 1); err != nil {
+			return nil, err
+		}
+	}
+	idx := make(map[ChildKey]*Node, size)
+	for _, k := range kids {
+		for _, n := range k {
+			var mod string
+			if n.Module != nil {
+				mod = n.Module.Name
+			}
+			if key := (ChildKey{n.Kind, mod, n.Name}); idx[key] == nil {
+				idx[key] = n
+			}
+		}
+	}
+	v, _ := s.children.LoadOrStore(parent, idx)
+	return v.(map[ChildKey]*Node)[key], nil
 }
 
 // CachedIndexName shares the immutable positional discriminator component across trees.

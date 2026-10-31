@@ -1,0 +1,23 @@
+# insertions into a set that was interleaved and has lost its opaque node, then all its children
+fixtures:
+  - id: protocol-v2/ordered-opaque-gone-insert
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#7.5.7"]
+    areas: [codecs]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      context_options: ["no_yanglibrary"]
+      modules: [{name: "pv2-ordered2"}]
+      steps:
+        - {do: parse, format: json, data_type: get, unknown: opaque, parse_options: [ordered], data: '{"pv2-ordered2:c": {"zz": "u", "a": "x", "c": "z"}}'}
+        - {do: trim, xpath: '/pv2-ordered2:c/a | /pv2-ordered2:c/c'}
+        - {do: dump}
+        - {do: edit, set: {path: /pv2-ordered2:c/b, value: "y"}}
+        - {do: dump}
+        - {do: trim, xpath: /pv2-ordered2:c}
+        - {do: dump}
+        - {do: edit, set: {path: /pv2-ordered2:c/d, value: "w"}}
+        - {do: dump}
+    golden: golden/ordered-opaque-gone-insert.json

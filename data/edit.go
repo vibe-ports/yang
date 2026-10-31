@@ -406,17 +406,13 @@ func (t *Tree) instanceRun(s *siblings, sn *schema.Node) iter.Seq2[int, *Node] {
 		switch {
 		case mixed && s.ht != nil && s.firstRecordSchema(sn):
 			if leader := s.leaderFirstMixed(sn); leader != nil {
-				if at := s.orderPosition(leader); at >= 0 {
-					run = s.schemaSpan().Slice(at, s.SchemaLen())
-				}
+				run = s.docFrom(leader)
 			}
 		case mixed:
 			// A single instance (leaf, container, ...) has no first-instance record: the
 			// schema lookup that matches other contexts by name finds it.
 			if n := t.schemaLookup(s, sn); n != nil {
-				if at := s.orderPosition(n); at >= 0 {
-					run = s.schemaSpan().Slice(at, s.SchemaLen())
-				}
+				run = s.docFrom(n)
 			}
 		case opChild(sn) || s.schemaUnordered:
 			// Keep the ordered run lazy even when a caller needs only its first node.
@@ -429,8 +425,8 @@ func (t *Tree) instanceRun(s *siblings, sn *schema.Node) iter.Seq2[int, *Node] {
 			}
 			return
 		default:
-			if i := t.schemaIndex(s, sn); i >= 0 {
-				run = s.schemaSpan().Slice(i, s.schemaSpan().Len())
+			if _, n := t.schemaFind(s, sn); n != nil {
+				run = s.docFrom(n)
 			}
 		}
 		for i, n := range run.All() {
@@ -912,17 +908,13 @@ func (t *Tree) changeNodeValue(n *Node, v types.Value, hashAmount uint64) {
 			entry = sib.order.entries[target.schema]
 		}
 		if entry == nil || entry.count != 1 || sib.documentFirst(target.schema) != target {
-			at, err := t.originIndex(sib, sib.schemaSpan(), target)
-			if err != nil {
-				t.work.hashErr = err
-				return
+			// the document neighbours (an opaque one ends the run, design 15); the first
+			// sibling's prev is the last sibling in libyang
+			prev, next := sib.docNeighbours(target)
+			if prev == nil && sib.docLast() != target {
+				prev = sib.docLast()
 			}
-			left, right := sib.opNeighbours(at)
-			// In libyang the first sibling's prev points to the last sibling.
-			if at == 0 && sib.OpaqueLen() == 0 && sib.SchemaLen() > 1 {
-				left = sib.At(sib.SchemaLen() - 1).schema
-			}
-			relocate = left == target.schema || right == target.schema
+			relocate = prev != nil && prev.schema == target.schema || next != nil && next.schema == target.schema
 		}
 	}
 	if relocate {
@@ -938,7 +930,7 @@ func (t *Tree) changeNodeValue(n *Node, v types.Value, hashAmount uint64) {
 		}
 		var slots []slot
 		if n.isKey() {
-			for _, key := range target.kids.SchemaAll() {
+			for _, key := range keyPrefix(target).All() {
 				t.work.Add(1)
 				if err := t.work.chargeHash(1); err != nil {
 					return
@@ -1220,14 +1212,15 @@ func (t *Tree) keylessFirst(c *dupCache, sib *siblings, target *Node) (*Node, er
 	}
 	// lyd_find_sibling_first rejects a schema-parent mismatch before finding the
 	// first sibling, resolving a foreign schema, or touching the children table.
-	if sib.SchemaLen() > 0 && sib.At(0).schema != nil && target.schema != nil &&
-		!compareSchemaEqual(sib.At(0).schema.DataParent(), target.schema.DataParent(), true) {
+	// The check reads the physical first sibling; an opaque one skips it.
+	if f := sib.docFirst(); f != nil && f.schema != nil && target.schema != nil &&
+		!compareSchemaEqual(f.schema.DataParent(), target.schema.DataParent(), true) {
 		return nil, nil
 	}
 	sn := target.schema
 	if sib.SchemaLen() != 0 {
-		first := sib.At(0)
-		if !sameSet(ctxOf(first), ctxOf(target)) {
+		// the context of the schema siblings, not of an opaque first one, decides
+		if ctx := sib.schemaContext(); !sameSet(ctx, ctxOf(target)) {
 			// lyd_find_sibling_first maps no schema in its linear branch. In
 			// particular, lyd_find_schema_ctx always walks operation input, so it
 			// cannot map an output child unless the table branch actually needs it.
@@ -1240,9 +1233,10 @@ func (t *Tree) keylessFirst(c *dupCache, sib *siblings, target *Node) (*Node, er
 				}
 				return nil, nil
 			}
+			// the table's lyd_hash_table_val_equal matches by full lineage, outputs included
 			var err error
-			if sn, err = findSchemaCtx(target.schema, ctxOf(first), first.parent); err != nil {
-				return nil, nil
+			if sn, err = equivalentIn(target.schema, sib.schemaContext(), chargeOf(&t.work)); err != nil || sn == nil {
+				return nil, err
 			}
 		}
 	}
@@ -1682,7 +1676,7 @@ func (t *Tree) runSlot(sib *siblings, run []*Node, n *Node, k idxKey) int {
 		if b < 0 {
 			return 0 // none before n
 		}
-		fh, bh = sib.st.seq.Next(fh), sib.st.seq.Prev(bh)
+		fh, bh = sib.st.nextL(fh), sib.st.prevL(bh)
 		if i := member(fh.Value); i >= 0 {
 			return i
 		}
@@ -1806,7 +1800,16 @@ func (t *Tree) mergeSibling(lv *mergeLevel, src *Node) error {
 	var match *Node
 	switch {
 	case src.schema == nil:
-		match = opaqNext(sib, src.Name())
+		var err error
+		if match, err = opaqNext(&t.work, sib, src.Name()); err != nil {
+			return err
+		}
+		if match != nil && match.schema != nil {
+			// lyd_find_sibling_opaq_next compares LYD_NAME, so an opaque source can find a data
+			// node of its name; merging one into the other is undefined natively (design 15)
+			return &opError{"LY_EINVAL", fmt.Sprintf("Cannot merge opaque node \"%s\" into data node \"%s\".",
+				src.Name(), match.Name())}
+		}
 	case src.schema.Kind == schema.List && src.schema.Keyless() && !sib.mixedContexts():
 		var err error
 		if match, err = t.keylessFirst(cache, sib, src); err != nil {
@@ -2041,10 +2044,27 @@ func (t *Tree) flushMerge(lv *mergeLevel) error {
 	return nil
 }
 
-// opaqNext is lyd_find_sibling_opaq_next from the first opaque sibling: the first opaque node
-// named name.
-func opaqNext(s *siblings, name string) *Node {
-	return s.opaqueFirst(name)
+// opaqNext is lyd_find_sibling_opaq_next from the first sibling: the first opaque node named
+// name; the error is a refused charge of its walk, charged to w, the calling operation's counter
+// (s may belong to a tree the operation only reads).
+func opaqNext(w *workCounter, s *siblings, name string) (*Node, error) {
+	if s.st == nil || !s.st.interleaved() {
+		return s.opaqueFirst(name), nil
+	}
+	// From an opaque first sibling the walk covers every sibling; from a schema one, the trailing
+	// opaque block (tree_data.c:3392-3412). It compares LYD_NAME, a schema node's name too.
+	for _, n := range s.opaqNextSpan().All() {
+		if err := w.chargeHash(1); err != nil {
+			return nil, err
+		}
+		if w.visits { // tests only
+			w.Add(1)
+		}
+		if n.Name() == name {
+			return n, nil
+		}
+	}
+	return nil, nil
 }
 
 // dup is lyd_dup_single with LYD_DUP_RECURSIVE | LYD_DUP_WITH_FLAGS: an unlinked copy of n and

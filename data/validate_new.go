@@ -33,19 +33,23 @@ func (vc *valCtx) validateNew(parent *Node, sparent *schema.Node, mod *schema.Mo
 			return rc
 		}
 	}
-	nodes := sib.schemaSpan().Collect() // autodelete only removes; removed nodes are skipped below
-	if mod != nil {
-		// lyd_owner_module: an augment's node in mod's top-level choice is mod's data
-		kept := nodes[:0]
-		for _, n := range nodes {
-			if err := vc.checkContext(); err != nil {
-				return err
-			}
-			if ownerModule(vc.t.context(), n) == mod {
-				kept = append(kept, n)
-			}
+	// from *first up to the first opaque sibling or, at the top level, the first node of another
+	// module (validation.c:1023-1027; lyd_owner_module: an augment's node in mod's top-level choice
+	// is mod's data); *first is lyd_validate's first2, the module's first node (modFirst) or the
+	// tree's. Autodelete only removes, removed nodes are skipped below.
+	var nodes []*Node
+	start := sib.docFirst()
+	if parent == nil && vc.modFirst != nil {
+		start = vc.modFirst
+	}
+	for c := start; c != nil && c.schema != nil; c = sib.docNext(c) {
+		if err := vc.step(); err != nil {
+			return err
 		}
-		nodes = kept
+		if mod != nil && ownerModule(vc.t.context(), c) != mod {
+			break
+		}
+		nodes = append(nodes, c)
 	}
 	dups := dupIndex{sib: sib}
 	explicit := map[*schema.Node]bool{}
@@ -184,6 +188,7 @@ func (vc *valCtx) validateCases(sib *siblings, ch *schema.Node) error {
 				}
 			}
 		}
+		vc.delMoveRoots(del) // lyd_del_move_root before each lyd_free_tree
 		if err := vc.t.unlinkAll(del); err != nil {
 			return err
 		}
@@ -350,6 +355,7 @@ func (vc *valCtx) autodel(del []*Node, npContDiff bool) error {
 			return err
 		}
 	}
+	vc.delMoveRoots(del) // lyd_validate_autodel_node_del: lyd_del_move_root
 	if err := vc.t.unlinkAll(del); err != nil {
 		vc.t.work.hashErr = err
 		return err

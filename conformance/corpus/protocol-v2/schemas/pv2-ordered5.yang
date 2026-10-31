@@ -1,0 +1,22 @@
+module pv2-ordered5 {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:pv2-ordered5";
+  prefix o5;
+
+  description
+    "Hand-written (this repo): a top-level choice whose case is replaced
+     while lyd_validate holds the module's first node (design 15).";
+
+  choice ch {
+    case c1 {
+      leaf old {
+        type string;
+      }
+    }
+    case c2 {
+      leaf new {
+        type string;
+      }
+    }
+  }
+}

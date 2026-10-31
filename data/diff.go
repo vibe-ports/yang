@@ -134,7 +134,7 @@ func isUserOrdered(s *schema.Node) bool {
 // listPredicate is lyd_path_list_predicate: the key predicates of the list instance n.
 func listPredicate(n *Node) string {
 	var b strings.Builder
-	for _, k := range n.kids.SchemaAll() {
+	for _, k := range n.kids.All() { // lyd_child, in document order
 		if k.schema == nil || !k.schema.IsKey() {
 			break
 		}
@@ -835,7 +835,7 @@ func lastInst(n *Node) *Node {
 		return last
 	}
 	if at := sib.indexOf(sib.schemaSpan(), n); at >= 0 {
-		for _, c := range sib.schemaSpan().Slice(at+1, sib.SchemaLen()).All() {
+		for _, c := range sib.schemaSpan().Slice(at+1, max(at+1, sib.runPiece(at, sib.SchemaLen()))).All() {
 			if c.schema != n.schema {
 				break
 			}
@@ -925,7 +925,10 @@ func (t *Tree) diffMergeDelete(dm *Node, cur diffOp, src *Node) error {
 		var found *Node
 		switch {
 		case c.schema == nil:
-			found = opaqNext(&src.kids, c.Name())
+			var err error
+			if found, err = opaqNext(&t.work, &src.kids, c.Name()); err != nil {
+				return err
+			}
 		case c.schema.Kind == schema.List || c.schema.Kind == schema.LeafList:
 			var err error
 			if found, err = t.findFirstChecked(&src.kids, c); err != nil {
@@ -983,7 +986,7 @@ func (t *Tree) diffIsRedundant(n *Node) (bool, error) {
 				return false, nil
 			}
 		}
-		for _, k := range n.kids.SchemaAll() { // … and on its keys
+		for _, k := range keyPrefix(n).All() { // … and on its keys
 			if !k.isKey() {
 				break
 			}

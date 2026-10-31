@@ -48,16 +48,8 @@ func isInner(s *schema.Node) bool {
 	return false
 }
 
-// first is the first sibling, opaque nodes last.
-func (s *siblings) first() *Node {
-	if s.SchemaLen() > 0 {
-		return s.At(0)
-	}
-	if s.OpaqueLen() > 0 {
-		return s.opaqueAt(0)
-	}
-	return nil
-}
+// first is the first sibling in document order (lyd_first_sibling).
+func (s *siblings) first() *Node { return s.docFirst() }
 
 // sibList is the tree whose top level n starts when that top level has more nodes: the Go form
 // of a libyang sibling list of unlinked nodes, which lyd_insert_child and lyd_insert_sibling move
@@ -269,10 +261,10 @@ func (t *Tree) insertSibling(sibling, n *Node) (err error) {
 }
 
 // insertAfter is lyd_insert_after: the user-ordered instance n goes right after sibling, an
-// instance of the same schema node. Go keeps schema nodes in schema order and before opaque
-// ones, so a schema node after an opaque sibling goes after the last instance of its own run
-// (insertLastBySchema) and an opaque node after a schema sibling becomes the first opaque one
-// (libyang links them where asked; D-0058).
+// instance of the same schema node. A schema node after an opaque sibling goes after the last
+// instance of its own run (insertLastBySchema), an opaque node after a schema sibling becomes
+// the first opaque one, and a schema node after a schema sibling goes before the next schema node
+// (libyang links them right after sibling; D-0058).
 func (t *Tree) insertAfter(sibling, n *Node) (err error) {
 	switch {
 	case sibling == nil:
@@ -456,7 +448,7 @@ func (t *Tree) linkOrigin(n *Node) (restore func(), arm func(dst *siblings) (dis
 			// A copied or operation sibling set may have split runs. Limit
 			// this walk to the physical run and charge each inspected slot.
 			leader = n
-			for _, c := range sib.schemaSpan().Slice(0, at).Reverse() {
+			for _, c := range sib.schemaSpan().Slice(sib.runPieceStart(at), at).Reverse() {
 				if err := t.work.chargeHash(1); err != nil {
 					return nil, nil, err
 				}
@@ -474,6 +466,7 @@ func (t *Tree) linkOrigin(n *Node) (restore func(), arm func(dst *siblings) (dis
 			return nil, nil, err
 		}
 	}
+	near := sib.originPlace(n)
 	rb, uns, group := sib.rbTree[leader], sib.unsorted[leader], n.rbGroup
 	// lyds_unlink removes n from its tree, so a failed insertion must put back that exact
 	// topology. arm, called right before the unlink once every preflight passed, reserves the
@@ -518,7 +511,9 @@ func (t *Tree) linkOrigin(n *Node) (restore func(), arm func(dst *siblings) (dis
 			return err
 		}
 		if !journaled { // a journaled relocation rolls back instead (relocation): nothing to reserve
+			sib.setPlace(near) // the bound of restoreLink's placed link
 			cost, err := owner.linkBound(parent, sib, n, at)
+			sib.clearPlace()
 			if err != nil {
 				return err
 			}
@@ -632,7 +627,7 @@ func (t *Tree) linkOrigin(n *Node) (restore func(), arm func(dst *siblings) (dis
 			}
 			n.inRB = inRB
 			n.rbGroup = group
-			owner.restoreLink(parent, n, at, recovery)
+			owner.restoreLink(parent, n, at, recovery, near)
 			if detachedOrigin && t.work.journal == nil {
 				// restoreLink bound the detached origin tree to t (bindDestination); give it
 				// its own counters back
@@ -909,6 +904,7 @@ func (t *Tree) moveNodes(parent *Node, src *Tree) (result error) {
 				if n.schema != nil {
 					at = dst.SchemaLen()
 				}
+				dst.setPlace(placement{mode: placeEnd, target: n}) // the forest in its order (design 15)
 				if err := t.link(parent, dst, n, at); err != nil {
 					return err
 				}
@@ -940,6 +936,7 @@ func (t *Tree) moveNodes(parent *Node, src *Tree) (result error) {
 		if s != nil {
 			at = t.insertPos(dst, run[0], insertLastBySchema)
 			if t.work.hashErr != nil {
+				dst.clearPlace()
 				return t.work.hashErr
 			}
 		}
@@ -949,6 +946,10 @@ func (t *Tree) moveNodes(parent *Node, src *Tree) (result error) {
 					return err
 				}
 			} else {
+				if i > 0 {
+					// the run stays together after its anchor, past an opaque one too (design 15)
+					dst.setPlace(placement{mode: placeAfter, node: run[i-1], target: n})
+				}
 				if err := t.link(parent, dst, n, at+i); err != nil {
 					return err
 				}
@@ -1118,6 +1119,7 @@ func (t *Tree) merge(parent *Node, dst *siblings, run []*Node, state movedRunSta
 		if pred != nil {
 			anchor = pred
 		}
+		sortedPlace(dst, n, pred, leader) // lyds_link_data_node's physical place (design 15)
 		at, err := t.chargedIndex(dst, anchor)
 		if err != nil {
 			return err

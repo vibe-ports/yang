@@ -75,8 +75,12 @@ type ParseOptions struct {
 	// JSONStringDatatypes is LYD_PARSE_JSON_STRING_DATATYPES: JSON numbers and booleans may
 	// come as strings.
 	JSONStringDatatypes bool
-	Validate            ValidateOptions
-	Budget              Budget
+	// Ordered is LYD_PARSE_ORDERED. Parsed siblings are appended without searching
+	// for their schema- or value-ordered position. The caller must guarantee
+	// libyang's correct input order; using it on unordered input is undefined.
+	Ordered  bool
+	Validate ValidateOptions
+	Budget   Budget
 }
 
 // Budget limits what one Parse may use; zero fields take the defaults, exceeding one fails with
@@ -741,7 +745,7 @@ func nodetypeStr(k schema.Kind) string {
 
 // checkKeys is lyd_parser_check_keys: the keys are the first children, in key order.
 func (lc *lydCtx) checkKeys(list *Node) error {
-	prefix := list.kids.schemaSpan().cursor()
+	prefix := positionalChildren(list) // lyd_child, in document order
 	for _, k := range list.schema.Keys {
 		lc.tree.work.Add(1)
 		if c := prefix.next(); c == nil || c.schema != k {
@@ -803,6 +807,7 @@ func (lc *lydCtx) nodeInsert(parent, anchor, n *Node) error {
 				return err
 			}
 		}
+		sib.setPlace(placement{mode: placeAfter, node: anchor, target: n}) // also past a schema sibling (design 15)
 		return lc.tree.link(anchor.parent, sib, n, sib.indexOf(sib.opaqueSpan(), anchor)+1)
 	}
 	if anchor != nil {
@@ -834,6 +839,9 @@ func (lc *lydCtx) appendSorted(parent, n *Node) (bool, error) {
 		return false, err
 	}
 	sib := lc.tree.childrenOf(parent)
+	if sib.st != nil && sib.st.interleaved() {
+		return false, nil // no deferred publication in an interleaved set (design 15)
+	}
 	if err := lc.tree.touch(sib); err != nil {
 		return false, err
 	}

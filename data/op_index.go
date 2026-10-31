@@ -303,7 +303,7 @@ func (s *siblings) orderBuild(t *Tree) error {
 	o := newChildOrder(st, &orderBinding{count: &t.work})
 	s.order = o
 	hs := make([]*opidx.Handle[*Node], 0, st.seq.Len())
-	for h := st.seq.First(); h != nil; h = st.seq.Next(h) {
+	for h := st.seq.First(); h != nil; h = st.seq.Next(h) { // document order: an opaque node ends a run
 		hs = append(hs, h)
 	}
 	// each class's tree is built balanced from its handles in sequence order: O(N), where
@@ -418,13 +418,27 @@ func (s *siblings) orderAddSchema(t *Tree, n *Node) error {
 
 func (s *siblings) orderAddOpaque(t *Tree, parent, n *Node) error {
 	if s.order == nil {
-		if !isOp(schemaOf(parent)) {
+		if !isOp(schemaOf(parent)) && !s.schemaUnordered {
 			return nil
 		}
 		return s.orderBuild(t)
 	}
-	s.order.register(n, s.handle(n))
+	h := s.handle(n)
+	s.order.register(n, h)
+	s.opaqueSplit(h, 1)
 	return nil
+}
+
+// opaqueSplit counts the run an opaque node at h splits (delta 1, linked between two instances
+// of one schema node) or joins again (-1, before its removal): in an interleaved set an opaque
+// node ends a run (design 15).
+func (s *siblings) opaqueSplit(h *opidx.Handle[*Node], delta int) {
+	left, right := s.st.seq.Prev(h), s.st.seq.Next(h)
+	if left != nil && right != nil && left.Value.schema != nil && left.Value.schema == right.Value.schema {
+		if d := s.order.entries[left.Value.schema]; d != nil {
+			opidx.AddInt(s.order.bind, &d.gaps, delta)
+		}
+	}
 }
 
 func schemaOf(n *Node) *schema.Node {
@@ -457,7 +471,7 @@ func (s *siblings) publicationIndexBound(lo, hi int) uint64 {
 		planned += units
 		return pay == nil || pay.Pay(units)
 	})
-	bound = addHashBound(bound, s.st.seq.RepublishBound(lo, hi, 0, journaled, counted))
+	bound = addHashBound(bound, s.republishBound(lo, hi, 0, journaled, counted))
 	return addHashBound(bound, planned) // replaceSchema plans the same walk again
 }
 
@@ -509,7 +523,14 @@ func (s *siblings) orderRemove(n *Node) (survives, survivesRB bool) {
 	return true, d.rb > 0
 }
 
-func (s *siblings) orderRemoveOpaque(n *Node) { s.orderUnregister(n) }
+func (s *siblings) orderRemoveOpaque(n *Node) {
+	if s.order != nil {
+		if h := s.handle(n); h != nil {
+			s.opaqueSplit(h, -1)
+		}
+	}
+	s.orderUnregister(n)
+}
 
 // orderPosition is the position of n in s, -1 if absent or refused: the storage's rank walk. A
 // class-A read on a mutation path pays it, reserved before it runs (design 13 §4.4); inside a
@@ -523,7 +544,15 @@ func (s *siblings) orderPosition(n *Node) int {
 	if err != nil {
 		return -1
 	}
-	rank, _ := s.st.seq.Rank(h)
+	var rank int
+	if s.st.interleaved() { // the logical position (design 15)
+		rank, _ = s.st.seq.RankKind(h)
+		if !h.Heavy() {
+			rank += s.SchemaLen()
+		}
+	} else {
+		rank, _ = s.st.seq.Rank(h)
+	}
 	s.work.closeRead(opened)
 	return rank
 }

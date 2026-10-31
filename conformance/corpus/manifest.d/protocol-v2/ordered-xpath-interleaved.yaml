@@ -1,0 +1,19 @@
+# XPath over an ordered tree whose opaque node lies between schema nodes: document order of the child axis and position predicates
+fixtures:
+  - id: protocol-v2/ordered-xpath-interleaved
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#7.5.7"]
+    areas: [codecs]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      context_options: ["no_yanglibrary"]
+      modules: [{name: "pv2-ordered2"}]
+      steps:
+        - {do: parse, format: json, data_type: get, unknown: opaque, parse_options: [ordered], data: '{"pv2-ordered2:c": {"b": "y", "zz": "u", "a": "x", "ll": [2, 1]}}'}
+        - {do: xpath, xpath: /pv2-ordered2:c/*}
+        - {do: xpath, xpath: '/pv2-ordered2:c/*[2]'}
+        - {do: xpath, xpath: /pv2-ordered2:c/a/preceding-sibling::*}
+        - {do: xpath, xpath: /pv2-ordered2:c/b/following-sibling::*}
+    golden: golden/ordered-xpath-interleaved.json

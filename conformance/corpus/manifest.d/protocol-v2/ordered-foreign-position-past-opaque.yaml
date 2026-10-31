@@ -1,0 +1,19 @@
+# a positional path to a state leaf-list instance past an opaque root, in a top level that holds a root of another schema context: LYD_LIST_FOR_INST follows next pointers and stops at the opaque node
+fixtures:
+  - id: protocol-v2/ordered-foreign-position-past-opaque
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#7.5.7"]
+    areas: [codecs]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      context_options: ["no_yanglibrary"]
+      modules: [{name: "pv2-ordered3"}]
+      steps:
+        - {do: parse, format: xml, data_type: get, unknown: opaque, parse_options: [ordered], data: '<a xmlns="urn:vibe-ports:yang:conformance:pv2-ordered3">x</a><st xmlns="urn:vibe-ports:yang:conformance:pv2-ordered3">1</st><zz xmlns="urn:vibe-ports:yang:conformance:pv2-ordered3">u</zz><st xmlns="urn:vibe-ports:yang:conformance:pv2-ordered3">2</st>'}
+        - {do: insert, format: json, data_type: get, data: '{"pv2-ordered3:b": "y"}', target: {searchdirs: [schemas], modules: [{name: "pv2-ordered3"}], context_options: ["no_yanglibrary"]}}
+        - {do: dump}
+        - {do: edit, delete: "/pv2-ordered3:st[2]"}
+        - {do: dump}
+    golden: golden/ordered-foreign-position-past-opaque.json

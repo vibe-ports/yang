@@ -75,7 +75,7 @@ func (vc *valCtx) eval(e *xpath.Expr, ctx *Node, root xpath.RootKind, ignoreWhen
 	} else if vc.xpathContext == nil && ctxOf(ctx) != nil {
 		set = ctxOf(ctx)
 	}
-	r, err := e.EvalTo(xpath.EvalContext{Ctx: b.ctx, Node: wrap(set, ctx), Tree: vc.topNodes(), Root: root,
+	r, err := e.EvalTo(xpath.EvalContext{Ctx: b.ctx, Node: wrap(set, ctx), Tree: vc.topNodes(), TreeLookup: vc.rootLookup(), Root: root,
 		IgnoreWhen: ignoreWhen, Schema: info{set}, Deref: vc.deref, Log: vc.xpathLog,
 		SuppressLog: vc.log.suppress, MaxSteps: int(per), Vars: vc.vars}, vc.to)
 	// A failed nested printer returns its own ValidationError. Route its log now;
@@ -149,6 +149,15 @@ func (vc *valCtx) xpathDiagnostic(item printDiagnostic, notice bool) {
 // topNodes is the accessible tree of the evaluations: the live top-level siblings, rebuilt only
 // when the top level changed (siblings.gen) and charged to the step budget then, one step per
 // node.
+// rootLookup is the document root's child lookup when the top level is interleaved (design 15);
+// nil otherwise: the evaluator's scan of the top level is libyang's walk there.
+func (vc *valCtx) rootLookup() xpath.ChildLookup {
+	if st := vc.t.top.st; st == nil || !st.interleaved() {
+		return nil
+	}
+	return xroot{sib: &vc.t.top, set: vc.xpathSet()}
+}
+
 func (vc *valCtx) topNodes() []xpath.Node {
 	if vc.top != nil && vc.topGen == vc.t.top.gen {
 		return vc.top

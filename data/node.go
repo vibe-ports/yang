@@ -117,6 +117,9 @@ type Tree struct {
 	// mixedDiff makes insertion follow libyang's cross-context scans from the first copied node,
 	// before the destination itself contains nodes from both input contexts.
 	mixedDiff bool
+	// sortedAt: the last insertPos found its position in a run's RB tree (lyds_insert), not by
+	// lyd_insert_node_find_anchor (design 15)
+	sortedAt bool
 	// foreignSchema indexes sibling schema lineages only while a cross-context diff is running.
 	// The inputs are immutable for that operation, so the cache needs no mutation invalidation.
 	foreignSchema      map[foreignSchemaCacheKey]map[foreignSchemaIndexKey][]foreignCandidate

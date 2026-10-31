@@ -826,7 +826,11 @@ func (ev *evaluator) firstInstance(set value, sn SchemaNode) Node {
 			if err := ev.tick(); err != nil {
 				return nil
 			}
-			if n, ok := f.FirstChild(sn); ok {
+			n, ok := f.FirstChild(sn, ev.probeCharge)
+			if ev.err != nil {
+				return nil
+			}
+			if ok {
 				return n
 			}
 		}
