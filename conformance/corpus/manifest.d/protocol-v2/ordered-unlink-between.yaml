@@ -1,4 +1,4 @@
-# unlinking the schema nodes around an interleaved opaque node, then inserting again
+# unlinking the schema nodes before an interleaved opaque node (a path lookup stops at the first opaque sibling), then inserting again
 fixtures:
   - id: protocol-v2/ordered-unlink-between
     dir: protocol-v2
@@ -11,7 +11,7 @@ fixtures:
       context_options: ["no_yanglibrary"]
       modules: [{name: "pv2-ordered2"}]
       steps:
-        - {do: parse, format: json, data_type: get, unknown: opaque, parse_options: [ordered], data: '{"pv2-ordered2:c": {"a": "x", "zz": "u", "b": "y", "yy": "t", "c": "z"}}'}
+        - {do: parse, format: json, data_type: get, unknown: opaque, parse_options: [ordered], data: '{"pv2-ordered2:c": {"a": "x", "b": "y", "zz": "u", "c": "z", "yy": "t"}}'}
         - {do: edit, delete: /pv2-ordered2:c/b}
         - {do: dump}
         - {do: edit, set: {path: /pv2-ordered2:c/b, value: "y2"}}

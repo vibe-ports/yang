@@ -165,3 +165,33 @@ func TestSnapshotRace(t *testing.T) {
 	}
 	wg.Wait()
 }
+
+// TestSnapshotInternsIdents: every snapshot node carries its interned identifiers, so the data
+// layer's schema comparisons and child-index keys are O(1) whatever the names' length.
+func TestSnapshotInternsIdents(t *testing.T) {
+	c := snapHarness(t, snapFiles)
+	if _, diags, err := c.Load("a", "", []string{"*"}); err != nil {
+		t.Fatal(err, diags)
+	}
+	nodes := 0
+	var walk func(n *schema.Node)
+	walk = func(n *schema.Node) {
+		nodes++
+		if !n.Interned() || n.ID().Value() != (schema.Ident{Mod: n.Module.Name, Name: n.Name}) {
+			t.Fatalf("%s: not interned", n.Name)
+		}
+		for _, l := range [][]*schema.Node{n.Children, n.Actions, n.Notifs} {
+			for _, c := range l {
+				walk(c)
+			}
+		}
+	}
+	for _, m := range c.Snapshot().Modules {
+		for _, n := range m.Top {
+			walk(n)
+		}
+	}
+	if nodes == 0 {
+		t.Fatal("no nodes")
+	}
+}

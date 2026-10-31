@@ -93,7 +93,7 @@
     {
       "diagnostics": [],
       "do": "validate",
-      "implicit_diff": "{\n  \"pv2-ordered10:a\": \"a\",\n  \"@pv2-ordered10:a\": {\n    \"yang:operation\": \"create\"\n  },\n  \"pv2-ordered10:npc\": {\n    \"@\": {\n      \"yang:operation\": \"create\"\n    },\n    \"c\": \"c\",\n    \"@c\": {\n      \"yang:operation\": \"create\"\n    }\n  },\n  \"pv2-ordered10:b\": \"b\",\n  \"@pv2-ordered10:b\": {\n    \"yang:operation\": \"create\"\n  },\n  \"pv2-ordered11:w\": \"w\",\n  \"@pv2-ordered11:w\": {\n    \"yang:operation\": \"create\"\n  },\n  \"pv2-ordered11:zb\": \"zb\",\n  \"@pv2-ordered11:zb\": {\n    \"yang:operation\": \"create\"\n  }\n}\n",
+      "implicit_diff": "{\n  \"pv2-ordered10:a\": \"a\",\n  \"@pv2-ordered10:a\": {\n    \"yang:operation\": \"create\"\n  },\n  \"pv2-ordered10:npc\": {\n    \"@\": {\n      \"yang:operation\": \"create\"\n    },\n    \"c\": \"c\",\n    \"@c\": {\n      \"yang:operation\": \"create\"\n    }\n  },\n  \"pv2-ordered10:b\": \"b\",\n  \"@pv2-ordered10:b\": {\n    \"yang:operation\": \"create\"\n  },\n  \"pv2-ordered11:w\": \"w\",\n  \"@pv2-ordered11:w\": {\n    \"yang:operation\": \"create\"\n  },\n  \"pv2-ordered11:w2\": \"w2\",\n  \"@pv2-ordered11:w2\": {\n    \"yang:operation\": \"create\"\n  },\n  \"pv2-ordered11:zb\": \"zb\",\n  \"@pv2-ordered11:zb\": {\n    \"yang:operation\": \"create\"\n  }\n}\n",
       "rc": {
         "err": 0,
         "name": "LY_SUCCESS"
@@ -146,6 +146,25 @@
           "schema": "/pv2-ordered11:w",
           "value": {
             "canonical": "w",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": true,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-ordered11:w2",
+          "schema": "/pv2-ordered11:w2",
+          "value": {
+            "canonical": "w2",
             "type": "string",
             "typedef": null,
             "union_member": null
@@ -340,6 +359,25 @@
           "schema": "/pv2-ordered11:w",
           "value": {
             "canonical": "w",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": true,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-ordered11:w2",
+          "schema": "/pv2-ordered11:w2",
+          "value": {
+            "canonical": "w2",
             "type": "string",
             "typedef": null,
             "union_member": null

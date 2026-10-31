@@ -15,6 +15,7 @@ import (
 	"iter"
 	"slices"
 	"strings"
+	"unique"
 
 	"github.com/vibe-ports/yang/internal/schema"
 	"github.com/vibe-ports/yang/internal/types"
@@ -1355,11 +1356,7 @@ func equivalentIn(sn *schema.Node, set *schema.Set, charge func(int64) error) (*
 			return nil, err
 		}
 	}
-	var mod string
-	if sn.Module != nil {
-		mod = sn.Module.Name
-	}
-	return set.ChildByName(parent, schema.ChildKey{Kind: sn.Kind, Mod: mod, Name: sn.Name}, charge)
+	return set.ChildByName(parent, schema.ChildKey{Kind: sn.Kind, ID: sn.ID()}, charge)
 }
 
 func (s *siblings) leaderDrop(sn *schema.Node, n *Node) bool {
@@ -1817,14 +1814,15 @@ func (t *Tree) schemaFind(s *siblings, sn *schema.Node) (int, *Node) {
 // compares equal with its parents wins (lyd_hash_table_schema_val_equal; tableFirst). Its work is
 // bounded by the represented contexts and one bucket. Inside a diff each step is charged to its
 // lookup quota, inside a mutation to the mutation's hash quota, and an exhaustion is a miss whose
-// error the operation returns; a read-only call writes no shared state (no charge). ok is false
+// error the operation returns; a read-only call, or a public read from user code while the
+// operation waits on it (opLookup, opHash), writes no shared state (no charge). ok is false
 // when the set keeps no ordered index to read it from.
 func (t *Tree) tableSchemaFirst(s *siblings, sn *schema.Node) (n *Node, ok bool) {
 	var charge func(int64) error
 	switch {
-	case t.work.lookupDepth != 0: // a diff's lookup quota
+	case t.work.opLookup(): // a diff's lookup quota
 		charge = func(n int64) error { return t.work.chargeLookup(uint64(n)) } //nolint:gosec // a charge is nonnegative
-	case t.work.hashDepth != 0: // a mutation (Merge, ApplyDiff, MergeDiff, edits): its own quota
+	case t.work.opHash(): // a mutation (Merge, ApplyDiff, MergeDiff, edits): its own quota
 		charge = chargeOf(&t.work)
 	}
 	return t.tableSchemaFirstCharged(s, sn, charge)
@@ -1858,7 +1856,7 @@ func (t *Tree) schemaFindAll(s *siblings, sn *schema.Node) (int, *Node) {
 			}
 			return s.orderPosition(n), n
 		}
-		if t.work.lookupDepth != 0 && t.foreignSchemaInput[s] {
+		if t.work.opLookup() && t.foreignSchemaInput[s] {
 			return t.foreignSchemaFind(s, sn, s.ht != nil)
 		}
 		return t.foreignScan(s, sn, false)
@@ -1910,14 +1908,12 @@ type schemaLineageID uint32
 
 type schemaLineageComponent struct {
 	parent schemaLineageID
-	module string
-	name   string
+	id     unique.Handle[schema.Ident]
 	kind   schema.Kind
 }
 
 type foreignSchemaIndexKey struct {
-	module  string
-	name    string
+	id      unique.Handle[schema.Ident]
 	lineage schemaLineageID
 }
 
@@ -1983,8 +1979,8 @@ func (t *Tree) foreignSchemaFind(s *siblings, sn *schema.Node, table bool) (int,
 }
 
 type foreignInstanceKey struct {
-	module, name string
-	hash         uint32
+	id   unique.Handle[schema.Ident] // interned: hashing it is O(1)
+	hash uint32
 }
 
 // foreignInstances is the candidate sequence of the linear branches of lyd_find_sibling_first
@@ -1995,7 +1991,7 @@ type foreignInstanceKey struct {
 // target's bucket keeps their order: the same first match, without a scan per instance. Other
 // callers keep the full sibling walk.
 func (t *Tree) foreignInstances(s *siblings, target *Node) (iter.Seq[*Node], error) {
-	if t.work.lookupDepth == 0 || !t.foreignSchemaInput[s] || target.schema == nil || target.schema.Module == nil {
+	if !t.work.opLookup() || !t.foreignSchemaInput[s] || target.schema == nil || target.schema.Module == nil {
 		return s.all(), nil
 	}
 	if t.foreignInstance == nil {
@@ -2011,7 +2007,7 @@ func (t *Tree) foreignInstances(s *siblings, target *Node) (iter.Seq[*Node], err
 				return nil, err
 			}
 			if n.schema != nil && n.schema.Module != nil {
-				k := foreignInstanceKey{n.schema.Module.Name, n.schema.Name, n.hash}
+				k := foreignInstanceKey{n.schema.ID(), n.hash}
 				index[k] = append(index[k], n)
 			}
 		}
@@ -2020,7 +2016,7 @@ func (t *Tree) foreignInstances(s *siblings, target *Node) (iter.Seq[*Node], err
 	if err := t.work.chargeLookup(1); err != nil {
 		return nil, err
 	}
-	bucket := index[foreignInstanceKey{target.schema.Module.Name, target.schema.Name, target.hash}]
+	bucket := index[foreignInstanceKey{target.schema.ID(), target.hash}]
 	return func(yield func(*Node) bool) {
 		for _, n := range bucket {
 			if t.work.chargeLookup(1) != nil || !yield(n) {
@@ -2034,7 +2030,7 @@ func (t *Tree) foreignInstances(s *siblings, target *Node) (iter.Seq[*Node], err
 // lineage, the comparison of lyd_hash_table_val_equal; nil when s has none. A running
 // cross-context diff uses its charged lineage index, other callers a charged sibling scan.
 func (t *Tree) foreignTableSchema(s *siblings, sn *schema.Node, work *workCounter) (*schema.Node, error) {
-	if t.work.lookupDepth != 0 && t.foreignSchemaInput[s] {
+	if t.work.opLookup() && t.foreignSchemaInput[s] {
 		if _, n := t.foreignSchemaFind(s, sn, true); n != nil {
 			return n.schema, nil
 		}
@@ -2054,7 +2050,7 @@ func (t *Tree) foreignTableSchema(s *siblings, sn *schema.Node, work *workCounte
 
 // foreignInstancesErr is the lookup quota refusal that ended a foreignInstances walk.
 func (t *Tree) foreignInstancesErr() error {
-	if t.work.lookupDepth == 0 {
+	if !t.work.opLookup() {
 		return nil
 	}
 	return t.work.lookupErr
@@ -2068,10 +2064,10 @@ func (t *Tree) foreignSchemaKey(sn *schema.Node, table bool) (foreignSchemaIndex
 		return foreignSchemaIndexKey{}, false, nil
 	}
 	if !table {
-		return foreignSchemaIndexKey{module: sn.Module.Name, name: sn.Name}, true, nil
+		return foreignSchemaIndexKey{id: sn.ID()}, true, nil
 	}
 	charge := t.work.chargeHash
-	if t.work.lookupDepth != 0 {
+	if t.work.opLookup() {
 		charge = t.work.chargeLookup
 	}
 	if t.schemaLineage == nil {
@@ -2097,7 +2093,7 @@ func (t *Tree) foreignSchemaKey(sn *schema.Node, table bool) (foreignSchemaIndex
 			return foreignSchemaIndexKey{}, false, err
 		}
 		component := schemaLineageComponent{
-			parent: t.schemaLineage[n.Parent], module: n.Module.Name, name: n.Name, kind: n.Kind,
+			parent: t.schemaLineage[n.Parent], id: n.ID(), kind: n.Kind,
 		}
 		id, ok := t.lineageComponents[component]
 		if !ok {
@@ -2128,7 +2124,7 @@ func schemaLookupMatch(got, want *schema.Node, table bool) bool {
 	if table {
 		return compareSchemaEqual(got, want, true)
 	}
-	return got.Module.Name == want.Module.Name && got.Name == want.Name
+	return got.ID() == want.ID()
 }
 
 // isDupInstList is lysc_is_dup_inst_list: keyless lists and state leaf-lists may have equal
@@ -2150,7 +2146,7 @@ func (t *Tree) findFirst(s *siblings, target *Node) *Node {
 }
 
 func (t *Tree) findFirstChecked(s *siblings, target *Node) (*Node, error) {
-	if t.work.hashDepth == 0 {
+	if !t.work.opHash() {
 		var readWork workCounter
 		return t.findFirstWork(s, target, &readWork)
 	}
@@ -2167,7 +2163,7 @@ func (t *Tree) findFirstMixedTable(s *siblings, target *Node, work *workCounter,
 	p := &xprobe{node: target, set: ctxOf(target)}
 	p.key, _ = indexedKey(target, work)
 	switch {
-	case t.work.lookupDepth != 0: // a diff's lookup quota
+	case t.work.opLookup(): // a diff's lookup quota
 		p.charge = func(n int64) error { return t.work.chargeLookup(uint64(n)) } //nolint:gosec // a charge is nonnegative
 	case work != nil: // the mutation's own counter (Merge, ApplyDiff, edits), before each step
 		p.charge = func(n int64) error { return work.chargeHash(uint64(n)) } //nolint:gosec // a charge is nonnegative
@@ -2342,7 +2338,7 @@ func compareSingle(t *Tree, a, b *Node, full bool) bool {
 }
 
 func compareSingleErr(t *Tree, a, b *Node, full bool) (bool, error) {
-	if t.work.hashDepth != 0 {
+	if t.work.opHash() {
 		return compareSingleWork(t, &t.work, a, b, full)
 	}
 	// Read-only comparisons must not mutate the queried tree: concurrent readers

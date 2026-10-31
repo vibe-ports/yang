@@ -9,6 +9,7 @@ import (
 	"os"
 	"runtime"
 	"slices"
+	"strconv"
 	"strings"
 	"sync"
 	"testing"
@@ -1898,6 +1899,34 @@ func TestEquivalentInColdBudgetAndDepth(t *testing.T) {
 	if grown := after.TotalAlloc - before.TotalAlloc; grown > 8<<20 {
 		t.Fatalf("a deep mapping allocated %d bytes", grown)
 	}
+	// a warm mapping is one fixed-size map read per level (interned identifiers, 16 KiB names or
+	// not), and pays exactly that
+	if !leaf.Interned() || !k.Interned() {
+		t.Fatal("snapshot nodes without interned identifiers")
+	}
+	charged = 0
+	for range 512 {
+		if _, err := equivalentIn(leaf, setB, func(n int64) error { charged += n; return nil }); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if charged != 512*(depth+1) {
+		t.Fatalf("warm mappings charged %d", charged)
+	}
+	// a cold build pays per module and child as it goes: a refusal partway stores nothing
+	setC := reviewDiffSet(t, mod.String())
+	left := 3
+	if _, err := setC.ChildByName(nil, schema.ChildKey{Kind: leaf.Kind, ID: leaf.ID()}, func(int64) error {
+		if left--; left < 0 {
+			return refused
+		}
+		return nil
+	}); !errors.Is(err, refused) {
+		t.Fatalf("a refused cold build: %v", err)
+	}
+	if k, err := equivalentIn(leaf, setC, nil); err != nil || k == nil {
+		t.Fatalf("after a refused build: %v %v", k, err)
+	}
 }
 
 // TestMutationSchemaLookupCharged: a schema-only table lookup inside a mutation (Merge, ApplyDiff,
@@ -1927,6 +1956,31 @@ func TestMutationSchemaLookupCharged(t *testing.T) {
 	end()
 	if !ok || n != nil || !errors.Is(err, yang.ErrBudget) {
 		t.Fatalf("a spent mutation quota: %v %v %v", n, ok, err)
+	}
+	// a public read from user code while the mutation waits on it (suspended) is read-only: it
+	// neither pays from nor fails the waiting operation's quota, and concurrent readers share
+	// nothing they write
+	want, err := tr.Find("/pv2-ordered8:c/x")
+	if err != nil || want == nil {
+		t.Fatalf("Find: %v %v", want, err)
+	}
+	end = tr.work.beginHashWork()
+	tr.work.hashLimit, tr.work.hashUsed, tr.work.hashErr = 1, 1, nil
+	release := tr.work.suspend()
+	var wg sync.WaitGroup
+	for range 4 {
+		wg.Go(func() {
+			if got, err := tr.Find("/pv2-ordered8:c/x"); got != want || err != nil {
+				t.Errorf("suspended Find: %v %v", got, err)
+			}
+		})
+	}
+	wg.Wait()
+	release()
+	used, herr := tr.work.hashUsed, tr.work.hashErr
+	end()
+	if used != 1 || herr != nil {
+		t.Fatalf("a suspended read charged the waiting operation: %d %v", used, herr)
 	}
 }
 
@@ -2214,9 +2268,20 @@ func TestMixedIdentityDiffManyStateLeafLists(t *testing.T) {
 // where the previous one ended, so the work per default stays flat and a large module validates
 // under the default quota; every step is charged, so a small quota refuses.
 func TestModuleRelativeDefaultsScaling(t *testing.T) {
-	build := func(n int) *Tree {
+	// before: an instance run (a leaf-list of n entries) precedes every default in schema and
+	// document order, so no walk finds an anchor (each default goes after first->prev)
+	build := func(n int, before bool) *Tree {
 		var m strings.Builder
 		m.WriteString(`module m { yang-version 1.1; namespace "urn:m"; prefix m;`)
+		in := `{"z:x":"x","m:marker":"x"}`
+		if before {
+			m.WriteString(` leaf-list u { type uint32; ordered-by user; }`)
+			vals := make([]string, n)
+			for i := range vals {
+				vals[i] = strconv.Itoa(i)
+			}
+			in = `{"z:x":"x","m:u":[` + strings.Join(vals, ",") + `]}`
+		}
 		for i := range n {
 			fmt.Fprintf(&m, ` leaf d%d { type string; default "v"; }`, i)
 		}
@@ -2237,30 +2302,41 @@ func TestModuleRelativeDefaultsScaling(t *testing.T) {
 				t.Fatal(ds, err)
 			}
 		}
-		tr, err := parseOrdered(t, snap.Set(c.Schema()), false, `{"z:x":"x","m:marker":"x"}`, nil)
+		tr, err := parseOrdered(t, snap.Set(c.Schema()), false, in, nil)
 		if err != nil {
 			t.Fatal(err)
 		}
 		return tr
 	}
-	work := func(n int) float64 {
-		tr := build(n)
+	work := func(n int, before bool) float64 {
+		tr := build(n, before)
 		load := tr.work.Load()
 		if _, err := tr.ValidateModule(context.Background(), "m", ValidateOptions{NotFinal: true}); err != nil {
-			t.Fatal(n, err)
+			t.Fatal(n, before, err)
 		}
-		if got := len(slices.Collect(tr.Top())); got != n+2 {
-			t.Fatalf("%d top-level nodes, want %d", got, n+2)
+		top := slices.Collect(tr.Top())
+		want := n + 2
+		if before {
+			want = 2*n + 1
+			// x, then the defaults in schema order, then the run: each after first->prev
+			if top[1].Name() != "d0" || top[2].Name() != "d1" || top[n+1].Name() != "u" {
+				t.Fatalf("order: %s %s %s", top[1].Name(), top[2].Name(), top[n+1].Name())
+			}
+		}
+		if len(top) != want {
+			t.Fatalf("%d top-level nodes, want %d", len(top), want)
 		}
 		return (float64(tr.work.Load()-load) + float64(tr.work.hashUsed)) / float64(n)
 	}
 	// flat up to the O(log n) index operations of each link: 4x the defaults, at most 1.5x the
-	// work per default (the walk alone, rescanned, grew 4x)
-	small, large := work(2400), work(9600)
-	if large > 1.5*small {
-		t.Fatalf("work per default: %.1f at 2400, %.1f at 9600", small, large)
+	// work per default (the walk alone, rescanned, grew 4x), an anchor or none
+	for _, before := range []bool{false, true} {
+		small, large := work(2400, before), work(9600, before)
+		if large > 1.5*small {
+			t.Fatalf("work per default (run before: %v): %.1f at 2400, %.1f at 9600", before, small, large)
+		}
 	}
-	tr := build(300)
+	tr := build(300, false)
 	tr.work.hashLimit = 64
 	if _, err := tr.ValidateModule(context.Background(), "m", ValidateOptions{NotFinal: true}); !errors.Is(err, yang.ErrBudget) {
 		t.Fatalf("a small quota: %v", err)

@@ -351,18 +351,20 @@ func (vc *valCtx) modInsert(n *Node) error {
 // Without an anchor, a trailing opaque block before first (first->prev) is the anchor; else the
 // node goes after first->prev (the last sibling when first is the tree's first). first moves
 // only when the node lands right before it.
-// modWalk is where a module-relative anchor walk ended (modInsertInterleaved): its anchor, the
-// node inserted right before it, and the schema iterator standing at that node's schema. A next
-// default at or after that schema in schema order would pass exactly the nodes this walk passed
-// and the node it inserted; it resumes here instead, which keeps a module's defaults linear. An
-// earlier one (choices' defaults come first) walks afresh.
+// modWalk is where a module-relative anchor walk ended (modInsertInterleaved): the node it
+// continues at (anchor; nil: the walk ran off the end of the tree), the node right before that
+// (tail: the inserted node, or the walk's last node when the insertion went before first), the
+// inserted node (last), first after the insertion, and the schema iterator. A next default at or
+// after last's schema in schema order would pass exactly the nodes this walk passed and, when it
+// lies on the walk, the inserted node; it resumes here instead, which keeps a module's defaults
+// linear, anchor or none. An earlier one (choices' defaults come first) walks afresh.
 type modWalk struct {
-	gen          uint64 // the top level's generation right after the insertion
-	last, anchor *Node
-	next         func() (*schema.Node, bool)
-	stop         func()
-	sn           *schema.Node
-	ok           bool
+	gen                       uint64 // the top level's generation right after the insertion
+	last, tail, anchor, first *Node
+	next                      func() (*schema.Node, bool)
+	stop                      func()
+	sn                        *schema.Node
+	ok                        bool
 }
 
 func (vc *valCtx) dropModWalk() {
@@ -423,8 +425,10 @@ func (vc *valCtx) modInsertInterleaved(n *Node) error {
 	var stop func()
 	var sn *schema.Node
 	var ok bool
+	var seen *Node // the last node the walk passed
 	resume := false
-	if w := vc.modWalk; w != nil && w.gen == sib.gen && w.last.siblingsOf() == sib && sib.docNext(w.last) == w.anchor &&
+	if w := vc.modWalk; w != nil && w.gen == sib.gen && w.first == first && w.last.siblingsOf() == sib &&
+		w.tail.siblingsOf() == sib && sib.docNext(w.tail) == w.anchor &&
 		ownerModule(t.context(), w.last) == own && w.last.schema.Module == n.schema.Module {
 		// the iterator stands at last's schema: only a node at or after it in schema order finds
 		// its anchor past last (newImplicit creates choices' defaults first, so the order breaks)
@@ -440,7 +444,7 @@ func (vc *valCtx) modInsertInterleaved(n *Node) error {
 	}
 	if w := vc.modWalk; resume {
 		// the nodes up to the last inserted one pass again: resume at its anchor
-		match, next, stop, sn, ok = w.anchor, w.next, w.stop, w.sn, w.ok
+		match, next, stop, sn, ok, seen = w.anchor, w.next, w.stop, w.sn, w.ok, w.tail
 		vc.modWalk = nil
 	} else {
 		vc.dropModWalk()
@@ -466,7 +470,7 @@ func (vc *valCtx) modInsertInterleaved(n *Node) error {
 			stop()
 		}
 	}()
-	found := false
+	found, exhausted := false, false
 walk:
 	for ; match != nil; match = sib.docNext(match) {
 		if err := step(); err != nil {
@@ -475,9 +479,10 @@ walk:
 		if match.schema == nil || ownerModule(t.context(), match) != own {
 			break
 		}
+		seen = match
 		for !found {
 			if !ok {
-				match = nil // extension instance data, or a schema before the resumed one: no anchor
+				match, exhausted = nil, true // extension instance data: no anchor
 				break walk
 			}
 			if sn == n.schema {
@@ -516,6 +521,7 @@ walk:
 			}
 		}
 	}
+	end := false // n goes last: it lies on the next walk, right after seen
 	var at int
 	switch {
 	case anchor != nil:
@@ -524,6 +530,7 @@ walk:
 	case first == sib.docFirst():
 		sib.setPlace(placement{mode: placeEnd, target: n})
 		at = sib.SchemaLen()
+		end = true
 	default:
 		p := prev(first)
 		sib.setPlace(placement{mode: placeAfter, node: p, target: n})
@@ -538,9 +545,20 @@ walk:
 	if anchor == first {
 		vc.modFirst = n // lyd_insert_before_node of the first sibling moves first
 	}
-	if found && anchor != nil && anchor == match && sib.docNext(n) == anchor {
+	w := &modWalk{gen: sib.gen, last: n, first: vc.modFirst, next: next, stop: stop, sn: sn, ok: ok}
+	switch {
+	case found && anchor != nil && anchor == match && sib.docNext(n) == anchor:
+		w.tail, w.anchor = n, anchor // n went right before the anchor
+	case match == nil && !exhausted && end && sib.docNext(n) == nil:
+		w.tail = n // the walk ran off the end, and n went after it
+	case match == nil && !exhausted && !end && seen != nil && sib.docNext(seen) == nil:
+		w.tail = seen // the walk ran off the end, and n went before first
+	default:
+		w = nil
+	}
+	if w != nil {
 		keep = true
-		vc.modWalk = &modWalk{gen: sib.gen, last: n, anchor: anchor, next: next, stop: stop, sn: sn, ok: ok}
+		vc.modWalk = w
 	}
 	return nil
 }

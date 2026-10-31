@@ -1225,7 +1225,7 @@ func (t *Tree) sortedLeaderIndex(sib *siblings, n *Node) int {
 	// In the lookup mode insertPos switches to first (markMixed). The lookup is read-only: a
 	// preflight probes that mode rather than entering it, so a refusal leaves sib as it was.
 	if sib.ht == nil || !sib.schemaUnordered && !t.mixedSwitch(sib, sib.At(0).parent, n) {
-		if sib.foreignFor(n.schema) && (t.work.lookupDepth == 0 || !t.foreignSchemaInput[sib]) {
+		if sib.foreignFor(n.schema) && (!t.work.opLookup() || !t.foreignSchemaInput[sib]) {
 			// schemaIndex's linear foreign-name scan, charged step by step: it stops at the
 			// first match, so reserving every sibling per insertion made a run quadratic
 			at, _ := t.foreignScan(sib, n.schema, true)
@@ -1631,7 +1631,7 @@ func (t *Tree) schemaLookupOperation(s *siblings, sn *schema.Node) *Node {
 		return s.leaderFirst(sn)
 	}
 	var h uint32
-	if t.work.hashDepth > 0 {
+	if t.work.opHash() {
 		h = schemaHashWork(sn, &t.work)
 		if t.work.hashErr != nil {
 			return nil

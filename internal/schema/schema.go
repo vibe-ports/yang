@@ -10,6 +10,7 @@ package schema
 import (
 	"iter"
 	"sync"
+	"unique"
 )
 
 // Set is every module of one context, in load order (libyang ly_ctx module list).
@@ -40,48 +41,79 @@ func (s *Set) CachedNameHash(n *Node, compute func() (uint32, error)) (uint32, e
 	return actual.(uint32), nil
 }
 
-// ChildKey identifies a schema child under its parent: node type, module name and node name, the
+// Ident is a schema node's module and node name, the identifiers lyd_compare_schema_equal
+// compares at one level.
+type Ident struct{ Mod, Name string }
+
+// ID is n's interned Ident: equal identifiers have equal handles, so comparing or hashing them is
+// O(1) whatever their length. Snapshot nodes carry it (interned once, at the copy); another node
+// interns it here.
+func (n *Node) ID() unique.Handle[Ident] {
+	if n.Interned() {
+		return n.ident
+	}
+	return unique.Make(n.identOf())
+}
+
+// Interned reports whether n carries its interned Ident (SetID).
+func (n *Node) Interned() bool { return n.ident != (unique.Handle[Ident]{}) }
+
+// SetID interns n's Ident into n (the snapshot copy, before the set is shared).
+func (n *Node) SetID() { n.ident = unique.Make(n.identOf()) }
+
+func (n *Node) identOf() Ident {
+	var mod string
+	if n.Module != nil {
+		mod = n.Module.Name
+	}
+	return Ident{mod, n.Name}
+}
+
+// ChildKey identifies a schema child under its parent: node type and interned identifiers, the
 // fields lyd_compare_schema_equal compares at one level.
 type ChildKey struct {
 	Kind Kind
-	Mod  string
-	Name string
+	ID   unique.Handle[Ident]
 }
 
 // ChildByName is the child of parent (a node of this set, nil: the top level of every module)
 // with the given key: data children, the cases of a choice, the input and output of an operation,
 // and actions and notifications in containers and lists; nil if none. The parent's index is
-// built on first use, paying its size through charge first (a refusal builds nothing and is
-// returned); afterwards a lookup is one map read. Extension-instance schema trees are not indexed.
+// built on first use, paying through charge as it goes, one unit per module enumerated and per
+// child (a fixed-size key), so a charge that polls cancels the build; a refusal stores nothing
+// and is returned. A warm lookup is one map read of a fixed-size key. Extension-instance schema
+// trees are not indexed.
 func (s *Set) ChildByName(parent *Node, key ChildKey, charge func(int64) error) (*Node, error) {
 	if v, ok := s.children.Load(parent); ok {
 		return v.(map[ChildKey]*Node)[key], nil
 	}
+	pay := func() error {
+		if charge == nil {
+			return nil
+		}
+		return charge(1)
+	}
+	if err := pay(); err != nil {
+		return nil, err
+	}
 	var kids [][]*Node
 	if parent == nil {
 		for _, m := range s.Modules {
+			if err := pay(); err != nil {
+				return nil, err
+			}
 			kids = append(kids, m.Top)
 		}
 	} else {
 		kids = [][]*Node{parent.Children, parent.Actions, parent.Notifs}
 	}
-	size := 0
-	for _, k := range kids {
-		size += len(k)
-	}
-	if charge != nil {
-		if err := charge(int64(size) + 1); err != nil {
-			return nil, err
-		}
-	}
-	idx := make(map[ChildKey]*Node, size)
+	idx := make(map[ChildKey]*Node)
 	for _, k := range kids {
 		for _, n := range k {
-			var mod string
-			if n.Module != nil {
-				mod = n.Module.Name
+			if err := pay(); err != nil {
+				return nil, err
 			}
-			if key := (ChildKey{n.Kind, mod, n.Name}); idx[key] == nil {
+			if key := (ChildKey{n.Kind, n.ID()}); idx[key] == nil {
 				idx[key] = n
 			}
 		}
@@ -312,7 +344,8 @@ const (
 type Node struct {
 	Kind   Kind
 	Name   string
-	Module *Module // module whose namespace the node is in (the augmenting module for augments)
+	ident  unique.Handle[Ident] // ID, interned by the snapshot
+	Module *Module              // module whose namespace the node is in (the augmenting module for augments)
 	Parent *Node
 	// Children are the data children (for a choice its cases, for an rpc/action its input and
 	// output). Actions and notifications defined in a container or list are kept apart in

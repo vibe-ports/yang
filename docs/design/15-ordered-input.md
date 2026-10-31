@@ -119,7 +119,7 @@ write takes the code path it took before (the counted-work and scaling tests are
 
 ## Evidence
 
-- Oracle fixtures `protocol-v2/ordered-*` (65; `ordered-split-list-merge-destruct` is unsupported,
+- Oracle fixtures `protocol-v2/ordered-*` (66; `ordered-split-list-merge-destruct` is unsupported,
 U-0113) cover:
   - parse order, JSON and XML;
   - the XML opaque anchor;
@@ -196,6 +196,20 @@ Read in document order (fixed):
   schema, holds only the target set's nodes, and the cost is O(depth) (`TestEquivalentInColdBudgetAndDepth`,
   `TestEquivalentInOutputAndScaling`, `TestEquivalentCacheKeepsNoContext`). `leaderFirstMixed`
   uses the same candidates.
+- round 23: a public read from user code while an operation waits on it (suspended) is
+  read-only: the lookups pick an operation's quota only through `opLookup`/`opHash`, which
+  exclude a held counter as `openRead` does, so the read neither pays from nor fails the waiting
+  operation and concurrent readers write nothing (`TestMutationSchemaLookupCharged`). A
+  module-relative default walk that finds no anchor (it runs off the end of the tree) is kept
+  too, at the walk's last node or at the node appended after it, under the round-22 rules, so
+  defaults after an instance run stay linear (`TestModuleRelativeDefaultsScaling`,
+  `ordered-implicit-no-anchor-run`). Schema identifiers are interned by the snapshot
+  (`schema.Node.ID`): schema comparisons, the child index of `equivalentIn` and the foreign
+  instance and lineage keys compare and hash fixed-size handles, so a charge per lookup or per
+  level is the work whatever the names' length, and a cold child index pays per module and child
+  as it builds (`TestSnapshotInternsIdents`, `TestEquivalentInColdBudgetAndDepth`). The fixtures
+  `ordered-unlink-between` and `ordered-json-out-of-order-validated` now reach the steps they
+  describe;
 - round 22: `lyd_new_implicit` does not create a module's defaults in schema order: choices
   first (the default case, or the case that has data, whose own choices come first again), then
   NP containers and leaf defaults; every module does this in turn. The walk resumes only when the

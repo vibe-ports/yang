@@ -14,5 +14,5 @@ fixtures:
       data_type: data
       unknown: reject
       parse_options: [ordered]
-      data: '{"pv2-ordered2:c": {"ll": [2, 1], "c": "z", "l": [{"v": "w", "k": "k1"}], "a": "x"}}'
+      data: '{"pv2-ordered2:c": {"ll": [2, 1], "c": "z", "l": [{"k": "k1", "v": "w"}], "a": "x"}}'
     golden: golden/ordered-json-out-of-order-validated.json

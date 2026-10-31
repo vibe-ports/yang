@@ -98,6 +98,7 @@ func (cp *snapCopy) tree(o, parent *schema.Node) *schema.Node {
 	n := &schema.Node{}
 	*n = *o
 	n.Module, n.Parent = cp.mod(o.Module), parent
+	n.SetID()
 	n.Children, n.Actions, n.Notifs = nil, nil, nil
 	n.Keys, n.Uniques, n.DefaultCase, n.Whens = nil, nil, nil, nil
 	cp.nodes[o] = n

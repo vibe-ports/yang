@@ -15,6 +15,10 @@ module pv2-ordered11 {
     type string;
     default "w";
   }
+  leaf w2 {
+    type string;
+    default "w2";
+  }
   choice zc {
     default zcs;
     case zcs {
