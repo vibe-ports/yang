@@ -136,7 +136,7 @@ func (vc *valCtx) modules() ([]modRun, error) {
 		if mod != last {
 			out, last = append(out, modRun{mod, c}), mod
 		}
-		if err := vc.checkContext(); err != nil {
+		if err := vc.step(); err != nil {
 			return nil, err
 		}
 	}
@@ -152,7 +152,7 @@ func (vc *valCtx) moduleFirst(from *Node, mod *schema.Module) (*Node, error) {
 		from = top.docFirst()
 	}
 	for c := from; c != nil; c = top.docNext(c) {
-		if err := vc.checkContext(); err != nil {
+		if err := vc.step(); err != nil {
 			return nil, err
 		}
 		if ownerModule(vc.t.context(), c) == mod {
@@ -165,6 +165,15 @@ func (vc *valCtx) moduleFirst(from *Node, mod *schema.Module) (*Node, error) {
 // checkContext polls independently of XPath and implicit-node accounting: even a
 // tree of ordinary retained leaves must be cancellable. It adds constant work
 // to existing iterations without consuming a smaller, unrelated resource budget.
+// step is one sibling visit of a validation walk: charged to the validation's enforced hash quota,
+// then polled.
+func (vc *valCtx) step() error {
+	if err := vc.t.work.chargeHash(1); err != nil {
+		return err
+	}
+	return vc.checkContext()
+}
+
 func (vc *valCtx) checkContext() error {
 	if vc.budget.ctx != nil {
 		return poll(vc.budget.ctx)
@@ -197,7 +206,7 @@ func (vc *valCtx) validate(validateSubtree bool) error {
 	if err != nil {
 		return err
 	}
-	defer func() { vc.modFirst = nil }()
+	defer func() { vc.modFirst = nil; vc.dropModWalk() }()
 	next := vc.t.top.docFirst() // lyd_validate's next = *tree
 	for _, run := range mods {
 		mod := run.mod

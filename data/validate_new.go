@@ -43,7 +43,7 @@ func (vc *valCtx) validateNew(parent *Node, sparent *schema.Node, mod *schema.Mo
 		start = vc.modFirst
 	}
 	for c := start; c != nil && c.schema != nil; c = sib.docNext(c) {
-		if err := vc.checkContext(); err != nil {
+		if err := vc.step(); err != nil {
 			return err
 		}
 		if mod != nil && ownerModule(vc.t.context(), c) != mod {

@@ -72,6 +72,7 @@ type valCtx struct {
 	// module being validated when that is not the tree's first node, else nil (see modInsert).
 	modFirst *Node
 	modCur   *schema.Module // the module lyd_validate validates now (lyd_del_move_root's mod)
+	modWalk  *modWalk       // the anchor walk the last module-relative implicit insertion ended
 	// module is the module of lyd_validate_module: only its data is validated (nil: every
 	// module, lyd_validate_all)
 	module *schema.Module
@@ -347,9 +348,36 @@ func (vc *valCtx) modInsert(n *Node) error {
 // Without an anchor, a trailing opaque block before first (first->prev) is the anchor; else the
 // node goes after first->prev (the last sibling when first is the tree's first). first moves
 // only when the node lands right before it.
+// modWalk is where a module-relative anchor walk ended (modInsertInterleaved): its anchor, the
+// node inserted right before it, and the schema iterator standing at that node's schema. Defaults
+// are created in schema order, so the next walk would pass exactly the nodes this one passed and
+// the node it inserted; it resumes here instead, which keeps a module's defaults linear.
+type modWalk struct {
+	gen          uint64 // the top level's generation right after the insertion
+	last, anchor *Node
+	next         func() (*schema.Node, bool)
+	stop         func()
+	sn           *schema.Node
+	ok           bool
+}
+
+func (vc *valCtx) dropModWalk() {
+	if w := vc.modWalk; w != nil {
+		w.stop()
+		vc.modWalk = nil
+	}
+}
+
 func (vc *valCtx) modInsertInterleaved(n *Node) error {
 	t, sib := vc.t, &vc.t.top
+	step := func() error { // every sibling and schema step: the validation's enforced quota, polled
+		if err := t.work.chargeHash(1); err != nil {
+			return err
+		}
+		return vc.checkContext()
+	}
 	if sortedSupported(n) && t.schemaLookup(sib, n.schema) != nil {
+		vc.dropModWalk()
 		// lyd_insert_node: a leader found by lyd_find_sibling_schema takes lyds_insert, the path
 		// an ordinary insertion takes; lyds_insert moves first when n lands right before it
 		if err := t.insert(nil, n, insertDefault); err != nil {
@@ -362,26 +390,44 @@ func (vc *valCtx) modInsertInterleaved(n *Node) error {
 	}
 	first := vc.modFirst
 	own := ownerModule(t.context(), n)
-	mname := func(c *Node) string {
-		if m := ownerModule(t.context(), c); m != nil {
-			return m.Name
+	var match *Node
+	var next func() (*schema.Node, bool)
+	var stop func()
+	var sn *schema.Node
+	var ok bool
+	if w := vc.modWalk; w != nil && w.gen == sib.gen && w.last.siblingsOf() == sib && sib.docNext(w.last) == w.anchor &&
+		ownerModule(t.context(), w.last) == own {
+		// the nodes up to the last inserted one pass again: resume at its anchor
+		match, next, stop, sn, ok = w.anchor, w.next, w.stop, w.sn, w.ok
+		vc.modWalk = nil
+	} else {
+		vc.dropModWalk()
+		mname := func(c *Node) string {
+			if m := ownerModule(t.context(), c); m != nil {
+				return m.Name
+			}
+			return ""
 		}
-		return ""
-	}
-	match := first
-	for match != nil && match.schema != nil && mname(match) < own.Name {
-		if err := vc.checkContext(); err != nil {
-			return err
+		match = first
+		for match != nil && match.schema != nil && mname(match) < own.Name {
+			if err := step(); err != nil {
+				return err
+			}
+			match = sib.docNext(match)
 		}
-		match = sib.docNext(match)
+		next, stop = iter.Pull(schema.GetNext(nil, n.schema.Module.Top, 0))
+		sn, ok = next()
 	}
-	next, stop := iter.Pull(schema.GetNext(nil, n.schema.Module.Top, 0))
-	defer stop()
-	sn, ok := next()
+	keep := false
+	defer func() {
+		if !keep {
+			stop()
+		}
+	}()
 	found := false
 walk:
 	for ; match != nil; match = sib.docNext(match) {
-		if err := vc.checkContext(); err != nil {
+		if err := step(); err != nil {
 			return err
 		}
 		if match.schema == nil || ownerModule(t.context(), match) != own {
@@ -389,7 +435,7 @@ walk:
 		}
 		for !found {
 			if !ok {
-				match = nil // extension instance data: no anchor
+				match = nil // extension instance data, or a schema before the resumed one: no anchor
 				break walk
 			}
 			if sn == n.schema {
@@ -398,6 +444,9 @@ walk:
 			}
 			if match.schema == sn {
 				break
+			}
+			if err := step(); err != nil {
+				return err
 			}
 			sn, ok = next()
 		}
@@ -418,6 +467,9 @@ walk:
 		if p := prev(first); p != nil && p.schema == nil {
 			anchor = p
 			for anchor != first && prev(anchor).schema == nil {
+				if err := step(); err != nil {
+					return err
+				}
 				anchor = prev(anchor)
 			}
 		}
@@ -443,6 +495,10 @@ walk:
 	}
 	if anchor == first {
 		vc.modFirst = n // lyd_insert_before_node of the first sibling moves first
+	}
+	if found && anchor != nil && anchor == match && sib.docNext(n) == anchor {
+		keep = true
+		vc.modWalk = &modWalk{gen: sib.gen, last: n, anchor: anchor, next: next, stop: stop, sn: sn, ok: ok}
 	}
 	return nil
 }
@@ -532,7 +588,7 @@ func (vc *valCtx) newImplicitR(parent *Node, sparent *schema.Node, mod *schema.M
 		kids = kids.Slice(start, kids.Len())
 	}
 	for _, c := range kids.All() {
-		if err := vc.checkContext(); err != nil {
+		if err := vc.step(); err != nil {
 			return err
 		}
 		if c.schema != nil && c.flags&FlagDefault != 0 && c.schema.Kind == schema.Container {

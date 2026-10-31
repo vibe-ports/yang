@@ -2208,3 +2208,61 @@ func TestMixedIdentityDiffManyStateLeafLists(t *testing.T) {
 		t.Fatalf("identity diff: %v %v", diff, err)
 	}
 }
+
+// TestModuleRelativeDefaultsScaling: n default leaves of module m created in a top level out of
+// module order (z:x, then m's marker): each module-relative insertion resumes the anchor walk
+// where the previous one ended, so the work per default stays flat and a large module validates
+// under the default quota; every step is charged, so a small quota refuses.
+func TestModuleRelativeDefaultsScaling(t *testing.T) {
+	build := func(n int) *Tree {
+		var m strings.Builder
+		m.WriteString(`module m { yang-version 1.1; namespace "urn:m"; prefix m;`)
+		for i := range n {
+			fmt.Fprintf(&m, ` leaf d%d { type string; default "v"; }`, i)
+		}
+		m.WriteString(` leaf marker { type string; } }`)
+		dir := t.TempDir()
+		if err := os.WriteFile(dir+"/m.yang", []byte(m.String()), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(dir+"/z.yang", []byte(`module z { yang-version 1.1; namespace "urn:z"; prefix z; leaf x { type string; } }`), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		c, ds, err := yang.NewContext(yang.Options{NoYangLibrary: true}, os.DirFS(dir))
+		if err != nil {
+			t.Fatal(ds, err)
+		}
+		for _, mod := range []string{"m", "z"} {
+			if ds, err := c.Load(mod, "", nil); err != nil {
+				t.Fatal(ds, err)
+			}
+		}
+		tr, err := parseOrdered(t, snap.Set(c.Schema()), false, `{"z:x":"x","m:marker":"x"}`, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return tr
+	}
+	work := func(n int) float64 {
+		tr := build(n)
+		load := tr.work.Load()
+		if _, err := tr.ValidateModule(context.Background(), "m", ValidateOptions{NotFinal: true}); err != nil {
+			t.Fatal(n, err)
+		}
+		if got := len(slices.Collect(tr.Top())); got != n+2 {
+			t.Fatalf("%d top-level nodes, want %d", got, n+2)
+		}
+		return (float64(tr.work.Load()-load) + float64(tr.work.hashUsed)) / float64(n)
+	}
+	// flat up to the O(log n) index operations of each link: 4x the defaults, at most 1.5x the
+	// work per default (the walk alone, rescanned, grew 4x)
+	small, large := work(2400), work(9600)
+	if large > 1.5*small {
+		t.Fatalf("work per default: %.1f at 2400, %.1f at 9600", small, large)
+	}
+	tr := build(300)
+	tr.work.hashLimit = 64
+	if _, err := tr.ValidateModule(context.Background(), "m", ValidateOptions{NotFinal: true}); !errors.Is(err, yang.ErrBudget) {
+		t.Fatalf("a small quota: %v", err)
+	}
+}

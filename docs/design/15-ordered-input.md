@@ -196,6 +196,13 @@ Read in document order (fixed):
   schema, holds only the target set's nodes, and the cost is O(depth) (`TestEquivalentInColdBudgetAndDepth`,
   `TestEquivalentInOutputAndScaling`, `TestEquivalentCacheKeepsNoContext`). `leaderFirstMixed`
   uses the same candidates.
+- round 21: a module-relative implicit insertion resumes the anchor walk where the previous one
+  ended (`modWalk`: the anchor, the node inserted before it, the schema iterator), since defaults
+  come in schema order and the next walk would pass the same nodes again; every remaining step,
+  the backward opaque-anchor walk included, is charged to the validation's quota. The other
+  validation walks (`moduleFirst`, the Present run scan, the `validateNew` walk, the
+  `newImplicitR` walk) charge one unit per sibling visited (`valCtx.step`)
+  (`TestModuleRelativeDefaultsScaling`);
 - round 20: every charge equals the reads it pays for. The record lookups pay one unit per
   candidate record (one per equivalent schema node), not every first-instance record of the
   level (`TestMixedIdentityDiffManyStateLeafLists`: an identity diff over 2000 distinct state
