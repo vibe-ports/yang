@@ -484,16 +484,16 @@ func (j *hashTransaction) recordPlace(d *dirtyOrder, n *Node, parent *dirtyOrder
 
 // end detaches the transaction from its tree. A failed journal charge becomes the operation's
 // result, and a budget failure (any failure with rollback set) restores the tree. A nil result
-// keeps the changes.
-func (j *hashTransaction) end(result *error) {
+// keeps the changes. It reports whether it restored the tree.
+func (j *hashTransaction) end(result *error) (restored bool) {
 	if j == nil {
-		return
+		return false
 	}
 	if j.refusing {
 		if result != nil && (*result == nil || isGuardRefusal(*result)) {
 			*result = j.err
 		}
-		return
+		return false
 	}
 	j.tree.work.journal = nil
 	for _, w := range j.lent {
@@ -513,8 +513,10 @@ func (j *hashTransaction) end(result *error) {
 			*result = errInProgress
 		}
 		j.restore()
+		restored = true
 	case result != nil && (errors.Is(*result, yang.ErrBudget) || j.rollback && *result != nil):
 		j.restore()
+		restored = true
 	}
 	j.release()
 	j.index.Commit() // after a restore the log is empty; otherwise its tombstones go
@@ -525,18 +527,18 @@ func (j *hashTransaction) end(result *error) {
 	}
 	j.done()
 	j.spare()
+	return restored
 }
 
 // endKeeping ends the journal of an operation whose ordinary failures keep their changes
 // (validation, including its MaxNodes, XPath-step and cancellation failures): a guard refusal
 // (refuse: rollback with its error) restores and becomes the result instead of being committed;
 // otherwise the changes stay (a hash-budget failure is the caller's end(&err)).
-func (j *hashTransaction) endKeeping(result *error) {
+func (j *hashTransaction) endKeeping(result *error) (restored bool) {
 	if j != nil && (j.rollback && j.err != nil || j.guardRefused(result)) {
-		j.end(result)
-		return
+		return j.end(result)
 	}
-	j.end(nil)
+	return j.end(nil)
 }
 
 // guardRefused reports whether the operation met the guard's refusal: its sticky flag, or the

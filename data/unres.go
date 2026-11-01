@@ -11,7 +11,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"slices"
 	"strings"
 
 	"github.com/vibe-ports/yang"
@@ -75,7 +74,7 @@ func (vc *valCtx) eval(e *xpath.Expr, ctx *Node, root xpath.RootKind, ignoreWhen
 	} else if vc.xpathContext == nil && ctxOf(ctx) != nil {
 		set = ctxOf(ctx)
 	}
-	r, err := e.EvalTo(xpath.EvalContext{Ctx: b.ctx, Node: wrap(set, ctx), Tree: vc.topNodes(), Root: root,
+	r, err := e.EvalTo(xpath.EvalContext{Ctx: b.ctx, Node: wrap(set, ctx), Tree: vc.topNodes(), TreeGone: vc.topGone(), Root: root,
 		IgnoreWhen: ignoreWhen, Schema: info{set}, Deref: vc.deref, Log: vc.xpathLog,
 		SuppressLog: vc.log.suppress, MaxSteps: int(per), Vars: vc.vars}, vc.to)
 	// A failed nested printer returns its own ValidationError. Route its log now;
@@ -148,19 +147,30 @@ func (vc *valCtx) xpathDiagnostic(item printDiagnostic, notice bool) {
 
 // topNodes is the accessible tree of the evaluations: the live top-level siblings, rebuilt only
 // when the top level changed (siblings.gen) and charged to the step budget then, one step per
-// node.
+// node. A when-pass deletion of a root keeps a fresh view (whenPass.del): the deleted root stays
+// in it, absent for every read of the root (topGone), until the pass ends.
 func (vc *valCtx) topNodes() []xpath.Node {
 	if vc.top != nil && vc.topGen == vc.t.top.gen {
 		return vc.top
 	}
 	vc.top = vc.top[:0]
 	for n := range vc.t.top.all() {
-		vc.top = append(vc.top, wrap(vc.xpathSet(), n)) // dead nodes are WhenFalse (xn.When)
+		vc.top = append(vc.top, wrap(vc.xpathSet(), n))
 	}
-	vc.topGen = vc.t.top.gen
+	vc.topGen, vc.topDead = vc.t.top.gen, 0
 	vc.topBuilds++
 	vc.budget.steps += int64(len(vc.top)) + 1
 	return vc.top
+}
+
+// topGone is the evaluations' test for the roots of the view that the running when pass
+// deleted: absent for every read of the root (a scan's first match among them included), nil
+// while the view holds none.
+func (vc *valCtx) topGone() func(xpath.Node) bool {
+	if vc.topDead == 0 {
+		return nil
+	}
+	return func(x xpath.Node) bool { n, ok := x.(xn); return ok && n.n.flags&flagDead != 0 }
 }
 
 // xpathErr logs an evaluation error as lyxp_eval does: LOGVAL_DXPATH at the current node cur
@@ -245,29 +255,63 @@ func truthy(r xpath.Result) bool {
 // whenPass is the state of one lyd_validate_unres_when pass. Removals from node_when are
 // tombstones (nil) compacted once at the end of the pass, which keeps the order of
 // ly_set_rm_index_ordered without moving the queue per removal; live counts the entries left.
-// pos maps a queued node to its live indices in increasing order (a node is queued once per
+// pos maps a queued node to its indices in increasing order (a node is queued once per
 // lyd_parser_set_data_flags call, so the JSON parser queues a node with metadata several times
-// and ly_set_contains finds the first entry), built when a when-false subtree needs it.
+// and ly_set_contains finds the first entry), built when a when-false or deleted subtree needs
+// it. A dropped entry stays in its node's list, a tombstone the readers skip (livePos,
+// nestedEntries): a drop is O(1) and the first live index amortized O(1), however often a node
+// is queued.
 type whenPass struct {
-	vc           *valCtx
-	live         int
-	pos          map[*Node][]int
-	dead         []*Node // WhenTrue nodes deleted by this pass, unlinked at its end
-	builds       int     // pos maps built (one per pass at most; work tests)
-	initialWhen  []*Node
-	initialFlags map[*Node]Flags
-	initialTypes nodeSet
+	vc     *valCtx
+	live   int
+	pos    map[*Node][]int
+	dead   []*Node // WhenTrue nodes deleted (and unlinked) by this pass, flagged until its end
+	builds int     // pos maps built (one per pass at most; work tests)
+	reads  int     // pos entries read, tombstones passed included (work tests)
 }
 
 // drop is ly_set_rm_index_ordered of entry i (a tombstone).
 func (p *whenPass) drop(i int) {
 	q := p.vc.nodeWhen
-	n := q.items[i]
+	if q.items[i] == nil {
+		return
+	}
 	q.items[i] = nil
 	p.live--
-	if l := p.pos[n]; l != nil {
-		p.pos[n] = slices.DeleteFunc(l, func(j int) bool { return j == i })
+}
+
+// livePos is n's live indices: its list less the dropped prefix, trimmed for good (an index
+// dropped stays dropped until the pass ends), so each tombstone is passed once.
+func (p *whenPass) livePos(n *Node) []int {
+	l := p.pos[n]
+	for len(l) > 0 && p.vc.nodeWhen.items[l[0]] == nil {
+		l = l[1:]
+		p.reads++
 	}
+	if p.pos[n] = l; len(l) == 0 {
+		delete(p.pos, n)
+	}
+	return l
+}
+
+// positions builds pos once per pass, polling.
+func (p *whenPass) positions() error {
+	if p.pos != nil {
+		return nil
+	}
+	vc := p.vc
+	pos := make(map[*Node][]int, p.live)
+	for j, q := range vc.nodeWhen.items {
+		if err := vc.checkContext(); err != nil {
+			return err
+		}
+		if q != nil {
+			pos[q] = append(pos[q], j)
+		}
+	}
+	p.builds++
+	p.pos = pos
+	return nil
 }
 
 // whenFalse is lyd_validate_when_false for the entry i of n: the node stays, flagged WhenFalse;
@@ -287,82 +331,116 @@ func (p *whenPass) whenFalse(n *Node, i int) (int, error) {
 	if p.live <= 1 {
 		return i, nil
 	}
-	if p.pos == nil {
-		p.builds++
-		p.pos = make(map[*Node][]int, p.live)
-		for j, q := range vc.nodeWhen.items {
-			if err := vc.checkContext(); err != nil {
-				return i, err
-			}
-			if q != nil {
-				p.pos[q] = append(p.pos[q], j)
-			}
-		}
+	if err := p.positions(); err != nil {
+		return i, err
 	}
 	removed := false
 	for d := range n.All() {
 		if err := vc.checkContext(); err != nil {
 			return i, err
 		}
-		if l := p.pos[d]; d != n && len(l) > 0 {
+		if d == n {
+			continue
+		}
+		if l := p.livePos(d); len(l) > 0 {
 			p.drop(l[0])
 			removed = true
 		}
 	}
-	if l := p.pos[n]; removed && len(l) > 0 {
+	if l := p.livePos(n); removed && len(l) > 0 {
 		return l[0], nil
 	}
 	return i, nil
 }
 
-// del is the autodelete of a WhenTrue node whose when became false. The node is unlinked at the
-// end of the pass (one compaction per sibling list instead of one per node); until then it is
-// dead: the XPath adapters do not see it, exactly as if it was gone already.
-// A dead node reads as WhenFalse to XPath (xn.When), so no view needs rebuilding. A node queued
-// twice (the JSON parser queues a node once per metadata member) is deleted once.
-func (p *whenPass) del(n *Node) {
+// del is the autodelete of a WhenTrue node whose when became false, complete at once as
+// lyd_validate_autodel_node_del: the diff's delete, the nested nodes leave node_when and
+// node_types, then the node is unlinked and its links freed (lyd_free_tree), so every later
+// evaluation of the pass reads the tree libyang has. It stays flagged dead until the pass ends
+// for the top-level XPath view, which keeps a deleted root rather than being rebuilt per
+// deletion (topGone). A node queued twice (the JSON parser queues a node once per metadata
+// member) is deleted once.
+//
+// The cancellable part (finding the nested entries) comes first; nothing after the diff polls
+// (an unlink never does), so a cancellation finds a deletion not begun or complete, never a diff
+// for a node that stays. An unlink failure after the diff (a budget error, a held link) is the
+// operation's sticky error, and its journal restores the tree with the diff dropped
+// (endValidateJournal).
+func (p *whenPass) del(n *Node) error {
 	if n.flags&flagDead != 0 {
-		return
+		return nil
 	}
+	vc := p.vc
 	if err := n.touch(); err != nil {
-		return
+		return err
 	}
+	nested, err := p.nestedEntries(n)
+	if err != nil {
+		return err
+	}
+	if vc.diff != nil {
+		if err := vc.diff(n, diffDelete); err != nil {
+			return err
+		}
+	}
+	for _, j := range nested {
+		p.drop(j)
+	}
+	if err := vc.dropTypes(n, false); err != nil {
+		return err
+	}
+	fresh := vc.top != nil && vc.topGen == vc.t.top.gen && n.parent == nil
+	if err := unlink(n); err != nil {
+		if j := vc.t.work.journal; j != nil && vc.diff != nil {
+			j.rollback = true // the diff holds n's delete: the tree and the diff go back together
+		}
+		return err
+	}
+	if fresh {
+		vc.topGen = vc.t.top.gen // the view still holds n, now read as absent (topGone)
+		vc.topDead++
+	}
+	freeSubtreeLinks(vc.t.context(), n) // lyd_free_tree
 	n.flags |= flagDead
 	p.dead = append(p.dead, n)
+	return nil
+}
+
+// nestedEntries are the node_when entries of n's descendants, which leave the queue with n:
+// libyang asserts there are none (lyd_validate_autodel_node_del's LYD_TREE_DFS, NDEBUG builds
+// keep them, pointing to freed nodes); here they go, as tombstones. It only reads, polling: the
+// caller drops them once the deletion cannot be cancelled.
+func (p *whenPass) nestedEntries(n *Node) ([]int, error) {
+	vc := p.vc
+	if p.live <= 1 || n.isTerm() {
+		return nil, nil
+	}
+	if err := p.positions(); err != nil {
+		return nil, err
+	}
+	var out []int
+	for d := range n.All() {
+		if err := vc.checkContext(); err != nil {
+			return nil, err
+		}
+		if d == n {
+			continue
+		}
+		for _, j := range p.pos[d] { // each descendant leaves with n: its list is read once
+			if p.reads++; vc.nodeWhen.items[j] != nil {
+				out = append(out, j)
+			}
+		}
+	}
+	return out, nil
 }
 
 // unresWhen is lyd_validate_unres_when: one pass over node_when from the end. A resolved node
 // leaves the queue (order kept); a false when deletes a WhenTrue node silently, warns for
 // operational data, else is an error (the node kept as WhenFalse under multi-error).
 func (vc *valCtx) unresWhen() (rc error) {
-	p := &whenPass{vc: vc, live: vc.nodeWhen.len(), initialWhen: slices.Clone(vc.nodeWhen.items),
-		initialFlags: map[*Node]Flags{}}
-	for _, n := range p.initialWhen {
-		if err := vc.checkContext(); err != nil {
-			return err
-		}
-		if n != nil {
-			p.initialFlags[n] = n.flags
-		}
-	}
-	if vc.nodeTypes != nil {
-		var positions map[*Node]int
-		if vc.nodeTypes.pos != nil {
-			positions = make(map[*Node]int, len(vc.nodeTypes.pos))
-			for n, at := range vc.nodeTypes.pos {
-				if err := vc.checkContext(); err != nil {
-					return err
-				}
-				positions[n] = at
-			}
-		}
-		p.initialTypes = nodeSet{items: slices.Clone(vc.nodeTypes.items), pos: positions, scans: vc.nodeTypes.scans}
-	}
-	defer func() {
-		if err := p.finish(); err != nil {
-			rc = err
-		}
-	}()
+	p := &whenPass{vc: vc, live: vc.nodeWhen.len()}
+	defer p.finish()
 	for i := vc.nodeWhen.len() - 1; i >= 0; i-- {
 		if err := vc.checkContext(); err != nil {
 			return err
@@ -390,7 +468,9 @@ func (vc *valCtx) unresWhen() (rc error) {
 			}
 			n.flags = n.flags&^FlagWhenFalse | FlagWhenTrue
 		case n.flags&FlagWhenTrue != 0:
-			p.del(n) // nested queued nodes cannot exist (libyang asserts it)
+			if err := p.del(n); err != nil {
+				return err
+			}
 		case vc.opts.Operational:
 			vc.log.warn("When condition \"%s\" not satisfied.", w.Src)
 		default:
@@ -412,35 +492,14 @@ func (vc *valCtx) unresWhen() (rc error) {
 	return rc
 }
 
-// finish compacts node_when and unlinks the nodes the pass deleted.
-func (p *whenPass) finish() error {
-	if err := p.vc.t.preflightUnlinkAll(p.dead); err != nil {
-		for n, flags := range p.initialFlags {
-			if err := n.touch(); err != nil {
-				return err
-			}
-			n.flags = flags
-		}
-		p.vc.nodeWhen.items, p.vc.nodeWhen.pos = p.initialWhen, nil
-		if p.vc.nodeTypes != nil {
-			*p.vc.nodeTypes = p.initialTypes
-		}
-		return err
-	}
-	for _, n := range p.dead {
-		if err := n.touch(); err != nil {
-			return err
-		}
-		n.flags &^= flagDead
-		if p.vc.diff != nil {
-			if err := p.vc.diff(n, diffDelete); err != nil {
-				return err
-			}
-		}
-		// finish must complete queue/link cleanup after a canceled when pass.
-		if err := p.vc.dropTypes(n, false); err != nil {
-			return err
-		}
+// finish compacts node_when and ends the dead marks of the nodes the pass deleted, each unlinked
+// already (del). It cannot fail: a dead node was captured by del's touch, so its flag is restored
+// with that capture if the operation rolls back.
+func (p *whenPass) finish() {
+	if len(p.dead) != 0 {
+		// the top-level view kept the deleted roots; their marks end here, so the view does too
+		// (the next evaluation rebuilds it from the tree)
+		p.vc.top, p.vc.topGen, p.vc.topDead = nil, 0, 0
 	}
 	q := p.vc.nodeWhen
 	live := q.items[:0]
@@ -452,19 +511,10 @@ func (p *whenPass) finish() error {
 	clear(q.items[len(live):])
 	q.items, q.pos = live, nil
 	p.vc.posBuilds += p.builds
+	p.vc.posReads += p.reads
 	for _, n := range p.dead {
-		if err := n.touch(); err != nil {
-			return err
-		}
 		n.flags &^= flagDead
 	}
-	if err := p.vc.t.unlinkAll(p.dead); err != nil {
-		return err
-	}
-	for _, n := range p.dead {
-		freeSubtreeLinks(p.vc.t.context(), n) // lyd_free_tree
-	}
-	return nil
 }
 
 // unres is the when and type part of lyd_validate_unres: when passes while the queue shrinks,

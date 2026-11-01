@@ -1,0 +1,19 @@
+module pv2-ordered15 {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:pv2-ordered15";
+  prefix o15;
+
+  description
+    "Hand-written (this repo): a leafref to a top-level node that the when
+     pass deletes (design 15).";
+
+  leaf gone {
+    type string;
+    when "false()";
+  }
+  leaf ref {
+    type leafref {
+      path "/o15:gone";
+    }
+  }
+}

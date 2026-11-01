@@ -179,6 +179,30 @@ index wait for the next pass. The port mirrors all of it: `lydCtx.setDataFlags` 
 `nodeSet.add` keeping duplicates, and `whenPass` (unres.go) with tombstoned entries in order,
 per-node entry lists, the first entry of each descendant dropped, and the first entry of the node
 resumed (`whenPass.whenFalse`). An autodeleted node queued twice is deleted once (`whenPass.del`).
+
+**When-pass deletion contract** (`whenPass.del`, as `lyd_validate_autodel_node_del`). Each
+deletion is one complete unit, done at once: the diff's `delete`, the node_when entries of its
+descendants dropped (tombstones), its terminals out of node_types, the node unlinked from storage
+and indexes together, and its links freed. Every later evaluation of the pass therefore reads the
+tree libyang has, and storage never holds a deleted node. libyang asserts that no descendant of an
+autodeleted node is still queued (its NDEBUG builds keep it queued, pointing to freed memory); the
+port drops those entries with the node, so a nested queued node is neither evaluated nor deleted
+twice (Go test TestWhenNestedQueuedDescendant). Ordering inside a deletion: the part that polls
+cancellation (finding the nested entries, `nestedEntries`) runs before the diff, and nothing after
+the diff polls (an unlink never does), so a cancellation finds a deletion either not begun or
+complete. A cancelled pass keeps its completed prefix, and the returned diff is exactly that prefix
+(`endValidateJournal`: a diff is dropped only when the journal restored the tree). An unlink that
+fails after its diff was recorded is the operation's sticky error; the journal is marked for
+rollback, so the tree and the diff go back together, and a budget failure follows the enclosing
+operation's rollback contract. The pass's end compacts node_when and clears the dead marks and
+cannot fail. The top-level XPath view (`topNodes`) is not rebuilt per deletion: a root deleted while
+the view is fresh stays in it, flagged dead, and every read of the root skips it as absent
+(`EvalContext.TreeGone`, filtered once per evaluation that reads the root, so a scan's first match
+goes on to the next root, possibly another context's). The view ends with the pass, so no cached
+view outlives it with a deleted node (Go tests TestWhenDeleteCancelDiffConsistent,
+TestWhenDeadCancelSweep, TestWhenDeadCancelSweepDiff, TestWhenDeadRootHidesNoForeignRoot,
+TestWhenRootDeletionsKeepView, TestWhenRepeatedQueueLinear; protocol-v2/when-dead-root-leafref-plain).
+
 Unchanged from there:
 `lyd_validate_unres_when` (VAL:462) walks it **from the end**, per node `lyd_validate_node_when`
 (VAL:270): the node's own whens and those of its choice/case ancestors, context node = the node or
