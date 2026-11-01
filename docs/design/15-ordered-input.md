@@ -196,6 +196,22 @@ Read in document order (fixed):
   schema, holds only the target set's nodes, and the cost is O(depth) (`TestEquivalentInColdBudgetAndDepth`,
   `TestEquivalentInOutputAndScaling`, `TestEquivalentCacheKeepsNoContext`). `leaderFirstMixed`
   uses the same candidates.
+- round 30, the views of a sibling set and who reads which. *Logical* (schema nodes first,
+  then opaque ones, each in document order: `At`, `SchemaLen`, the link's `at`) is the
+  storage's coordinate system only. *Physical* (document order, opaque nodes and a when pass's
+  dead nodes included: `docSpan`, `linkAnchor`, `linkDocPos`) is what a link builds and what a
+  preflight must simulate: key prefixes and list hashes (`keysLead`, `indexInsertedBound`,
+  `termHashBound`), run boundaries, anchors. *Live* (physical less the running when pass's
+  deletions) is what libyang sees during the pass: the first and last siblings (`liveFirst`,
+  `liveLastSchema`), run walks (dead nodes stepped over), the set's context (`schemaContext`,
+  the live context counts, never a stored sibling's), and the indexes, which the deletion
+  updates at once. Outside a when pass live equals physical; insertions never meet dead nodes
+  (the pass inserts nothing). Fixed this round: the set's context during the pass
+  (`schemaLookup`, `foreignFor`; `TestWhenDeadContextTransition`, two and three contexts to
+  one), the parent guards' first sibling (live), `indexInsertedBound`'s position (physical;
+  `TestCopiedListInsertReservesPhysicalPrefix`), the duplicate-instance run of a diff's
+  mixed-table lookup indexed once by stored hash (`dupRunFirst`;
+  `TestMixedIdentityDiffLongStateLeafList`), and `findFirstMixedTable`'s polling charge;
 - round 29: the when pass runs in a journal level (a savepoint, or a pass-local journal):
   it is kept when the pass's storage unlink ran, else rolled back whole, so a cancellation or
   refusal after deletions unlinked their index part leaves no node linked and unindexed

@@ -119,6 +119,16 @@ func keyPrefix(n *Node) siblingSpan { return n.kids.schemaSpan().Slice(0, n.kids
 // link and unlink bookkeeping maintain) cut at the first opaque child.
 func (n *Node) keyRun() int { return min(n.keyN, n.kids.beforeOpaque()) }
 
+// linkDocPos is the document position n takes when linked at logical position at with the
+// placement pending for it (linkAnchor): the physical index the link's preflights simulate.
+func (s *siblings) linkDocPos(n *Node, at int) int {
+	if h := s.linkAnchor(n, at); h != nil {
+		p, _ := s.st.seq.Pos(h)
+		return p
+	}
+	return s.Len()
+}
+
 // keysLead is lyd_insert_has_keys: whether list's first children in document order (lyd_child)
 // are its keys, in order. With n, it answers for after n's link at logical position at, n where
 // its pending physical placement puts it (the link's preflight); without, for the children as
@@ -128,10 +138,7 @@ func keysLead(list, n *Node, at int, step func() error) (bool, error) {
 	kids := &list.kids
 	docAt := -1
 	if n != nil {
-		docAt = kids.Len()
-		if h := kids.linkAnchor(n, at); h != nil {
-			docAt, _ = kids.st.seq.Pos(h)
-		}
+		docAt = kids.linkDocPos(n, at)
 	}
 	cur := positionalChildren(list) // lyd_child: the first children in document order
 	for i, key := range list.schema.Keys {

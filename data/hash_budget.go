@@ -244,7 +244,7 @@ func (w *workCounter) termHashBound(parent *Node, sn *schema.Node, value types.V
 		amount = addHashBound(amount, types.HashLYBWorkBound(c.value))
 	}
 	if ps := parent.siblingsOf(); ps != nil && ps.ht != nil {
-		amount = addHashBound(amount, indexInsertedBound(parent, &Node{schema: sn, value: value}, at, w))
+		amount = addHashBound(amount, indexInsertedBound(parent, n, parent.kids.linkDocPos(n, at), w))
 		if w.hashErr != nil {
 			return 0, w.hashErr
 		}

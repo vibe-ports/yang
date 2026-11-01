@@ -117,6 +117,7 @@ func diffNodesLookupLimit(first, second *Node, o DiffOptions, nosiblings bool, f
 		d.foreignSchemaInput = nil
 		d.foreignSchema = nil
 		d.foreignInstance = nil
+		d.dupRun = nil
 		d.schemaLineage = nil
 		d.lineageComponents = nil
 		d.nextLineageID = 0

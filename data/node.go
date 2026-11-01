@@ -126,7 +126,10 @@ type Tree struct {
 	foreignSchema      map[foreignSchemaCacheKey]map[foreignSchemaIndexKey][]foreignCandidate
 	foreignSchemaInput map[*siblings]bool
 	// foreignInstance indexes the instances of those inputs for cross-context first-match lookups.
-	foreignInstance   map[*siblings]map[foreignInstanceKey][]*Node
+	foreignInstance map[*siblings]map[foreignInstanceKey][]*Node
+	// dupRun indexes, per first-instance record, the duplicate-instance run lyd_find_sibling_first
+	// walks from it, by stored hash, in run order (findFirstMixedTable, the same inputs)
+	dupRun            map[*Node]map[uint32][]*Node
 	schemaLineage     map[*schema.Node]schemaLineageID
 	lineageComponents map[schemaLineageComponent]schemaLineageID
 	nextLineageID     schemaLineageID

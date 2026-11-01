@@ -638,15 +638,17 @@ func indexWorkBound(n, changed *Node, value *types.Value, work *workCounter) uin
 	return amount
 }
 
-func indexInsertedBound(list, inserted *Node, at int, work *workCounter) uint64 {
+// indexInsertedBound bounds list's discriminator with inserted at document position docAt among
+// its children (linkDocPos: the physical prefix the hash reads, not a logical position).
+func indexInsertedBound(list, inserted *Node, docAt int, work *workCounter) uint64 {
 	if list == nil || list.schema == nil || list.schema.Kind != schema.List || list.schema.Keyless() {
 		return 0
 	}
 	var amount uint64
-	children := positionalChildren(list) // position i, then i-1 past at
+	children := positionalChildren(list) // position i, then i-1 past docAt
 	for i := range list.schema.Keys {
 		child := inserted
-		if i != at {
+		if i != docAt {
 			child = children.next()
 		}
 		if child == nil {
@@ -1740,7 +1742,7 @@ func (s *siblings) leaderUnlinkBetween(n, prev, next *Node, removing bool) {
 func (t *Tree) schemaLookup(s *siblings, sn *schema.Node) *Node {
 	mixed := s.mixedContexts()
 	if (opChild(sn) || s.schemaUnordered) && !mixed &&
-		(s.SchemaLen() == 0 || sn.Module.Owner == nil || ctxOf(s.At(0)) == sn.Module.Owner) {
+		(s.SchemaLen() == 0 || sn.Module.Owner == nil || s.schemaContext() == sn.Module.Owner) {
 		return t.schemaLookupOperation(s, sn) // bounded by linearBound itself
 	}
 	_, n := t.schemaFind(s, sn)
@@ -2164,9 +2166,14 @@ func (t *Tree) foreignSchemaKey(sn *schema.Node, table bool) (foreignSchemaIndex
 
 // foreignFor reports whether a lookup of sn in s compares schema names, as
 // lyd_find_sibling_schema does for siblings of another context than sn.
+// The set's context is read from its live context counts (schemaContext), not from a stored
+// sibling: during a when pass the first stored one may be a deleted node whose context left.
 func (s *siblings) foreignFor(sn *schema.Node) bool {
-	return s.SchemaLen() > 0 && (s.mixedContexts() ||
-		sn.Module.Owner != nil && ctxOf(s.At(0)) != nil && ctxOf(s.At(0)) != sn.Module.Owner)
+	if s.SchemaLen() == 0 || s.mixedContexts() {
+		return s.SchemaLen() > 0
+	}
+	ctx := s.schemaContext()
+	return sn.Module.Owner != nil && ctx != nil && ctx != sn.Module.Owner
 }
 
 func schemaLookupMatch(got, want *schema.Node, table bool) bool {
@@ -2221,8 +2228,9 @@ func (t *Tree) findFirstMixedTable(s *siblings, target *Node, work *workCounter,
 	switch {
 	case t.work.opLookup(): // a diff's lookup quota
 		p.charge = func(n int64) error { return t.work.chargeLookup(uint64(n)) } //nolint:gosec // a charge is nonnegative
-	case work != nil: // the mutation's own counter (Merge, ApplyDiff, edits), before each step
-		p.charge = func(n int64) error { return work.chargeHash(uint64(n)) } //nolint:gosec // a charge is nonnegative
+	case work != nil: // the mutation's own counter (Merge, ApplyDiff, edits), before each step,
+		// polling its operation's cancellation (chargeOf): the mapping may build a child index
+		p.charge = chargeOf(work)
 	}
 	p.eq = func(c *Node) (bool, error) {
 		if dup {
@@ -2230,14 +2238,53 @@ func (t *Tree) findFirstMixedTable(s *siblings, target *Node, work *workCounter,
 		}
 		return htValEqual(t, work, target, c)
 	}
+	if dup && t.work.opLookup() && t.foreignSchemaInput[s] && s.firstRecordSchema(target.schema) {
+		return t.dupRunFirst(s, target, p)
+	}
 	return tableFirst(s, ctxOf(target), p)
+}
+
+// dupRunFirst is tableFirst's duplicate-instance branch over a running diff's immutable inputs:
+// the run lyd_find_sibling_first walks from the first registered record is indexed once by
+// stored hash (an equal instance has the target's: compareSingle's hash gate), so each lookup
+// reads only its equal-hash candidates, in run order, instead of the run. Each member indexed and
+// each candidate read is a charged step.
+func (t *Tree) dupRunFirst(s *siblings, target *Node, p *xprobe) (*Node, error) {
+	sn := target.schema
+	leader, err := s.leaderFirstMixedCharged(sn, p.charge)
+	if err != nil || leader == nil {
+		return nil, err
+	}
+	idx := t.dupRun[leader]
+	if idx == nil {
+		idx = map[uint32][]*Node{}
+		for c := leader; c != nil && c.schema != nil && compareSchemaEqual(c.schema, sn, false); c = s.docNext(c) {
+			if err := p.work(1); err != nil {
+				return nil, err
+			}
+			idx[c.hash] = append(idx[c.hash], c)
+		}
+		if t.dupRun == nil {
+			t.dupRun = map[*Node]map[uint32][]*Node{}
+		}
+		t.dupRun[leader] = idx
+	}
+	for _, c := range idx[target.hash] {
+		if err := p.work(1); err != nil {
+			return nil, err
+		}
+		if m, err := p.eq(c); err != nil || m {
+			return live(c), err
+		}
+	}
+	return nil, nil
 }
 
 func (t *Tree) findFirstWork(s *siblings, target *Node, work *workCounter) (*Node, error) {
 	if s.len() == 0 {
 		return nil, nil
 	}
-	if f := s.docFirst(); f != nil && f.schema != nil && target.schema != nil &&
+	if f := s.liveFirst(); f != nil && f.schema != nil && target.schema != nil &&
 		!compareSchemaEqual(f.schema.DataParent(), target.schema.DataParent(), true) {
 		return nil, nil // schema mismatch, read on the physical first sibling (an opaque one: none)
 	}

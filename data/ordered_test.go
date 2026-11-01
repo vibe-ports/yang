@@ -1198,10 +1198,6 @@ func TestCaseReplacedReversedFirst(t *testing.T) {
 	}
 }
 
-// TestKeyRunPastOpaque: an Ordered ParseOnly list instance k=x, zz, k=y hashes the leading key
-// run in document order, which stops at zz (lyd_hash). Unlinking zz joins the run without a
-// rehash (lyd_unlink does not rehash the parent); the next native rehash, a changed key value,
-// takes both keys (oracle: protocol-v2/ordered-list-key-past-opaque for the lookup and the dup).
 // TestKeyPastTrailingOpaqueReserve: a key appended behind a trailing opaque child (the link that
 // first interleaves the set) is outside lyd_hash's key run, so the link reserves no hashing for
 // its value: a large value parses within a quota well below its size.
@@ -1248,6 +1244,10 @@ func TestKeysSplitByOpaqueReserve(t *testing.T) {
 	}
 }
 
+// TestKeyRunPastOpaque: an Ordered ParseOnly list instance k=x, zz, k=y hashes the leading key
+// run in document order, which stops at zz (lyd_hash). Unlinking zz joins the run without a
+// rehash (lyd_unlink does not rehash the parent); the next native rehash, a changed key value,
+// takes both keys (oracle: protocol-v2/ordered-list-key-past-opaque for the lookup and the dup).
 func TestKeyRunPastOpaque(t *testing.T) {
 	set := ordered2Set(t)
 	tr, err := parseOrdered(t, set, false, `{"pv2-ordered2:c":{"l":[{"k":"x","zz":"u","k":"y"}]}}`, nil)
@@ -1975,9 +1975,6 @@ func TestEquivalentInColdBudgetAndDepth(t *testing.T) {
 	}
 }
 
-// TestMutationSchemaLookupCharged: a schema-only table lookup inside a mutation (Merge, ApplyDiff,
-// edits) pays its steps to the mutation's quota, warm indexes included, so a spent quota refuses
-// it instead of answering for free; outside an operation it charges nothing.
 // TestOpaqueMergeAfterSeparatorRemoved: a level interleaved once (an opaque child before a
 // schema one) and back in ordinary order after that child's unlink matches opaque children as a
 // freshly parsed level of the same children does (the opaque lookup reads the layout, not the
@@ -2026,9 +2023,6 @@ func TestOpaqueMergeAfterSeparatorRemoved(t *testing.T) {
 	}
 }
 
-// TestColdNameHashCharged: a schema-only table lookup of a never-instantiated node in a mixed
-// level pays the cold module/name hash (16 KiB name) before computing it: a small mutation quota
-// refuses, and nothing is cached.
 // countCtx is canceled from its after-th Err call on.
 type countCtx struct {
 	context.Context
@@ -2099,8 +2093,38 @@ func TestForeignIndexBuildPolls(t *testing.T) {
 	if !errors.Is(err, context.Canceled) {
 		t.Fatalf("a cancellation during instanceRun's foreign index build: %v", err)
 	}
+	// and the instance lookup of a mutation (findFirstChecked: lyd_find_sibling_first, the
+	// instance-identifier and merge lookups), through its counter's polling charge
+	setA, setB = xctxSets(t, mod)
+	tr, err = parseOrdered(t, setA, false, `{"m:c":{"x":"1","p":"p","l":[{"k":"a"}],"b":"b","q":"q"}}`, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	c = tr.top.first()
+	linkForeign(t, tr, c, setB, `{"m:c":{"z":"z"}}`)
+	var target *Node
+	for n := range c.Children() {
+		if n.Name() == "l" {
+			target = n
+		}
+	}
+	ctx = &countCtx{Context: context.Background(), after: 50}
+	end = tr.work.beginHashWork()
+	restore = tr.work.pollWith(ctx)
+	_, err = tr.findFirstChecked(&c.kids, target)
+	if err == nil {
+		err = tr.work.hashErr
+	}
+	restore()
+	end()
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("a cancellation during findFirstChecked's foreign index build: %v", err)
+	}
 }
 
+// TestColdNameHashCharged: a schema-only table lookup of a never-instantiated node in a mixed
+// level pays the cold module/name hash (16 KiB name) before computing it: a small mutation quota
+// refuses, and nothing is cached.
 func TestColdNameHashCharged(t *testing.T) {
 	long := strings.Repeat("n", 16<<10)
 	mod := `module m { yang-version 1.1; namespace "urn:m"; prefix m;
@@ -2131,6 +2155,9 @@ func TestColdNameHashCharged(t *testing.T) {
 	}
 }
 
+// TestMutationSchemaLookupCharged: a schema-only table lookup inside a mutation (Merge, ApplyDiff,
+// edits) pays its steps to the mutation's quota, warm indexes included, so a spent quota refuses
+// it instead of answering for free; outside an operation it charges nothing.
 func TestMutationSchemaLookupCharged(t *testing.T) {
 	tr, c := mixedTableLevel(t, `{"pv2-ordered8:c":{"p":"p","x":"first","b":"b","x":"second"}}`)
 	var x *schema.Node
@@ -2373,10 +2400,6 @@ func TestThreeContextRegistrationOrder(t *testing.T) {
 	}
 }
 
-// TestForeignCompareCharged: a foreign candidate's direct comparison (crossEqual) is charged
-// like Match charges a local one, one step and the probe's key bytes, through the probe's own
-// budget: a long key is paid per candidate, a refused or cancelled budget stops the lookup, and
-// the queried tree's counters stay untouched.
 // TestLongProbeMissCharged: a long probe against short candidates is rejected on the stored hash
 // before its bytes are charged, same-context (Match) and foreign (crossEqual), with and without a
 // children table, so a cheap miss stays within a budget that the probe's bytes per candidate
@@ -2464,6 +2487,10 @@ func TestLongProbeMissCharged(t *testing.T) {
 	}
 }
 
+// TestForeignCompareCharged: a foreign candidate's direct comparison (crossEqual) is charged
+// like Match charges a local one, one step and the probe's key bytes, through the probe's own
+// budget: a long key is paid per candidate, a refused or cancelled budget stops the lookup, and
+// the queried tree's counters stay untouched.
 func TestForeignCompareCharged(t *testing.T) {
 	setA, setB := xctxSets(t, `module m { yang-version 1.1; namespace "urn:m"; prefix m;
 	  container c { leaf a { type string; } list l { key k; leaf k { type string; } } } }`)
@@ -2519,6 +2546,38 @@ func TestForeignCompareCharged(t *testing.T) {
 	}
 }
 
+// TestMixedIdentityDiffLongStateLeafList: one state leaf-list of n values in a hashed level of
+// two or three contexts: each value's lyd_find_sibling_first reads its equal-hash candidates of
+// the run (indexed once per diff), not the run from its first instance, so the identity diff
+// stays within the default lookup quota.
+func TestMixedIdentityDiffLongStateLeafList(t *testing.T) {
+	const n = 2048 // quadratic: the audit's 512 already exceeded the quota
+	mod := `module m { yang-version 1.1; namespace "urn:m"; prefix m; container c { leaf a { type string; } leaf b { type string; } leaf z { type string; }
+	  leaf-list s { config false; type uint32; } } }`
+	vals := make([]string, n)
+	for i := range vals {
+		vals[i] = strconv.Itoa(i)
+	}
+	for _, three := range []bool{false, true} {
+		setA, setB := xctxSets(t, mod)
+		tr, err := parseOrdered(t, setA, false, `{"m:c":{"z":"z0","s":[`+strings.Join(vals, ",")+`]}}`, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		c := tr.top.first()
+		linkForeign(t, tr, c, setB, `{"m:c":{"a":"y"}}`)
+		if three {
+			linkForeign(t, tr, c, reviewDiffSet(t, mod), `{"m:c":{"b":"x"}}`)
+		}
+		if c.kids.ht == nil || !c.kids.mixedContexts() || !c.kids.schemaUnordered {
+			t.Fatal("fixture: want a hashed level of several contexts out of schema order")
+		}
+		if diff, err := Diff(tr, tr, DiffOptions{}); err != nil || diff != nil {
+			t.Fatalf("three %v: identity diff: %v %v", three, diff, err)
+		}
+	}
+}
+
 // TestMixedIdentityDiffManyStateLeafLists: Diff of a tree with itself, whose hashed child level
 // out of schema order holds 2000 distinct state leaf-lists and a child of another context, stays
 // within the default lookup quota: each lookup pays the candidate records it reads (one per
@@ -2549,20 +2608,6 @@ func TestMixedIdentityDiffManyStateLeafLists(t *testing.T) {
 	}
 }
 
-// TestModuleRelativeDefaultsScaling: n default leaves of module m created in a top level out of
-// module order (z:x, then m's marker): each module-relative insertion resumes the anchor walk
-// where the previous one ended, so the work per default stays flat and a large module validates
-// under the default quota; every step is charged, so a small quota refuses.
-// TestLeafListDefaultsScaling: system-ordered leaf-lists with two defaults each, after an
-// instance run, in a top level out of schema order: each second default joins its leader's run
-// (lyds_insert), and the module walk is kept across it, so the work per default stays flat,
-// defaults ascending or descending.
-// TestWhenDeadLeaderMixedContexts: the when pass deletes A's first instance of l, whose record
-// libyang removes at once; in a children table of two contexts the next lookup of l finds B's
-// instance (FirstChild, the predicate's first-instance probe), so g's when holds and g stays.
-// TestDeadEndsAmortized: the live ends of a level whose first and last k schema children the
-// running when pass deleted are kept by the pass through skip pointers (k deletions walk each
-// dead node about once), and m reads only read them.
 // readerCtx runs, at the first poll after x became dead, two concurrent FindXPath reads of the
 // tree its validation waits on (the operation is suspended in Err).
 type readerCtx struct {
@@ -2699,10 +2744,6 @@ func assertNoTransient(t *testing.T, tr *Tree) {
 	opidxAssertTreeInvariant(t, tr)
 }
 
-// TestWhenDeadCancelSweep: the when pass of a mixed-context level with three consecutive dead
-// members of a retained RB tree, cancelled at every cancellation check: whatever it returns, no
-// node stays linked with its index part unlinked (the pass's journal level is rolled back when
-// its storage unlink cannot run), and no transient state remains.
 // TestSortedForestMoveRefusalReleasesSource: moving a sorted forest into an interleaved level
 // (ordered-forest-sorted-move) refused at every budget point leaves no pending placement, and
 // the source tree is unreachable from the destination once the test drops it.
@@ -2787,6 +2828,10 @@ func TestPendingPlacementClearedOnRefusal(t *testing.T) {
 	}
 }
 
+// TestWhenDeadCancelSweep: the when pass of a mixed-context level with three consecutive dead
+// members of a retained RB tree, cancelled at every cancellation check: whatever it returns, no
+// node stays linked with its index part unlinked (the pass's journal level is rolled back when
+// its storage unlink cannot run), and no transient state remains.
 func TestWhenDeadCancelSweep(t *testing.T) {
 	mod := func(when string) string {
 		return `module m { yang-version 1.1; namespace "urn:m"; prefix m;
@@ -2811,6 +2856,9 @@ func TestWhenDeadCancelSweep(t *testing.T) {
 	})
 }
 
+// TestDeadEndsAmortized: the live ends of a level whose first and last k schema children the
+// running when pass deleted are kept by the pass through skip pointers (k deletions walk each
+// dead node about once), and m reads only read them.
 func TestDeadEndsAmortized(t *testing.T) {
 	set := reviewDiffSet(t, `module m { yang-version 1.1; namespace "urn:m"; prefix m;
 	  container c { leaf-list a { type uint32; ordered-by user; } leaf b { type string; } leaf-list z { type uint32; ordered-by user; } } }`)
@@ -2849,6 +2897,91 @@ func TestDeadEndsAmortized(t *testing.T) {
 	}
 }
 
+// TestCopiedListInsertReservesPhysicalPrefix: a list copied from a context where it has key a
+// into one where it has keys a b c keeps its document order (a, zz, b, c, d); a new b goes
+// before c, and the link's reservation reads the physical prefix the hash reads (a, zz, old b:
+// a 1 MiB value), not the logical one: the prepaid scope does not overdraw.
+func TestCopiedListInsertReservesPhysicalPrefix(t *testing.T) {
+	mod := func(keys string) string {
+		return `module m { yang-version 1.1; namespace "urn:m"; prefix m;
+		  container c { leaf x { type string; } leaf y { type string; } leaf z { type string; }
+		  list l { key "` + keys + `"; ordered-by user; leaf a { type string; } leaf b { type string; }
+		  leaf c { type string; } leaf d { type string; } } } }`
+	}
+	setA, setB := reviewDiffSet(t, mod("a")), reviewDiffSet(t, mod("a b c"))
+	big := strings.Repeat("v", 1<<20)
+	src, err := parseOrdered(t, setA, false, `{"m:c":{"l":[{"a":"A","zz":"u","b":"`+big+`","c":"C","d":"D"}]}}`, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	dst, _, err := parseJSONString(setB, `{"m:c":{"x":"1","y":"2","z":"3"}}`, Reject, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var l *Node
+	for n := range src.top.first().Children() {
+		if n.Name() == "l" {
+			l = n
+		}
+	}
+	cp, _, err := dst.Dup(l, dst.top.first(), DupOptions{Recursive: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	saved := overdraftPanics
+	overdraftPanics = true
+	defer func() { overdraftPanics = saved }()
+	if _, err := dst.NewTerm(cp, "b", "s", NewOptions{}); err != nil {
+		t.Log(err) // a refusal is fine; an overdraft panics
+	}
+}
+
+// TestWhenDeadContextTransition: the when pass deletes the last node of one context (two
+// contexts to one) or of two (three to one); the set's context is then the survivors' (live
+// context counts), not the stored first sibling's, so the instance-identifier deref of guard's
+// when finds B's b (libyang unlinks x at once) and guard stays.
+func TestWhenDeadContextTransition(t *testing.T) {
+	mod := `module m { yang-version 1.1; namespace "urn:m"; prefix m;
+	  leaf guard { type string; when "deref(../ref)"; }
+	  leaf ref { type instance-identifier; }
+	  container c { leaf x { type string; when "false()"; } leaf b { type string; }
+	  leaf f1 { type string; } leaf f2 { type string; } leaf f3 { type string; } } }`
+	for _, three := range []bool{false, true} {
+		setA, setB, setC := reviewDiffSet(t, mod), reviewDiffSet(t, mod), reviewDiffSet(t, mod)
+		o := parseOpts{ParseOptions: ParseOptions{Unknown: Opaque, ParseOnly: true, Ordered: true, WhenTrue: true}, ordered: true, whenTrue: true}
+		tr, _, err := parseWith(context.Background(), strings.NewReader(`{"m:guard":"g","m:ref":"/m:c/b","m:c":{"x":"x"}}`), setA, o, parseJSON, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var c *Node
+		for _, n := range tr.top.docSpan().All() {
+			if n.Name() == "c" {
+				c = n
+			}
+		}
+		if three {
+			linkForeign(t, tr, c, setC, `{"m:c":{"x":"x"}}`)
+			c.kids.docLast().flags |= FlagWhenTrue // deleted by the pass as A's x
+		}
+		linkForeign(t, tr, c, setB, `{"m:c":{"b":"yes","f1":"1","f2":"2","f3":"3"}}`)
+		if _, err := tr.ValidateModule(context.Background(), "m", ValidateOptions{NotFinal: true}); err != nil {
+			t.Fatal(three, err)
+		}
+		if n, err := tr.Find("/m:guard"); err != nil || n == nil {
+			t.Fatalf("three %v: guard deleted: %v %v", three, n, err)
+		}
+		if n, err := tr.Find("/m:c/b"); err != nil || n == nil || ctxOf(n) != setB {
+			t.Fatalf("three %v: Find of B's b: %v %v", three, n, err)
+		}
+		if len(c.kids.contexts) != 1 {
+			t.Fatalf("three %v: contexts left %d", three, len(c.kids.contexts))
+		}
+	}
+}
+
+// TestWhenDeadLeaderMixedContexts: the when pass deletes A's first instance of l, whose record
+// libyang removes at once; in a children table of two contexts the next lookup of l finds B's
+// instance (FirstChild, the predicate's first-instance probe), so g's when holds and g stays.
 func TestWhenDeadLeaderMixedContexts(t *testing.T) {
 	mod := func(when string) string {
 		return `module m { yang-version 1.1; namespace "urn:m"; prefix m;
@@ -2888,6 +3021,10 @@ func TestWhenDeadLeaderMixedContexts(t *testing.T) {
 	}
 }
 
+// TestLeafListDefaultsScaling: system-ordered leaf-lists with two defaults each, after an
+// instance run, in a top level out of schema order: each second default joins its leader's run
+// (lyds_insert), and the module walk is kept across it, so the work per default stays flat,
+// defaults ascending or descending.
 func TestLeafListDefaultsScaling(t *testing.T) {
 	work := func(n int, desc bool) float64 {
 		var m strings.Builder
@@ -2932,6 +3069,10 @@ func TestLeafListDefaultsScaling(t *testing.T) {
 	}
 }
 
+// TestModuleRelativeDefaultsScaling: n default leaves of module m created in a top level out of
+// module order (z:x, then m's marker): each module-relative insertion resumes the anchor walk
+// where the previous one ended, so the work per default stays flat and a large module validates
+// under the default quota; every step is charged, so a small quota refuses.
 func TestModuleRelativeDefaultsScaling(t *testing.T) {
 	// before: an instance run (a leaf-list of n entries) precedes every default in schema and
 	// document order, so no walk finds an anchor (each default goes after first->prev); first:

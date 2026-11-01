@@ -643,9 +643,7 @@ func (t *Tree) crossContextInsertPos(sib *siblings, n *Node, newCtx *schema.Set,
 						if sib.schemaUnordered {
 							// out of schema order the table answers by registration, for every
 							// node kind: a run may split, a singleton may repeat (design 15)
-							r, ok := t.tableSchemaFirstCharged(sib, sn, func(n int64) error {
-								return t.work.chargeHash(uint64(n)) //nolint:gosec // a charge is nonnegative
-							})
+							r, ok := t.tableSchemaFirstCharged(sib, sn, chargeOf(&t.work))
 							if t.work.hashErr != nil {
 								return l.Len(), true // the sticky refusal fails the link
 							}
@@ -2326,13 +2324,13 @@ func (t *Tree) linkApplyBound(parent *Node, sib *siblings, n *Node, at int) (uin
 		amount = addHashBound(amount, a)
 	}
 	if n.schema != nil && !n.schema.IsKey() && parent != nil && parent.schema != nil &&
-		parent.schema.Kind == schema.List && (parent.keyRun() < len(parent.schema.Keys) || at < len(parent.schema.Keys)) {
+		parent.schema.Kind == schema.List && (parent.keyRun() < len(parent.schema.Keys) || parent.kids.linkDocPos(n, at) < len(parent.schema.Keys)) {
 		// keyLinked → reindexComparedParent: a non-key can enter the compared prefix (incomplete,
-		// or made so by its position among the keys) and reindex the list in its own siblings
-		// (a term the prepaid scope exposed)
+		// or made so by its document position among the keys) and reindex the list in its own
+		// siblings (a term the prepaid scope exposed)
 		if ps := parent.siblingsOf(); ps != nil && ps.ht != nil {
-			// the compared prefix after the link: the first len(Keys) positions with n at at
-			amount = addHashBound(amount, indexInsertedBound(parent, n, at, &t.work))
+			// the compared prefix after the link: the first len(Keys) children with n in place
+			amount = addHashBound(amount, indexInsertedBound(parent, n, parent.kids.linkDocPos(n, at), &t.work))
 		}
 	}
 	amount = addHashBound(amount, t.linkIndexBound(parent, sib, n, at))
@@ -2355,9 +2353,9 @@ func (t *Tree) linkIndexBound(parent *Node, sib *siblings, n *Node, at int) uint
 	if parent != nil && parent.schema != nil && parent.schema.Kind == schema.List &&
 		(n.schema == nil || n.schema.IsKey() || parent.keyRun() < len(parent.schema.Keys)) {
 		if ps := parent.siblingsOf(); ps != nil && ps.ht != nil {
-			position := at
-			if n.schema == nil {
-				position = parent.kids.SchemaLen() + parent.kids.OpaqueLen()
+			position := parent.kids.Len() // an opaque node goes last
+			if n.schema != nil {
+				position = parent.kids.linkDocPos(n, at)
 			}
 			amount = addHashBound(amount, indexInsertedBound(parent, n, position, &t.work))
 		}
