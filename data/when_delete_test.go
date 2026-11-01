@@ -5,6 +5,7 @@ package data
 import (
 	"context"
 	"errors"
+	"math/bits"
 	"slices"
 	"strconv"
 	"strings"
@@ -348,7 +349,40 @@ func TestWhenRootDeletionsKeepView(t *testing.T) {
 	if got := slices.Collect(tr.Top()); len(got) != 1 || got[0].Name() != "cnt" {
 		t.Fatalf("top level after the pass: %d nodes", len(got))
 	}
-	if vc.topBuilds > 2 {
+	if vc.topBuilds > 2+bits.Len(n) { // rebuilt only once more than half the view is deleted
 		t.Fatalf("%d top-level view builds for %d root deletions", vc.topBuilds, n)
+	}
+}
+
+// TestWhenRootDeletionsLinearSteps: a gate first, then n roots whose when reads the gate, all
+// deleted: each evaluation after a deletion finds the gate at once (the root lookup skips the
+// deleted roots as it walks, no filtered copy per evaluation), so the pass's XPath steps grow
+// linearly in n.
+func TestWhenRootDeletionsLinearSteps(t *testing.T) {
+	steps := func(n int) int64 {
+		set := reviewDiffSet(t, `module m { yang-version 1.1; namespace "urn:m"; prefix m;
+		  leaf gate { type string; } leaf-list x { type uint32; when "/m:gate = 'on'"; } }`)
+		vals := make([]string, n)
+		for i := range vals {
+			vals[i] = strconv.Itoa(i)
+		}
+		tr := parseWhenTrue(t, set, `{"m:gate":"off","m:x":[`+strings.Join(vals, ",")+`]}`)
+		vc := &valCtx{t: tr, log: &logger{set: set}, nodeWhen: &nodeSet{}, nodeTypes: &nodeSet{}, metaTypes: &[]*meta{},
+			budget: xpathBudget{ctx: context.Background()}}
+		for c := range tr.top.all() {
+			if c.Name() == "x" {
+				vc.nodeWhen.add(c)
+			}
+		}
+		if err := vc.unres(); err != nil {
+			t.Fatal(err)
+		}
+		if got := tr.top.len(); got != 1 {
+			t.Fatalf("%d top-level nodes left, want the gate", got)
+		}
+		return vc.budget.steps
+	}
+	if small, large := steps(512), steps(4096); large > 10*small {
+		t.Fatalf("XPath steps %d for 512 deletions, %d for 4096", small, large)
 	}
 }

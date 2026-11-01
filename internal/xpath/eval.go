@@ -211,16 +211,16 @@ func (ev *evaluator) start() value {
 	return nodesV([]item{{n: ev.ec.Node, t: itElem}})
 }
 
-// root is the document root's children: ec.Tree less the nodes ec.TreeGone reports (deleted, so
-// absent for every axis and lookup), filtered when first read, one step per node; without
-// TreeGone it is ec.Tree as given.
+// root is the document root's children for the whole-list reads (axes, positions, the string
+// value): ec.Tree less the nodes ec.TreeGone reports (deleted, so absent), filtered when first
+// read, one step per node; without TreeGone it is ec.Tree as given. The first-instance and hash
+// lookups walk ec.Tree and skip those nodes instead (gone), so they still stop early.
 func (ev *evaluator) root() []Node {
 	if ev.ec.TreeGone == nil {
 		return ev.ec.Tree
 	}
 	if !ev.liveOK {
 		ev.liveOK = true
-		ev.live = make([]Node, 0, len(ev.ec.Tree))
 		for _, c := range ev.ec.Tree {
 			if ev.tick() != nil {
 				break // sticky: the evaluation fails
@@ -232,6 +232,9 @@ func (ev *evaluator) root() []Node {
 	}
 	return ev.live
 }
+
+// gone reports a root of ec.Tree that ec.TreeGone reports deleted.
+func (ev *evaluator) gone(n Node) bool { return ev.ec.TreeGone != nil && ev.ec.TreeGone(n) }
 
 // tick charges one step of the budget and polls cancellation; the error sticks.
 func (ev *evaluator) tick() error {
@@ -844,7 +847,7 @@ func (ev *evaluator) firstInstance(set value, sn SchemaNode) Node {
 	var kids []Node
 	switch it := set.nodes[0]; it.t {
 	case itRoot:
-		kids = ev.root()
+		kids = ev.ec.Tree // deleted roots skipped below: the walk stops early, no copy
 	case itElem:
 		if f, ok := it.n.(FirstLookup); ok {
 			if err := ev.tick(); err != nil {
@@ -861,6 +864,9 @@ func (ev *evaluator) firstInstance(set value, sn SchemaNode) Node {
 	for _, c := range kids {
 		if ev.tick() != nil {
 			return nil
+		}
+		if ev.gone(c) {
+			continue
 		}
 		if c.Schema() == nil {
 			break // opaque nodes are last, the walk stops at the first
@@ -1066,7 +1072,7 @@ func (ev *evaluator) hashChild(set value, sn SchemaNode, name string, vals []str
 			var kids []Node
 			switch it.t {
 			case itRoot:
-				kids = ev.root()
+				kids = ev.ec.Tree // deleted roots skipped below: the scan stops early, no copy
 			case itElem:
 				if sn := it.n.Schema(); sn != nil && (sn.Kind() == KindAnydata || sn.Kind() == KindAnyxml) {
 					continue // lyd_child, even when the adapter has no ChildLookup
@@ -1076,6 +1082,9 @@ func (ev *evaluator) hashChild(set value, sn SchemaNode, name string, vals []str
 			for _, c := range kids {
 				if err := ev.tick(); err != nil {
 					return value{}, err
+				}
+				if ev.gone(c) {
+					continue
 				}
 				match, err := matches(c)
 				if err != nil {
@@ -1088,7 +1097,7 @@ func (ev *evaluator) hashChild(set value, sn SchemaNode, name string, vals []str
 			}
 			if hit == nil { // lyd_find_sibling_opaq_next
 				for _, c := range kids {
-					if c.Schema() == nil && c.Name() == name {
+					if c.Schema() == nil && c.Name() == name && !ev.gone(c) {
 						hit = []Node{c}
 						break
 					}

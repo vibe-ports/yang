@@ -148,9 +148,12 @@ func (vc *valCtx) xpathDiagnostic(item printDiagnostic, notice bool) {
 // topNodes is the accessible tree of the evaluations: the live top-level siblings, rebuilt only
 // when the top level changed (siblings.gen) and charged to the step budget then, one step per
 // node. A when-pass deletion of a root keeps a fresh view (whenPass.del): the deleted root stays
-// in it, absent for every read of the root (topGone), until the pass ends.
+// in it, absent for every read of the root (topGone), until the pass ends or more than half the
+// view is deleted. A lookup on the root skips the deleted roots as it walks (no filtered copy).
 func (vc *valCtx) topNodes() []xpath.Node {
-	if vc.top != nil && vc.topGen == vc.t.top.gen {
+	// a view at most half deleted: whole-list reads of the root filter it (evaluator.root) in
+	// O(live), and the rebuild once it is more is paid by the deletions since the last one
+	if vc.top != nil && vc.topGen == vc.t.top.gen && 2*vc.topDead <= len(vc.top) {
 		return vc.top
 	}
 	vc.top = vc.top[:0]
