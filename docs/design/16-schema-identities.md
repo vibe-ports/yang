@@ -20,36 +20,40 @@ the same; what changes is that the work each charge stands for no longer grows w
 
 ## Child indexes
 
-`Set.ChildrenByName(parent, ChildKey{Kind, ID}, charge)` reads a per-parent index of the set's
+`Set.ChildByName(parent, ChildKey{Kind, ID}, charge)` reads a per-parent index of the set's
 children. The top level is every module's top nodes in load order, then the roots of the
 modules' extension instances (a structure's `Root`, yang-data's `Nodes`); below it, a parent's
 data children (a choice's cases, an operation's input and output), then its actions and
-notifications. Every node with the key is kept, in that order: instances of one extension can
-have equal roots, and the branch holding a descendant may be any of them. `ChildByName` is the
-first.
+notifications. The first equal key wins, as a sibling walk would find it, with one exception:
+an extension root is indexed only when no other top-level node has its key. A shared key is
+ambiguous and returns `schema.ErrAmbiguousRoot`, a distinct outcome rather than a guess: which
+of several equal roots holds a descendant is not decided here, and keeping candidate lists
+would make warm lookups scan them. Later parts decide what an ambiguous root means to a caller.
 
 - Ownership: the index lives in the set and is keyed by the set's own nodes. A parent of
   another set gets no children and stores nothing, so no set retains another context
   (`TestEquivalentCacheKeepsNoContext`). There is no process-wide or weak-keyed map.
 - Construction pays as it goes: one unit up front, one per module and extension instance, one
-  per child. A charge that
-  polls a cancellation stops the build; a refusal stores nothing. Only a complete index is
+  per child. A charge that polls a cancellation stops the build; a refusal stores nothing. Only a complete index is
   published, with `LoadOrStore`, so concurrent cold builders agree
   (`TestEquivalentInColdBudgetAndDepth`, `TestEquivalentInCancel`,
   `TestEquivalentInConcurrentColdBuild`). A warm read charges nothing.
 
 ## Equivalence
 
-`equivalentIn(sn, set, charge)` (package data) collects sn's lineage, one unit per ancestor
-paid before it is recorded, then maps it from its root down: at each level every candidate
-parent's index is read, one unit per candidate. Choice, case, input, output and extension roots
-are levels of that lineage, so a case's leaf does not map to an equally named leaf outside the
-choice, an rpc output descendant maps (`TestEquivalentInOutputAndScaling`), and so do structure
-and yang-data trees, under duplicate roots too (`TestEquivalentInExtensionRoots`). A deep lineage
-whose root is missing pays per level, and a refusing charge stops before anything is collected
-(`TestEquivalentInDeepRootMiss`). Cost is O(depth) map reads once the indexes are built; memory
-is linear in the schema, never in concatenated ancestry. When several nodes share the lineage
-(only under equal extension roots), the first in index order is returned.
+`equivalentIn(sn, set, charge)` (package data) returns sn itself when sn is a node of set: within
+one context schema pointers are the identity. Otherwise it collects sn's lineage, one unit per
+ancestor paid before it is recorded, then maps it from its root down, one unit and one
+`ChildByName` read per level. Choice, case, input, output and extension roots are levels of that
+lineage, so a case's leaf does not map to an equally named leaf outside the choice, an rpc
+output descendant maps (`TestEquivalentInOutputAndScaling`), and so do structure and yang-data
+trees with unique roots; under a duplicate root the mapping returns `ErrAmbiguousRoot`
+(`TestEquivalentInExtensionRoots`). A level without a module maps to nothing, as
+`compareSchemaEqual` now never finds such a level equal (main dereferenced the missing module;
+`TestCompareSchemaEqualNilModule`). A deep lineage whose root is missing pays per level, and a
+refusing charge stops before anything is collected (`TestEquivalentInDeepRootMiss`). Cost is
+O(depth) map reads once the indexes are built; memory is linear in the schema, never in
+concatenated ancestry.
 
 `equivalentIn` has only test callers here. `findSchemaCtx` keeps `lyd_find_schema_ctx`'s own
 input-first walk, which is not the same mapping; later parts route table lookups through

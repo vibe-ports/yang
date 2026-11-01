@@ -2,7 +2,10 @@
 
 package schema
 
-import "unique"
+import (
+	"errors"
+	"unique"
+)
 
 // Ident is a schema node's module name and node name, the identifiers lyd_compare_schema_equal
 // compares at one level, each interned on its own: equal names have equal handles, so comparing
@@ -46,37 +49,50 @@ type ChildKey struct {
 	ID   Ident
 }
 
-// ChildByName is the first of ChildrenByName, nil if none.
-func (s *Set) ChildByName(parent *Node, key ChildKey, charge func(int64) error) (*Node, error) {
-	ns, err := s.ChildrenByName(parent, key, charge)
-	if len(ns) == 0 {
-		return nil, err
-	}
-	return ns[0], nil
-}
+// ErrAmbiguousRoot is ChildByName's outcome for a top-level key held by an extension-instance
+// root together with another top-level node of the set: equal identities, so no single node is
+// the key's child.
+var ErrAmbiguousRoot = errors.New("schema: ambiguous extension-instance root")
 
-// ChildrenByName is every child of parent with the given key, in order. parent is nil (the top
+// ambiguous marks an ambiguous key in a top-level index.
+var ambiguous = new(Node)
+
+// ChildByName is the child of parent with the given key, nil if none. parent is nil (the top
 // level: every module's top nodes in load order, then the roots of the modules' extension
 // instances, a structure's Root or yang-data's Nodes) or a node of this set (its Module.Owner); a
 // node of another set, or of an ownerless hand-built set, has no children here and nothing is
 // stored for it, so the set's index holds only the set's own nodes. A parent's children are its
 // data children (a choice's cases, an operation's input and output) and its actions and
-// notifications. The top level can hold several equal keys (instances of one extension with
-// equal roots), so every candidate is kept.
+// notifications; the first equal key wins, as a sibling walk would find it. An extension root
+// is indexed only when no other top-level node has its key; a shared key returns
+// ErrAmbiguousRoot.
 //
 // A parent's index is built on first use and paid through charge (nil: uncharged) as it goes:
 // one unit up front, one per module and extension instance enumerated and one per child (a
 // fixed-size key), so a charge that polls a cancellation stops the build partway. A refusal
 // stores nothing and is returned; only a complete index is published. Concurrent cold builders
 // each build and the first stored index wins (they are equal). A warm lookup is one map read and
-// charges nothing. The returned slice is shared: callers must not modify it.
-func (s *Set) ChildrenByName(parent *Node, key ChildKey, charge func(int64) error) ([]*Node, error) {
+// charges nothing.
+func (s *Set) ChildByName(parent *Node, key ChildKey, charge func(int64) error) (*Node, error) {
 	if parent != nil && (parent.Module == nil || parent.Module.Owner != s) {
 		return nil, nil
 	}
-	if v, ok := s.children.Load(parent); ok {
-		return v.(map[ChildKey][]*Node)[key], nil
+	v, ok := s.children.Load(parent)
+	if !ok {
+		idx, err := s.childIndex(parent, charge)
+		if err != nil {
+			return nil, err
+		}
+		v, _ = s.children.LoadOrStore(parent, idx)
 	}
+	if n := v.(map[ChildKey]*Node)[key]; n != ambiguous {
+		return n, nil
+	}
+	return nil, ErrAmbiguousRoot
+}
+
+// childIndex builds parent's index for ChildByName, paid through charge.
+func (s *Set) childIndex(parent *Node, charge func(int64) error) (map[ChildKey]*Node, error) {
 	pay := func() error {
 		if charge == nil {
 			return nil
@@ -86,49 +102,60 @@ func (s *Set) ChildrenByName(parent *Node, key ChildKey, charge func(int64) erro
 	if err := pay(); err != nil {
 		return nil, err
 	}
-	var lists [][]*Node
-	if parent == nil {
-		for _, m := range s.Modules {
+	idx := make(map[ChildKey]*Node)
+	add := func(ns []*Node, ext bool) error {
+		for _, n := range ns {
 			if err := pay(); err != nil {
-				return nil, err
+				return err
 			}
-			lists = append(lists, m.Top)
-		}
-		var exts func(es []*ExtInstance) error
-		exts = func(es []*ExtInstance) error {
-			for _, e := range es {
-				if err := pay(); err != nil {
-					return err
-				}
-				if e.Root != nil {
-					lists = append(lists, []*Node{e.Root})
-				} else {
-					lists = append(lists, e.Nodes)
-				}
-				if err := exts(e.Exts); err != nil {
-					return err
-				}
-			}
-			return nil
-		}
-		for _, m := range s.Modules {
-			if err := exts(m.Exts); err != nil {
-				return nil, err
+			switch k := (ChildKey{n.Kind, n.ID()}); {
+			case idx[k] == nil:
+				idx[k] = n
+			case ext:
+				idx[k] = ambiguous
 			}
 		}
-	} else {
-		lists = [][]*Node{parent.Children, parent.Actions, parent.Notifs}
+		return nil
 	}
-	idx := make(map[ChildKey][]*Node)
-	for _, l := range lists {
-		for _, n := range l {
-			if err := pay(); err != nil {
+	if parent != nil {
+		for _, l := range [][]*Node{parent.Children, parent.Actions, parent.Notifs} {
+			if err := add(l, false); err != nil {
 				return nil, err
 			}
-			k := ChildKey{n.Kind, n.ID()}
-			idx[k] = append(idx[k], n)
+		}
+		return idx, nil
+	}
+	for _, m := range s.Modules {
+		if err := pay(); err != nil {
+			return nil, err
+		}
+		if err := add(m.Top, false); err != nil {
+			return nil, err
 		}
 	}
-	v, _ := s.children.LoadOrStore(parent, idx)
-	return v.(map[ChildKey][]*Node)[key], nil
+	var exts func(es []*ExtInstance) error
+	exts = func(es []*ExtInstance) error {
+		for _, e := range es {
+			if err := pay(); err != nil {
+				return err
+			}
+			roots := e.Nodes
+			if e.Root != nil {
+				roots = []*Node{e.Root}
+			}
+			if err := add(roots, true); err != nil {
+				return err
+			}
+			if err := exts(e.Exts); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+	for _, m := range s.Modules {
+		if err := exts(m.Exts); err != nil {
+			return nil, err
+		}
+	}
+	return idx, nil
 }

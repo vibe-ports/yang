@@ -235,18 +235,20 @@ func TestEquivalentInColdBudgetAndDepth(t *testing.T) {
 	}
 }
 
-// TestEquivalentInCancel: a charge that polls a cancellation stops a cold mapping partway with
-// the cancellation and publishes no partial index: the interrupted parent's index is built (and
-// paid) again by the next lookup, which finds the equivalent, and is warm (free) after that.
+// TestEquivalentInCancel: a charge that polls a cancellation stops a cold mapping partway, at the
+// top-level build's last unit (after every earlier child was inserted), and publishes no partial
+// index: the next lookup builds (and pays) it again and finds the node, and is warm after that.
 func TestEquivalentInCancel(t *testing.T) {
-	setA, setB := reviewDiffSet(t, equivModule), reviewDiffSet(t, equivModule)
-	sn := setA.Implemented("eq").Top[0].Children[0]
+	setA, setB, setC := reviewDiffSet(t, equivModule), reviewDiffSet(t, equivModule), reviewDiffSet(t, equivModule)
+	sn := setA.Implemented("eq").Top[0]
+	var total int64
+	if k, err := equivalentIn(sn, setC, func(n int64) error { total += n; return nil }); err != nil || k == nil {
+		t.Fatalf("a cold mapping: %v %v", k, err)
+	}
 	ctx, cancel := context.WithCancel(context.Background())
-	polls := 0
+	var polls int64
 	poll := func(int64) error {
-		// inside the top-level build's children: after the level's unit, the build's up-front
-		// unit and one per module
-		if polls++; polls == len(setB.Modules)+3 {
+		if polls++; polls == total {
 			cancel()
 		}
 		return ctx.Err()
@@ -254,7 +256,7 @@ func TestEquivalentInCancel(t *testing.T) {
 	if k, err := equivalentIn(sn, setB, poll); k != nil || !errors.Is(err, context.Canceled) {
 		t.Fatalf("a cancelled mapping: %v %v", k, err)
 	}
-	key := schema.ChildKey{Kind: sn.Parent.Kind, ID: sn.Parent.ID()}
+	key := schema.ChildKey{Kind: sn.Kind, ID: sn.ID()}
 	var cold, warm int64
 	if k, err := setB.ChildByName(nil, key, func(n int64) error { cold += n; return nil }); err != nil || k == nil {
 		t.Fatalf("after a cancelled build: %v %v", k, err)
@@ -262,8 +264,8 @@ func TestEquivalentInCancel(t *testing.T) {
 	if k, err := setB.ChildByName(nil, key, func(n int64) error { warm += n; return nil }); err != nil || k == nil {
 		t.Fatalf("a warm lookup: %v %v", k, err)
 	}
-	if cold < int64(len(setB.Modules))+2 || warm != 0 {
-		t.Fatalf("after a cancellation the build charged %d, then %d: a partial index was published", cold, warm)
+	if cold != total-2 || warm != 0 { // the build is the cold mapping less its ancestor and level units
+		t.Fatalf("after a cancellation the build charged %d (a full one %d), then %d", cold, total-2, warm)
 	}
 	if k, err := equivalentIn(sn, setB, ctxCharge(context.Background())); err != nil || k == nil || !compareSchemaEqual(sn, k, true) {
 		t.Fatalf("after a cancellation: %v %v", k, err)
@@ -335,17 +337,8 @@ func extSet(t *testing.T, module string) *schema.Set {
 	return c.Snapshot()
 }
 
-// TestEquivalentInExtensionRoots: a structure's root and a yang-data instance's top nodes are
-// the roots of their lineages, so equivalentIn maps them and their descendants as
-// compareSchemaEqual with all parents matches them. Two yang-data instances with equal roots keep
-// both candidates: a descendant under the second root still maps.
-func TestEquivalentInExtensionRoots(t *testing.T) {
-	const module = `module e { yang-version 1.1; namespace "urn:e"; prefix e;
-  import ietf-yang-structure-ext { prefix sx; } import ietf-restconf { prefix rc; }
-  sx:structure box { leaf x { type string; } }
-  rc:yang-data one { container d { leaf p { type string; } } }
-  rc:yang-data two { container d { leaf q { type string; } } } }`
-	setA, setB := extSet(t, module), extSet(t, module)
+// extNodes is every node of m's extension-instance trees.
+func extNodes(m *schema.Module) []*schema.Node {
 	var all []*schema.Node
 	var walk func(n *schema.Node)
 	walk = func(n *schema.Node) {
@@ -354,7 +347,7 @@ func TestEquivalentInExtensionRoots(t *testing.T) {
 			walk(c)
 		}
 	}
-	for _, e := range setA.Implemented("e").Exts {
+	for _, e := range m.Exts {
 		if e.Root != nil {
 			walk(e.Root)
 		}
@@ -362,18 +355,71 @@ func TestEquivalentInExtensionRoots(t *testing.T) {
 			walk(n)
 		}
 	}
+	return all
+}
+
+// TestEquivalentInExtensionRoots: a structure's root and a yang-data instance's top nodes are
+// the roots of their lineages, so equivalentIn maps them and their descendants as
+// compareSchemaEqual with all parents matches them. Two yang-data instances with equal roots
+// leave no single equivalent: the mapping returns schema.ErrAmbiguousRoot, never a guess, while a
+// node of the target set itself still maps to itself.
+func TestEquivalentInExtensionRoots(t *testing.T) {
+	const unique = `module e { yang-version 1.1; namespace "urn:e"; prefix e;
+  import ietf-yang-structure-ext { prefix sx; } import ietf-restconf { prefix rc; }
+  sx:structure box { leaf x { type string; } }
+  rc:yang-data one { container d { leaf p { type string; } } } }`
+	setA, setB := extSet(t, unique), extSet(t, unique)
 	names := map[string]bool{}
-	for _, n := range all {
+	for _, n := range extNodes(setA.Implemented("e")) {
 		names[n.Name] = true
 		k, err := equivalentIn(n, setB, nil)
 		if err != nil || k == nil || k.Module.Owner != setB || !compareSchemaEqual(n, k, true) {
 			t.Fatalf("%s: equivalent %v %v", n.Name, k, err)
 		}
 	}
-	for _, want := range []string{"box", "x", "d", "p", "q"} {
+	for _, want := range []string{"box", "x", "d", "p"} {
 		if !names[want] {
 			t.Fatalf("no %s walked: %v", want, names)
 		}
+	}
+	const dup = `module e { yang-version 1.1; namespace "urn:e"; prefix e;
+  import ietf-restconf { prefix rc; }
+  rc:yang-data one { container d { leaf p { type string; } } }
+  rc:yang-data two { container d { leaf q { type string; } } } }`
+	dupA, dupB := extSet(t, dup), extSet(t, dup)
+	for _, n := range extNodes(dupA.Implemented("e")) {
+		if k, err := equivalentIn(n, dupB, nil); k != nil || !errors.Is(err, schema.ErrAmbiguousRoot) {
+			t.Fatalf("%s under a duplicate root: %v %v", n.Name, k, err)
+		}
+		if k, err := equivalentIn(n, dupA, nil); k != n || err != nil {
+			t.Fatalf("%s in its own set: %v %v", n.Name, k, err)
+		}
+	}
+}
+
+// TestCompareSchemaEqualNilModule: a level without a module never compares equal, so two
+// lineages whose parents lack modules are unequal (as compareSchemaParentsEqual finds them) and
+// equivalentIn maps neither.
+func TestCompareSchemaEqualNilModule(t *testing.T) {
+	mk := func() *schema.Node {
+		p := &schema.Node{Kind: schema.Container, Name: "c"}
+		return &schema.Node{Kind: schema.Leaf, Name: "x", Module: &schema.Module{Name: "m"}, Parent: p}
+	}
+	a, b := mk(), mk()
+	if compareSchemaEqual(a, b, true) || compareSchemaParentsEqual(a, b) {
+		t.Fatal("nil-module parents compared equal")
+	}
+	if !compareSchemaEqual(a, b, false) {
+		t.Fatal("equal nodes without parents compared unequal")
+	}
+	set := reviewDiffSet(t, `module m { yang-version 1.1; namespace "urn:m"; prefix m; container c { leaf x { type string; } } }`)
+	if k, err := equivalentIn(a, set, nil); k != nil || err != nil {
+		t.Fatalf("a nil-module lineage mapped: %v %v", k, err)
+	}
+	// a hand-built set whose top node has no module either: equal kind and name, still no match
+	bare := &schema.Set{Modules: []*schema.Module{{Name: "m", Top: []*schema.Node{{Kind: schema.Container, Name: "c"}}}}}
+	if k, err := equivalentIn(a.Parent, bare, nil); k != nil || err != nil {
+		t.Fatalf("a nil-module node mapped: %v %v", k, err)
 	}
 }
 
