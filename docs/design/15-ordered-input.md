@@ -119,7 +119,7 @@ write takes the code path it took before (the counted-work and scaling tests are
 
 ## Evidence
 
-- Oracle fixtures `protocol-v2/ordered-*` (76; `ordered-split-list-merge-destruct` is unsupported,
+- Oracle fixtures `protocol-v2/ordered-*` (82; `ordered-split-list-merge-destruct` is unsupported,
 U-0113) cover:
   - parse order, JSON and XML;
   - the XML opaque anchor;
@@ -196,6 +196,16 @@ Read in document order (fixed):
   schema, holds only the target set's nodes, and the cost is O(depth) (`TestEquivalentInColdBudgetAndDepth`,
   `TestEquivalentInOutputAndScaling`, `TestEquivalentCacheKeepsNoContext`). `leaderFirstMixed`
   uses the same candidates.
+- round 31: a when-pass deletion is complete at once, as `lyd_validate_autodel_node_del`:
+  the diff's delete, the nested nodes leave node_when and node_types, the node is unlinked
+  (the incremental single unlink, O(log n) per node) and its links freed. Storage therefore
+  never holds a deleted node, and every reader sees libyang's tree by construction; the dead
+  view (`deadLinks`), the live readers and the split index unlink of rounds 26-30 are gone.
+  The per-deletion cost the batch avoided was the top-level XPath view's rebuild: a deleted
+  root stays in that view, flagged dead until the pass ends and read as WhenFalse, so the view
+  is not rebuilt per deletion. The pass's journal level stays: a cancellation keeps the
+  completed prefix, each deletion being whole (`ordered-when-dead-separator-position`,
+  `-table`; the `-sep` variants of the when-dead fixtures; `TestWhenDeadKeyedForeignTransition`);
 - round 30, the views of a sibling set and who reads which. *Logical* (schema nodes first,
   then opaque ones, each in document order: `At`, `SchemaLen`, the link's `at`) is the
   storage's coordinate system only. *Physical* (document order, opaque nodes and a when pass's

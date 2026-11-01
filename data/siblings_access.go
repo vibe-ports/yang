@@ -379,15 +379,13 @@ func (s *siblings) docNodes() []*Node          { return s.docSpan().Collect() }
 
 // opaqTail is the trailing opaque block in document order (where lyd_find_sibling_opaq_next
 // starts: the opaque nodes after the last schema node); the opaque nodes unless interleaved.
-// The last schema node is the last live one: a node the running when pass deleted is gone for
-// libyang already (deadLinks).
 func (s *siblings) opaqTail() siblingSpan {
 	if s.st == nil || !s.st.interleaved() {
 		return s.opaqueSpan()
 	}
 	lo := 0
-	if last := s.liveLastSchema(); last != nil {
-		at, _ := s.st.seq.Pos(s.handle(last))
+	if last := s.st.seq.LastKind(true); last != nil {
+		at, _ := s.st.seq.Pos(last)
 		lo = at + 1
 	}
 	return s.docSpan().Slice(lo, s.Len())
@@ -395,14 +393,10 @@ func (s *siblings) opaqTail() siblingSpan {
 
 // opaqNextSpan is what lyd_find_sibling_opaq_next walks from the first sibling: every sibling
 // from it when that one is opaque, else the trailing opaque block (tree_data.c:3392-3412; it
-// compares LYD_NAME, so a schema node's name too). The first sibling is the first live one.
+// compares LYD_NAME, so a schema node's name too).
 func (s *siblings) opaqNextSpan() siblingSpan {
-	if s.st == nil || !s.st.interleaved() {
-		return s.opaqTail()
-	}
-	if first := s.liveFirst(); first != nil && first.schema == nil {
-		at, _ := s.st.seq.Pos(s.handle(first))
-		return s.docSpan().Slice(at, s.Len())
+	if first := s.docFirst(); first != nil && first.schema == nil && s.st.interleaved() {
+		return s.docSpan()
 	}
 	return s.opaqTail()
 }

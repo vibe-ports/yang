@@ -27,5 +27,9 @@ module pv2-ordered12 {
       type string;
     }
     leaf y { type string; }
+    leaf x2 {
+      when "false()";
+      type string;
+    }
   }
 }

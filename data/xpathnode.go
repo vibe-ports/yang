@@ -847,7 +847,7 @@ func parentMismatch(sib *siblings, p *xprobe) bool {
 	if p.schemaOnly || p.node.schema == nil {
 		return false
 	}
-	f := sib.liveFirst() // a node the running when pass deleted is gone for libyang (deadLinks)
+	f := sib.docFirst()
 	return f != nil && f.schema != nil && !compareSchemaEqual(f.schema.DataParent(), p.node.schema.DataParent(), true)
 }
 

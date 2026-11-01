@@ -3290,12 +3290,8 @@ func (t *Tree) unlinkAllDefaults(ns, defaults []*Node) (result error) {
 		}
 		l := sets[sib]
 		prev, next := l.prev[n], l.next[n]
-		// a when pass's deletion did its index part at once (whenPass.del): only the storage
-		// and the links are left
-		if d := t.work.dead; d == nil || !d.indexed[n] {
-			if err := sib.unlinkIndex(n, prev, next, l.tail, func(c *Node) (*Node, *Node) { return l.prev[c], l.next[c] }); err != nil {
-				return err
-			}
+		if err := sib.unlinkIndex(n, prev, next, l.tail, func(c *Node) (*Node, *Node) { return l.prev[c], l.next[c] }); err != nil {
+			return err
 		}
 		if err := freeLinks(n); err != nil {
 			t.work.hashErr = err

@@ -2284,7 +2284,7 @@ func (t *Tree) findFirstWork(s *siblings, target *Node, work *workCounter) (*Nod
 	if s.len() == 0 {
 		return nil, nil
 	}
-	if f := s.liveFirst(); f != nil && f.schema != nil && target.schema != nil &&
+	if f := s.docFirst(); f != nil && f.schema != nil && target.schema != nil &&
 		!compareSchemaEqual(f.schema.DataParent(), target.schema.DataParent(), true) {
 		return nil, nil // schema mismatch, read on the physical first sibling (an opaque one: none)
 	}

@@ -266,9 +266,9 @@ type whenPass struct {
 	initialWhen  []*Node
 	initialFlags map[*Node]Flags
 	initialTypes nodeSet
-	// the pass's journal level (savepoint, or a pass-local journal): a deletion unlinks its
-	// index part at once (del), so a finish that cannot unlink the storage rolls the pass back
-	// whole, indexes included; one that can commits it
+	// the pass's journal level (savepoint, or a pass-local journal): each deletion is complete
+	// at once (del), so a cancellation keeps the completed prefix; a finish that fails rolls
+	// the pass back whole, the queues to their initial state too
 	journal *hashTransaction
 	level   int
 	local   bool
@@ -330,41 +330,73 @@ func (p *whenPass) whenFalse(n *Node, i int) (int, error) {
 	return i, nil
 }
 
-// del is the autodelete of a WhenTrue node whose when became false. The node is unlinked at the
-// end of the pass (one compaction per sibling list instead of one per node); until then it is
-// dead: the XPath adapters do not see it, exactly as if it was gone already.
-// A dead node reads as WhenFalse to XPath (xn.When), so no view needs rebuilding. A node queued
-// twice (the JSON parser queues a node once per metadata member) is deleted once.
+// del is the autodelete of a WhenTrue node whose when became false, as
+// lyd_validate_autodel_node_del does it, at once: the diff's delete, the nested nodes leave
+// node_when and node_types, then the node is unlinked (lyd_free_tree), so every later lookup of
+// the pass reads the tree libyang has. It stays flagged dead until the pass ends, for the views
+// that still hold it (the top-level XPath view keeps a deleted root, read as WhenFalse: xn.When,
+// rather than rebuilding per deletion). A node queued twice (the JSON parser queues a node once
+// per metadata member) is deleted once; a refusal deletes nothing more.
 func (p *whenPass) del(n *Node) error {
 	if n.flags&flagDead != 0 {
 		return nil
 	}
+	vc := p.vc
 	if err := n.touch(); err != nil {
 		return err
 	}
-	// lyd_unlink's index part at once, the storage waiting for finish: the RB removal, then
-	// lyd_unlink_hash (n leaves its parent's children table, a first instance's record passes to
-	// its live successor, appended), among the live neighbours, so the pass's later lookups read
-	// the indexes libyang has; a refusal deletes nothing (the node stays live and registered)
-	w := &p.vc.t.work
-	w.markDead()
-	sib := n.siblingsOf()
-	if sib != nil {
-		before, after := sib.docNeighbours(n)
-		prev, next := sib.liveBefore(before), sib.liveAfter(after)
-		around := func(c *Node) (*Node, *Node) {
-			b, a := sib.docNeighbours(c)
-			return sib.liveBefore(b), sib.liveAfter(a)
-		}
-		if err := sib.unlinkIndex(n, prev, next, sib.liveBefore(sib.docLast()), around); err != nil {
+	if vc.diff != nil {
+		if err := vc.diff(n, diffDelete); err != nil {
 			return err
 		}
-		w.dead.indexed[n] = true
 	}
+	if err := p.dropNested(n); err != nil {
+		return err
+	}
+	if err := vc.dropTypes(n, false); err != nil {
+		return err
+	}
+	fresh := vc.top != nil && vc.topGen == vc.t.top.gen && n.parent == nil
+	if err := unlink(n); err != nil {
+		return err
+	}
+	if fresh {
+		vc.topGen = vc.t.top.gen // the view still holds n, now read as dead
+	}
+	freeSubtreeLinks(vc.t.context(), n) // lyd_free_tree
 	n.flags |= flagDead
 	p.dead = append(p.dead, n)
-	if sib != nil {
-		w.dead.endsAfter(sib)
+	return nil
+}
+
+// dropNested removes n's descendants from node_when (lyd_validate_autodel_node_del's
+// LYD_TREE_DFS over the deleted subtree), as tombstones.
+func (p *whenPass) dropNested(n *Node) error {
+	vc := p.vc
+	if p.live <= 1 || n.isTerm() {
+		return nil
+	}
+	if p.pos == nil {
+		p.builds++
+		p.pos = make(map[*Node][]int, p.live)
+		for j, q := range vc.nodeWhen.items {
+			if err := vc.checkContext(); err != nil {
+				return err
+			}
+			if q != nil {
+				p.pos[q] = append(p.pos[q], j)
+			}
+		}
+	}
+	for d := range n.All() {
+		if err := vc.checkContext(); err != nil {
+			return err
+		}
+		if d != n {
+			for _, j := range slices.Clone(p.pos[d]) {
+				p.drop(j)
+			}
+		}
 	}
 	return nil
 }
@@ -466,6 +498,12 @@ func (vc *valCtx) unresWhen() (rc error) {
 // endLevel ends the pass's journal level: kept when finish unlinked the deletions (failed is
 // nil), else rolled back, so no node stays linked with its index part gone.
 func (p *whenPass) endLevel(failed error) {
+	if failed != nil {
+		p.vc.nodeWhen.items, p.vc.nodeWhen.pos = p.initialWhen, nil
+		if p.vc.nodeTypes != nil {
+			*p.vc.nodeTypes = p.initialTypes
+		}
+	}
 	switch j := p.journal; {
 	case j == nil:
 	case p.local:
@@ -480,37 +518,9 @@ func (p *whenPass) endLevel(failed error) {
 	}
 }
 
-// finish compacts node_when and unlinks the nodes the pass deleted.
+// finish compacts node_when and ends the dead marks of the nodes the pass deleted (each is
+// unlinked already, del).
 func (p *whenPass) finish() error {
-	defer func() { p.vc.t.work.dead = nil }() // the pass's deletions are unlinked or restored
-	if err := p.vc.t.preflightUnlinkAll(p.dead); err != nil {
-		for n, flags := range p.initialFlags {
-			if err := n.touch(); err != nil {
-				return err
-			}
-			n.flags = flags
-		}
-		p.vc.nodeWhen.items, p.vc.nodeWhen.pos = p.initialWhen, nil
-		if p.vc.nodeTypes != nil {
-			*p.vc.nodeTypes = p.initialTypes
-		}
-		return err
-	}
-	for _, n := range p.dead {
-		if err := n.touch(); err != nil {
-			return err
-		}
-		n.flags &^= flagDead
-		if p.vc.diff != nil {
-			if err := p.vc.diff(n, diffDelete); err != nil {
-				return err
-			}
-		}
-		// finish must complete queue/link cleanup after a canceled when pass.
-		if err := p.vc.dropTypes(n, false); err != nil {
-			return err
-		}
-	}
 	q := p.vc.nodeWhen
 	live := q.items[:0]
 	for _, n := range q.items {
@@ -526,12 +536,6 @@ func (p *whenPass) finish() error {
 			return err
 		}
 		n.flags &^= flagDead
-	}
-	if err := p.vc.t.unlinkAll(p.dead); err != nil {
-		return err
-	}
-	for _, n := range p.dead {
-		freeSubtreeLinks(p.vc.t.context(), n) // lyd_free_tree
 	}
 	return nil
 }

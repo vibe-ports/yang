@@ -1215,7 +1215,7 @@ func (t *Tree) keylessFirst(c *dupCache, sib *siblings, target *Node) (*Node, er
 	// lyd_find_sibling_first rejects a schema-parent mismatch before finding the
 	// first sibling, resolving a foreign schema, or touching the children table.
 	// The check reads the physical first sibling; an opaque one skips it.
-	if f := sib.liveFirst(); f != nil && f.schema != nil && target.schema != nil &&
+	if f := sib.docFirst(); f != nil && f.schema != nil && target.schema != nil &&
 		!compareSchemaEqual(f.schema.DataParent(), target.schema.DataParent(), true) {
 		return nil, nil
 	}

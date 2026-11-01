@@ -2715,15 +2715,12 @@ func TestEmptyTableCopyLookups(t *testing.T) {
 }
 
 // assertNoTransient checks that an operation that returned, refused or cancelled or not, left
-// no transient state behind (a pending placement, the when pass's dead view) and that every
+// no transient state behind (a pending placement, a dead flag) and that every
 // linked schema node is found through the indexes as it is physically (the tree invariant, and
 // each node's own path or schema lookup). A validation's modWalk lives in its valCtx and is
 // dropped by validate's defer.
 func assertNoTransient(t *testing.T, tr *Tree) {
 	t.Helper()
-	if tr.work.dead != nil {
-		t.Fatal("the when pass's dead view outlived the pass")
-	}
 	var walk func(s *siblings)
 	walk = func(s *siblings) {
 		if s.st != nil && s.st.place != (placement{}) {
@@ -2856,47 +2853,6 @@ func TestWhenDeadCancelSweep(t *testing.T) {
 	})
 }
 
-// TestDeadEndsAmortized: the live ends of a level whose first and last k schema children the
-// running when pass deleted are kept by the pass through skip pointers (k deletions walk each
-// dead node about once), and m reads only read them.
-func TestDeadEndsAmortized(t *testing.T) {
-	set := reviewDiffSet(t, `module m { yang-version 1.1; namespace "urn:m"; prefix m;
-	  container c { leaf-list a { type uint32; ordered-by user; } leaf b { type string; } leaf-list z { type uint32; ordered-by user; } } }`)
-	const k, m = 2000, 2000
-	vals := make([]string, k)
-	for i := range vals {
-		vals[i] = strconv.Itoa(i)
-	}
-	list := strings.Join(vals, ",")
-	tr, err := parseOrdered(t, set, false, `{"m:c":{"a":[`+list+`],"zz":"u","b":"x","z":[`+list+`]}}`, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	c := tr.top.first()
-	kids := slices.Collect(c.Children())
-	tr.work.markDead()
-	defer func() { tr.work.dead = nil }()
-	for _, n := range append(kids[:k:k], kids[len(kids)-k:]...) { // the pass's deletions
-		n.flags |= flagDead
-		tr.work.dead.endsAfter(&c.kids)
-	}
-	written := len(tr.work.dead.next) + len(tr.work.dead.prevSchema)
-	for range m { // reads only read
-		if f := c.kids.liveFirst(); f == nil || f.schema != nil {
-			t.Fatalf("live first: %v", f)
-		}
-		if l := c.kids.liveLastSchema(); l == nil || l.Name() != "b" {
-			t.Fatalf("live last schema: %v", l)
-		}
-	}
-	if steps := tr.work.dead.steps; steps > 2*k+2 {
-		t.Fatalf("%d deletions at each end took %d steps", k, steps)
-	}
-	if len(tr.work.dead.next)+len(tr.work.dead.prevSchema) != written {
-		t.Fatal("a read wrote the pass's view")
-	}
-}
-
 // TestCopiedListInsertReservesPhysicalPrefix: a list copied from a context where it has key a
 // into one where it has keys a b c keeps its document order (a, zz, b, c, d); a new b goes
 // before c, and the link's reservation reads the physical prefix the hash reads (a, zz, old b:
@@ -2934,6 +2890,44 @@ func TestCopiedListInsertReservesPhysicalPrefix(t *testing.T) {
 	if _, err := dst.NewTerm(cp, "b", "s", NewOptions{}); err != nil {
 		t.Log(err) // a refusal is fine; an overdraft panics
 	}
+}
+
+// TestWhenDeadKeyedForeignTransition: C's reference to l[k='live'] in a table level of A and B,
+// where the when pass deletes A's only l: libyang unlinks it at once, and the keyed lookup
+// compares C's target with B's surviving l, so guard stays.
+func TestWhenDeadKeyedForeignTransition(t *testing.T) {
+	mod := func(when string) string {
+		return `module m { yang-version 1.1; namespace "urn:m"; prefix m;
+		  leaf guard { type string; when "deref(../ref)"; }
+		  leaf ref { type instance-identifier; }
+		  container c { list l { key k; ordered-by user; ` + when + ` leaf k { type string; } }
+		  leaf f1 { type string; } leaf f2 { type string; } leaf f3 { type string; } } }`
+	}
+	setA, setB, setC := reviewDiffSet(t, mod(`when "false()";`)), reviewDiffSet(t, mod("")), reviewDiffSet(t, mod(""))
+	o := parseOpts{ParseOptions: ParseOptions{Unknown: Opaque, ParseOnly: true, Ordered: true, WhenTrue: true}, ordered: true, whenTrue: true}
+	tr, _, err := parseWith(context.Background(), strings.NewReader(`{"m:guard":"g","m:ref":"/m:c/l[k='live']","m:c":{}}`), setC, o, parseJSON, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var c *Node
+	for _, n := range tr.top.docSpan().All() {
+		if n.Name() == "c" {
+			c = n
+		}
+	}
+	linkForeign(t, tr, c, setA, `{"m:c":{"l":[{"k":"dead"}]}}`)
+	c.kids.docLast().flags |= FlagWhenTrue
+	linkForeign(t, tr, c, setB, `{"m:c":{"l":[{"k":"live"}],"f1":"1","f2":"2","f3":"3"}}`)
+	if c.kids.ht == nil || !c.kids.mixedContexts() {
+		t.Fatal("fixture: want a table level of two contexts")
+	}
+	if _, err := tr.ValidateModule(context.Background(), "m", ValidateOptions{NotFinal: true}); err != nil {
+		t.Fatal(err)
+	}
+	if n, err := tr.Find("/m:guard"); err != nil || n == nil {
+		t.Fatalf("guard deleted: %v %v", n, err)
+	}
+	assertNoTransient(t, tr)
 }
 
 // TestWhenDeadContextTransition: the when pass deletes the last node of one context (two

@@ -1,0 +1,346 @@
+{
+  "context_diagnostics": [],
+  "failed_step": null,
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "pv2-ordered14",
+      "revision": null
+    }
+  ],
+  "op": "sequence",
+  "protocol": 2,
+  "rc": {
+    "err": 0,
+    "name": "LY_SUCCESS"
+  },
+  "steps": [
+    {
+      "diagnostics": [],
+      "do": "parse",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": true
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-ordered14:guard",
+          "schema": "/pv2-ordered14:guard",
+          "value": {
+            "canonical": "g",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-ordered14:ref",
+          "schema": "/pv2-ordered14:ref",
+          "value": {
+            "canonical": "/pv2-ordered14:c/s[2]",
+            "type": "instance-identifier",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-ordered14:c",
+          "schema": "/pv2-ordered14:c",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-ordered14:c/s[1]",
+          "schema": "/pv2-ordered14:c/s",
+          "value": {
+            "canonical": "1",
+            "type": "uint32",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": true
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-ordered14:c/x",
+          "schema": "/pv2-ordered14:c/x",
+          "value": {
+            "canonical": "x",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-ordered14:c/s[1]",
+          "schema": "/pv2-ordered14:c/s",
+          "value": {
+            "canonical": "2",
+            "type": "uint32",
+            "typedef": null,
+            "union_member": null
+          }
+        }
+      ]
+    },
+    {
+      "diagnostics": [],
+      "do": "validate",
+      "implicit_diff": "{\n  \"pv2-ordered14:c\": {\n    \"@\": {\n      \"yang:operation\": \"none\"\n    },\n    \"x\": \"x\",\n    \"@x\": {\n      \"yang:operation\": \"delete\"\n    }\n  }\n}\n",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": false,
+            "when_true": true
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-ordered14:guard",
+          "schema": "/pv2-ordered14:guard",
+          "value": {
+            "canonical": "g",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-ordered14:ref",
+          "schema": "/pv2-ordered14:ref",
+          "value": {
+            "canonical": "/pv2-ordered14:c/s[2]",
+            "type": "instance-identifier",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-ordered14:c",
+          "schema": "/pv2-ordered14:c",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-ordered14:c/s[1]",
+          "schema": "/pv2-ordered14:c/s",
+          "value": {
+            "canonical": "1",
+            "type": "uint32",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-ordered14:c/s[2]",
+          "schema": "/pv2-ordered14:c/s",
+          "value": {
+            "canonical": "2",
+            "type": "uint32",
+            "typedef": null,
+            "union_member": null
+          }
+        }
+      ]
+    },
+    {
+      "diagnostics": [],
+      "do": "dump",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "tree": {
+        "json": "{\n  \"pv2-ordered14:guard\": \"g\",\n  \"pv2-ordered14:ref\": \"/pv2-ordered14:c/s[2]\",\n  \"pv2-ordered14:c\": {\n    \"s\": [\n      1,\n      2\n    ]\n  }\n}\n",
+        "xml": "<guard xmlns=\"urn:vibe-ports:yang:conformance:pv2-ordered14\">g</guard>\n<ref xmlns=\"urn:vibe-ports:yang:conformance:pv2-ordered14\" xmlns:o14=\"urn:vibe-ports:yang:conformance:pv2-ordered14\">/o14:c/o14:s[2]</ref>\n<c xmlns=\"urn:vibe-ports:yang:conformance:pv2-ordered14\">\n  <s>1</s>\n  <s>2</s>\n</c>\n"
+      },
+      "typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": false,
+            "when_true": true
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-ordered14:guard",
+          "schema": "/pv2-ordered14:guard",
+          "value": {
+            "canonical": "g",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-ordered14:ref",
+          "schema": "/pv2-ordered14:ref",
+          "value": {
+            "canonical": "/pv2-ordered14:c/s[2]",
+            "type": "instance-identifier",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-ordered14:c",
+          "schema": "/pv2-ordered14:c",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-ordered14:c/s[1]",
+          "schema": "/pv2-ordered14:c/s",
+          "value": {
+            "canonical": "1",
+            "type": "uint32",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-ordered14:c/s[2]",
+          "schema": "/pv2-ordered14:c/s",
+          "value": {
+            "canonical": "2",
+            "type": "uint32",
+            "typedef": null,
+            "union_member": null
+          }
+        }
+      ]
+    }
+  ],
+  "verdict": "valid"
+}
