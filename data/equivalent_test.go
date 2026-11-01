@@ -6,13 +6,16 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 	"runtime"
 	"strings"
 	"sync"
 	"testing"
+	"testing/fstest"
 	"time"
 	"weak"
 
+	"github.com/vibe-ports/yang/internal/compile"
 	"github.com/vibe-ports/yang/internal/schema"
 )
 
@@ -202,8 +205,8 @@ func TestEquivalentInColdBudgetAndDepth(t *testing.T) {
 	if grown := after.TotalAlloc - before.TotalAlloc; grown > 8<<20 {
 		t.Fatalf("a deep mapping allocated %d bytes", grown)
 	}
-	// a warm mapping is one fixed-size map read per level (interned identifiers, 16 KiB names or
-	// not), and pays exactly that
+	// a warm mapping is one ancestor step and one fixed-size map read per level (interned
+	// identifiers, 16 KiB names or not), and pays exactly that
 	if !leaf.Interned() || !k.Interned() {
 		t.Fatal("snapshot nodes without interned identifiers")
 	}
@@ -213,7 +216,7 @@ func TestEquivalentInColdBudgetAndDepth(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	if charged != 512*(depth+1) {
+	if charged != 512*2*(depth+1) { // collecting each ancestor, then one index read per level
 		t.Fatalf("warm mappings charged %d", charged)
 	}
 	// a cold build pays per module and child as it goes: a refusal partway stores nothing
@@ -308,5 +311,96 @@ func TestEquivalentInConcurrentColdBuild(t *testing.T) {
 				}
 			}
 		}
+	}
+}
+
+// extSet compiles module (named by its second word) with the libyang test copy of ietf-restconf.
+func extSet(t *testing.T, module string) *schema.Set {
+	t.Helper()
+	rc, err := os.ReadFile("../conformance/corpus/ut-ext/common/ietf-restconf@2017-01-26.yang")
+	if err != nil {
+		t.Fatal(err)
+	}
+	name := strings.Fields(module)[1]
+	c, _, err := compile.NewContext(compile.Options{NoYangLibrary: true}, fstest.MapFS{
+		name + ".yang":                  {Data: []byte(module)},
+		"ietf-restconf@2017-01-26.yang": {Data: rc},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, diags, err := c.Load(name, "", nil); err != nil {
+		t.Fatal(err, diags)
+	}
+	return c.Snapshot()
+}
+
+// TestEquivalentInExtensionRoots: a structure's root and a yang-data instance's top nodes are
+// the roots of their lineages, so equivalentIn maps them and their descendants as
+// compareSchemaEqual with all parents matches them. Two yang-data instances with equal roots keep
+// both candidates: a descendant under the second root still maps.
+func TestEquivalentInExtensionRoots(t *testing.T) {
+	const module = `module e { yang-version 1.1; namespace "urn:e"; prefix e;
+  import ietf-yang-structure-ext { prefix sx; } import ietf-restconf { prefix rc; }
+  sx:structure box { leaf x { type string; } }
+  rc:yang-data one { container d { leaf p { type string; } } }
+  rc:yang-data two { container d { leaf q { type string; } } } }`
+	setA, setB := extSet(t, module), extSet(t, module)
+	var all []*schema.Node
+	var walk func(n *schema.Node)
+	walk = func(n *schema.Node) {
+		all = append(all, n)
+		for _, c := range n.Children {
+			walk(c)
+		}
+	}
+	for _, e := range setA.Implemented("e").Exts {
+		if e.Root != nil {
+			walk(e.Root)
+		}
+		for _, n := range e.Nodes {
+			walk(n)
+		}
+	}
+	names := map[string]bool{}
+	for _, n := range all {
+		names[n.Name] = true
+		k, err := equivalentIn(n, setB, nil)
+		if err != nil || k == nil || k.Module.Owner != setB || !compareSchemaEqual(n, k, true) {
+			t.Fatalf("%s: equivalent %v %v", n.Name, k, err)
+		}
+	}
+	for _, want := range []string{"box", "x", "d", "p", "q"} {
+		if !names[want] {
+			t.Fatalf("no %s walked: %v", want, names)
+		}
+	}
+}
+
+// TestEquivalentInDeepRootMiss: collecting a deep lineage is paid ancestor by ancestor, so a
+// lineage whose root is missing pays one unit per level and one index read, and a charge that
+// refuses at once stops before the lineage is collected (no allocation).
+func TestEquivalentInDeepRootMiss(t *testing.T) {
+	const depth = 256
+	leaf := deepLeaf(reviewDiffSet(t, deepModule(depth)))
+	target := &schema.Set{}
+	if _, err := target.ChildByName(nil, schema.ChildKey{}, nil); err != nil { // a warm empty index
+		t.Fatal(err)
+	}
+	var paid int64
+	if k, err := equivalentIn(leaf, target, func(n int64) error { paid += n; return nil }); k != nil || err != nil {
+		t.Fatalf("a root miss: %v %v", k, err)
+	}
+	if paid != depth+2 {
+		t.Fatalf("a root miss of %d levels paid %d", depth+1, paid)
+	}
+	refused := errors.New("refused")
+	refuse := func(int64) error { return refused }
+	if allocs := testing.AllocsPerRun(100, func() {
+		if _, err := equivalentIn(leaf, target, refuse); !errors.Is(err, refused) {
+			t.Fatal(err)
+		}
+	}); allocs > 0 {
+		t.Fatalf("a refused mapping allocated %v times", allocs)
 	}
 }

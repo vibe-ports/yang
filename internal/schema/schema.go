@@ -18,7 +18,7 @@ type Set struct {
 	Modules    []*Module
 	nameHashes sync.Map // *Node -> uint32, immutable module/name prefixes shared by trees
 	indexNames sync.Map // *Node -> [32]byte, immutable positional-index name digests
-	children   sync.Map // *Node (nil: the top level) -> map[ChildKey]*Node of the set's own nodes (ChildByName)
+	children   sync.Map // *Node (nil: the top level) -> map[ChildKey][]*Node of the set's own nodes (ChildByName)
 	// LeafrefLinking is the context flag LY_CTX_LEAFREF_LINKING: data trees over the set keep
 	// leafref links (lyd_leafref_link_node_tree).
 	LeafrefLinking bool
