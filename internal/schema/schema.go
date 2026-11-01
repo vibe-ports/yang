@@ -10,6 +10,7 @@ package schema
 import (
 	"iter"
 	"sync"
+	"unique"
 )
 
 // Set is every module of one context, in load order (libyang ly_ctx module list).
@@ -17,6 +18,7 @@ type Set struct {
 	Modules    []*Module
 	nameHashes sync.Map // *Node -> uint32, immutable module/name prefixes shared by trees
 	indexNames sync.Map // *Node -> [32]byte, immutable positional-index name digests
+	children   sync.Map // *Node (nil: the top level) -> map[ChildKey]*Node of the set's own nodes (ChildByName)
 	// LeafrefLinking is the context flag LY_CTX_LEAFREF_LINKING: data trees over the set keep
 	// leafref links (lyd_leafref_link_node_tree).
 	LeafrefLinking bool
@@ -123,6 +125,7 @@ type Module struct {
 	// a data node whatever its tree (LYD_CTX: the schema node's module context), nil for modules of
 	// hand-built sets.
 	Owner                             *Set
+	nameID                            unique.Handle[string] // NameID, interned by the snapshot
 	Name, Revision, Namespace, Prefix string
 	Version                           uint8 // Version1 (also when yang-version is absent) or Version11
 	Implemented                       bool
@@ -258,6 +261,7 @@ const (
 type Node struct {
 	Kind   Kind
 	Name   string
+	ident  Ident   // ID, interned by the snapshot
 	Module *Module // module whose namespace the node is in (the augmenting module for augments)
 	Parent *Node
 	// Children are the data children (for a choice its cases, for an rpc/action its input and

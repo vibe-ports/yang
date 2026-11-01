@@ -70,7 +70,7 @@ func compareSchemaEqual(a, b *schema.Node, cmpParents bool) bool {
 		return false
 	}
 	for {
-		if a.Kind != b.Kind || a.Name != b.Name || a.Module.Name != b.Module.Name {
+		if a.Kind != b.Kind || a.ID() != b.ID() { // interned identifiers: O(1) per level
 			return false
 		}
 		a, b = a.Parent, b.Parent

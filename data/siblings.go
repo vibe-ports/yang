@@ -1728,14 +1728,12 @@ type schemaLineageID uint32
 
 type schemaLineageComponent struct {
 	parent schemaLineageID
-	module string
-	name   string
+	id     schema.Ident
 	kind   schema.Kind
 }
 
 type foreignSchemaIndexKey struct {
-	module  string
-	name    string
+	id      schema.Ident
 	lineage schemaLineageID
 }
 
@@ -1798,8 +1796,8 @@ func (t *Tree) foreignSchemaFind(s *siblings, sn *schema.Node, table bool) (int,
 }
 
 type foreignInstanceKey struct {
-	module, name string
-	hash         uint32
+	id   schema.Ident // interned: hashing it is O(1)
+	hash uint32
 }
 
 // foreignInstances is the candidate sequence of the linear branches of lyd_find_sibling_first
@@ -1826,7 +1824,7 @@ func (t *Tree) foreignInstances(s *siblings, target *Node) (iter.Seq[*Node], err
 				return nil, err
 			}
 			if n.schema != nil && n.schema.Module != nil {
-				k := foreignInstanceKey{n.schema.Module.Name, n.schema.Name, n.hash}
+				k := foreignInstanceKey{n.schema.ID(), n.hash}
 				index[k] = append(index[k], n)
 			}
 		}
@@ -1835,7 +1833,7 @@ func (t *Tree) foreignInstances(s *siblings, target *Node) (iter.Seq[*Node], err
 	if err := t.work.chargeLookup(1); err != nil {
 		return nil, err
 	}
-	bucket := index[foreignInstanceKey{target.schema.Module.Name, target.schema.Name, target.hash}]
+	bucket := index[foreignInstanceKey{target.schema.ID(), target.hash}]
 	return func(yield func(*Node) bool) {
 		for _, n := range bucket {
 			if t.work.chargeLookup(1) != nil || !yield(n) {
@@ -1883,7 +1881,7 @@ func (t *Tree) foreignSchemaKey(sn *schema.Node, table bool) (foreignSchemaIndex
 		return foreignSchemaIndexKey{}, false, nil
 	}
 	if !table {
-		return foreignSchemaIndexKey{module: sn.Module.Name, name: sn.Name}, true, nil
+		return foreignSchemaIndexKey{id: sn.ID()}, true, nil
 	}
 	charge := t.work.chargeHash
 	if t.work.lookupDepth != 0 {
@@ -1912,7 +1910,7 @@ func (t *Tree) foreignSchemaKey(sn *schema.Node, table bool) (foreignSchemaIndex
 			return foreignSchemaIndexKey{}, false, err
 		}
 		component := schemaLineageComponent{
-			parent: t.schemaLineage[n.Parent], module: n.Module.Name, name: n.Name, kind: n.Kind,
+			parent: t.schemaLineage[n.Parent], id: n.ID(), kind: n.Kind,
 		}
 		id, ok := t.lineageComponents[component]
 		if !ok {
@@ -1943,7 +1941,7 @@ func schemaLookupMatch(got, want *schema.Node, table bool) bool {
 	if table {
 		return compareSchemaEqual(got, want, true)
 	}
-	return got.Module.Name == want.Module.Name && got.Name == want.Name
+	return got.ID() == want.ID()
 }
 
 // isDupInstList is lysc_is_dup_inst_list: keyless lists and state leaf-lists may have equal
