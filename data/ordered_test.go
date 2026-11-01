@@ -1985,7 +1985,7 @@ func TestEquivalentInColdBudgetAndDepth(t *testing.T) {
 func TestOpaqueMergeAfterSeparatorRemoved(t *testing.T) {
 	set := reviewDiffSet(t, `module m { yang-version 1.1; namespace "urn:m"; prefix m;
 	  container c { leaf a { type string; } } }`)
-	const n = 1500
+	n := raceScale(1500, 3)
 	var z strings.Builder
 	for i := range n {
 		fmt.Fprintf(&z, `,"z%05d":"v"`, i)
@@ -2631,9 +2631,9 @@ func TestModuleRelativeDefaultsScaling(t *testing.T) {
 	// flat up to the O(log n) index operations of each link: 4x the defaults, at most 1.5x the
 	// work per default (the walk alone, rescanned, grew 4x), an anchor or none
 	for _, shape := range []int{anchored, before, first, firstEnd} {
-		small, large := work(2400, shape), work(9600, shape)
+		small, large := work(raceScale(2400, 4), shape), work(raceScale(9600, 4), shape)
 		if large > 1.5*small {
-			t.Fatalf("work per default (shape %d): %.1f at 2400, %.1f at 9600", shape, small, large)
+			t.Fatalf("work per default (shape %d): %.1f, then %.1f at 4x the defaults", shape, small, large)
 		}
 	}
 	tr := build(300, anchored)
