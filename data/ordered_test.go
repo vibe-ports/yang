@@ -2618,6 +2618,57 @@ func TestDeadEndsSuspendedReads(t *testing.T) {
 	}
 }
 
+// TestEmptyTableCopyLookups: a recursive copy of a level that had a children table and lost all
+// its children keeps the table and has its storage, so lookups that read both (an XPath miss,
+// Find, a merge into the copy) work on the empty level (oracle:
+// protocol-v2/ordered-empty-table-dup-xpath).
+func TestEmptyTableCopyLookups(t *testing.T) {
+	set := reviewDiffSet(t, `module m { yang-version 1.1; namespace "urn:m"; prefix m;
+	  container c { presence p; leaf a { type string; } leaf b { type string; } leaf d { type string; } leaf e { type string; } } }`)
+	for _, ordered := range []bool{false, true} {
+		tr, err := parseOrdered(t, set, false, `{"m:c":{"a":"1","b":"2","d":"3","e":"4"}}`, nil)
+		if !ordered {
+			tr, _, err = parseJSONString(set, `{"m:c":{"a":"1","b":"2","d":"3","e":"4"}}`, Reject, false)
+		}
+		if err != nil {
+			t.Fatal(err)
+		}
+		c := tr.top.first()
+		if c.kids.ht == nil {
+			t.Fatal("fixture: want a children table")
+		}
+		for _, n := range slices.Collect(c.Children()) {
+			if err := n.Unlink(); err != nil {
+				t.Fatal(err)
+			}
+		}
+		dst := newTree(set)
+		cp, _, err := dst.Dup(c, nil, DupOptions{Recursive: true})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if cp.kids.ht == nil || cp.kids.st == nil {
+			t.Fatalf("the copy: table %v, storage %v", cp.kids.ht != nil, cp.kids.st != nil)
+		}
+		if ns, _, err := dst.FindXPath("/m:c/a", XPathOptions{}); err != nil || len(ns) != 0 {
+			t.Fatalf("XPath miss: %v %v", ns, err)
+		}
+		if n, err := dst.Find("/m:c/a"); err != nil || n != nil {
+			t.Fatalf("Find miss: %v %v", n, err)
+		}
+		src, _, err := parseJSONString(set, `{"m:c":{"a":"x"}}`, Reject, false)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := dst.Merge(src); err != nil {
+			t.Fatal(err)
+		}
+		if n, err := dst.Find("/m:c/a"); err != nil || n == nil {
+			t.Fatalf("after the merge: %v %v", n, err)
+		}
+	}
+}
+
 func TestDeadEndsAmortized(t *testing.T) {
 	set := reviewDiffSet(t, `module m { yang-version 1.1; namespace "urn:m"; prefix m;
 	  container c { leaf-list a { type uint32; ordered-by user; } leaf b { type string; } leaf-list z { type uint32; ordered-by user; } } }`)

@@ -178,7 +178,7 @@ func (st *siblingStore) mixes(anchor *opidx.Handle[*Node], n *Node) bool {
 func isSchemaNode(n *Node) bool { return n.schema != nil }
 
 // interleaved reports whether a schema node follows an opaque one in st (design 15).
-func (st *siblingStore) interleaved() bool { return st.mixed != 0 }
+func (st *siblingStore) interleaved() bool { return st != nil && st.mixed != 0 }
 
 // peek is the handle at logical position i, nil out of range; uncounted.
 func (st *siblingStore) peek(i int) *opidx.Handle[*Node] {

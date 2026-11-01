@@ -1291,7 +1291,6 @@ func chargeOf(w *workCounter) func(int64) error {
 	}
 }
 
-
 // leaderFirstMixedCharged is leaderFirstMixed paying the mapping and reads through charge (nil:
 // uncharged, a read-only call); a refusal is returned, never a different leader.
 func (s *siblings) leaderFirstMixedCharged(sn *schema.Node, charge func(int64) error) (*Node, error) {

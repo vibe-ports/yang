@@ -119,7 +119,7 @@ write takes the code path it took before (the counted-work and scaling tests are
 
 ## Evidence
 
-- Oracle fixtures `protocol-v2/ordered-*` (75; `ordered-split-list-merge-destruct` is unsupported,
+- Oracle fixtures `protocol-v2/ordered-*` (76; `ordered-split-list-merge-destruct` is unsupported,
 U-0113) cover:
   - parse order, JSON and XML;
   - the XML opaque anchor;
@@ -196,6 +196,10 @@ Read in document order (fixed):
   schema, holds only the target set's nodes, and the cost is O(depth) (`TestEquivalentInColdBudgetAndDepth`,
   `TestEquivalentInOutputAndScaling`, `TestEquivalentCacheKeepsNoContext`). `leaderFirstMixed`
   uses the same candidates.
+- round 28: a recursive copy that keeps a children table also allocates the copy's storage,
+  so a set with a table always has its storage, even empty (the lookups read both); a lookup
+  miss on an emptied, copied level returns no node (`ordered-empty-table-dup-xpath`,
+  `TestEmptyTableCopyLookups`);
 - round 27: a when-pass deletion does the whole index part of `lyd_unlink` at once, in its
   order (`siblings.unlinkIndex`: the RB removal, then `lyd_unlink_hash` and the run
   bookkeeping), among the live neighbours; the batch unlink at the pass's end does only the
