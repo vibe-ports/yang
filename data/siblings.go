@@ -2233,10 +2233,13 @@ func (t *Tree) findFirstMixedTable(s *siblings, target *Node, work *workCounter,
 		p.charge = chargeOf(work)
 	}
 	p.eq = func(c *Node) (bool, error) {
-		if dup {
-			return compareSingleWork(t, work, target, c, true)
+		if ok, err := p.lineage(c.schema); err != nil || !ok {
+			return false, err // the schema parents, compared once per schema node (lineage)
 		}
-		return htValEqual(t, work, target, c)
+		if dup {
+			return compareSingleCheckedWork(t, work, target, c, CompareOptions{FullRecursion: true}, true)
+		}
+		return htValEqualChecked(t, work, target, c)
 	}
 	if dup && t.work.opLookup() && t.foreignSchemaInput[s] && s.firstRecordSchema(target.schema) {
 		return t.dupRunFirst(s, target, p)
@@ -2409,6 +2412,14 @@ func htValEqual(t *Tree, work *workCounter, a, b *Node) (bool, error) {
 		return compareSingleWork(t, work, a, b, false)
 	}
 	return compareSchemaEqual(a.schema, b.schema, true), nil
+}
+
+// htValEqualChecked is htValEqual for b whose schema node and parents equal a's (xprobe.lineage).
+func htValEqualChecked(t *Tree, work *workCounter, a, b *Node) (bool, error) {
+	if a.schema.Kind == schema.List || a.schema.Kind == schema.LeafList {
+		return compareSingleCheckedWork(t, work, a, b, CompareOptions{}, true)
+	}
+	return true, nil
 }
 
 // hashEqual is the stored-hash gate of lyd_compare_single_data (tree_data.c:1714-1716).

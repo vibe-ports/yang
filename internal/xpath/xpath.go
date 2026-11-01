@@ -313,6 +313,9 @@ type EvalContext struct {
 	Tree    []Node          // top-level siblings in document order; every node reached is under them
 	// TreeLookup finds top-level nodes like ChildLookup finds children (nil: scan Tree).
 	TreeLookup ChildLookup
+	// TreeGone, when set, reports the nodes of Tree deleted since it was built (a cached view):
+	// every read of the root skips them, as absent.
+	TreeGone   func(Node) bool
 	Root       RootKind
 	IgnoreWhen bool // LYXP_IGNORE_WHEN: do not fail on unresolved when
 	Schema     SchemaInfo

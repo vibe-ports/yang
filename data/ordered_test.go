@@ -2927,6 +2927,191 @@ func TestWhenDeadCancelSweep(t *testing.T) {
 	})
 }
 
+// TestWhenDeadCancelSweepDiff: TestWhenDeadCancelSweep through ValidateModuleDiff. Cancelled at
+// every check, the returned diff applied to the original tree gives the tree left: each deletion
+// is whole (its diff and its unlink, whose mixed-context leader lookup polls), and a cancellation
+// the work quota observes keeps the completed deletions and their diff, as any other.
+func TestWhenDeadCancelSweepDiff(t *testing.T) {
+	mod := func(when string) string {
+		return `module m { yang-version 1.1; namespace "urn:m"; prefix m;
+		  container c { leaf g { when "../l[k='live' != 'zz']"; type string; }
+		  list l { key k; ` + when + ` leaf k { type string; } }
+		  leaf d1 { type string; default x; } leaf d2 { type string; default y; } leaf-list dl { type string; default a; default b; default c; }
+		  leaf f1 { type string; } leaf f2 { type string; } leaf f3 { type string; } } }`
+	}
+	setA, setB := reviewDiffSet(t, mod(`when "false()";`)), reviewDiffSet(t, mod(""))
+	o := parseOpts{ParseOptions: ParseOptions{Unknown: Opaque, ParseOnly: true, WhenTrue: true}, whenTrue: true}
+	in := `{"m:c":{"g":"g","l":[{"k":"dead0"},{"k":"dead1"},{"k":"dead2"}],"f1":"1","f2":"2","f3":"3"}}`
+	build := func() *Tree {
+		tr, _, err := parseWith(context.Background(), strings.NewReader(in), setA, o, parseJSON, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		linkForeign(t, tr, tr.top.first(), setB, `{"m:c":{"l":[{"k":"live"}]}}`)
+		return tr
+	}
+	dump := func(tr *Tree) string {
+		var b strings.Builder
+		if err := tr.PrintJSON(&b, PrintOptions{WithDefaults: WDAll}); err != nil {
+			t.Fatal(err)
+		}
+		return b.String()
+	}
+	eachCancelPoint(t, func(ctx *cancelAtContext) {
+		tr, orig := build(), build()
+		diff, _, err := tr.ValidateModuleDiff(ctx, "m", ValidateOptions{NotFinal: true})
+		if err != nil && !errors.Is(err, context.Canceled) {
+			t.Fatalf("at %d: %v", ctx.at, err)
+		}
+		assertNoTransient(t, tr)
+		if diff != nil {
+			if err := orig.ApplyDiff(diff, ApplyDiffOptions{}); err != nil {
+				t.Fatalf("at %d: apply: %v", ctx.at, err)
+			}
+		}
+		if got, want := dump(orig), dump(tr); got != want {
+			t.Fatalf("at %d: the diff gives\n%s\nthe tree is\n%s", ctx.at, got, want)
+		}
+	})
+}
+
+// TestWhenDeadRootHidesNoForeignRoot: a non-interleaved top level guard_A, x_A, x_B (A's x has
+// a false when): the reverse pass deletes x_A, then guard's "/m:x" scans the cached root view,
+// which still holds x_A: a deleted root is absent there, so the scan goes on to x_B, as
+// libyang's lookup in the tree x_A left, and guard stays.
+func TestWhenDeadRootHidesNoForeignRoot(t *testing.T) {
+	mod := func(when string) string {
+		return `module m { yang-version 1.1; namespace "urn:m"; prefix m;
+		  leaf guard { type string; when "/m:x"; } leaf x { type string; ` + when + ` } }`
+	}
+	setA, setB := reviewDiffSet(t, mod(`when "false()";`)), reviewDiffSet(t, mod(""))
+	o := parseOpts{ParseOptions: ParseOptions{Unknown: Opaque, ParseOnly: true, Ordered: true, WhenTrue: true}, ordered: true, whenTrue: true}
+	parse := func(set *schema.Set, in string) *Tree {
+		tr, _, err := parseWith(context.Background(), strings.NewReader(in), set, o, parseJSON, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return tr
+	}
+	trA, trB := parse(setA, `{"m:guard":"g","m:x":"dead"}`), parse(setB, `{"m:x":"live"}`)
+	if err := trB.Insert(nil, trA.top.first()); err != nil {
+		t.Fatal(err)
+	}
+	var got []string
+	for _, n := range trB.top.docSpan().All() {
+		got = append(got, n.Name()+"="+n.value.Canonical())
+	}
+	if want := []string{"guard=g", "x=dead", "x=live"}; !slices.Equal(got, want) {
+		t.Fatalf("fixture: top level %v, want %v", got, want)
+	}
+	if _, err := trB.ValidateModule(context.Background(), "m", ValidateOptions{NotFinal: true}); err != nil {
+		t.Fatal(err)
+	}
+	got = got[:0]
+	for _, n := range trB.top.docSpan().All() {
+		got = append(got, n.Name()+"="+n.value.Canonical())
+	}
+	if want := []string{"guard=g", "x=live"}; !slices.Equal(got, want) {
+		t.Fatalf("after the when pass %v, want %v", got, want)
+	}
+}
+
+// TestMixedTableDeepLineagePaid: a hashed level 64 containers deep, out of schema order, holding
+// A's z and 1,024 instances of B's state leaf-list s; a lookup of A's absent s 9999 compares each
+// B instance with the probe across contexts. The schema parents are compared once per schema
+// node and paid level by level (xprobe.lineage), not walked again for every candidate unpaid:
+// the levels compared stay O(depth + candidates) and within what the lookup paid.
+func TestMixedTableDeepLineagePaid(t *testing.T) {
+	const depth, n = 64, 1024
+	var mod, open, shut strings.Builder
+	mod.WriteString(`module m { yang-version 1.1; namespace "urn:m"; prefix m;`)
+	for i := range depth {
+		fmt.Fprintf(&mod, " container c%d {", i)
+		if i == 0 {
+			fmt.Fprintf(&open, `{"m:c%d":{`, i)
+		} else {
+			fmt.Fprintf(&open, `"c%d":{`, i)
+		}
+		shut.WriteString("}")
+	}
+	mod.WriteString(` leaf a { type string; } leaf z { type string; } leaf-list s { config false; type uint32; }`)
+	mod.WriteString(strings.Repeat(" }", depth) + " }")
+	vals := make([]string, n)
+	for i := range vals {
+		vals[i] = strconv.Itoa(i)
+	}
+	doc := func(inner string) string { return open.String() + inner + shut.String() + "}" }
+	deepest := func(tr *Tree) *Node {
+		c := tr.top.first()
+		for range depth - 1 {
+			c = c.kids.first()
+		}
+		return c
+	}
+	setA, setB := xctxSets(t, mod.String())
+	tr, err := parseOrdered(t, setA, false, doc(`"z":"z0"`), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	c := deepest(tr)
+	fb, _, err := parseJSONString(setB, doc(`"s":[`+strings.Join(vals, ",")+`],"a":"y"`), Reject, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, k := range slices.Collect(deepest(fb).Children()) {
+		if err := unlink(k); err != nil {
+			t.Fatal(err)
+		}
+		if err := tr.link(c, &c.kids, k, c.kids.SchemaLen()); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if c.kids.ht == nil || !c.kids.mixedContexts() || !c.kids.schemaUnordered {
+		t.Fatal("fixture: want a hashed level of two contexts out of schema order")
+	}
+	probe, err := parseOrdered(t, setA, false, doc(`"s":[9999]`), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	target := deepest(probe).kids.first()
+	if m, err := tr.findFirstWork(&c.kids, target, &workCounter{}); err != nil || m != nil {
+		t.Fatalf("warm-up: %v %v", m, err)
+	}
+	levels := 0
+	compareLevelHook = func() { levels++ }
+	defer func() { compareLevelHook = nil }()
+	w := &workCounter{hashLimit: 5000}
+	if m, err := tr.findFirstWork(&c.kids, target, w); err != nil || m != nil {
+		t.Fatalf("the lookup: %v %v", m, err)
+	}
+	if levels > 4*depth+2*n || uint64(levels) > w.hashUsed {
+		t.Fatalf("%d schema levels compared, %d paid, for %d candidates %d deep", levels, w.hashUsed, n, depth)
+	}
+	// Find with a value predicate: the prepared probe of the same lookup
+	var path strings.Builder
+	for i := range depth {
+		if i == 0 {
+			path.WriteString("/m:c0")
+		} else {
+			fmt.Fprintf(&path, "/c%d", i)
+		}
+	}
+	levels = 0
+	if m, err := tr.Find(path.String() + "/s[.='9999']"); err != nil || m != nil {
+		t.Fatalf("Find: %v %v", m, err)
+	}
+	if levels > 8*depth+2*n {
+		t.Fatalf("Find compared %d schema levels for %d candidates %d deep", levels, n, depth)
+	}
+	levels = 0
+	if m, _, err := tr.FindXPath(path.String()+"/s[.='9999']", XPathOptions{}); err != nil || len(m) != 0 {
+		t.Fatalf("FindXPath: %v %v", m, err)
+	}
+	if levels > 8*depth+2*n {
+		t.Fatalf("FindXPath compared %d schema levels for %d candidates %d deep", levels, n, depth)
+	}
+}
+
 // TestCopiedListInsertReservesPhysicalPrefix: a list copied from a context where it has key a
 // into one where it has keys a b c keeps its document order (a, zz, b, c, d); a new b goes
 // before c, and the link's reservation reads the physical prefix the hash reads (a, zz, old b:

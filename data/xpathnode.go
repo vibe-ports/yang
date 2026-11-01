@@ -285,7 +285,9 @@ func tableFirst(sib *siblings, set *schema.Set, p *xprobe) (*Node, error) {
 			}
 			q := p
 			if c.schema != sn {
-				if !compareSchemaEqual(c.schema, sn, true) {
+				if ok, err := p.lineage(c.schema); err != nil {
+					return nil, err
+				} else if !ok {
 					continue // lyd_compare_single compares the parents too
 				}
 				m, err := p.crossEqual(c, true) // compared directly, no translation
@@ -751,6 +753,8 @@ type xprobe struct {
 	// eq, when set, is the comparison of a real target node (tableFind's instance lookups of
 	// merge, diff and edits) in place of Match: it compares across contexts itself
 	eq func(*Node) (bool, error)
+	// lineages remembers lineage's answers for the probe's lifetime (one lookup or evaluation)
+	lineages map[*schema.Node]bool
 }
 
 // PrepareInstance follows xpath.c:6343-6345 before the parent loop. Re-storing
@@ -829,15 +833,49 @@ func (p *xprobe) crossEqual(c *Node, table bool) (bool, error) {
 	if t == nil {
 		t = newTree(ctxOf(c))
 	}
+	if ok, err := p.lineage(c.schema); err != nil || !ok {
+		return false, err
+	}
 	// the comparison's own counter is local: the queried tree's counters are not touched
 	var work workCounter
 	if table && !dup {
-		return htValEqual(t, &work, p.node, c)
+		return htValEqualChecked(t, &work, p.node, c)
 	}
 	if table {
-		return compareSingleWork(t, &work, p.node, c, true)
+		return compareSingleCheckedWork(t, &work, p.node, c, CompareOptions{FullRecursion: true}, true)
 	}
-	return compareSingleWork(t, &work, c, p.node, dup)
+	return compareSingleCheckedWork(t, &work, c, p.node, CompareOptions{FullRecursion: dup}, true)
+}
+
+// lineage is compareSchemaEqual(s, the probe's schema node, true), its parents compared level
+// by level, for the candidates of the probe's lookups: each distinct schema node (one per
+// context in practice) is compared once, paying a step per level, and remembered by the probe.
+// Across contexts it is lyd_compare_single_schema's test (the node, then its parents); in one
+// context both are identity. So the comparisons that follow take the parents as checked.
+func (p *xprobe) lineage(s *schema.Node) (bool, error) {
+	sn := p.node.schema
+	if s == sn {
+		return true, nil
+	}
+	if s == nil || sn == nil {
+		return false, nil
+	}
+	if eq, ok := p.lineages[s]; ok {
+		return eq, nil
+	}
+	levels := int64(1)
+	for a := s.Parent; a != nil; a = a.Parent {
+		levels++
+	}
+	if err := p.work(levels); err != nil {
+		return false, err
+	}
+	if p.lineages == nil {
+		p.lineages = map[*schema.Node]bool{}
+	}
+	eq := compareSchemaEqual(s, sn, true)
+	p.lineages[s] = eq
+	return eq, nil
 }
 
 // parentMismatch is lyd_find_sibling_first's schema-parent check for an instance probe: read on

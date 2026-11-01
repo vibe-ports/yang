@@ -641,3 +641,39 @@ func TestXPathErrorLocation(t *testing.T) {
 		t.Errorf("when: %v %v", err, diagCodes(vc.log.diags))
 	}
 }
+
+// TestWhenRepeatedQueueLinear: g queued k times (the JSON parser queues a node once per
+// metadata member) behind a WhenTrue container gone whose when is false: deleting gone first
+// builds the position map, then each of g's k entries is resolved and dropped. A drop leaves a
+// tombstone and the first live index skips each one once, so the position bookkeeping is linear
+// in k, not a scan of g's remaining positions per drop.
+func TestWhenRepeatedQueueLinear(t *testing.T) {
+	const k = 1 << 14
+	f := newUnresFixture(t)
+	str := &schema.Type{Base: schema.String}
+	et, _ := xpath.Compile("true()", testNS("u"))
+	ef, _ := xpath.Compile("false()", testNS("u"))
+	g := &schema.Node{Kind: schema.Leaf, Name: "g", Module: f.m, Type: str, Config: true}
+	g.Whens = []*schema.When{{Src: "true()", ContextNode: g, Compiled: et}}
+	gone := &schema.Node{Kind: schema.Container, Name: "gone", Module: f.m, Config: true, Presence: true}
+	gone.Whens = []*schema.When{{Src: "false()", ContextNode: gone, Compiled: ef}}
+	f.m.Top = append(f.m.Top, g, gone)
+	vc, _, _ := f.build(t, ValidateOptions{})
+	gv, _ := types.Store(str, "g", types.FormatJSON, types.JSONHints("string"), nil, g)
+	gn := newTerm(g, gv)
+	mustLink(t, vc.t.insert(nil, gn, insertDefault))
+	gonen := newInner(gone)
+	gonen.flags = FlagWhenTrue
+	mustLink(t, vc.t.insert(nil, gonen, insertDefault))
+	for range k {
+		vc.nodeWhen.items = append(vc.nodeWhen.items, gn) // ly_set_add with duplicates
+	}
+	vc.nodeWhen.add(gonen)
+	if err := vc.unres(); err != nil {
+		t.Fatal(err)
+	}
+	if vc.posBuilds != 1 || vc.posReads > 2*k || vc.nodeWhen.len() != 0 || vc.t.top.len() != 2 {
+		t.Fatalf("%d position maps, %d position reads for %d entries, %d queued, %d top-level left (c, g)",
+			vc.posBuilds, vc.posReads, k, vc.nodeWhen.len(), vc.t.top.len())
+	}
+}

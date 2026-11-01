@@ -1,0 +1,19 @@
+# a top level guard_A, x_A, x_B of two contexts: the when pass deletes x_A, then guard's /x finds x_B (libyang's linear sibling lookup across contexts in the tree x_A left), so guard stays
+fixtures:
+  - id: protocol-v2/ordered-when-dead-root-foreign
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#7.21.5"]
+    areas: [validation]
+    request:
+      op: sequence
+      searchdirs: [ordered-gone-root-b]
+      context_options: ["no_yanglibrary"]
+      modules: [{name: "pv2-ordered16"}]
+      steps:
+        - {do: parse, format: json, data_type: data, parse_only: true, parse_options: [ordered, when_true], data: '{"pv2-ordered16:x": "live"}'}
+        - {do: insert, format: json, data_type: data, parse_only: true, parse_options: [ordered, when_true], data: '{"pv2-ordered16:guard": "g", "pv2-ordered16:x": "dead"}', target: {searchdirs: [ordered-gone-root-a], modules: [{name: "pv2-ordered16"}], context_options: ["no_yanglibrary"]}}
+        - {do: dump}
+        - {do: validate, module: pv2-ordered16, validate_options: [not_final]}
+        - {do: dump}
+    golden: golden/ordered-when-dead-root-foreign.json

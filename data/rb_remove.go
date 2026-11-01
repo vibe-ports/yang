@@ -152,8 +152,13 @@ func (s *siblings) removalOrder(n, prev, next, tail *Node, around func(*Node) (*
 		leader = s.runLeader(n.schema)
 		if len(s.contexts) > 1 {
 			if s.ht != nil {
-				var err error // the lookup pays the candidate records it reads
-				if leader, err = s.leaderFirstMixedCharged(n.schema, chargeOf(w)); err != nil {
+				// the lookup pays the candidate records it reads, without polling the
+				// cancellation: an unlink is atomic for it, so every caller that records the
+				// deletion first (a diff, a queue) finds it done (the work is schema-bounded)
+				var err error
+				if leader, err = s.leaderFirstMixedCharged(n.schema, func(k int64) error {
+					return w.chargeHash(uint64(k)) //nolint:gosec // a charge is nonnegative
+				}); err != nil {
 					return nil, nil, err
 				}
 			} else {

@@ -57,14 +57,9 @@ func (t *Tree) ValidateDiff(ctx context.Context, o ValidateOptions) (diff *Tree,
 	if dt.work.hashErr != nil {
 		err = dt.work.hashErr
 	}
-	if t.work.hashErr != nil || dt.work.hashErr != nil { // validation returned t's hash error
-		journal.end(&err)
-		journal = nil
-		return nil, d, err
-	}
-	journal.endKeeping(&err) // a guard refusal restores and fails; other failures keep
+	restored := t.endValidateJournal(journal, dt, &err)
 	journal = nil
-	if isGuardRefusal(err) {
+	if restored {
 		return nil, d, err
 	}
 	if dt.top.len() == 0 {
@@ -110,20 +105,29 @@ func (t *Tree) ValidateModuleDiff(ctx context.Context, module string, o Validate
 	if dt.work.hashErr != nil {
 		err = dt.work.hashErr
 	}
-	if t.work.hashErr != nil || dt.work.hashErr != nil { // validation returned t's hash error
-		journal.end(&err)
-		journal = nil
-		return nil, d, err
-	}
-	journal.endKeeping(&err) // a guard refusal restores and fails; other failures keep
+	restored := t.endValidateJournal(journal, dt, &err)
 	journal = nil
-	if isGuardRefusal(err) {
+	if restored {
 		return nil, d, err
 	}
 	if dt.top.len() == 0 {
 		dt = nil
 	}
 	return dt, d, err
+}
+
+// endValidateJournal ends a diff-returning validation's journal. A hash error (t's or the
+// diff's) ends it through end, which restores for a budget failure or a rollback; any other
+// failure, cancellation included however it was observed (a poll of the operation's charge
+// sets the sticky hash error too), keeps the changes and so the partial diff that records them.
+// restored reports a restored tree, whose diff is dropped: a returned diff is always what the
+// tree kept.
+func (t *Tree) endValidateJournal(journal *hashTransaction, dt *Tree, err *error) bool {
+	if t.work.hashErr != nil || dt.work.hashErr != nil { // validation returned t's hash error
+		return journal.end(err)
+	}
+	restored := journal.endKeeping(err) // a guard refusal restores and fails; other failures keep
+	return restored || isGuardRefusal(*err)
 }
 
 // isUserOrdered is lysc_is_userordered.

@@ -60,10 +60,11 @@ type valCtx struct {
 	budget  xpathBudget  // MaxXPathSteps and cancellation (U-0042)
 	top     []xpath.Node // the top-level view of the evaluations (topNodes)
 	topGen  uint64
+	topDead int // roots of top the running when pass deleted (each read as absent: topGone)
 	// work counters for the tests: top-level view builds, when-pass position maps
-	topBuilds, posBuilds int
-	lrefs                map[lrefKey]*lrefTemplate // leafref target-path templates per type and node
-	uniqDefs             map[*schema.Node]uniqDef  // unique leaves' default canonicals, per unique()
+	topBuilds, posBuilds, posReads int
+	lrefs                          map[lrefKey]*lrefTemplate // leafref target-path templates per type and node
+	uniqDefs                       map[*schema.Node]uniqDef  // unique leaves' default canonicals, per unique()
 	// vars and to are the variables and the result cast of the evaluations of a query
 	// (lyd_eval_xpath4); validation has none (to NodeSet casts nothing).
 	vars []xpath.Var

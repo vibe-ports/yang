@@ -70,6 +70,9 @@ func compareSchemaEqual(a, b *schema.Node, cmpParents bool) bool {
 		return false
 	}
 	for {
+		if compareLevelHook != nil {
+			compareLevelHook()
+		}
 		if a.Kind != b.Kind || a.ID() != b.ID() { // interned identifiers: O(1) per level
 			return false
 		}
@@ -80,6 +83,10 @@ func compareSchemaEqual(a, b *schema.Node, cmpParents bool) bool {
 	}
 	return (a == nil) == (b == nil)
 }
+
+// compareLevelHook observes each schema level compareSchemaEqual compares (tests: the lookups'
+// comparisons are paid level by level, xprobe.lineage); nil otherwise.
+var compareLevelHook func()
 
 // compareSchemaParentsEqual is lyd_compare_schema_parents_equal: all the schema parents of a and
 // b (nodes of different contexts) equal one by one.

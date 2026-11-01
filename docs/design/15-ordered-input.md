@@ -196,6 +196,23 @@ Read in document order (fixed):
   schema, holds only the target set's nodes, and the cost is O(depth) (`TestEquivalentInColdBudgetAndDepth`,
   `TestEquivalentInOutputAndScaling`, `TestEquivalentCacheKeepsNoContext`). `leaderFirstMixed`
   uses the same candidates.
+- round 33: a returned validation diff is what the tree kept. An unlink never polls the
+  cancellation (`removalOrder`'s mixed-context leader lookup pays without polling; its work is
+  schema-bounded), so a deletion that records its diff first (the when pass's `del`, `autodel`,
+  a choice's old case) is never cancelled half done; and `ValidateDiff`/`ValidateModuleDiff`
+  drop the diff only when the journal restored the tree (`endValidateJournal`): a cancellation
+  a charge polled keeps the changes and their diff as any other cancellation
+  (`TestWhenDeadCancelSweepDiff`, every cancellation point: the diff applied to the original
+  gives the tree left). A deleted root the top-level view still holds is absent for every read
+  of the root, not read as WhenFalse: the evaluator filters the view once per evaluation that
+  reads it (`EvalContext.TreeGone`, set only while the view holds a deleted root), so a scan's
+  first match goes on to another context's root (`TestWhenDeadRootHidesNoForeignRoot`,
+  `ordered-when-dead-root-foreign`) and the view is still not rebuilt per deletion. A lookup
+  probe compares a candidate's schema parents once per schema node, a step per level
+  (`xprobe.lineage`), and its comparisons take the parents as checked
+  (`TestMixedTableDeepLineagePaid`: 64 levels, 1,024 candidates). A dropped node_when entry is
+  a tombstone in its node's position list, skipped once by the first-live read (`livePos`), so
+  a node queued k times drains in O(k) (`TestWhenRepeatedQueueLinear`);
 - round 32: the pass's end also ends the top-level XPath view that kept its deleted roots
   (rebuilt from the tree by the next evaluation), so no cached view outlives the pass with a
   deleted node in it (`ordered-when-dead-root-leafref`, `when-dead-root-leafref-plain`: the
