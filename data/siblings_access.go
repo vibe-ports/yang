@@ -374,26 +374,61 @@ func (s *siblings) docNodes() []*Node          { return s.docSpan().Collect() }
 
 // opaqTail is the trailing opaque block in document order (where lyd_find_sibling_opaq_next
 // starts: the opaque nodes after the last schema node); the opaque nodes unless interleaved.
-func (s *siblings) opaqTail() siblingSpan {
+// The last schema node is the last live one: a node the running when pass deleted (flagDead,
+// unlinked at its end) is gone for libyang already; skipped counts the dead nodes passed.
+func (s *siblings) opaqTail() (span siblingSpan, skipped int) {
 	if s.st == nil || !s.st.interleaved() {
-		return s.opaqueSpan()
+		return s.opaqueSpan(), 0
 	}
 	lo := 0
-	if last := s.st.seq.LastKind(true); last != nil {
-		at, _ := s.st.seq.Pos(last)
+	h := s.st.seq.LastKind(true)
+	for ; h != nil && h.Value.flags&flagDead != 0; h = s.st.seq.PrevKind(h) {
+		skipped++
+	}
+	if h != nil {
+		at, _ := s.st.seq.Pos(h)
 		lo = at + 1
 	}
-	return s.docSpan().Slice(lo, s.Len())
+	return s.docSpan().Slice(lo, s.Len()), skipped
 }
 
 // opaqNextSpan is what lyd_find_sibling_opaq_next walks from the first sibling: every sibling
-// when that one is opaque, else the trailing opaque block (tree_data.c:3392-3412; it compares
-// LYD_NAME, so a schema node's name too).
-func (s *siblings) opaqNextSpan() siblingSpan {
-	if first := s.docFirst(); first != nil && first.schema == nil && s.st.interleaved() {
-		return s.docSpan()
+// from it when that one is opaque, else the trailing opaque block (tree_data.c:3392-3412; it
+// compares LYD_NAME, so a schema node's name too). The first sibling is the first live one, as
+// opaqTail's last; skipped counts the dead nodes passed.
+// ponytail: dead nodes at either end are walked per call (only within a when pass, which
+// deletes them); a live-ends cache if many dead ends meet many lookups.
+func (s *siblings) opaqNextSpan() (siblingSpan, int) {
+	if s.st == nil || !s.st.interleaved() {
+		return s.opaqTail()
 	}
-	return s.opaqTail()
+	skipped := 0
+	h := s.st.seq.First()
+	for ; h != nil && h.Value.flags&flagDead != 0; h = s.st.seq.Next(h) {
+		skipped++
+	}
+	if h != nil && h.Value.schema == nil {
+		at, _ := s.st.seq.Pos(h)
+		return s.docSpan().Slice(at, s.Len()), skipped
+	}
+	span, more := s.opaqTail()
+	return span, skipped + more
+}
+
+// orderedLayout reports whether s is physically in ordinary order now, every schema node before
+// every opaque one, whatever its history (interleaved, which stays set once a schema node
+// followed an opaque one, design 15). O(log n).
+func (s *siblings) orderedLayout() bool {
+	if s.st == nil || !s.st.interleaved() {
+		return true
+	}
+	last, first := s.st.seq.LastKind(true), s.st.seq.FirstKind(false)
+	if last == nil || first == nil {
+		return true
+	}
+	lp, _ := s.st.seq.Pos(last)
+	fp, _ := s.st.seq.Pos(first)
+	return lp < fp
 }
 
 // docFrom is the siblings from the linked n on in document order: LYD_LIST_FOR_INST's next

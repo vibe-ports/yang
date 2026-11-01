@@ -1277,7 +1277,18 @@ func chargeOf(w *workCounter) func(int64) error {
 	if w == nil {
 		return nil
 	}
-	return func(n int64) error { return w.chargeHash(uint64(n)) } //nolint:gosec // a charge is nonnegative
+	return func(n int64) error {
+		if err := w.chargeHash(uint64(n)); err != nil { //nolint:gosec // a charge is nonnegative
+			return err
+		}
+		if w.pollCtx != nil { // the operation's cancellation: the loops it pays are input-sized
+			if err := poll(w.pollCtx); err != nil {
+				w.hashErr = err // sticky as a refused charge: the operation returns it
+				return err
+			}
+		}
+		return nil
+	}
 }
 
 func (s *siblings) leaderFirstMixed(sn *schema.Node) *Node {
@@ -1853,6 +1864,9 @@ func (t *Tree) tableSchemaFirstCharged(s *siblings, sn *schema.Node, charge func
 	if s.ht == nil || !s.schemaUnordered || s.order == nil && !s.firstRecordSchema(sn) {
 		return nil, false
 	}
+	if err := chargedNameHash(sn, charge); err != nil {
+		return nil, true // the quota's error, never another answer
+	}
 	p := &xprobe{node: newInner(sn), set: sn.Module.Owner, schemaOnly: true, charge: charge}
 	p.key, _ = hashOf(p.node)
 	n, err := tableFirst(s, p.set, p)
@@ -1860,6 +1874,30 @@ func (t *Tree) tableSchemaFirstCharged(s *siblings, sn *schema.Node, charge func
 		return nil, true // the quota's error (lookupErr), never another answer
 	}
 	return n, true
+}
+
+// chargedNameHash warms sn's module and node name hash (CachedNameHash), which a probe's
+// newInner reads, paying a cold computation through charge before it runs (nil: uncharged); a
+// refusal is returned and caches nothing. An ownerless set (hand-built) caches none: every
+// probe pays the bytes.
+func chargedNameHash(sn *schema.Node, charge func(int64) error) error {
+	cost := int64(len(sn.Module.Name)) + int64(len(sn.Name))
+	owner := sn.Module.Owner
+	if owner == nil {
+		if charge != nil {
+			return charge(cost)
+		}
+		return nil
+	}
+	_, err := owner.CachedNameHash(sn, func() (uint32, error) {
+		if charge != nil {
+			if err := charge(cost); err != nil {
+				return 0, err
+			}
+		}
+		return rawSchemaHash(sn), nil
+	})
+	return err
 }
 
 func (t *Tree) schemaFindAll(s *siblings, sn *schema.Node) (int, *Node) {

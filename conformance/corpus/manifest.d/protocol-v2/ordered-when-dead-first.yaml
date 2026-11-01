@@ -1,0 +1,17 @@
+# the when pass deletes x, the first child, before it evaluates guard2's when (ordered input, a an opaque sibling): the opaque first sibling's walk covers every sibling and finds a, so guard2 stays
+fixtures:
+  - id: protocol-v2/ordered-when-dead-first
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#7.21.5"]
+    areas: [validation]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      context_options: ["no_yanglibrary"]
+      modules: [{name: "pv2-ordered12"}]
+      steps:
+        - {do: parse, format: json, data_type: data, parse_only: true, unknown: opaque, parse_options: [ordered, when_true], data: '{"pv2-ordered12:guard2": "g", "pv2-ordered12:c": {"x": "x", "a": false, "y": "y"}}'}
+        - {do: validate, module: pv2-ordered12, validate_options: [not_final]}
+        - {do: dump}
+    golden: golden/ordered-when-dead-first.json

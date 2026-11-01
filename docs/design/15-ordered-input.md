@@ -119,7 +119,7 @@ write takes the code path it took before (the counted-work and scaling tests are
 
 ## Evidence
 
-- Oracle fixtures `protocol-v2/ordered-*` (69; `ordered-split-list-merge-destruct` is unsupported,
+- Oracle fixtures `protocol-v2/ordered-*` (73; `ordered-split-list-merge-destruct` is unsupported,
 U-0113) cover:
   - parse order, JSON and XML;
   - the XML opaque anchor;
@@ -196,6 +196,17 @@ Read in document order (fixed):
   schema, holds only the target set's nodes, and the cost is O(depth) (`TestEquivalentInColdBudgetAndDepth`,
   `TestEquivalentInOutputAndScaling`, `TestEquivalentCacheKeepsNoContext`). `leaderFirstMixed`
   uses the same candidates.
+- round 25: the opaque lookup's ends are the live ones: a node the running when pass deleted
+  (flagDead, unlinked at its end) is gone for libyang, so `opaqTail`, `opaqNextSpan` and the
+  schema-parent check skip it (`ordered-when-dead-tail`, `-first` and their `-table`
+  variants). The key-link reservation and `keyLinked` share one physical completion predicate
+  (`keysLead`, with the pending placement): keys split by an opaque child reserve no list hash
+  (`TestKeysSplitByOpaqueReserve`). A probe's cold module/name hash is paid through the lookup's
+  charge before it is computed (`chargedNameHash`; `TestColdNameHashCharged`). The merge's
+  opaque lookup reads the current layout (`orderedLayout`), not the sticky interleaved flag
+  (`TestOpaqueMergeAfterSeparatorRemoved`). `chargeOf` polls the running validation's or
+  parse's cancellation (`workCounter.pollWith`), so a foreign child index build stops partway
+  and publishes nothing (`TestForeignIndexBuildPolls`);
 - round 24: the snapshot interns a module's name once (`Module.NameID`) and each node's name
   on its own, and a node's `Ident` is the pair of handles, so no module name is copied per node
   (`TestSnapshotInternAllocs`). `crossEqual` rejects an unequal stored hash before it charges

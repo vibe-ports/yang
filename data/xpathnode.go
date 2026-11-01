@@ -363,7 +363,11 @@ func live(n *Node) *Node {
 
 // opaqFallback is lyd_find_sibling_opaq_next after a lookup miss, charged; a handled miss.
 func opaqFallback(sib *siblings, set *schema.Set, p *xprobe) ([]xpath.Node, bool, error) {
-	for _, c := range sib.opaqNextSpan().All() {
+	span, skipped := sib.opaqNextSpan()
+	if err := p.work(int64(skipped)); err != nil {
+		return nil, false, err
+	}
+	for _, c := range span.All() {
 		if err := p.work(1); err != nil {
 			return nil, false, err
 		}
@@ -429,6 +433,9 @@ func (x xn) FirstChild(sn xpath.SchemaNode, charge func(int64) error) (xpath.Nod
 	if sib.mixedContexts() {
 		if sib.ht != nil && sib.st != nil && (sib.st.interleaved() || sib.schemaUnordered) && x.n.any == nil {
 			// the evaluator's walk stops at the first opaque sibling; the table does not (design 15)
+			if err := chargedNameHash(s.s, charge); err != nil {
+				return nil, false
+			}
 			p := &xprobe{node: newInner(s.s), set: s.set, schemaOnly: true, charge: charge}
 			p.key, _ = hashOf(p.node)
 			c, err := tableFirst(sib, x.set, p)
@@ -748,6 +755,9 @@ type xprobe struct {
 // canonical predicates is observable: a second store may fail or choose another
 // union member. Never turn that error into a successful empty result.
 func (x xs) PrepareInstance(vals []string, charge func(int64) error) (xpath.InstanceProbe, error) {
+	if err := chargedNameHash(x.s, charge); err != nil {
+		return nil, err
+	}
 	p := &xprobe{node: newInner(x.s), set: x.set, charge: charge, schemaOnly: len(vals) == 0}
 	keys := x.s.Keys
 	if x.s.Kind == schema.LeafList {
@@ -836,6 +846,9 @@ func parentMismatch(sib *siblings, p *xprobe) bool {
 		return false
 	}
 	f := sib.docFirst()
+	for f != nil && f.flags&flagDead != 0 { // deleted by the running when pass: gone for libyang
+		f = sib.docNext(f)
+	}
 	return f != nil && f.schema != nil && !compareSchemaEqual(f.schema.DataParent(), p.node.schema.DataParent(), true)
 }
 

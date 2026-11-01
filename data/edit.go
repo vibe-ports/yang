@@ -2048,12 +2048,18 @@ func (t *Tree) flushMerge(lv *mergeLevel) error {
 // name; the error is a refused charge of its walk, charged to w, the calling operation's counter
 // (s may belong to a tree the operation only reads).
 func opaqNext(w *workCounter, s *siblings, name string) (*Node, error) {
-	if s.st == nil || !s.st.interleaved() {
+	if s.orderedLayout() {
+		// schema nodes, then opaque ones (an interleaving node may have left): the walk meets
+		// exactly the opaque nodes in order, which the name index gives
 		return s.opaqueFirst(name), nil
 	}
 	// From an opaque first sibling the walk covers every sibling; from a schema one, the trailing
 	// opaque block (tree_data.c:3392-3412). It compares LYD_NAME, a schema node's name too.
-	for _, n := range s.opaqNextSpan().All() {
+	span, skipped := s.opaqNextSpan()
+	if err := w.chargeHash(uint64(skipped)); err != nil { //nolint:gosec // a count
+		return nil, err
+	}
+	for _, n := range span.All() {
 		if err := w.chargeHash(1); err != nil {
 			return nil, err
 		}

@@ -1,0 +1,17 @@
+# the when pass deletes x, the last schema child, before it evaluates guard's when (ordered input, a an opaque sibling): x is gone for the opaque lookup, a is the trailing opaque block and guard stays
+fixtures:
+  - id: protocol-v2/ordered-when-dead-tail
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#7.21.5"]
+    areas: [validation]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      context_options: ["no_yanglibrary"]
+      modules: [{name: "pv2-ordered12"}]
+      steps:
+        - {do: parse, format: json, data_type: data, parse_only: true, unknown: opaque, parse_options: [ordered, when_true], data: '{"pv2-ordered12:c": {"guard": "g", "a": false, "x": "x"}}'}
+        - {do: validate, module: pv2-ordered12, validate_options: [not_final]}
+        - {do: dump}
+    golden: golden/ordered-when-dead-tail.json

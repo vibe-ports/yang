@@ -1,0 +1,31 @@
+module pv2-ordered12 {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:pv2-ordered12";
+  prefix o12;
+
+  description
+    "Hand-written (this repo): when conditions that read an opaque sibling
+     after the when pass deleted the last or the first schema sibling
+     (design 15).";
+
+  leaf guard2 {
+    when "/o12:c/o12:a";
+    type string;
+  }
+  container c {
+    leaf f1 { type string; }
+    leaf f2 { type string; }
+    leaf f3 { type string; }
+    leaf f4 { type string; }
+    leaf guard {
+      when "../a";
+      type string;
+    }
+    leaf a { type string; }
+    leaf x {
+      when "false()";
+      type string;
+    }
+    leaf y { type string; }
+  }
+}

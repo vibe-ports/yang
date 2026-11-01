@@ -1230,6 +1230,24 @@ func TestKeyPastTrailingOpaqueReserve(t *testing.T) {
 	}
 }
 
+// TestKeysSplitByOpaqueReserve: keys a b with an opaque child between them never complete the
+// physical key prefix (lyd_insert_has_keys), so linking b reserves no hashing of a's value: a
+// large a under a small quota ends as libyang does, on the missing key, not on the budget.
+func TestKeysSplitByOpaqueReserve(t *testing.T) {
+	set := reviewDiffSet(t, `module m { yang-version 1.1; namespace "urn:m"; prefix m;
+	  list l { key "a b"; leaf a { type string; } leaf b { type string; } } }`)
+	in := `<l xmlns="urn:m"><a>` + strings.Repeat("x", 1<<20) + `</a><zz>u</zz><b>v</b></l>`
+	for _, parseOnly := range []bool{true, false} {
+		o := parseOpts{ParseOptions: ParseOptions{Unknown: Opaque, ParseOnly: parseOnly, Ordered: true}, ordered: true}
+		_, _, err := parseWith(context.Background(), strings.NewReader(in), set, o, parseXML, func(lc *lydCtx) {
+			lc.tree.work.hashLimit = 64 << 10
+		})
+		if errors.Is(err, yang.ErrBudget) {
+			t.Fatalf("parse only %v: %v", parseOnly, err)
+		}
+	}
+}
+
 func TestKeyRunPastOpaque(t *testing.T) {
 	set := ordered2Set(t)
 	tr, err := parseOrdered(t, set, false, `{"pv2-ordered2:c":{"l":[{"k":"x","zz":"u","k":"y"}]}}`, nil)
@@ -1960,6 +1978,136 @@ func TestEquivalentInColdBudgetAndDepth(t *testing.T) {
 // TestMutationSchemaLookupCharged: a schema-only table lookup inside a mutation (Merge, ApplyDiff,
 // edits) pays its steps to the mutation's quota, warm indexes included, so a spent quota refuses
 // it instead of answering for free; outside an operation it charges nothing.
+// TestOpaqueMergeAfterSeparatorRemoved: a level interleaved once (an opaque child before a
+// schema one) and back in ordinary order after that child's unlink matches opaque children as a
+// freshly parsed level of the same children does (the opaque lookup reads the layout, not the
+// history): merging n opaque children costs what it costs fresh.
+func TestOpaqueMergeAfterSeparatorRemoved(t *testing.T) {
+	set := reviewDiffSet(t, `module m { yang-version 1.1; namespace "urn:m"; prefix m;
+	  container c { leaf a { type string; } } }`)
+	const n = 1500
+	var z strings.Builder
+	for i := range n {
+		fmt.Fprintf(&z, `,"z%05d":"v"`, i)
+	}
+	work := func(cut bool) int64 {
+		in := `{"m:c":{"a":"x"` + z.String() + `}}`
+		if cut {
+			in = `{"m:c":{"cut":"u","a":"x"` + z.String() + `}}`
+		}
+		dst, err := parseOrdered(t, set, false, in, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		c := dst.top.first()
+		if cut {
+			if !c.kids.st.interleaved() {
+				t.Fatal("fixture: want an interleaved level")
+			}
+			if err := c.kids.docFirst().Unlink(); err != nil {
+				t.Fatal(err)
+			}
+		}
+		src, err := parseOrdered(t, set, false, `{"m:c":{"a":"x"`+z.String()+`}}`, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		load, used := dst.work.Load(), dst.work.hashUsed
+		if err := dst.Merge(src); err != nil {
+			t.Fatal(cut, err)
+		}
+		if got := c.kids.Len(); got != n+1 {
+			t.Fatalf("%d children after the merge, want %d", got, n+1)
+		}
+		return dst.work.Load() - load + int64(dst.work.hashUsed-used) //nolint:gosec // test sizes
+	}
+	if fresh, after := work(false), work(true); float64(after) > 1.1*float64(fresh) {
+		t.Fatalf("merge work: %d fresh, %d after the separator's unlink", fresh, after)
+	}
+}
+
+// TestColdNameHashCharged: a schema-only table lookup of a never-instantiated node in a mixed
+// level pays the cold module/name hash (16 KiB name) before computing it: a small mutation quota
+// refuses, and nothing is cached.
+// countCtx is canceled from its after-th Err call on.
+type countCtx struct {
+	context.Context
+	calls, after int
+}
+
+func (c *countCtx) Err() error {
+	if c.calls++; c.calls > c.after {
+		return context.Canceled
+	}
+	return nil
+}
+
+// TestForeignIndexBuildPolls: a validation's schema lookup in a mixed level builds the foreign
+// child index through chargeOf, which polls the operation's cancellation per charge: a
+// cancellation partway stops the build, publishes nothing and is the operation's error.
+func TestForeignIndexBuildPolls(t *testing.T) {
+	var leaves strings.Builder
+	for i := range 2000 {
+		fmt.Fprintf(&leaves, " leaf f%d { type string; }", i)
+	}
+	mod := `module m { yang-version 1.1; namespace "urn:m"; prefix m;
+	  container c { leaf p { type string; } leaf x { type string; } leaf b { type string; }
+	  leaf q { type string; } leaf z { type string; } leaf absent { type string; }` + leaves.String() + ` } }`
+	setA, setB := xctxSets(t, mod)
+	tr, err := parseOrdered(t, setA, false, `{"m:c":{"x":"1","p":"p","b":"b","q":"q"}}`, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	c := tr.top.first()
+	linkForeign(t, tr, c, setB, `{"m:c":{"z":"z"}}`)
+	sn := setA.Implemented("m").Top[0].Children[5]
+	ctx := &countCtx{Context: context.Background(), after: 50}
+	end := tr.work.beginHashWork()
+	restore := tr.work.pollWith(ctx)
+	n, ok := tr.tableSchemaFirst(&c.kids, sn)
+	err = tr.work.hashErr
+	restore()
+	end()
+	if n != nil || !ok || !errors.Is(err, context.Canceled) {
+		t.Fatalf("a cancellation during the foreign index build: %v %v %v", n, ok, err)
+	}
+	var charged int64
+	parent := setB.Implemented("m").Top[0]
+	if _, err := setB.ChildByName(parent, schema.ChildKey{Kind: sn.Kind, ID: sn.ID()}, func(k int64) error { charged += k; return nil }); err != nil || charged < 2000 {
+		t.Fatalf("the canceled build published the index (a lookup charged %d): %v", charged, err)
+	}
+}
+
+func TestColdNameHashCharged(t *testing.T) {
+	long := strings.Repeat("n", 16<<10)
+	mod := `module m { yang-version 1.1; namespace "urn:m"; prefix m;
+	  container c { leaf p { type string; } leaf x { type string; } leaf b { type string; }
+	  leaf q { type string; } leaf z { type string; } leaf ` + long + ` { type string; } } }`
+	setA, setB := xctxSets(t, mod)
+	tr, err := parseOrdered(t, setA, false, `{"m:c":{"x":"1","p":"p","b":"b","q":"q"}}`, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	c := tr.top.first()
+	linkForeign(t, tr, c, setB, `{"m:c":{"z":"z"}}`)
+	if c.kids.ht == nil || !c.kids.mixedContexts() || !c.kids.schemaUnordered {
+		t.Fatal("fixture: want a table level of two contexts out of schema order")
+	}
+	sn := setA.Implemented("m").Top[0].Children[5]
+	end := tr.work.beginHashWork()
+	tr.work.hashLimit = 1024
+	n, ok := tr.tableSchemaFirst(&c.kids, sn)
+	err = tr.work.hashErr
+	end()
+	if n != nil || !ok || !errors.Is(err, yang.ErrBudget) {
+		t.Fatalf("a cold 16 KiB name under a 1024-unit quota: %v %v %v", n, ok, err)
+	}
+	cold := false
+	if _, err := setA.CachedNameHash(sn, func() (uint32, error) { cold = true; return 0, nil }); err != nil || !cold {
+		t.Fatal("the refused lookup cached the name hash")
+	}
+}
+
 func TestMutationSchemaLookupCharged(t *testing.T) {
 	tr, c := mixedTableLevel(t, `{"pv2-ordered8:c":{"p":"p","x":"first","b":"b","x":"second"}}`)
 	var x *schema.Node

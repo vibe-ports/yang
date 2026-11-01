@@ -5,6 +5,7 @@
 package data
 
 import (
+	"context"
 	"iter"
 	"sync"
 	"sync/atomic"
@@ -137,6 +138,9 @@ type Tree struct {
 // The hash quota fields belong to a mutation operation; read-only probes use a
 // private counter rather than changing the queried tree's quota.
 type workCounter struct {
+	// pollCtx is the running operation's cancellation (a validation's or a parse's), polled by
+	// chargeOf's charges, which pay schema- and input-sized loops (nil: none)
+	pollCtx context.Context
 	atomic.Int64
 	visits     bool        // count sibling/link-record visits too (tests only; set before measured calls)
 	hashUsed   uint64      // cumulative reserved hash transitions in the current mutation

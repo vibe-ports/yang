@@ -1017,6 +1017,7 @@ func (t *Tree) validateWith(ctx context.Context, mod *schema.Module, o ValidateO
 		}
 		return nil
 	}
+	defer t.work.pollWith(ctx)()
 	err := vc.validate(true)
 	if t.work.hashErr != nil { // a hash-budget failure, also of the journal's charge
 		err = t.work.hashErr

@@ -443,6 +443,7 @@ func parseWith(ctx context.Context, r io.Reader, s *schema.Set, o parseOpts, fp 
 	}
 	lc.ctx = suspending(ctx, &lc.tree.work, o.owner) // every poll suspends the parse's states
 	defer lc.tree.work.beginHashWork()()
+	defer lc.tree.work.pollWith(lc.ctx)()
 	err = fp(lc, in)
 	if lc.tree.work.hashErr != nil {
 		err = lc.tree.work.hashErr

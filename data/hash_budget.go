@@ -3,6 +3,7 @@
 package data
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/vibe-ports/yang"
@@ -15,6 +16,14 @@ import (
 // per-zero-run checkpoint bound therefore needs a cumulative operation bound.
 // Keep this internal, like the existing fixed XPath expression work limit.
 const defaultMaxHashWork uint64 = 1 << 26
+
+// pollWith makes ctx the cancellation chargeOf polls until the returned func restores the
+// previous one.
+func (w *workCounter) pollWith(ctx context.Context) func() {
+	old := w.pollCtx
+	w.pollCtx = ctx
+	return func() { w.pollCtx = old }
+}
 
 func (w *workCounter) beginHashWork() func() {
 	if w.hashDepth == 0 {
@@ -192,24 +201,11 @@ func (w *workCounter) termHashBound(parent *Node, sn *schema.Node, value types.V
 			return 0, err
 		}
 	}
-	// Inspect only the declared positional prefix before considering hash inputs.
-	// In particular, repeated first keys must not rescan the entire incomplete run.
-	prefix := parent.kids.schemaSpan().cursor() // position i, then i-1 past at
-	for i, key := range parent.schema.Keys {
-		w.Add(1)
-		if err := w.chargeHash(1); err != nil {
-			return 0, err
-		}
-		current := sn
-		if i != at {
-			current = nil
-			if c := prefix.next(); c != nil {
-				current = c.schema
-			}
-		}
-		if current != key {
-			return 0, nil
-		}
+	// Inspect only the declared positional prefix before considering hash inputs, the physical
+	// one keyLinked checks (keysLead), with n where its pending placement puts it. In
+	// particular, repeated first keys must not rescan the entire incomplete run.
+	if ok, err := keysLead(parent, n, at, func() error { w.Add(1); return w.chargeHash(1) }); err != nil || !ok {
+		return 0, err
 	}
 	// keyLinked can restart from the list's schema prefix after insertion.
 	schemaHashWork(parent.schema, w)

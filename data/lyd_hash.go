@@ -119,6 +119,36 @@ func keyPrefix(n *Node) siblingSpan { return n.kids.schemaSpan().Slice(0, n.kids
 // link and unlink bookkeeping maintain) cut at the first opaque child.
 func (n *Node) keyRun() int { return min(n.keyN, n.kids.beforeOpaque()) }
 
+// keysLead is lyd_insert_has_keys: whether list's first children in document order (lyd_child)
+// are its keys, in order. With n, it answers for after n's link at logical position at, n where
+// its pending physical placement puts it (the link's preflight); without, for the children as
+// linked (keyLinked): one predicate for the reservation and the hash it pays for. step runs per
+// key read.
+func keysLead(list, n *Node, at int, step func() error) (bool, error) {
+	kids := &list.kids
+	docAt := -1
+	if n != nil {
+		docAt = kids.Len()
+		if h := kids.linkAnchor(n, at); h != nil {
+			docAt, _ = kids.st.seq.Pos(h)
+		}
+	}
+	cur := positionalChildren(list) // lyd_child: the first children in document order
+	for i, key := range list.schema.Keys {
+		if err := step(); err != nil {
+			return false, err
+		}
+		c := n
+		if i != docAt {
+			c = cur.next()
+		}
+		if c == nil || c.schema != key {
+			return false, nil
+		}
+	}
+	return true, nil
+}
+
 func (t *Tree) beforeKeyLink(list, child *Node, at int) {
 	// lyd_insert_hash leaves children of an opaque parent unhashed
 	// (tree_data_hash.c:173-175); it has no list-key prefix state either.
@@ -158,15 +188,11 @@ func (t *Tree) keyLinked(list, child *Node) {
 		reindexComparedParent(child)
 		return
 	}
-	prefix := positionalChildren(list) // lyd_child: the first children in document order
-	for _, key := range list.schema.Keys {
-		t.work.Add(1)
-		if c := prefix.next(); c == nil || c.schema != key {
-			// No native hash or registration event, but positional equality has
-			// changed. Keep the existing record's place in its native chain.
-			reindexList(list)
-			return
-		}
+	if ok, err := keysLead(list, nil, 0, func() error { t.work.Add(1); return nil }); err != nil || !ok {
+		// No native hash or registration event, but positional equality has
+		// changed. Keep the existing record's place in its native chain.
+		reindexList(list)
+		return
 	}
 	if err := list.touch(); err != nil {
 		return
