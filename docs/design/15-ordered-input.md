@@ -196,6 +196,18 @@ Read in document order (fixed):
   schema, holds only the target set's nodes, and the cost is O(depth) (`TestEquivalentInColdBudgetAndDepth`,
   `TestEquivalentInOutputAndScaling`, `TestEquivalentCacheKeepsNoContext`). `leaderFirstMixed`
   uses the same candidates.
+- round 27: a when-pass deletion does the whole index part of `lyd_unlink` at once, in its
+  order (`siblings.unlinkIndex`: the RB removal, then `lyd_unlink_hash` and the run
+  bookkeeping), among the live neighbours; the batch unlink at the pass's end does only the
+  storage and the links for those nodes (`deadLinks.indexed`). A refusal deletes nothing: the
+  node stays live and registered (`TestWhenDeadLeaderMixedContexts`, two dead members of a
+  retained RB tree). Only the pass writes `deadLinks`; lookups, a public read while the pass
+  waits on user code included, read the live ends it keeps (`TestDeadEndsSuspendedReads`, race
+  detector). `instanceRun`'s mixed first-instance lookup pays through the operation's charge
+  (`Tree.opCharge`; `TestForeignIndexBuildPolls`). Readers of the indexes between a deletion and
+  the batch unlink: first-instance records, exact records, RB trees, first runs and contexts are
+  libyang's after the deletion; the operation index of an unordered set is in document order and
+  its readers skip dead nodes; storage-order readers use the live ends;
 - round 26: a when-pass deletion does libyang's `lyd_unlink_hash` at once, while its storage
   still waits for the pass's end: the node leaves its parent's children table and a first
   instance's record passes to its live successor, appended, so a mixed-context first-instance

@@ -1291,13 +1291,6 @@ func chargeOf(w *workCounter) func(int64) error {
 	}
 }
 
-func (s *siblings) leaderFirstMixed(sn *schema.Node) *Node {
-	n, err := s.leaderFirstMixedCharged(sn, nil)
-	if err != nil {
-		return nil // uncharged: nothing refuses
-	}
-	return n
-}
 
 // leaderFirstMixedCharged is leaderFirstMixed paying the mapping and reads through charge (nil:
 // uncharged, a read-only call); a refusal is returned, never a different leader.
@@ -1848,14 +1841,21 @@ func (t *Tree) schemaFind(s *siblings, sn *schema.Node) (int, *Node) {
 // operation waits on it (opLookup, opHash), writes no shared state (no charge). ok is false
 // when the set keeps no ordered index to read it from.
 func (t *Tree) tableSchemaFirst(s *siblings, sn *schema.Node) (n *Node, ok bool) {
-	var charge func(int64) error
+	return t.tableSchemaFirstCharged(s, sn, t.opCharge())
+}
+
+// opCharge is the charge of a lookup's steps: a running diff's lookup quota, a mutation's hash
+// quota (polling its cancellation, chargeOf), nil for a read (read-only, or a public read while
+// the operation waits on user code: opLookup, opHash). A refusal is sticky in that counter, so
+// a lookup that ends on it as a miss leaves the error to its operation.
+func (t *Tree) opCharge() func(int64) error {
 	switch {
-	case t.work.opLookup(): // a diff's lookup quota
-		charge = func(n int64) error { return t.work.chargeLookup(uint64(n)) } //nolint:gosec // a charge is nonnegative
-	case t.work.opHash(): // a mutation (Merge, ApplyDiff, MergeDiff, edits): its own quota
-		charge = chargeOf(&t.work)
+	case t.work.opLookup():
+		return func(n int64) error { return t.work.chargeLookup(uint64(n)) } //nolint:gosec // a charge is nonnegative
+	case t.work.opHash():
+		return chargeOf(&t.work)
 	}
-	return t.tableSchemaFirstCharged(s, sn, charge)
+	return nil
 }
 
 // tableSchemaFirstCharged is tableSchemaFirst paying each step through charge (nil: uncharged), a

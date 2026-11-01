@@ -405,7 +405,9 @@ func (t *Tree) instanceRun(s *siblings, sn *schema.Node) iter.Seq2[int, *Node] {
 		mixed := s.schemaUnordered && !opChild(sn) && s.foreignFor(sn)
 		switch {
 		case mixed && s.ht != nil && s.firstRecordSchema(sn):
-			if leader := s.leaderFirstMixed(sn); leader != nil {
+			// paid as the operation's lookups are (opCharge): the foreign mapping may build
+			// a child index; a refusal is a miss whose error the operation returns
+			if leader, err := s.leaderFirstMixedCharged(sn, t.opCharge()); err == nil && leader != nil {
 				run = s.docFrom(leader)
 			}
 		case mixed:

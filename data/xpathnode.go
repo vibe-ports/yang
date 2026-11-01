@@ -266,9 +266,15 @@ func tableFirst(sib *siblings, set *schema.Set, p *xprobe) (*Node, error) {
 		if p.schemaOnly {
 			return live(c), nil
 		}
-		for ; c != nil && c.schema != nil && compareSchemaEqual(c.schema, sn, false); c = sib.docNext(c) {
+		for ; c != nil; c = sib.docNext(c) {
 			if err := p.work(1); err != nil {
 				return nil, err
+			}
+			if c.flags&flagDead != 0 {
+				continue // deleted by the running when pass: node->next skips it for libyang
+			}
+			if c.schema == nil || !compareSchemaEqual(c.schema, sn, false) {
+				break
 			}
 			if p.eq != nil {
 				m, err := p.eq(c) // lyd_compare_single(target, iter, LYD_COMPARE_FULL_RECURSION)

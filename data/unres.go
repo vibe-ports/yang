@@ -329,25 +329,38 @@ func (p *whenPass) whenFalse(n *Node, i int) (int, error) {
 // dead: the XPath adapters do not see it, exactly as if it was gone already.
 // A dead node reads as WhenFalse to XPath (xn.When), so no view needs rebuilding. A node queued
 // twice (the JSON parser queues a node once per metadata member) is deleted once.
-func (p *whenPass) del(n *Node) {
+func (p *whenPass) del(n *Node) error {
 	if n.flags&flagDead != 0 {
-		return
+		return nil
 	}
 	if err := n.touch(); err != nil {
-		return
+		return err
+	}
+	// lyd_unlink's index part at once, the storage waiting for finish: the RB removal, then
+	// lyd_unlink_hash (n leaves its parent's children table, a first instance's record passes to
+	// its live successor, appended), among the live neighbours, so the pass's later lookups read
+	// the indexes libyang has; a refusal deletes nothing (the node stays live and registered)
+	w := &p.vc.t.work
+	w.markDead()
+	sib := n.siblingsOf()
+	if sib != nil {
+		before, after := sib.docNeighbours(n)
+		prev, next := sib.liveBefore(before), sib.liveAfter(after)
+		around := func(c *Node) (*Node, *Node) {
+			b, a := sib.docNeighbours(c)
+			return sib.liveBefore(b), sib.liveAfter(a)
+		}
+		if err := sib.unlinkIndex(n, prev, next, sib.liveBefore(sib.docLast()), around); err != nil {
+			return err
+		}
+		w.dead.indexed[n] = true
 	}
 	n.flags |= flagDead
 	p.dead = append(p.dead, n)
-	// lyd_unlink_hash at once (the storage waits for finish): n leaves its parent's children
-	// table, and a first instance's record passes to its live successor, appended, so lookups
-	// during the pass read the registrations libyang has (deadLinks for the live neighbours)
-	w := &p.vc.t.work
-	w.markDead()
-	if sib := n.siblingsOf(); sib != nil && n.schema != nil {
-		before, after := sib.docNeighbours(n)
-		sib.leaderUnlinkBetween(n, sib.liveBefore(before), sib.liveAfter(after), true)
-		sib.hashForget(n)
+	if sib != nil {
+		w.dead.endsAfter(sib)
 	}
+	return nil
 }
 
 // unresWhen is lyd_validate_unres_when: one pass over node_when from the end. A resolved node
@@ -409,7 +422,9 @@ func (vc *valCtx) unresWhen() (rc error) {
 			}
 			n.flags = n.flags&^FlagWhenFalse | FlagWhenTrue
 		case n.flags&FlagWhenTrue != 0:
-			p.del(n) // nested queued nodes cannot exist (libyang asserts it)
+			if err := p.del(n); err != nil { // nested queued nodes cannot exist (libyang asserts it)
+				return err
+			}
 		case vc.opts.Operational:
 			vc.log.warn("When condition \"%s\" not satisfied.", w.Src)
 		default:

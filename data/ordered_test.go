@@ -2052,7 +2052,8 @@ func TestForeignIndexBuildPolls(t *testing.T) {
 	}
 	mod := `module m { yang-version 1.1; namespace "urn:m"; prefix m;
 	  container c { leaf p { type string; } leaf x { type string; } leaf b { type string; }
-	  leaf q { type string; } leaf z { type string; } leaf absent { type string; }` + leaves.String() + ` } }`
+	  leaf q { type string; } leaf z { type string; } leaf absent { type string; }
+	  list l { key k; leaf k { type string; } }` + leaves.String() + ` } }`
 	setA, setB := xctxSets(t, mod)
 	tr, err := parseOrdered(t, setA, false, `{"m:c":{"x":"1","p":"p","b":"b","q":"q"}}`, nil)
 	if err != nil {
@@ -2075,6 +2076,28 @@ func TestForeignIndexBuildPolls(t *testing.T) {
 	parent := setB.Implemented("m").Top[0]
 	if _, err := setB.ChildByName(parent, schema.ChildKey{Kind: sn.Kind, ID: sn.ID()}, func(k int64) error { charged += k; return nil }); err != nil || charged < 2000 {
 		t.Fatalf("the canceled build published the index (a lookup charged %d): %v", charged, err)
+	}
+	// the instance walk of validation (instanceRun: lys_getnext_data, LYD_LIST_FOR_INST) maps
+	// its first-instance probe the same way, paid and polled by the operation's charge
+	setA, setB = xctxSets(t, mod)
+	tr, err = parseOrdered(t, setA, false, `{"m:c":{"x":"1","p":"p","l":[{"k":"a"}],"b":"b","q":"q"}}`, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	c = tr.top.first()
+	linkForeign(t, tr, c, setB, `{"m:c":{"z":"z"}}`)
+	l := setA.Implemented("m").Top[0].Children[6]
+	ctx = &countCtx{Context: context.Background(), after: 50}
+	end = tr.work.beginHashWork()
+	restore = tr.work.pollWith(ctx)
+	for range tr.instanceRun(&c.kids, l) {
+		break
+	}
+	err = tr.work.hashErr
+	restore()
+	end()
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("a cancellation during instanceRun's foreign index build: %v", err)
 	}
 }
 
@@ -2538,8 +2561,63 @@ func TestMixedIdentityDiffManyStateLeafLists(t *testing.T) {
 // libyang removes at once; in a children table of two contexts the next lookup of l finds B's
 // instance (FirstChild, the predicate's first-instance probe), so g's when holds and g stays.
 // TestDeadEndsAmortized: the live ends of a level whose first and last k schema children the
-// running when pass deleted are found through skip pointers: m reads walk the dead nodes once,
-// not once per read.
+// running when pass deleted are kept by the pass through skip pointers (k deletions walk each
+// dead node about once), and m reads only read them.
+// readerCtx runs, at the first poll after x became dead, two concurrent FindXPath reads of the
+// tree its validation waits on (the operation is suspended in Err).
+type readerCtx struct {
+	context.Context
+	tr    *Tree
+	x     *Node
+	found [2]int
+	done  bool
+}
+
+func (c *readerCtx) Err() error {
+	if !c.done && c.x.flags&flagDead != 0 {
+		c.done = true
+		var wg sync.WaitGroup
+		for i := range 2 {
+			wg.Go(func() {
+				for range 50 {
+					ns, _, err := c.tr.FindXPath("/m:c/a", XPathOptions{})
+					if err == nil {
+						c.found[i] = len(ns)
+					}
+				}
+			})
+		}
+		wg.Wait()
+	}
+	return nil
+}
+
+// TestDeadEndsSuspendedReads: public reads from user code while the when pass waits on it, with
+// the pass's tombstones live, read its view and write nothing (race detector), and see the
+// opaque sibling the deletion exposed.
+func TestDeadEndsSuspendedReads(t *testing.T) {
+	set := reviewDiffSet(t, `module m { yang-version 1.1; namespace "urn:m"; prefix m;
+	  leaf guard2 { when "/m:c/m:a"; type string; }
+	  container c { leaf x { when "false()"; type string; } leaf a { type string; } leaf y { type string; } } }`)
+	o := parseOpts{ParseOptions: ParseOptions{Unknown: Opaque, ParseOnly: true, Ordered: true, WhenTrue: true}, ordered: true, whenTrue: true}
+	tr, _, err := parseWith(context.Background(), strings.NewReader(`{"m:guard2":"g","m:c":{"x":"x","a":false,"y":"y"}}`), set, o, parseJSON, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx := &readerCtx{Context: context.Background(), tr: tr}
+	for _, n := range tr.top.docSpan().All() {
+		if n.Name() == "c" {
+			ctx.x = n.kids.docFirst()
+		}
+	}
+	if _, err := tr.Validate(ctx, ValidateOptions{NotFinal: true}); err != nil {
+		t.Fatal(err)
+	}
+	if !ctx.done || ctx.found != [2]int{1, 1} {
+		t.Fatalf("suspended reads: ran %v, found %v", ctx.done, ctx.found)
+	}
+}
+
 func TestDeadEndsAmortized(t *testing.T) {
 	set := reviewDiffSet(t, `module m { yang-version 1.1; namespace "urn:m"; prefix m;
 	  container c { leaf-list a { type uint32; ordered-by user; } leaf b { type string; } leaf-list z { type uint32; ordered-by user; } } }`)
@@ -2555,12 +2633,14 @@ func TestDeadEndsAmortized(t *testing.T) {
 	}
 	c := tr.top.first()
 	kids := slices.Collect(c.Children())
-	for _, n := range append(kids[:k:k], kids[len(kids)-k:]...) {
-		n.flags |= flagDead
-	}
 	tr.work.markDead()
 	defer func() { tr.work.dead = nil }()
-	for range m {
+	for _, n := range append(kids[:k:k], kids[len(kids)-k:]...) { // the pass's deletions
+		n.flags |= flagDead
+		tr.work.dead.endsAfter(&c.kids)
+	}
+	written := len(tr.work.dead.next) + len(tr.work.dead.prevSchema)
+	for range m { // reads only read
 		if f := c.kids.liveFirst(); f == nil || f.schema != nil {
 			t.Fatalf("live first: %v", f)
 		}
@@ -2569,7 +2649,10 @@ func TestDeadEndsAmortized(t *testing.T) {
 		}
 	}
 	if steps := tr.work.dead.steps; steps > 2*k+2 {
-		t.Fatalf("%d reads past %d dead nodes at each end took %d steps", m, k, steps)
+		t.Fatalf("%d deletions at each end took %d steps", k, steps)
+	}
+	if len(tr.work.dead.next)+len(tr.work.dead.prevSchema) != written {
+		t.Fatal("a read wrote the pass's view")
 	}
 }
 
@@ -2580,27 +2663,35 @@ func TestWhenDeadLeaderMixedContexts(t *testing.T) {
 		  list l { key k; ` + when + ` leaf k { type string; } }
 		  leaf f1 { type string; } leaf f2 { type string; } leaf f3 { type string; } } }`
 	}
-	setA, setB := reviewDiffSet(t, mod(`when "false()";`)), reviewDiffSet(t, mod(""))
-	o := parseOpts{ParseOptions: ParseOptions{Unknown: Opaque, ParseOnly: true, Ordered: true, WhenTrue: true}, ordered: true, whenTrue: true}
-	in := `{"m:c":{"g":"g","l":[{"k":"dead"}],"f1":"1","f2":"2","f3":"3"}}`
-	tr, _, err := parseWith(context.Background(), strings.NewReader(in), setA, o, parseJSON, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	c := tr.top.first()
-	linkForeign(t, tr, c, setB, `{"m:c":{"l":[{"k":"live"}]}}`)
-	if c.kids.ht == nil || !c.kids.mixedContexts() {
-		t.Fatal("fixture: want a table level of two contexts")
-	}
-	if _, err := tr.ValidateModule(context.Background(), "m", ValidateOptions{NotFinal: true}); err != nil {
-		t.Fatal(err)
-	}
-	var names []string
-	for n := range c.Children() {
-		names = append(names, n.Name())
-	}
-	if !slices.Contains(names, "g") || slices.Index(names, "l") < 0 {
-		t.Fatalf("children after validation: %v", names)
+	// ordered: one dead instance; not: two consecutive dead instances in a retained RB tree,
+	// removed one after the other among the live neighbours (lyds_unlink, then lyd_unlink_hash)
+	for _, ordered := range []bool{true, false} {
+		setA, setB := reviewDiffSet(t, mod(`when "false()";`)), reviewDiffSet(t, mod(""))
+		o := parseOpts{ParseOptions: ParseOptions{Unknown: Opaque, ParseOnly: true, Ordered: ordered, WhenTrue: true}, ordered: ordered, whenTrue: true}
+		in := `{"m:c":{"g":"g","l":[{"k":"dead"}],"f1":"1","f2":"2","f3":"3"}}`
+		if !ordered {
+			in = `{"m:c":{"g":"g","l":[{"k":"dead0"},{"k":"dead1"}],"f1":"1","f2":"2","f3":"3"}}`
+		}
+		tr, _, err := parseWith(context.Background(), strings.NewReader(in), setA, o, parseJSON, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		c := tr.top.first()
+		linkForeign(t, tr, c, setB, `{"m:c":{"l":[{"k":"live"}]}}`)
+		if c.kids.ht == nil || !c.kids.mixedContexts() {
+			t.Fatal("fixture: want a table level of two contexts")
+		}
+		if _, err := tr.ValidateModule(context.Background(), "m", ValidateOptions{NotFinal: true}); err != nil {
+			t.Fatal(ordered, err)
+		}
+		var names []string
+		for n := range c.Children() {
+			names = append(names, n.Name())
+		}
+		if !slices.Contains(names, "g") || len(names) != 5 {
+			t.Fatalf("ordered %v: children after validation: %v", ordered, names)
+		}
+		opidxAssertTreeInvariant(t, tr)
 	}
 }
 

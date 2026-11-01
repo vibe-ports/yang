@@ -3292,18 +3292,12 @@ func (t *Tree) unlinkAllDefaults(ns, defaults []*Node) (result error) {
 		}
 		l := sets[sib]
 		prev, next := l.prev[n], l.next[n]
-		rbNext := next // an opaque successor ends the run: the single unlink passes none either
-		if n.schema != nil && next != nil && next.schema == nil {
-			rbNext = nil
-		}
-		if err := sib.removeRBNode(n, prev, rbNext, l.tail, func(c *Node) (*Node, *Node) {
-			after := l.next[c]
-			if after != nil && after.schema == nil {
-				after = nil // as the leader's storage neighbours in removalOrder
+		// a when pass's deletion did its index part at once (whenPass.del): only the storage
+		// and the links are left
+		if d := t.work.dead; d == nil || !d.indexed[n] {
+			if err := sib.unlinkIndex(n, prev, next, l.tail, func(c *Node) (*Node, *Node) { return l.prev[c], l.next[c] }); err != nil {
+				return err
 			}
-			return l.prev[c], after
-		}); err != nil {
-			return err
 		}
 		if err := freeLinks(n); err != nil {
 			t.work.hashErr = err
@@ -3312,19 +3306,6 @@ func (t *Tree) unlinkAllDefaults(ns, defaults []*Node) (result error) {
 		if t.work.hashErr != nil {
 			return t.work.hashErr
 		}
-		if n.schema != nil {
-			sib.leaderUnlinkBetween(n, prev, next, true)
-			sib.dropContext(n)
-			if sib.firstRun[n.schema] == n {
-				if next != nil && next.schema == n.schema {
-					sib.firstRun[n.schema] = next
-				} else {
-					delete(sib.firstRun, n.schema)
-				}
-			}
-		}
-		sib.hashForget(n)
-		sib.runGone(n)
 		if prev != nil {
 			l.next[prev] = next
 		}
@@ -3339,6 +3320,43 @@ func (t *Tree) unlinkAllDefaults(ns, defaults []*Node) (result error) {
 		gone[n] = true
 	}
 	return t.work.hashErr
+}
+
+// unlinkIndex is the index part of lyd_unlink for n among siblings whose document neighbours
+// are prev and next (tail: first->prev) and, for the other members of n's run, around: the RB
+// removal (lyds_unlink), then lyd_unlink_hash (the first-instance record passing to next,
+// the exact record) and the run bookkeeping, in libyang's order. The storage is left as is.
+func (s *siblings) unlinkIndex(n, prev, next, tail *Node, around func(*Node) (*Node, *Node)) error {
+	rbNext := next // an opaque successor ends the run: the single unlink passes none either
+	if n.schema != nil && next != nil && next.schema == nil {
+		rbNext = nil
+	}
+	if err := s.removeRBNode(n, prev, rbNext, tail, func(c *Node) (*Node, *Node) {
+		before, after := around(c)
+		if after != nil && after.schema == nil {
+			after = nil // as the leader's storage neighbours in removalOrder
+		}
+		return before, after
+	}); err != nil {
+		return err
+	}
+	if s.work != nil && s.work.hashErr != nil {
+		return s.work.hashErr
+	}
+	if n.schema != nil {
+		s.leaderUnlinkBetween(n, prev, next, true)
+		s.dropContext(n)
+		if s.firstRun[n.schema] == n {
+			if next != nil && next.schema == n.schema {
+				s.firstRun[n.schema] = next
+			} else {
+				delete(s.firstRun, n.schema)
+			}
+		}
+	}
+	s.hashForget(n)
+	s.runGone(n)
+	return nil
 }
 
 func (t *Tree) preflightUnlinkAll(ns []*Node) error {
