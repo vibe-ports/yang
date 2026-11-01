@@ -119,7 +119,7 @@ write takes the code path it took before (the counted-work and scaling tests are
 
 ## Evidence
 
-- Oracle fixtures `protocol-v2/ordered-*` (82; `ordered-split-list-merge-destruct` is unsupported,
+- Oracle fixtures `protocol-v2/ordered-*` (83; `when-dead-root-leafref-plain` besides; `ordered-split-list-merge-destruct` is unsupported,
 U-0113) cover:
   - parse order, JSON and XML;
   - the XML opaque anchor;
@@ -196,6 +196,15 @@ Read in document order (fixed):
   schema, holds only the target set's nodes, and the cost is O(depth) (`TestEquivalentInColdBudgetAndDepth`,
   `TestEquivalentInOutputAndScaling`, `TestEquivalentCacheKeepsNoContext`). `leaderFirstMixed`
   uses the same candidates.
+- round 32: the pass's end also ends the top-level XPath view that kept its deleted roots
+  (rebuilt from the tree by the next evaluation), so no cached view outlives the pass with a
+  deleted node in it (`ordered-when-dead-root-leafref`, `when-dead-root-leafref-plain`: the
+  plain-parse path too). A deletion finds the nested node_when entries (the cancellable part)
+  before it emits its diff, so a cancellation never returns a diff for a node that stays
+  (`TestWhenDeleteCancelDiffConsistent`: the returned diff applied to the original gives the
+  tree left). Opaque names are interned at creation (`opaque.nameID`): the
+  `lyd_find_sibling_opaq_next` walks compare each candidate in O(1) and pay the probe's name
+  once (`TestLongOpaqueNamesMerge`);
 - round 31: a when-pass deletion is complete at once, as `lyd_validate_autodel_node_del`:
   the diff's delete, the nested nodes leave node_when and node_types, the node is unlinked
   (the incremental single unlink, O(log n) per node) and its links freed. Storage therefore

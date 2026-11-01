@@ -345,13 +345,19 @@ func (p *whenPass) del(n *Node) error {
 	if err := n.touch(); err != nil {
 		return err
 	}
+	// the cancellable part first (finding the nested entries), then the deletion as one unit:
+	// a cancellation emits no diff for a node that stays
+	nested, err := p.nestedEntries(n)
+	if err != nil {
+		return err
+	}
 	if vc.diff != nil {
 		if err := vc.diff(n, diffDelete); err != nil {
 			return err
 		}
 	}
-	if err := p.dropNested(n); err != nil {
-		return err
+	for _, j := range nested {
+		p.drop(j)
 	}
 	if err := vc.dropTypes(n, false); err != nil {
 		return err
@@ -369,36 +375,37 @@ func (p *whenPass) del(n *Node) error {
 	return nil
 }
 
-// dropNested removes n's descendants from node_when (lyd_validate_autodel_node_del's
-// LYD_TREE_DFS over the deleted subtree), as tombstones.
-func (p *whenPass) dropNested(n *Node) error {
+// nestedEntries are the node_when entries of n's descendants, which leave the queue with n
+// (lyd_validate_autodel_node_del's LYD_TREE_DFS over the deleted subtree, as tombstones). It
+// only reads, polling: the caller drops them once the deletion cannot be cancelled.
+func (p *whenPass) nestedEntries(n *Node) ([]int, error) {
 	vc := p.vc
 	if p.live <= 1 || n.isTerm() {
-		return nil
+		return nil, nil
 	}
 	if p.pos == nil {
-		p.builds++
-		p.pos = make(map[*Node][]int, p.live)
+		pos := make(map[*Node][]int, p.live)
 		for j, q := range vc.nodeWhen.items {
 			if err := vc.checkContext(); err != nil {
-				return err
+				return nil, err
 			}
 			if q != nil {
-				p.pos[q] = append(p.pos[q], j)
+				pos[q] = append(pos[q], j)
 			}
 		}
+		p.builds++
+		p.pos = pos
 	}
+	var out []int
 	for d := range n.All() {
 		if err := vc.checkContext(); err != nil {
-			return err
+			return nil, err
 		}
 		if d != n {
-			for _, j := range slices.Clone(p.pos[d]) {
-				p.drop(j)
-			}
+			out = append(out, p.pos[d]...)
 		}
 	}
-	return nil
+	return out, nil
 }
 
 // unresWhen is lyd_validate_unres_when: one pass over node_when from the end. A resolved node
@@ -521,6 +528,11 @@ func (p *whenPass) endLevel(failed error) {
 // finish compacts node_when and ends the dead marks of the nodes the pass deleted (each is
 // unlinked already, del).
 func (p *whenPass) finish() error {
+	if len(p.dead) != 0 {
+		// the top-level view kept the deleted roots, read as dead; their marks end here, so
+		// the view does too (the next evaluation rebuilds it from the tree)
+		p.vc.top, p.vc.topGen = nil, 0
+	}
 	q := p.vc.nodeWhen
 	live := q.items[:0]
 	for _, n := range q.items {

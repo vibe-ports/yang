@@ -9,6 +9,7 @@ import (
 	"iter"
 	"sync"
 	"sync/atomic"
+	"unique"
 
 	"github.com/vibe-ports/yang/internal/opidx"
 	"github.com/vibe-ports/yang/internal/schema"
@@ -40,8 +41,9 @@ const (
 // lenient parsing. The parsers fill it (design 07 D4).
 type opaque struct {
 	Name     string
-	Prefix   string // as written in the input
-	ModuleNS string // XML namespace, JSON module name (lyd_node_opaq.name.module_ns/module_name)
+	nameID   unique.Handle[string] // Name interned (newOpaque): O(1) name comparisons
+	Prefix   string                // as written in the input
+	ModuleNS string                // XML namespace, JSON module name (lyd_node_opaq.name.module_ns/module_name)
 	Value    string
 	// Format is how ModuleNS and the value's prefixes are given: types.FormatXML or
 	// types.FormatJSON; Prefixes resolves the value's prefixes (val_prefix_data), Hints are the
@@ -219,7 +221,23 @@ func newInner(s *schema.Node, counters ...*workCounter) *Node {
 }
 
 // newOpaque returns an unlinked opaque node (lyd_create_opaq).
-func newOpaque(o opaque) *Node { return &Node{opaq: &o} }
+func newOpaque(o opaque) *Node {
+	o.nameID = unique.Make(o.Name)
+	o.Name = o.nameID.Value() // the interned copy only
+	return &Node{opaq: &o}
+}
+
+// nameID is n's interned LYD_NAME (its schema node's name, or its opaque name), compared in
+// O(1) by the opaque-name walks.
+func (n *Node) nameID() unique.Handle[string] {
+	if n.schema != nil {
+		return n.schema.ID().Name
+	}
+	if n.opaq.nameID != (unique.Handle[string]{}) {
+		return n.opaq.nameID
+	}
+	return unique.Make(n.opaq.Name)
+}
 
 // Parent returns the parent node, nil at the top level.
 func (n *Node) Parent() *Node {

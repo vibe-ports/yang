@@ -14,6 +14,7 @@ import (
 	"sync"
 	"testing"
 	"time"
+	"unique"
 	"weak"
 
 	"github.com/vibe-ports/yang"
@@ -1975,6 +1976,40 @@ func TestEquivalentInColdBudgetAndDepth(t *testing.T) {
 	}
 }
 
+// TestLongOpaqueNamesMerge: opaque names are interned at creation, so the merge's
+// lyd_find_sibling_opaq_next walk compares each candidate in O(1) whatever the names' length
+// (long, equal-length names sharing a prefix), and pays each probe's name bytes once.
+func TestLongOpaqueNamesMerge(t *testing.T) {
+	set := reviewDiffSet(t, `module m { yang-version 1.1; namespace "urn:m"; prefix m;
+	  container c { leaf a { type string; } } }`)
+	const n, l = 256, 16 << 10
+	var z strings.Builder
+	for i := range n {
+		fmt.Fprintf(&z, `"%s%04d":"v",`, strings.Repeat("x", l-4), i)
+	}
+	in := `{"m:c":{` + z.String() + `"a":"x"}}`
+	dst, err := parseOrdered(t, set, false, in, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for c := range dst.top.first().Children() {
+		if c.schema == nil && c.opaq.nameID == (unique.Handle[string]{}) {
+			t.Fatal("an opaque name not interned")
+		}
+	}
+	src, err := parseOrdered(t, set, false, in, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	used := dst.work.hashUsed
+	if err := dst.Merge(src); err != nil {
+		t.Fatal(err)
+	}
+	if paid := dst.work.hashUsed - used; paid < n*l {
+		t.Fatalf("the merge paid %d for %d probes of %d-byte names", paid, n, l)
+	}
+}
+
 // TestOpaqueMergeAfterSeparatorRemoved: a level interleaved once (an opaque child before a
 // schema one) and back in ordinary order after that child's unlink matches opaque children as a
 // freshly parsed level of the same children does (the opaque lookup reads the layout, not the
@@ -2823,6 +2858,45 @@ func TestPendingPlacementClearedOnRefusal(t *testing.T) {
 			t.Fatal("the refused operation kept its placement")
 		}
 	}
+}
+
+// TestWhenDeleteCancelDiffConsistent: a validation with a diff cancelled at every cancellation
+// check returns a diff that, applied to the original tree, gives the tree it left: a deletion's
+// diff is emitted only once nothing can cancel it (the nested entries are found first).
+func TestWhenDeleteCancelDiffConsistent(t *testing.T) {
+	set := reviewDiffSet(t, `module m { yang-version 1.1; namespace "urn:m"; prefix m;
+	  leaf guard { type string; when "true()"; }
+	  container gone { presence p; when "false()"; leaf x { type string; } } }`)
+	in := `{"m:guard":"g","m:gone":{"x":"x"}}`
+	dump := func(tr *Tree) string {
+		var b strings.Builder
+		if err := tr.PrintJSON(&b, PrintOptions{}); err != nil {
+			t.Fatal(err)
+		}
+		return b.String()
+	}
+	eachCancelPoint(t, func(ctx *cancelAtContext) {
+		tr, err := parseOrdered(t, set, false, in, func(lc *lydCtx) { lc.opts.whenTrue = true })
+		if err != nil {
+			t.Fatal(err)
+		}
+		orig, err := parseOrdered(t, set, false, in, func(lc *lydCtx) { lc.opts.whenTrue = true })
+		if err != nil {
+			t.Fatal(err)
+		}
+		diff, _, err := tr.ValidateModuleDiff(ctx, "m", ValidateOptions{NotFinal: true})
+		if err != nil && !errors.Is(err, context.Canceled) {
+			t.Fatalf("at %d: %v", ctx.at, err)
+		}
+		if diff != nil {
+			if err := orig.ApplyDiff(diff, ApplyDiffOptions{}); err != nil {
+				t.Fatalf("at %d: apply: %v", ctx.at, err)
+			}
+		}
+		if got, want := dump(orig), dump(tr); got != want {
+			t.Fatalf("at %d: the diff gives\n%s\nthe tree is\n%s", ctx.at, got, want)
+		}
+	})
 }
 
 // TestWhenDeadCancelSweep: the when pass of a mixed-context level with three consecutive dead

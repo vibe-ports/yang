@@ -374,7 +374,7 @@ func opaqFallback(sib *siblings, set *schema.Set, p *xprobe) ([]xpath.Node, bool
 			return nil, false, err
 		}
 		sib.visit()
-		if c.flags&flagDead == 0 && c.Name() == p.node.schema.Name {
+		if c.flags&flagDead == 0 && c.nameID() == p.node.schema.ID().Name { // interned: O(1)
 			return []xpath.Node{wrap(set, c)}, true, nil
 		}
 	}

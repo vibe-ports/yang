@@ -13,6 +13,7 @@ import (
 	"iter"
 	"slices"
 	"strings"
+	"unique"
 
 	"github.com/vibe-ports/yang"
 	"github.com/vibe-ports/yang/internal/ly"
@@ -2057,6 +2058,11 @@ func opaqNext(w *workCounter, s *siblings, name string) (*Node, error) {
 	}
 	// From an opaque first sibling the walk covers every sibling; from a schema one, the trailing
 	// opaque block (tree_data.c:3392-3412). It compares LYD_NAME, a schema node's name too.
+	// the name interned once (paid by its bytes), each candidate compared in O(1)
+	if err := w.chargeHash(uint64(len(name)) + 1); err != nil {
+		return nil, err
+	}
+	id := unique.Make(name)
 	for _, n := range s.opaqNextSpan().All() {
 		if err := w.chargeHash(1); err != nil {
 			return nil, err
@@ -2064,7 +2070,7 @@ func opaqNext(w *workCounter, s *siblings, name string) (*Node, error) {
 		if w.visits { // tests only
 			w.Add(1)
 		}
-		if n.Name() == name {
+		if n.nameID() == id {
 			return n, nil
 		}
 	}
