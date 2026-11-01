@@ -2530,6 +2530,124 @@ func TestMixedIdentityDiffManyStateLeafLists(t *testing.T) {
 // module order (z:x, then m's marker): each module-relative insertion resumes the anchor walk
 // where the previous one ended, so the work per default stays flat and a large module validates
 // under the default quota; every step is charged, so a small quota refuses.
+// TestLeafListDefaultsScaling: system-ordered leaf-lists with two defaults each, after an
+// instance run, in a top level out of schema order: each second default joins its leader's run
+// (lyds_insert), and the module walk is kept across it, so the work per default stays flat,
+// defaults ascending or descending.
+// TestWhenDeadLeaderMixedContexts: the when pass deletes A's first instance of l, whose record
+// libyang removes at once; in a children table of two contexts the next lookup of l finds B's
+// instance (FirstChild, the predicate's first-instance probe), so g's when holds and g stays.
+// TestDeadEndsAmortized: the live ends of a level whose first and last k schema children the
+// running when pass deleted are found through skip pointers: m reads walk the dead nodes once,
+// not once per read.
+func TestDeadEndsAmortized(t *testing.T) {
+	set := reviewDiffSet(t, `module m { yang-version 1.1; namespace "urn:m"; prefix m;
+	  container c { leaf-list a { type uint32; ordered-by user; } leaf b { type string; } leaf-list z { type uint32; ordered-by user; } } }`)
+	const k, m = 2000, 2000
+	vals := make([]string, k)
+	for i := range vals {
+		vals[i] = strconv.Itoa(i)
+	}
+	list := strings.Join(vals, ",")
+	tr, err := parseOrdered(t, set, false, `{"m:c":{"a":[`+list+`],"zz":"u","b":"x","z":[`+list+`]}}`, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	c := tr.top.first()
+	kids := slices.Collect(c.Children())
+	for _, n := range append(kids[:k:k], kids[len(kids)-k:]...) {
+		n.flags |= flagDead
+	}
+	tr.work.markDead()
+	defer func() { tr.work.dead = nil }()
+	for range m {
+		if f := c.kids.liveFirst(); f == nil || f.schema != nil {
+			t.Fatalf("live first: %v", f)
+		}
+		if l := c.kids.liveLastSchema(); l == nil || l.Name() != "b" {
+			t.Fatalf("live last schema: %v", l)
+		}
+	}
+	if steps := tr.work.dead.steps; steps > 2*k+2 {
+		t.Fatalf("%d reads past %d dead nodes at each end took %d steps", m, k, steps)
+	}
+}
+
+func TestWhenDeadLeaderMixedContexts(t *testing.T) {
+	mod := func(when string) string {
+		return `module m { yang-version 1.1; namespace "urn:m"; prefix m;
+		  container c { leaf g { when "../l[k='live' != 'zz']"; type string; }
+		  list l { key k; ` + when + ` leaf k { type string; } }
+		  leaf f1 { type string; } leaf f2 { type string; } leaf f3 { type string; } } }`
+	}
+	setA, setB := reviewDiffSet(t, mod(`when "false()";`)), reviewDiffSet(t, mod(""))
+	o := parseOpts{ParseOptions: ParseOptions{Unknown: Opaque, ParseOnly: true, Ordered: true, WhenTrue: true}, ordered: true, whenTrue: true}
+	in := `{"m:c":{"g":"g","l":[{"k":"dead"}],"f1":"1","f2":"2","f3":"3"}}`
+	tr, _, err := parseWith(context.Background(), strings.NewReader(in), setA, o, parseJSON, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	c := tr.top.first()
+	linkForeign(t, tr, c, setB, `{"m:c":{"l":[{"k":"live"}]}}`)
+	if c.kids.ht == nil || !c.kids.mixedContexts() {
+		t.Fatal("fixture: want a table level of two contexts")
+	}
+	if _, err := tr.ValidateModule(context.Background(), "m", ValidateOptions{NotFinal: true}); err != nil {
+		t.Fatal(err)
+	}
+	var names []string
+	for n := range c.Children() {
+		names = append(names, n.Name())
+	}
+	if !slices.Contains(names, "g") || slices.Index(names, "l") < 0 {
+		t.Fatalf("children after validation: %v", names)
+	}
+}
+
+func TestLeafListDefaultsScaling(t *testing.T) {
+	work := func(n int, desc bool) float64 {
+		var m strings.Builder
+		m.WriteString(`module m { yang-version 1.1; namespace "urn:m"; prefix m;
+		  leaf marker { type string; } leaf-list u { type uint32; ordered-by user; }`)
+		d1, d2 := "a", "b"
+		if desc {
+			d1, d2 = d2, d1
+		}
+		for i := range n {
+			fmt.Fprintf(&m, ` leaf-list d%d { type string; default %q; default %q; }`, i, d1, d2)
+		}
+		m.WriteString(" }")
+		vals := make([]string, n)
+		for i := range vals {
+			vals[i] = strconv.Itoa(i)
+		}
+		tr, err := parseOrdered(t, reviewDiffSet(t, m.String()), false, `{"m:u":[`+strings.Join(vals, ",")+`],"m:marker":"m"}`, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := tr.top.docLast().Unlink(); err != nil { // marker: the level stays out of order
+			t.Fatal(err)
+		}
+		load := tr.work.Load()
+		if _, err := tr.ValidateModule(context.Background(), "m", ValidateOptions{NotFinal: true}); err != nil {
+			t.Fatal(n, desc, err)
+		}
+		top := slices.Collect(tr.Top())
+		if len(top) != 3*n {
+			t.Fatalf("%d top-level nodes, want %d", len(top), 3*n)
+		}
+		if v := top[n+1].Value(); top[n].Name() != "d0" || top[n].Value() != "a" || v != "b" {
+			t.Fatalf("order: %s=%s %s", top[n].Name(), top[n].Value(), v)
+		}
+		return (float64(tr.work.Load()-load) + float64(tr.work.hashUsed)) / float64(n)
+	}
+	for _, desc := range []bool{false, true} {
+		if small, large := work(raceScale(1000, 4), desc), work(raceScale(4000, 4), desc); large > 1.5*small {
+			t.Fatalf("work per leaf-list (descending %v): %.1f, then %.1f at 4x", desc, small, large)
+		}
+	}
+}
+
 func TestModuleRelativeDefaultsScaling(t *testing.T) {
 	// before: an instance run (a leaf-list of n entries) precedes every default in schema and
 	// document order, so no walk finds an anchor (each default goes after first->prev); first:

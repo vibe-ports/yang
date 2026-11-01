@@ -1061,7 +1061,8 @@ func stepEdit(r Request, s *yang.Schema, st map[string]any, tree *data.Tree, det
 // leader of the previous inserted instance of a run (lyds_insert2's leader_p, tree_data.c:
 // 2721-2760), Merge looks it up again per instance. They differ only when a destination run is
 // split into pieces (by an opaque node or another schema node, design 15) and at least two
-// source instances of it are new (U-0113).
+// source instances of it are new (U-0113), and only for nodes lyds_insert2 pools
+// (lydsSupported): a user-ordered run takes the generic insertion either way.
 // schemaKey identifies a data node's schema by module and node name: an augmented node of
 // another module with the same local name is a different schema, and so ends a run.
 func schemaKey(n *data.Node) string { return n.Schema().Module().Name() + ":" + n.Name() }
@@ -1093,7 +1094,9 @@ func destructDiverges(dst, src *data.Tree) bool {
 				continue
 			}
 			if m, err := dst.Find(n.Path()); err != nil || m == nil {
-				fresh[set{parent, schemaKey(n)}]++ // copied whole: nothing below merges
+				if lydsSupported(n.Schema()) { // only lyds_insert2 pools: other nodes insert alike
+					fresh[set{parent, schemaKey(n)}]++ // copied whole: nothing below merges
+				}
 				continue
 			}
 			count(n.Path(), n.Children())
@@ -1103,6 +1106,20 @@ func destructDiverges(dst, src *data.Tree) bool {
 	for k, c := range fresh {
 		if c >= 2 && pieces[k] >= 2 {
 			return true
+		}
+	}
+	return false
+}
+
+// lydsSupported is lyds_is_supported: a leaf-list or a keyed list ordered by the system, the
+// nodes LYD_MERGE_DESTRUCT's lyds_insert2 pools.
+func lydsSupported(s *yang.SchemaNode) bool {
+	switch s.Kind() {
+	case yang.KindLeafList:
+		return !s.UserOrdered()
+	case yang.KindList:
+		for range s.Keys() {
+			return !s.UserOrdered()
 		}
 	}
 	return false

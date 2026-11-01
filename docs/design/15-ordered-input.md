@@ -119,7 +119,7 @@ write takes the code path it took before (the counted-work and scaling tests are
 
 ## Evidence
 
-- Oracle fixtures `protocol-v2/ordered-*` (73; `ordered-split-list-merge-destruct` is unsupported,
+- Oracle fixtures `protocol-v2/ordered-*` (75; `ordered-split-list-merge-destruct` is unsupported,
 U-0113) cover:
   - parse order, JSON and XML;
   - the XML opaque anchor;
@@ -196,6 +196,17 @@ Read in document order (fixed):
   schema, holds only the target set's nodes, and the cost is O(depth) (`TestEquivalentInColdBudgetAndDepth`,
   `TestEquivalentInOutputAndScaling`, `TestEquivalentCacheKeepsNoContext`). `leaderFirstMixed`
   uses the same candidates.
+- round 26: a when-pass deletion does libyang's `lyd_unlink_hash` at once, while its storage
+  still waits for the pass's end: the node leaves its parent's children table and a first
+  instance's record passes to its live successor, appended, so a mixed-context first-instance
+  lookup finds another context's instance (`TestWhenDeadLeaderMixedContexts`). The live ends and
+  neighbours come from skip pointers with path compression (`deadLinks`), amortized over the
+  pass (`TestDeadEndsAmortized`). Unlinking each deleted node at once was considered and not
+  taken: the batch unlink replays native order over one virtual link sequence per set, an
+  immediate unlink per node would rebuild the top-level XPath view and re-walk the set per
+  deletion. A sorted default joining its leader's run keeps the module walk
+  (`keepModWalk`; `TestLeafListDefaultsScaling`, `ordered-implicit-leaflist-defaults-run`).
+  U-0113 applies only to nodes `lyds_is_supported` accepts (`ordered-split-userord-merge-destruct`);
 - round 25: the opaque lookup's ends are the live ones: a node the running when pass deleted
   (flagDead, unlinked at its end) is gone for libyang, so `opaqTail`, `opaqNextSpan` and the
   schema-parent check skip it (`ordered-when-dead-tail`, `-first` and their `-table`

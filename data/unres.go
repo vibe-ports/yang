@@ -338,6 +338,16 @@ func (p *whenPass) del(n *Node) {
 	}
 	n.flags |= flagDead
 	p.dead = append(p.dead, n)
+	// lyd_unlink_hash at once (the storage waits for finish): n leaves its parent's children
+	// table, and a first instance's record passes to its live successor, appended, so lookups
+	// during the pass read the registrations libyang has (deadLinks for the live neighbours)
+	w := &p.vc.t.work
+	w.markDead()
+	if sib := n.siblingsOf(); sib != nil && n.schema != nil {
+		before, after := sib.docNeighbours(n)
+		sib.leaderUnlinkBetween(n, sib.liveBefore(before), sib.liveAfter(after), true)
+		sib.hashForget(n)
+	}
 }
 
 // unresWhen is lyd_validate_unres_when: one pass over node_when from the end. A resolved node
@@ -423,6 +433,7 @@ func (vc *valCtx) unresWhen() (rc error) {
 
 // finish compacts node_when and unlinks the nodes the pass deleted.
 func (p *whenPass) finish() error {
+	defer func() { p.vc.t.work.dead = nil }() // the pass's deletions are unlinked or restored
 	if err := p.vc.t.preflightUnlinkAll(p.dead); err != nil {
 		for n, flags := range p.initialFlags {
 			if err := n.touch(); err != nil {

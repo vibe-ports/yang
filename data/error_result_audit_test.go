@@ -104,11 +104,11 @@ var ignoredErrorAllowlist = map[string]string{
 	"siblings.go:2467:Fprintf":               "fmt writes to a strings.Builder, whose Write method cannot fail",
 	"unres.go:105:logErr":                    allowLoggedMarker,
 	"unres.go:187:item":                      allowLoggedMarker,
-	"unres.go:595:xpathErr":                  "validation commits each saved probe diagnostic before returning the final type diagnostic",
-	"unres.go:822:pathEvalChecked":           "legacy package tests exercise the node-only wrapper; production callers use pathEvalChecked and propagate its error",
-	"unres.go:923:xpathErr":                  "deref logs the evaluator error before returning the plugin-level error that names it",
-	"unres.go:976:logErr":                    allowLoggedMarker,
-	"unres.go:1046:logErr":                   allowLoggedMarker,
+	"unres.go:606:xpathErr":                  "validation commits each saved probe diagnostic before returning the final type diagnostic",
+	"unres.go:833:pathEvalChecked":           "legacy package tests exercise the node-only wrapper; production callers use pathEvalChecked and propagate its error",
+	"unres.go:934:xpathErr":                  "deref logs the evaluator error before returning the plugin-level error that names it",
+	"unres.go:987:logErr":                    allowLoggedMarker,
+	"unres.go:1057:logErr":                   allowLoggedMarker,
 	"validate.go:778:val":                    allowLoggedMarker,
 	"validate.go:804:WriteByte":              allowNoFailWriter,
 	"validate.go:806:WriteString":            allowNoFailWriter,
@@ -116,7 +116,7 @@ var ignoredErrorAllowlist = map[string]string{
 	"validate.go:866:WriteByte":              allowNoFailWriter,
 	"xpathnode.go:83:LookupPrepared":         "LookupChild prepares without a charge callback, so LookupPrepared cannot return a work error",
 	"xpathnode.go:88:LookupPrepared":         "the schema-only probe has no charge callback, so LookupPrepared cannot return a work error",
-	"xpathnode.go:557:StringWithBudget":      "String uses a background context and nil budget callbacks; serialization errors remain available through StringWithBudget",
+	"xpathnode.go:553:StringWithBudget":      "String uses a background context and nil budget callbacks; serialization errors remain available through StringWithBudget",
 }
 
 type auditImporter struct {

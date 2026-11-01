@@ -374,45 +374,32 @@ func (s *siblings) docNodes() []*Node          { return s.docSpan().Collect() }
 
 // opaqTail is the trailing opaque block in document order (where lyd_find_sibling_opaq_next
 // starts: the opaque nodes after the last schema node); the opaque nodes unless interleaved.
-// The last schema node is the last live one: a node the running when pass deleted (flagDead,
-// unlinked at its end) is gone for libyang already; skipped counts the dead nodes passed.
-func (s *siblings) opaqTail() (span siblingSpan, skipped int) {
+// The last schema node is the last live one: a node the running when pass deleted is gone for
+// libyang already (deadLinks).
+func (s *siblings) opaqTail() siblingSpan {
 	if s.st == nil || !s.st.interleaved() {
-		return s.opaqueSpan(), 0
+		return s.opaqueSpan()
 	}
 	lo := 0
-	h := s.st.seq.LastKind(true)
-	for ; h != nil && h.Value.flags&flagDead != 0; h = s.st.seq.PrevKind(h) {
-		skipped++
-	}
-	if h != nil {
-		at, _ := s.st.seq.Pos(h)
+	if last := s.liveLastSchema(); last != nil {
+		at, _ := s.st.seq.Pos(s.handle(last))
 		lo = at + 1
 	}
-	return s.docSpan().Slice(lo, s.Len()), skipped
+	return s.docSpan().Slice(lo, s.Len())
 }
 
 // opaqNextSpan is what lyd_find_sibling_opaq_next walks from the first sibling: every sibling
 // from it when that one is opaque, else the trailing opaque block (tree_data.c:3392-3412; it
-// compares LYD_NAME, so a schema node's name too). The first sibling is the first live one, as
-// opaqTail's last; skipped counts the dead nodes passed.
-// ponytail: dead nodes at either end are walked per call (only within a when pass, which
-// deletes them); a live-ends cache if many dead ends meet many lookups.
-func (s *siblings) opaqNextSpan() (siblingSpan, int) {
+// compares LYD_NAME, so a schema node's name too). The first sibling is the first live one.
+func (s *siblings) opaqNextSpan() siblingSpan {
 	if s.st == nil || !s.st.interleaved() {
 		return s.opaqTail()
 	}
-	skipped := 0
-	h := s.st.seq.First()
-	for ; h != nil && h.Value.flags&flagDead != 0; h = s.st.seq.Next(h) {
-		skipped++
+	if first := s.liveFirst(); first != nil && first.schema == nil {
+		at, _ := s.st.seq.Pos(s.handle(first))
+		return s.docSpan().Slice(at, s.Len())
 	}
-	if h != nil && h.Value.schema == nil {
-		at, _ := s.st.seq.Pos(h)
-		return s.docSpan().Slice(at, s.Len()), skipped
-	}
-	span, more := s.opaqTail()
-	return span, skipped + more
+	return s.opaqTail()
 }
 
 // orderedLayout reports whether s is physically in ordinary order now, every schema node before

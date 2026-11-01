@@ -374,6 +374,32 @@ type modWalk struct {
 	ok                        bool
 }
 
+// keepModWalk keeps the module walk across n, a sorted instance just inserted into the run of
+// the walk's last node (a leaf-list's next default): the run's nodes all match the iterator's
+// schema, so a fresh walk passes n with them and ends where the kept one continues. It stays
+// valid when first did not move and the walk's tail still precedes its continuation, or when n
+// went right after the tail and before the continuation (n is the new tail); else it is dropped.
+func (vc *valCtx) keepModWalk(n *Node) {
+	w, sib := vc.modWalk, &vc.t.top
+	first := vc.modFirst
+	if first == nil {
+		first = sib.docFirst()
+	}
+	if w == nil || w.last.schema != n.schema || w.first != first || w.tail.siblingsOf() != sib {
+		vc.dropModWalk()
+		return
+	}
+	switch prev, next := sib.docNeighbours(n); {
+	case sib.docNext(w.tail) == w.anchor:
+	case prev == w.tail && next == w.anchor:
+		w.tail = n
+	default:
+		vc.dropModWalk()
+		return
+	}
+	w.gen = sib.gen
+}
+
 func (vc *valCtx) dropModWalk() {
 	if w := vc.modWalk; w != nil {
 		w.stop()
@@ -414,15 +440,16 @@ func (vc *valCtx) modInsertInterleaved(n *Node) error {
 		return vc.checkContext()
 	}
 	if sortedSupported(n) && t.schemaLookup(sib, n.schema) != nil {
-		vc.dropModWalk()
 		// lyd_insert_node: a leader found by lyd_find_sibling_schema takes lyds_insert, the path
 		// an ordinary insertion takes; lyds_insert moves first when n lands right before it
 		if err := t.insert(nil, n, insertDefault); err != nil {
+			vc.dropModWalk()
 			return err
 		}
 		if vc.modFirst != nil && sib.docNext(n) == vc.modFirst {
 			vc.modFirst = n
 		}
+		vc.keepModWalk(n)
 		return nil
 	}
 	// first: the module's first node, or the tree's first when lyd_validate passes the tree

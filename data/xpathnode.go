@@ -363,11 +363,7 @@ func live(n *Node) *Node {
 
 // opaqFallback is lyd_find_sibling_opaq_next after a lookup miss, charged; a handled miss.
 func opaqFallback(sib *siblings, set *schema.Set, p *xprobe) ([]xpath.Node, bool, error) {
-	span, skipped := sib.opaqNextSpan()
-	if err := p.work(int64(skipped)); err != nil {
-		return nil, false, err
-	}
-	for _, c := range span.All() {
+	for _, c := range sib.opaqNextSpan().All() {
 		if err := p.work(1); err != nil {
 			return nil, false, err
 		}
@@ -845,10 +841,7 @@ func parentMismatch(sib *siblings, p *xprobe) bool {
 	if p.schemaOnly || p.node.schema == nil {
 		return false
 	}
-	f := sib.docFirst()
-	for f != nil && f.flags&flagDead != 0 { // deleted by the running when pass: gone for libyang
-		f = sib.docNext(f)
-	}
+	f := sib.liveFirst() // a node the running when pass deleted is gone for libyang (deadLinks)
 	return f != nil && f.schema != nil && !compareSchemaEqual(f.schema.DataParent(), p.node.schema.DataParent(), true)
 }
 
