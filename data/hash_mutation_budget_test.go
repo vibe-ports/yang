@@ -252,7 +252,12 @@ func checkFindAgainstLinear(t *testing.T, tr *Tree) {
 	duplicates := map[string]bool{}
 	for _, root := range tr.top.nodes() {
 		for n := range root.All() {
-			if n.schema == nil {
+			if n.schema == nil || hiddenFromLookup(n) {
+				continue
+			}
+			if sib := n.siblingsOf(); sib != nil && sib.mixedContexts() {
+				// equivalent nodes of two contexts print distinct paths, but a lookup of either
+				// returns the table's first registered one, as in libyang
 				continue
 			}
 			path := lydPath(tr.set, n, false)
@@ -271,6 +276,17 @@ func checkFindAgainstLinear(t *testing.T, tr *Tree) {
 			t.Fatalf("Find(%q) = %p, %v; linear scan found %p", path, got, err, want)
 		}
 	}
+}
+
+// hiddenFromLookup reports whether n or an ancestor lies past the first opaque sibling of a set
+// without a children table, where lyd_find_sibling_schema's walk stops (design 15).
+func hiddenFromLookup(n *Node) bool {
+	for ; n != nil; n = n.parent {
+		if sib := n.siblingsOf(); sib != nil && n.schema != nil && sib.Index(n) >= sib.linearBound() {
+			return true
+		}
+	}
+	return false
 }
 
 // Every successful charge and preflight threshold is retried one unit below
@@ -300,6 +316,7 @@ func checkEveryHashBudgetPoint(t *testing.T, build func() (*Tree, func() error))
 		before := snapshotHashBudgetTree(tr)
 		tr.work.hashLimit = limit
 		err := edit()
+		assertNoTransient(t, tr) // refused or not, no pending placement or dead view remains
 		if errors.Is(err, yang.ErrBudget) {
 			if after := snapshotHashBudgetTree(tr); !reflect.DeepEqual(after, before) {
 				t.Fatalf("limit %d used %d points %v: budget failure changed tree or registrations\nbefore=%v\nafter=%v\nindex before=%v\nindex after=%v\nsiblings before=%v\nsiblings after=%v", limit, tr.work.hashUsed, points, before.dump, after.dump, before.index, after.index, before.sibs, after.sibs)
@@ -348,6 +365,9 @@ func checkEveryHashBudgetPointPair(t *testing.T, build func() ([]*Tree, func() e
 			}
 			trial[tree].work.hashLimit = limit
 			err := edit()
+			for _, tr := range trial {
+				assertNoTransient(t, tr) // refused or not, no pending placement or dead view remains
+			}
 			switch {
 			case errors.Is(err, yang.ErrBudget):
 				for i, tr := range trial {

@@ -1,0 +1,22 @@
+# a level that had a children table (four children) and lost them all, duplicated recursively into another context, then an XPath miss under the copy: libyang returns an empty set
+fixtures:
+  - id: protocol-v2/ordered-empty-table-dup-xpath
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#6.4"]
+    areas: [xpath, operations]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      context_options: ["no_yanglibrary"]
+      modules: [{name: "pv2-ordered12"}]
+      steps:
+        - {do: parse, format: json, data_type: data, parse_only: true, parse_options: [ordered], data: '{"pv2-ordered12:c": {"f1": "1", "f2": "2", "f3": "3", "f4": "4"}}'}
+        - {do: edit, delete: /pv2-ordered12:c/f1}
+        - {do: edit, delete: /pv2-ordered12:c/f2}
+        - {do: edit, delete: /pv2-ordered12:c/f3}
+        - {do: edit, delete: /pv2-ordered12:c/f4}
+        - {do: dup, node: /pv2-ordered12:c, options: [recursive], target: {searchdirs: [schemas], modules: [{name: pv2-ordered12}], context_options: [no_yanglibrary]}}
+        - {do: xpath, xpath: "/pv2-ordered12:c/pv2-ordered12:f1"}
+        - {do: dump}
+    golden: golden/ordered-empty-table-dup-xpath.json

@@ -1,0 +1,17 @@
+# lyd_validate_module with an existing case (ordered input): lyd_new_implicit fills the case's nested default choice before the case's own default, then the default choice, then the earlier ordinary default, each out of schema order
+fixtures:
+  - id: protocol-v2/ordered-implicit-case-nested
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#7.9.3"]
+    areas: [validation]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      context_options: ["no_yanglibrary"]
+      modules: [{name: "pv2-ordered10"}, {name: "pv2-ordered11"}]
+      steps:
+        - {do: parse, format: json, data_type: data, parse_only: true, parse_options: [ordered], data: '{"pv2-ordered11:x": "x", "pv2-ordered10:p1": "p", "pv2-ordered10:marker": "m", "pv2-ordered11:y": "y"}'}
+        - {do: validate, module: pv2-ordered10, validate_options: [not_final]}
+        - {do: dump}
+    golden: golden/ordered-implicit-case-nested.json

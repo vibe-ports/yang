@@ -1,0 +1,17 @@
+# when-dead-tail with a children table
+fixtures:
+  - id: protocol-v2/ordered-when-dead-tail-table
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#7.21.5"]
+    areas: [validation]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      context_options: ["no_yanglibrary"]
+      modules: [{name: "pv2-ordered12"}]
+      steps:
+        - {do: parse, format: json, data_type: data, parse_only: true, unknown: opaque, parse_options: [ordered, when_true], data: '{"pv2-ordered12:c": {"f1": "1", "f2": "2", "f3": "3", "f4": "4", "guard": "g", "a": false, "x": "x"}}'}
+        - {do: validate, module: pv2-ordered12, validate_options: [not_final]}
+        - {do: dump}
+    golden: golden/ordered-when-dead-tail-table.json

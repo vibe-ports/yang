@@ -70,7 +70,10 @@ func compareSchemaEqual(a, b *schema.Node, cmpParents bool) bool {
 		return false
 	}
 	for {
-		if a.Kind != b.Kind || a.Name != b.Name || a.Module.Name != b.Module.Name {
+		if compareLevelHook != nil {
+			compareLevelHook()
+		}
+		if a.Kind != b.Kind || a.ID() != b.ID() { // interned identifiers: O(1) per level
 			return false
 		}
 		a, b = a.Parent, b.Parent
@@ -80,6 +83,10 @@ func compareSchemaEqual(a, b *schema.Node, cmpParents bool) bool {
 	}
 	return (a == nil) == (b == nil)
 }
+
+// compareLevelHook observes each schema level compareSchemaEqual compares (tests: the lookups'
+// comparisons are paid level by level, xprobe.lineage); nil otherwise.
+var compareLevelHook func()
 
 // compareSchemaParentsEqual is lyd_compare_schema_parents_equal: all the schema parents of a and
 // b (nodes of different contexts) equal one by one.
@@ -142,7 +149,7 @@ func findSchemaCtx(sn *schema.Node, trg *schema.Set, parent *Node) (*schema.Node
 		}
 		var tp *schema.Node
 		for c := range schema.GetNext(trgParent, top, 0) {
-			if c.Name == srcParent.Name && c.Module.Name == srcParent.Module.Name {
+			if c.ID() == srcParent.ID() {
 				tp = c
 				break
 			}
@@ -319,31 +326,14 @@ func (t *Tree) dupLink(f dupFrame) error {
 	}
 	var err error
 	if f.order == insertLast && d.schema != nil {
-		// lyd_dup_r uses LYD_INSERT_NODE_LAST for copied children, including
-		// across contexts whose key/schema order differs. Bypass insertPos's
-		// schema-order constraint (D-0058 applies to ordered parsing).
+		// lyd_dup_r uses LYD_INSERT_NODE_LAST for copied children, including across contexts
+		// whose key/schema order differs: appended after the last sibling (lastPos)
 		sib := t.childrenOf(f.parent)
-		// markUnsorted is visible: reserve the whole link before it.
-		amount, boundErr := t.linkBound(f.parent, sib, d, sib.SchemaLen())
-		if boundErr != nil {
-			return boundErr
+		var at int
+		if at, err = t.lastPos(f.parent, sib, d); err == nil {
+			err = t.link(f.parent, sib, d, at)
 		}
-		if err := t.reserveHash(amount); err != nil {
-			return err
-		}
-		if sortedSupported(d) && sib.SchemaLen() > 0 &&
-			sib.At(sib.SchemaLen()-1).schema == d.schema && sib.At(sib.SchemaLen()-1).inRB {
-			leader := sib.At(sib.SchemaLen() - 1)
-			for _, c := range sib.schemaSpan().Slice(0, sib.SchemaLen()-1).Reverse() {
-				if c.schema != d.schema {
-					break
-				}
-				t.work.Add(1)
-				leader = c
-			}
-			markUnsorted(sib, leader)
-		}
-		err = t.link(f.parent, sib, d, sib.SchemaLen())
+		sib.clearPlace()
 	} else {
 		err = t.insert(f.parent, d, f.order)
 	}
@@ -439,6 +429,7 @@ func (t *Tree) dupSingle(n, parent *Node, sourceSet, dest *schema.Set, opts dupO
 		d.value = n.value
 		if opts&dupRecursive != 0 && n.kids.ht != nil && !isAny(d.schema) {
 			d.kids.ht = map[idxKey]*recordChain{}
+			d.kids.store() // a set with a table has its storage, empty or not (its readers rely on it)
 		}
 	}
 	d.kids.work = kidsWork(d, &t.work) // copied children are linked with this same counter
@@ -610,13 +601,7 @@ func (t *Tree) dupNodes(n, parent *Node, opts dupOpts, siblings bool) (*Node, er
 // hasNext reports whether the linked node d has a next sibling (lyd_node.next).
 func hasNext(d *Node) bool {
 	sib := d.siblingsOf()
-	if sib == nil {
-		return false
-	}
-	if d.schema == nil {
-		return sib.opaqueAt(sib.OpaqueLen()-1) != d
-	}
-	return sib.At(sib.SchemaLen()-1) != d || sib.OpaqueLen() > 0
+	return sib != nil && sib.docNext(d) != nil
 }
 
 // dupTo is lyd_dup_single / lyd_dup_siblings (trg nil: the context of n) and their _to_ctx
@@ -821,7 +806,7 @@ func (t *Tree) preflightDupHash(n, parent *Node, o DupOptions, siblings bool) er
 		if child.schema != nil && child.schema.Kind == schema.List && !child.schema.Keyless() {
 			// lyd_dup_r hashes the completed list once more after copying its
 			// children, independently of each key-link hash event.
-			for _, key := range child.kids.SchemaAll() {
+			for _, key := range keyPrefix(child).All() {
 				if !key.isKey() {
 					break
 				}
@@ -848,7 +833,7 @@ func (t *Tree) preflightDupHash(n, parent *Node, o DupOptions, siblings bool) er
 			}
 			if root.schema != nil && root.schema.Kind == schema.List {
 				indexed := root.kids.ht != nil || len(root.schema.Keys) >= htMinItems
-				for _, child := range root.kids.SchemaAll() {
+				for _, child := range keyPrefix(root).All() {
 					if !child.isKey() {
 						break
 					}
@@ -868,7 +853,7 @@ func (t *Tree) preflightDupHash(n, parent *Node, o DupOptions, siblings bool) er
 				return err
 			}
 			if ancestor.schema != nil && ancestor.schema.Kind == schema.List {
-				for _, key := range ancestor.kids.SchemaAll() {
+				for _, key := range keyPrefix(ancestor).All() {
 					if !key.isKey() {
 						break
 					}
@@ -887,7 +872,7 @@ func (t *Tree) preflightDupHash(n, parent *Node, o DupOptions, siblings bool) er
 			}
 		}
 		if parent.schema != nil && parent.schema.Kind == schema.List {
-			if ps := parent.siblingsOf(); ps != nil && ps.ht != nil && parent.keyN < len(parent.schema.Keys) {
+			if ps := parent.siblingsOf(); ps != nil && ps.ht != nil && parent.keyRun() < len(parent.schema.Keys) {
 				amount = addHashBound(amount, indexBatchInsertedBound(parent, orig, &t.work))
 			}
 		}

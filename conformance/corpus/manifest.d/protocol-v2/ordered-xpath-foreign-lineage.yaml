@@ -1,0 +1,20 @@
+# an XPath key lookup in an ordered child level without a children table holding a list instance of another context whose l lies in a choice/case while the query's l is directly under c: lyd_find_sibling_first's lyd_compare_single compares the schemas with their parents, so the instance with the same key is not the match, and lyd_find_sibling_opaq_next finds no opaque l in the trailing block
+fixtures:
+  - id: protocol-v2/ordered-xpath-foreign-lineage
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: []   # libyang cross-context lookups: no RFC behaviour
+    areas: [xpath]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      context_options: ["no_yanglibrary"]
+      modules: [{name: "pv2-ordered9"}]
+      steps:
+        - {do: parse, format: json, data_type: get, data: '{"pv2-ordered9:c": {"l": [{"k": "1"}]}}'}
+        - {do: insert, format: json, data_type: get, data: '{"pv2-o9root:r": "r"}', target: {searchdirs: [schemas/ordered9-alt], modules: [{name: "pv2-o9root"}, {name: "pv2-ordered9"}], context_options: ["no_yanglibrary"]}}
+        - {do: edit, format: json, data_type: get, unknown: opaque, parse_options: [ordered], merge_into: '{"pv2-ordered9:c": {"a": "x", "zz": "u", "b": "y"}}'}
+        - {do: dump}
+        - {do: xpath, xpath: "/pv2-ordered9:c/l[k='1']"}
+        - {do: xpath, xpath: "/pv2-ordered9:c/a"}
+    golden: golden/ordered-xpath-foreign-lineage.json

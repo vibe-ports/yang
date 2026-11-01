@@ -1,0 +1,35 @@
+module pv2-ordered8 {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:pv2-ordered8";
+  prefix o8;
+
+  description
+    "Hand-written (this repo): a child level with a children table holding
+     nodes of two schema contexts, out of schema order (LYD_PARSE_ORDERED,
+     design 15).";
+
+  container c {
+    leaf p {
+      type string;
+    }
+    leaf a {
+      type string;
+    }
+    leaf x {
+      type string;
+    }
+    leaf-list ll {
+      type uint8;
+    }
+    leaf b {
+      type string;
+    }
+    leaf z {
+      type string;
+    }
+    leaf-list st {
+      config false;
+      type uint8;
+    }
+  }
+}

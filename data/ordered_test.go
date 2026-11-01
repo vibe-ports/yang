@@ -1,0 +1,3440 @@
+// SPDX-License-Identifier: BSD-3-Clause
+
+package data
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"os"
+	"runtime"
+	"slices"
+	"strconv"
+	"strings"
+	"sync"
+	"testing"
+	"time"
+	"unique"
+	"weak"
+
+	"github.com/vibe-ports/yang"
+	"github.com/vibe-ports/yang/internal/schema"
+	"github.com/vibe-ports/yang/internal/snap"
+	"github.com/vibe-ports/yang/internal/xpath"
+)
+
+// orderedSchema is conformance/corpus/protocol-v2/schemas/pv2-ordered2.yang's shape.
+const orderedSchema = `module m { yang-version 1.1; namespace "urn:m"; prefix m;
+  container c { leaf a { type string; } leaf b { type string; } leaf c { type string; }
+    leaf d { type string; default "dflt"; } leaf-list ll { type uint8; }
+    list l { key k; leaf k { type string; } leaf v { type string; } } } }`
+
+func parseOrdered(t testing.TB, set *schema.Set, xml bool, in string, setup func(*lydCtx)) (*Tree, error) {
+	t.Helper()
+	fp := parseJSON
+	if xml {
+		fp = parseXML
+	}
+	o := parseOpts{ParseOptions: ParseOptions{Unknown: Opaque, ParseOnly: true, Ordered: true}, ordered: true}
+	tr, _, err := parseWith(context.Background(), strings.NewReader(in), set, o, fp, setup)
+	return tr, err
+}
+
+// ordered2Set loads pv2-ordered2, then the other modules, into a context of its own (an owned
+// snapshot).
+func ordered2Set(t testing.TB, more ...string) *schema.Set {
+	t.Helper()
+	c, ds, err := yang.NewContext(yang.Options{NoYangLibrary: true}, os.DirFS("../conformance/corpus/protocol-v2/schemas"))
+	if err != nil {
+		t.Fatal(ds, err)
+	}
+	for _, m := range append([]string{"pv2-ordered2"}, more...) {
+		if ds, err := c.Load(m, "", nil); err != nil {
+			t.Fatal(ds, err)
+		}
+	}
+	return snap.Set(c.Schema())
+}
+
+func orderedChildren(t testing.TB, tr *Tree) []string {
+	t.Helper()
+	for c := range tr.Top() {
+		return names(c.Children())
+	}
+	return nil
+}
+
+// TestOrderedParseKeepsInputOrder: Ordered appends every parsed node after the last sibling
+// (LYD_INSERT_NODE_LAST, design 15): out of schema order, after an opaque sibling, an XML opaque
+// node right after its same-name anchor; the same input parsed without Ordered is placed by
+// schema. The storage stays consistent (interleaved where it must be).
+func TestOrderedParseKeepsInputOrder(t *testing.T) {
+	set := opIndexSet(t, orderedSchema)
+	const ns = `xmlns="urn:m"`
+	for _, tc := range []struct {
+		name      string
+		xml       bool
+		in        string
+		ordered   []string
+		unordered []string
+		mixed     bool
+	}{
+		{"schema-order", false, `{"m:c":{"b":"y","a":"x"}}`, []string{"b=y", "a=x"}, []string{"a=x", "b=y"}, false},
+		{"opaque-between", false, `{"m:c":{"a":"x","zz":"u","b":"y"}}`, []string{"a=x", "zz", "b=y"}, []string{"a=x", "b=y", "zz"}, true},
+		{"runs", false, `{"m:c":{"ll":[3,1],"zz":"u","a":"x","l":[{"k":"2"},{"k":"1"}]}}`,
+			[]string{"ll=3", "ll=1", "zz", "a=x", "l[2]", "l[1]"}, []string{"a=x", "ll=1", "ll=3", "l[1]", "l[2]", "zz"}, true},
+		{"xml-anchor", true, `<c ` + ns + `><zz>1</zz><a>x</a><zz>2</zz><b>y</b></c>`,
+			[]string{"zz", "zz", "a=x", "b=y"}, []string{"a=x", "b=y", "zz", "zz"}, true},
+		{"xml-split-run", true, `<c ` + ns + `><ll>1</ll><zz>u</zz><ll>2</ll></c>`,
+			[]string{"ll=1", "zz", "ll=2"}, []string{"ll=1", "ll=2", "zz"}, true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			tr, err := parseOrdered(t, set, tc.xml, tc.in, nil)
+			if err != nil {
+				t.Fatal(err)
+			}
+			opidxAssertTreeInvariant(t, tr)
+			if got := orderedChildren(t, tr); !slices.Equal(got, tc.ordered) {
+				t.Fatalf("ordered: %v, want %v", got, tc.ordered)
+			}
+			for c := range tr.Top() {
+				if c.kids.st.interleaved() != tc.mixed {
+					t.Fatalf("interleaved %v, want %v", c.kids.st.interleaved(), tc.mixed)
+				}
+			}
+			o := parseOpts{ParseOptions: ParseOptions{Unknown: Opaque, ParseOnly: true}}
+			fp := parseJSON
+			if tc.xml {
+				fp = parseXML
+			}
+			plain, _, err := parseWith(context.Background(), strings.NewReader(tc.in), set, o, fp, nil)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got := orderedChildren(t, plain); !slices.Equal(got, tc.unordered) {
+				t.Fatalf("without Ordered: %v, want %v", got, tc.unordered)
+			}
+		})
+	}
+}
+
+// TestOrderedParseFunded sweeps every budget limit and every cancellation point of ordered
+// parses that interleave and leave sorted runs out of value order: each attempt either succeeds
+// or refuses, and the tree it leaves is consistent.
+func TestOrderedParseFunded(t *testing.T) {
+	set := opIndexSet(t, orderedSchema)
+	for _, tc := range []struct {
+		name string
+		xml  bool
+		in   string
+	}{
+		{"json", false, `{"m:c":{"ll":[9,3,5],"zz":"u","b":"y","yy":"t","a":"x","l":[{"k":"2","v":"w"},{"k":"1"}],"c":"z"}}`},
+		{"xml", true, `<c xmlns="urn:m"><zz>1</zz><ll>4</ll><a>x</a><zz>2</zz><ll>2</ll><yy/><b>y</b></c>`},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			parse := func(ctx context.Context, limit uint64) (*Tree, error) {
+				var tr *Tree
+				fp := parseJSON
+				if tc.xml {
+					fp = parseXML
+				}
+				o := parseOpts{ParseOptions: ParseOptions{Unknown: Opaque, ParseOnly: true, Ordered: true}, ordered: true}
+				_, _, err := parseWith(ctx, strings.NewReader(tc.in), set, o, fp, func(lc *lydCtx) {
+					lc.tree.work.hashLimit = limit
+					tr = lc.tree
+				})
+				return tr, err
+			}
+			benign := &cancelAt{Context: context.Background()}
+			tr, err := parse(benign, 0)
+			if err != nil {
+				t.Fatal(err)
+			}
+			opidxAssertTreeInvariant(t, tr)
+			for limit := uint64(1); limit <= tr.work.hashUsed; limit++ {
+				tr, err := parse(context.Background(), limit)
+				if err != nil && !errors.Is(err, yang.ErrBudget) {
+					t.Fatalf("limit %d: %v", limit, err)
+				}
+				opidxAssertTreeInvariant(t, tr)
+			}
+			for k := 1; k <= benign.polls; k++ {
+				tr, err := parse(&cancelAt{Context: context.Background(), k: k}, 0)
+				if err != nil && !errors.Is(err, context.Canceled) {
+					t.Fatalf("cancel at %d: %v", k, err)
+				}
+				opidxAssertTreeInvariant(t, tr)
+			}
+		})
+	}
+}
+
+// TestInterleavedEditBudgetPoints: edits of an ordered tree whose opaque nodes lie between
+// schema nodes, refused at every charge boundary, leave the tree and its registrations as they
+// were, and succeed as the unbounded edit does. Where they place their nodes is the oracle's
+// (protocol-v2/ordered-insert-*, -unlink-between, -merge-into-interleaved, -dup-interleaved).
+func TestInterleavedEditBudgetPoints(t *testing.T) {
+	set := opIndexSet(t, orderedSchema)
+	for _, in := range []string{
+		`{"m:c":{"a":"x","zz":"u","c":"z","ll":[3],"yy":"t"}}`,                          // no children table
+		`{"m:c":{"ll":[3],"a":"x","zz":"u","c":"z","yy":"t","l":[{"k":"k2"}]}}`,         // with one
+		`<c xmlns="urn:m"><ll>3</ll><zz>u</zz><ll>1</ll><ll>2</ll><a>x</a><c>z</c></c>`, // a split run
+	} {
+		tree := func() (*Tree, *Node) {
+			tr, err := parseOrdered(t, set, strings.HasPrefix(in, "<"), in, nil)
+			if err != nil {
+				t.Fatal(err)
+			}
+			for c := range tr.Top() {
+				return tr, c
+			}
+			return nil, nil
+		}
+		// prep runs before the edit: unlink the opaque nodes, or every non-key child, of the
+		// interleaved set (it stays interleaved)
+		prep := map[string]func(n *Node) bool{
+			"opaque-gone": func(n *Node) bool { return n.schema == nil },
+			"emptied":     func(n *Node) bool { return !n.isKey() },
+		}
+		for _, tc := range []struct {
+			name string
+			edit func(tr *Tree, c *Node) error
+		}{
+			{"new-path", func(tr *Tree, _ *Node) error { _, err := tr.NewPath("/m:c/b", "y", NewPathOptions{}); return err }},
+			{"sorted", func(tr *Tree, c *Node) error { _, err := tr.NewTerm(c, "ll", "5", NewOptions{}); return err }},
+			{"merge", func(tr *Tree, _ *Node) error {
+				src, err := parseOrdered(t, set, false, `{"m:c":{"b":"y","ll":[1],"l":[{"k":"k1"}]}}`, nil)
+				if err != nil {
+					return err
+				}
+				return tr.Merge(src)
+			}},
+			{"unlink", func(_ *Tree, c *Node) error {
+				for n := range c.Children() {
+					if n.Name() == "c" {
+						return n.Unlink()
+					}
+				}
+				return fmt.Errorf("no c")
+			}},
+			{"dup", func(tr *Tree, c *Node) error { _, _, err := tr.Dup(c, nil, DupOptions{Recursive: true}); return err }},
+			{"opaque-gone", func(tr *Tree, _ *Node) error { _, err := tr.NewPath("/m:c/b", "y", NewPathOptions{}); return err }},
+			{"emptied", func(tr *Tree, c *Node) error { _, err := tr.NewTerm(c, "ll", "4", NewOptions{}); return err }},
+		} {
+			build := func() (*Tree, *Node) {
+				tr, c := tree()
+				if gone := prep[tc.name]; gone != nil {
+					for _, n := range slices.Collect(c.Children()) {
+						if gone(n) {
+							if err := n.Unlink(); err != nil {
+								t.Fatal(err)
+							}
+						}
+					}
+				}
+				return tr, c
+			}
+			t.Run(tc.name, func(t *testing.T) {
+				tr, c := build()
+				if err := tc.edit(tr, c); err != nil {
+					t.Fatal(err)
+				}
+				opidxAssertTreeInvariant(t, tr)
+				checkEveryHashBudgetPoint(t, func() (*Tree, func() error) {
+					tr, c := build()
+					return tr, func() error { return tc.edit(tr, c) }
+				})
+			})
+		}
+	}
+}
+
+// TestSplitRunInsertScaling: sorted insertions into the first piece of a run that an opaque node
+// splits work on that piece only (runPiece cuts the scans first), however long the other piece.
+func TestSplitRunInsertScaling(t *testing.T) {
+	set := opIndexSet(t, orderedSchema)
+	measure := func(n int) int64 {
+		var b strings.Builder
+		b.WriteString(`<c xmlns="urn:m"><ll>1</ll><zz>u</zz>`)
+		for i := range n {
+			fmt.Fprintf(&b, "<ll>%d</ll>", 100+i%150)
+		}
+		b.WriteString(`</c>`)
+		tr, err := parseOrdered(t, set, true, b.String(), nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var c *Node
+		for c = range tr.Top() {
+			break
+		}
+		// the first insertion builds the set's ordered index, once, over all of it
+		if _, err := tr.NewTerm(c, "ll", "60", NewOptions{}); err != nil {
+			t.Fatal(err)
+		}
+		tr.work.Store(0)
+		tr.work.visits = true
+		for v := range 8 {
+			if _, err := tr.NewTerm(c, "ll", fmt.Sprint(2+v), NewOptions{}); err != nil {
+				t.Fatal(err)
+			}
+		}
+		tr.work.visits = false
+		opidxAssertTreeInvariant(t, tr)
+		return tr.work.Load()
+	}
+	small, large := measure(64), measure(4096)
+	if large > 2*small+64 {
+		t.Fatalf("work %d for a 4096-member second piece, %d for 64: the scans cross the opaque node", large, small)
+	}
+}
+
+// TestSplitRunBulkUnlink: a batch removal (TrimXPath's unlinkAll) of a split run's second-piece
+// leader sees libyang's prev, the opaque node, as a single unlink does: it leads its own piece
+// (oracle: protocol-v2/ordered-delete-split-leader for the single unlink).
+func TestSplitRunBulkUnlink(t *testing.T) {
+	set := opIndexSet(t, orderedSchema)
+	build := func() (*Tree, *Node) {
+		tr, err := parseOrdered(t, set, true, `<c xmlns="urn:m"><a>x</a><b>y</b><ll>4</ll><ll>2</ll><zz>u</zz><ll>3</ll><c>z</c></c>`, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var c *Node
+		for c = range tr.Top() {
+			break
+		}
+		var zero *Node
+		for _, v := range []string{"1", "0"} {
+			n, err := tr.NewTerm(c, "ll", v, NewOptions{})
+			if err != nil {
+				t.Fatal(err)
+			}
+			zero = n
+		}
+		return tr, zero
+	}
+	single, n := build()
+	if err := n.Unlink(); err != nil {
+		t.Fatal(err)
+	}
+	batch, m := build()
+	if err := batch.unlinkAll([]*Node{m}); err != nil {
+		t.Fatal(err)
+	}
+	opidxAssertTreeInvariant(t, batch)
+	if got, want := typedDump(batch), typedDump(single); !slices.Equal(got, want) {
+		t.Fatalf("batch %v, single %v", got, want)
+	}
+	for _, tr := range []*Tree{single, batch} {
+		var c *Node
+		for c = range tr.Top() {
+			break
+		}
+		if _, err := tr.NewTerm(c, "ll", "5", NewOptions{}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if got, want := typedDump(batch), typedDump(single); !slices.Equal(got, want) {
+		t.Fatalf("after an insertion: batch %v, single %v", got, want)
+	}
+}
+
+// TestValidateOpRestoresDocumentOrder: lyd_validate_op moves the operation's top node into the
+// dependency for the validation and back; in an interleaved top level it returns between its
+// document neighbours, not by its logical position (originPlace).
+func TestValidateOpRestoresDocumentOrder(t *testing.T) {
+	set := opIndexSet(t, `module m { yang-version 1.1; namespace "urn:m"; prefix m;
+	  container c { action act { input { leaf i { type string; } } } } container d { leaf x { type string; } } }`)
+	ctx := context.Background()
+	tr, err := parseOrdered(t, set, false, `{"m:c":{},"m:zz":"u","m:d":{"x":"y"}}`, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !tr.top.st.interleaved() {
+		t.Fatal("the top level is not interleaved")
+	}
+	var c *Node
+	for c = range tr.Top() {
+		break
+	}
+	act, err := tr.NewInner(c, "act", NewOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	dep, err := parseOrdered(t, set, false, `{"m:d":{"x":"z"}}`, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := validateOp(ctx, set, act, dep, opRPC, Budget{}); err != nil {
+		t.Fatal(err)
+	}
+	opidxAssertTreeInvariant(t, tr)
+	if got := names(tr.Top()); !slices.Equal(got, []string{"c", "zz", "d"}) {
+		t.Fatalf("top level after ValidateOp: %v", got)
+	}
+}
+
+// TestSeparatorUnlinkThenMerge: unlinking the opaque node that splits a run joins two pieces
+// whose RB trees stay apart; the left one is marked unsorted, so a later Merge inserts its
+// instances one by one (oracle, through a trim: protocol-v2/ordered-separator-gone-merge), at
+// every charge boundary.
+func TestSeparatorUnlinkThenMerge(t *testing.T) {
+	set := opIndexSet(t, orderedSchema)
+	build := func() (*Tree, func() error) {
+		tr, err := parseOrdered(t, set, true, `<c xmlns="urn:m"><ll>3</ll><zz>u</zz><ll>1</ll></c>`, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var c *Node
+		for c = range tr.Top() {
+			break
+		}
+		if _, err := tr.NewTerm(c, "ll", "4", NewOptions{}); err != nil {
+			t.Fatal(err)
+		}
+		for n := range c.Children() {
+			if n.schema == nil {
+				if err := n.Unlink(); err != nil {
+					t.Fatal(err)
+				}
+				break
+			}
+		}
+		src, _, err := parseJSONString(set, `{"m:c":{"ll":[5,6]}}`, Reject, false)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return tr, func() error { return tr.Merge(src) }
+	}
+	tr, merge := build()
+	if err := merge(); err != nil {
+		t.Fatal(err)
+	}
+	opidxAssertTreeInvariant(t, tr)
+	for c := range tr.Top() {
+		if got := names(c.Children()); !slices.Equal(got, []string{"ll=3", "ll=4", "ll=5", "ll=6", "ll=1"}) {
+			t.Fatalf("%v", got)
+		}
+	}
+	checkEveryHashBudgetPoint(t, build)
+}
+
+// TestMergeOpaqueIntoDataNodeRefused: from an opaque first sibling lyd_find_sibling_opaq_next
+// compares LYD_NAME, so an opaque source finds the data node of its name; merging one into the
+// other is undefined natively, and Merge refuses it before any change (design 15). The tree
+// still prints.
+func TestMergeOpaqueIntoDataNodeRefused(t *testing.T) {
+	set := opIndexSet(t, orderedSchema)
+	tr, err := parseOrdered(t, set, false, `{"m:c":{"zz":"u","b":"y"}}`, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	src, err := parseOrdered(t, set, false, `{"m:c":{"b":false}}`, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	before := typedDump(tr)
+	err = tr.Merge(src)
+	if err == nil || !strings.Contains(err.Error(), `Cannot merge opaque node "b" into data node "b".`) {
+		t.Fatalf("Merge = %v", err)
+	}
+	if !slices.Equal(typedDump(tr), before) {
+		t.Fatal("the refused merge changed the tree")
+	}
+	var b strings.Builder
+	if err := tr.PrintJSON(&b, PrintOptions{}); err != nil || !strings.Contains(b.String(), `"b": "y"`) {
+		t.Fatalf("print after the refusal: %v %q", err, b.String())
+	}
+}
+
+// TestOpaqNextSharedSourceRace: lyd_find_sibling_opaq_next over a source that diffMergeDelete
+// and findMatch only read (MergeDiff's src, Diff's trees) charges the calling operation's counter;
+// concurrent callers over one shared interleaved set leave its tree's counter alone (run under
+// -race).
+func TestOpaqNextSharedSourceRace(t *testing.T) {
+	set := opIndexSet(t, orderedSchema)
+	src, err := parseOrdered(t, set, false, `{"m:c":{"zz":"u","a":"x","yy":"t"}}`, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var c *Node
+	for c = range src.Top() {
+		break
+	}
+	src.work.hashUsed = 0
+	var wg sync.WaitGroup
+	for range 8 {
+		wg.Go(func() {
+			callers := newTree(set) // each operation's own counter
+			defer callers.work.beginHashWork()()
+			for range 50 {
+				n, err := opaqNext(&callers.work, &c.kids, "yy")
+				if err != nil || n == nil || n.Name() != "yy" {
+					t.Errorf("opaqNext = %v, %v", n, err)
+					return
+				}
+			}
+			if callers.work.hashUsed == 0 {
+				t.Error("the walk was not charged to its caller")
+			}
+		})
+	}
+	wg.Wait()
+	if src.work.hashUsed != 0 || src.work.hashErr != nil {
+		t.Fatalf("the shared source was charged: used %d, err %v", src.work.hashUsed, src.work.hashErr)
+	}
+}
+
+// TestRootLookupMixedContexts: the root lookup of an interleaved top level whose roots come from
+// two contexts follows the linear lyd_find_sibling_schema across contexts (module and node names)
+// and stops at the first opaque root.
+func TestRootLookupMixedContexts(t *testing.T) {
+	owned := func() *schema.Set { // a context of its own (distinct Module.Owner)
+		c, ds, err := yang.NewContext(yang.Options{NoYangLibrary: true}, os.DirFS("../conformance/corpus/protocol-v2/schemas"))
+		if err != nil {
+			t.Fatal(ds, err)
+		}
+		if ds, err := c.Load("pv2-ordered3", "", nil); err != nil {
+			t.Fatal(ds, err)
+		}
+		return snap.Set(c.Schema())
+	}
+	setA, setB := owned(), owned()
+	trA, err := parseOrdered(t, setA, false, `{"pv2-ordered3:a":"x","pv2-ordered3:zz":"u"}`, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	trB, err := parseOrdered(t, setB, false, `{"pv2-ordered3:b":"y"}`, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	a, zz := trA.top.At(0), trA.top.opaqueAt(0)
+	b := trB.top.At(0)
+	probe := func(name string) xpath.InstanceProbe {
+		var sn *schema.Node
+		for _, c := range setA.Implemented("pv2-ordered3").Top {
+			if c.Name == name {
+				sn = c
+			}
+		}
+		p, err := xs{s: sn, set: setA}.PrepareInstance(nil, func(int64) error { return nil })
+		if err != nil {
+			t.Fatal(err)
+		}
+		return p
+	}
+	for _, tc := range []struct {
+		order []*Node
+		found bool
+	}{
+		{[]*Node{a, zz, b}, false}, // past the opaque root: the walk stopped there
+		{[]*Node{b, zz, a}, true},  // before it, matched by module and name across contexts
+	} {
+		var sib siblings
+		sib.view(tc.order...)
+		sib.addContext(a)
+		sib.addContext(b)
+		got, handled, err := xroot{sib: &sib, set: setA}.LookupPrepared(probe("b"))
+		if err != nil || !handled || (len(got) == 1) != tc.found {
+			t.Fatalf("order %v: %v %v %v", names(slices.Values(tc.order)), got, handled, err)
+		}
+	}
+}
+
+// TestInterleavedLookupForeignInstance: a keyed probe of one context against an interleaved set
+// whose schema nodes all come from another (a homogeneous foreign set): the no-table
+// lyd_find_sibling_first compares equivalent schemas across contexts, so the probe is
+// translated into the siblings' context before it matches.
+func TestInterleavedLookupForeignInstance(t *testing.T) {
+	setA, setB := ordered2Set(t), ordered2Set(t)
+	trB, err := parseOrdered(t, setB, false, `{"pv2-ordered2:c":{"l":[{"k":"w"}],"zz":"u","l":[{"k":"x"}]}}`, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var c *Node
+	for c = range trB.Top() {
+		break
+	}
+	if !c.kids.st.interleaved() || c.kids.ht != nil {
+		t.Fatal("want an interleaved set without a children table")
+	}
+	var l *schema.Node
+	for _, n := range setA.Implemented("pv2-ordered2").Top[0].Children {
+		if n.Name == "l" {
+			l = n
+		}
+	}
+	for _, key := range []string{"w", "x"} {
+		p, err := xs{s: l, set: setA}.PrepareInstance([]string{key}, func(int64) error { return nil })
+		if err != nil {
+			t.Fatal(err)
+		}
+		got, handled, err := interleavedLookup(&c.kids, setB, p.(*xprobe))
+		if err != nil || !handled || len(got) != 1 || got[0].(xn).n.Path() != "/pv2-ordered2:c/l[k='"+key+"']" {
+			t.Fatalf("key %s: %v %v %v", key, got, handled, err)
+		}
+	}
+}
+
+// TestForestIntoSplitRunRecord: a sorted forest moved into the second piece of a split run
+// (lyd_move_nodes_by_schema, rbPublish) replaces that piece's first-instance record: the replay
+// reads lyd_insert_hash_add's node->prev in document order, which is the opaque separator, not the
+// first piece's last instance (visibleNeighbours, design 15).
+func TestForestIntoSplitRunRecord(t *testing.T) {
+	set := opIndexSet(t, orderedSchema)
+	tr, err := parseOrdered(t, set, true, `<c xmlns="urn:m"><a>x</a><b>y</b><ll>3</ll><ll>4</ll><ll>6</ll><zz>u</zz><ll>2</ll><ll>5</ll></c>`, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var c *Node
+	for c = range tr.Top() {
+		break
+	}
+	if _, err := tr.NewTerm(c, "ll", "1", NewOptions{}); err != nil { // the first piece's record moves to 1
+		t.Fatal(err)
+	}
+	srcTree, err := parseOrdered(t, set, false, `{"m:c":{"ll":[0,7]}}`, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var src *Node
+	for src = range srcTree.Top() {
+		break
+	}
+	var first *Node
+	for first = range src.Children() {
+		break
+	}
+	forest, _, err := srcTree.DupSiblings(first, nil, DupOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for n := range forest.tree.Top() { // the copies' tree also holds an empty c: the forest is ll 0, 7
+		if n.Name() == "c" {
+			if err := n.Unlink(); err != nil {
+				t.Fatal(err)
+			}
+			break
+		}
+	}
+	ll := c.kids.At(2).schema
+	if err := tr.Insert(c, forest); err != nil {
+		t.Fatal(err)
+	}
+	opidxAssertTreeInvariant(t, tr)
+	for _, r := range c.kids.records(ll) {
+		if p, _ := c.kids.docNeighbours(r); p != nil && p.schema == ll {
+			t.Fatalf("record %s does not start a run: %v", r.Value(), names(c.Children()))
+		}
+	}
+	if _, err := tr.NewTerm(c, "ll", "9", NewOptions{}); err != nil {
+		t.Fatal(err)
+	}
+	opidxAssertTreeInvariant(t, tr)
+}
+
+// TestForeignPositionPastOpaque: a positional lookup in a top level that holds a root of
+// another context walks LYD_LIST_FOR_INST's next pointers from the first instance, which the
+// opaque root ends: the second state leaf-list instance, past it, is not found (instanceRun,
+// design 15; oracle: protocol-v2/ordered-foreign-position-past-opaque).
+func TestForeignPositionPastOpaque(t *testing.T) {
+	owned := func() *schema.Set {
+		c, ds, err := yang.NewContext(yang.Options{NoYangLibrary: true}, os.DirFS("../conformance/corpus/protocol-v2/schemas"))
+		if err != nil {
+			t.Fatal(ds, err)
+		}
+		if ds, err := c.Load("pv2-ordered3", "", nil); err != nil {
+			t.Fatal(ds, err)
+		}
+		return snap.Set(c.Schema())
+	}
+	setA, setB := owned(), owned()
+	const ns = `xmlns="urn:vibe-ports:yang:conformance:pv2-ordered3"`
+	tr, err := parseOrdered(t, setA, true, `<a `+ns+`>x</a><st `+ns+`>1</st><zz `+ns+`>u</zz><st `+ns+`>2</st>`, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	trB, err := parseOrdered(t, setB, false, `{"pv2-ordered3:b":"y"}`, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var b *Node
+	for b = range trB.Top() {
+		break
+	}
+	if err := tr.Insert(nil, b); err != nil {
+		t.Fatal(err)
+	}
+	if n, _ := tr.Find("/pv2-ordered3:st[2]"); n != nil {
+		t.Fatalf("st[2] found past the opaque root: %v (%v)", n.Value(), names(tr.Top()))
+	}
+	// the walk behind positional predicates and lys_getnext_data, through the mixed-context branch
+	st := tr.top.At(2).schema
+	if !tr.top.foreignFor(st) {
+		t.Fatal("the top level does not take the mixed-context branch")
+	}
+	var got []string
+	for n := range tr.instances(&tr.top, st) {
+		got = append(got, n.Value())
+	}
+	if !slices.Equal(got, []string{"1"}) {
+		t.Fatalf("LYD_LIST_FOR_INST from the first instance = %v, want [1] (%v)", got, names(tr.Top()))
+	}
+}
+
+// TestAloneLeaderUnlink: a single unlink reads node->prev and node->next in document order,
+// whatever their kind, as LYD_NODE_IS_ALONE does: ll 1 sits between two opaque nodes, so its
+// RB leader is alone although a later piece of ll holds the last sibling. Single and batch
+// unlink agree, and so does reinserting the node (oracle: protocol-v2/ordered-unlink-alone-leader).
+func TestAloneLeaderUnlink(t *testing.T) {
+	set := ordered2Set(t) // an owned snapshot: the detached node can be inserted again
+	build := func() (*Tree, *Node, *Node) {
+		tr, err := parseOrdered(t, set, false, `{"pv2-ordered2:c":{"zz":"u","ll":[1],"yy":"v","ll":[9,10,11]}}`, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var c *Node
+		for c = range tr.Top() {
+			break
+		}
+		two, err := tr.NewTerm(c, "ll", "2", NewOptions{})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := two.Unlink(); err != nil {
+			t.Fatal(err)
+		}
+		for n := range c.Children() {
+			if n.Name() == "ll" {
+				return tr, c, n
+			}
+		}
+		t.Fatal("no ll")
+		return nil, nil, nil
+	}
+	single, sc, n := build()
+	if err := n.Unlink(); err != nil {
+		t.Fatal(err)
+	}
+	batch, bc, m := build()
+	if err := batch.unlinkAll([]*Node{m}); err != nil {
+		t.Fatal(err)
+	}
+	opidxAssertTreeInvariant(t, single)
+	opidxAssertTreeInvariant(t, batch)
+	if got, want := typedDump(batch), typedDump(single); !slices.Equal(got, want) {
+		t.Fatalf("batch %v, single %v", got, want)
+	}
+	if n.detachedRB == nil || (m.detachedRB == nil) != (n.detachedRB == nil) {
+		t.Fatalf("the alone leader's RB metadata: single %v, batch %v", n.detachedRB != nil, m.detachedRB != nil)
+	}
+	for _, x := range []struct {
+		tr   *Tree
+		c, n *Node
+	}{{single, sc, n}, {batch, bc, m}} {
+		if err := x.tr.Insert(x.c, x.n); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := x.tr.NewTerm(x.c, "ll", "0", NewOptions{}); err != nil {
+			t.Fatal(err)
+		}
+		opidxAssertTreeInvariant(t, x.tr)
+		if got := names(x.c.Children()); !slices.Equal(got, []string{"zz", "yy", "ll=0", "ll=1", "ll=9", "ll=10", "ll=11"}) {
+			t.Fatalf("after reinsertion: %v", got)
+		}
+	}
+}
+
+// TestForeignFirstSchemaHashed: a merge whose matched parent is of another context links foreign
+// children into a child level (lyd_merge_sibling_r inserts its copies without
+// lyd_insert_check_schema). When
+// the physical first sibling is the tree's own opaque node but the first schema node is
+// foreign, lyd_insert_get_next_anchor reads LYD_CTX(first_sibling), the opaque node's: a local
+// insertion takes the children table path and goes before the next schema sibling's instance.
+func TestForeignFirstSchemaHashed(t *testing.T) {
+	setA, setB := ordered2Set(t, "pv2-ordered3"), ordered2Set(t)
+	tr, err := parseOrdered(t, setA, false, `{"pv2-ordered2:c":{"zz":"u","d":"q","ll":[1,2]}}`, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var c *Node
+	for c = range tr.Top() {
+		break
+	}
+	for _, in := range []string{`{"pv2-ordered2:c":{"a":"x"}}`, `{"pv2-ordered2:c":{"b":"y"}}`} {
+		// a source whose first root is of the tree's context, then a foreign c (as
+		// protocol-v2/merge-foreign-child builds one)
+		src, err := parseOrdered(t, setA, false, `{"pv2-ordered3:a":"x"}`, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		fb, _, err := parseJSONString(setB, in, Reject, false)
+		if err != nil {
+			t.Fatal(err)
+		}
+		f := fb.top.first()
+		if err := unlink(f); err != nil {
+			t.Fatal(err)
+		}
+		if err := src.link(nil, &src.top, f, src.top.SchemaLen()); err != nil {
+			t.Fatal(err)
+		}
+		if err := tr.Merge(src); err != nil {
+			t.Fatal(err)
+		}
+	}
+	// the first merge's linear walk stops at the opaque first sibling; the second one's first
+	// sibling is foreign, as b is: by the table, before d
+	if got := names(c.Children()); !slices.Equal(got, []string{"a=x", "zz", "b=y", "d=q", "ll=1", "ll=2"}) {
+		t.Fatalf("after the merges: %v", got)
+	}
+	var a *Node
+	for a = range c.Children() {
+		break
+	}
+	if err := a.Unlink(); err != nil {
+		t.Fatal(err)
+	}
+	if c.kids.ht == nil || !c.kids.st.interleaved() || ctxOf(c.kids.At(0)) != setB {
+		t.Fatal("want an interleaved child level with a table and a foreign first schema node")
+	}
+	if _, err := tr.NewTerm(c, "c", "z", NewOptions{}); err != nil {
+		t.Fatal(err)
+	}
+	opidxAssertTreeInvariant(t, tr)
+	if got := names(c.Children()); !slices.Equal(got, []string{"zz", "b=y", "c=z", "d=q", "ll=1", "ll=2"}) {
+		t.Fatalf("after the insertion: %v", got)
+	}
+}
+
+// forwardMetaInput is an interleaved level with n metadata containers ahead of their opaque
+// targets (the first n) and, after the data, m more opaque siblings that no container names.
+func forwardMetaInput(n, m int, before bool) string {
+	var b strings.Builder
+	b.WriteString(`{"m:c":{"zz":"u","a":"x"`)
+	meta := func() {
+		for i := range n {
+			fmt.Fprintf(&b, `,"@o%d":{"m:q":"1"}`, i)
+		}
+	}
+	if before {
+		meta()
+	}
+	for i := range n + m {
+		fmt.Fprintf(&b, `,"o%d":"v"`, i)
+	}
+	if !before {
+		meta()
+	}
+	b.WriteString(`}}`)
+	return b.String()
+}
+
+// TestForwardMetadataScaling: lydjson_metadata_finish's document-order matching (design 15)
+// indexes the siblings once, so the work per forward metadata container stays flat as their
+// number grows; the walk is charged to the parse's enforced budget.
+func TestForwardMetadataScaling(t *testing.T) {
+	set := opIndexSet(t, orderedSchema)
+	work := func(n int) float64 {
+		var tr *Tree
+		if _, err := parseOrdered(t, set, false, forwardMetaInput(n, 0, true), func(lc *lydCtx) { tr = lc.tree }); err != nil {
+			t.Fatal(err)
+		}
+		var c *Node
+		for c = range tr.Top() {
+			break
+		}
+		for o := range c.Children() {
+			if o.schema == nil && o.Name() != "zz" && len(o.Attrs()) != 1 {
+				t.Fatalf("%s: attributes %v", o.Name(), o.Attrs())
+			}
+		}
+		return float64(tr.work.Load()+int64(tr.work.hashUsed)) / float64(n) //nolint:gosec // small counts
+	}
+	small, large := work(256), work(2048)
+	if large > 2*small {
+		t.Fatalf("work per container: %.1f at 256, %.1f at 2048", small, large)
+	}
+	// refused when the enforced budget is short, with every limit
+	_, err := parseOrdered(t, set, false, forwardMetaInput(64, 0, true), func(lc *lydCtx) { lc.tree.work.hashLimit = 1 })
+	if !errors.Is(err, yang.ErrBudget) {
+		t.Fatalf("budget: %v", err)
+	}
+}
+
+// TestForwardMetadataCancel: the document-order index polls the parse's context, and a parse
+// cancelled at its checks, the index's included, fails and leaves a consistent tree.
+func TestForwardMetadataCancel(t *testing.T) {
+	set := opIndexSet(t, orderedSchema)
+	polls := func(before bool, m int) (total int) {
+		ctx := &cancelAtContext{Context: context.Background()}
+		o := parseOpts{ParseOptions: ParseOptions{Unknown: Opaque, ParseOnly: true, Ordered: true}, ordered: true}
+		if _, _, err := parseWith(ctx, strings.NewReader(forwardMetaInput(4, m, before)), set, o, parseJSON, nil); err != nil {
+			t.Fatal(err)
+		}
+		return ctx.calls
+	}
+	// 3000 more siblings: the index polls about every 1k of them on top of the parse's own checks
+	if forward, after := polls(true, 3000)-polls(true, 0), polls(false, 3000)-polls(false, 0); forward < after+2 {
+		t.Fatalf("the metadata index does not poll: %d more checks, %d without forward metadata", forward, after)
+	}
+	// cancelled at a sample of the checks, the index's last ones (at the end of the parse) included
+	total := polls(true, 3000)
+	for _, at := range []int{1, total / 4, total / 2, total - 3, total - 2, total - 1, total} {
+		ctx := &cancelAtContext{Context: context.Background(), at: at}
+		var tr *Tree
+		o := parseOpts{ParseOptions: ParseOptions{Unknown: Opaque, ParseOnly: true, Ordered: true}, ordered: true}
+		_, _, err := parseWith(ctx, strings.NewReader(forwardMetaInput(4, 3000, true)), set, o, parseJSON, func(lc *lydCtx) { tr = lc.tree })
+		if !errors.Is(err, context.Canceled) {
+			t.Fatalf("cancel at %d of %d: %v", at, total, err)
+		}
+		opidxAssertTreeInvariant(t, tr)
+	}
+}
+
+// TestSchemaSplitMergeUnbatched: Merge into a list run that another schema node splits looks each
+// new instance's leader up again (lyd_insert_node): k0 takes over the first piece's record, so
+// k5 joins the piece after b. The copies are not batched into the first piece's RB tree
+// (oracle, with the source in input order: protocol-v2/ordered-schema-split-merge-into).
+func TestSchemaSplitMergeUnbatched(t *testing.T) {
+	set := ordered2Set(t)
+	tr, err := parseOrdered(t, set, false, `{"pv2-ordered2:c":{"a":"x","l":[{"k":"k2"},{"k":"k4"}],"b":"y","l":[{"k":"k6"}],"c":"z"}}`, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, in := range []string{`{"pv2-ordered2:c":{"l":[{"k":"k3"}]}}`, `{"pv2-ordered2:c":{"l":[{"k":"k0"},{"k":"k5"}]}}`} {
+		src, _, err := parseJSONString(set, in, Reject, false)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := tr.Merge(src); err != nil {
+			t.Fatal(err)
+		}
+	}
+	opidxAssertTreeInvariant(t, tr)
+	var c *Node
+	for c = range tr.Top() {
+		break
+	}
+	var got []string
+	for n := range c.Children() {
+		if n.Name() == "l" {
+			got = append(got, "l="+n.kids.At(0).Value())
+		} else {
+			got = append(got, n.Name())
+		}
+	}
+	if want := []string{"a", "l=k0", "l=k2", "l=k3", "l=k4", "b", "l=k5", "l=k6", "c"}; !slices.Equal(got, want) {
+		t.Fatalf("%v, want %v", got, want)
+	}
+}
+
+// TestInterleavedLookupMatrix: every XPath child lookup of an interleaved set answers by the
+// native rules and never declines to the evaluator's scan of all children (design 15): with and
+// without a children table, siblings of one context or of two (a merge of another context's
+// child), a probe of the siblings' context or of another one, and the document root. The opaque
+// b in the middle is not found (lyd_find_sibling_opaq_next searches the trailing opaque block).
+func TestInterleavedLookupMatrix(t *testing.T) {
+	setA, setB := ordered2Set(t, "pv2-ordered3"), ordered2Set(t, "pv2-ordered3")
+	child := func(in string, mixed bool) (*Node, *Tree) {
+		tr, err := parseOrdered(t, setA, false, in, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if mixed {
+			src, err := parseOrdered(t, setA, false, `{"pv2-ordered3:a":"r"}`, nil)
+			if err != nil {
+				t.Fatal(err)
+			}
+			fb, _, err := parseJSONString(setB, `{"pv2-ordered2:c":{"st":[3]}}`, Reject, false)
+			if err != nil {
+				t.Fatal(err)
+			}
+			f := fb.top.first()
+			if err := unlink(f); err != nil {
+				t.Fatal(err)
+			}
+			if err := src.link(nil, &src.top, f, src.top.SchemaLen()); err != nil {
+				t.Fatal(err)
+			}
+			if err := tr.Merge(src); err != nil {
+				t.Fatal(err)
+			}
+		}
+		for n := range tr.Top() {
+			if n.Name() == "c" {
+				return n, tr
+			}
+		}
+		t.Fatal("no c")
+		return nil, nil
+	}
+	find := func(set *schema.Set, mod, name string) *schema.Node {
+		for _, n := range set.Implemented(mod).Top {
+			if mod == "pv2-ordered3" && n.Name == name {
+				return n
+			}
+			for _, k := range n.Children { // pv2-ordered2: the children of c
+				if k.Name == name && mod == "pv2-ordered2" {
+					return k
+				}
+			}
+		}
+		t.Fatalf("no %s:%s", mod, name)
+		return nil
+	}
+	type lookup interface {
+		LookupPrepared(xpath.InstanceProbe) ([]xpath.Node, bool, error)
+	}
+	check := func(label string, l lookup, set *schema.Set, mod, name string, vals []string, want bool) {
+		t.Helper()
+		p, err := xs{s: find(set, mod, name), set: set}.PrepareInstance(vals, func(int64) error { return nil })
+		if err != nil {
+			t.Fatal(label, err)
+		}
+		got, handled, err := l.LookupPrepared(p)
+		if err != nil || !handled || (len(got) == 1) != want || len(got) > 1 {
+			t.Fatalf("%s %s %v: %v handled %v err %v", label, name, vals, got, handled, err)
+		}
+	}
+	for _, tc := range []struct {
+		label string
+		in    string
+		mixed bool
+		table bool
+	}{
+		{"no table", `{"pv2-ordered2:c":{"a":"x","b":false,"c":"z"}}`, false, false},
+		{"table", `{"pv2-ordered2:c":{"a":"x","b":false,"c":"z","d":"d","ll":[1]}}`, false, true},
+		{"table, two contexts", `{"pv2-ordered2:c":{"a":"x","b":false,"c":"z","d":"d","ll":[1]}}`, true, true},
+		{"no table, two contexts", `{"pv2-ordered2:c":{"a":"x","b":false,"c":"z"}}`, true, false},
+	} {
+		c, _ := child(tc.in, tc.mixed)
+		if !c.kids.st.interleaved() || (c.kids.ht != nil) != tc.table || c.kids.mixedContexts() != tc.mixed {
+			t.Fatalf("%s: interleaved %v table %v mixed %v", tc.label, c.kids.st.interleaved(), c.kids.ht != nil, c.kids.mixedContexts())
+		}
+		for _, probeSet := range []*schema.Set{setA, setB} {
+			label := tc.label
+			if probeSet == setB {
+				label += ", probe of another context"
+			}
+			x := xn{c, setA}
+			check(label, x, probeSet, "pv2-ordered2", "b", nil, false)
+			check(label, x, probeSet, "pv2-ordered2", "a", nil, true)
+			// without a table lyd_find_sibling_schema stops at the opaque b (only the inputs with a
+			// table hold ll)
+			check(label, x, probeSet, "pv2-ordered2", "c", nil, tc.table)
+			check(label, x, probeSet, "pv2-ordered2", "ll", []string{"1"}, tc.table)
+			check(label, x, probeSet, "pv2-ordered2", "ll", []string{"7"}, false)
+			check(label, x, probeSet, "pv2-ordered2", "st", []string{"3"}, tc.mixed)
+		}
+	}
+	// the document root: no table
+	tr, err := parseOrdered(t, setA, false, `{"pv2-ordered3:a":"x","pv2-ordered3:zz":"u","pv2-ordered3:b":"y"}`, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !tr.top.st.interleaved() {
+		t.Fatal("the top level is not interleaved")
+	}
+	for _, probeSet := range []*schema.Set{setA, setB} {
+		r := xroot{sib: &tr.top, set: setA}
+		check("root", r, probeSet, "pv2-ordered3", "a", nil, true)
+		check("root", r, probeSet, "pv2-ordered3", "b", nil, false) // past the first opaque root
+	}
+}
+
+// TestInterleavedForwardRecovery: a relocation within an interleaved set that the running state's
+// current level holds rolls forward (design 14, step 6); restoreLink puts the node back between
+// its document neighbours (originPlace), a schema node between two opaque ones and an opaque
+// node between two schema ones, and the state's rollback restores the tree exactly.
+func TestInterleavedForwardRecovery(t *testing.T) {
+	set := opIndexSet(t, orderedSchema)
+	for _, pick := range []string{"c", "zz", "yy"} {
+		for _, commit := range []bool{false, true} {
+			tr, err := parseOrdered(t, set, false, `{"m:c":{"a":"x","zz":"u","c":"z","yy":"t","ll":[3]}}`, nil)
+			if err != nil {
+				t.Fatal(err)
+			}
+			var c *Node
+			for c = range tr.Top() {
+				break
+			}
+			capture := func(t *testing.T) {
+				if err := c.kids.touch(); err != nil {
+					t.Fatal(err)
+				}
+			}
+			forwardRecoveryInState(t, tr, capture, func() *Node {
+				for n := range c.Children() {
+					if n.Name() == pick {
+						return n
+					}
+				}
+				t.Fatalf("no %s", pick)
+				return nil
+			}, commit)
+			if got := orderedChildren(t, tr); !slices.Equal(got, []string{"a=x", "zz", "c=z", "yy", "ll=3"}) {
+				t.Fatalf("%s: %v", pick, got)
+			}
+		}
+	}
+}
+
+// TestFirstChildMixedCharged: FirstChild in an interleaved child level with a table and siblings
+// of two contexts reads every first-instance record bucket (tableFirst); that work goes to the
+// evaluation's charge, so the XPath budget refuses it and a cancelled context stops it, however
+// many distinct list schemas the level holds.
+func TestFirstChildMixedCharged(t *testing.T) {
+	const lists = 300
+	var mod, data strings.Builder
+	mod.WriteString("module m { yang-version 1.1; namespace \"urn:m\"; prefix m; leaf top { type string; } container c { leaf a { type string; } leaf b { type string; }")
+	data.WriteString(`{"m:c":{"a":"x","zz":"u"`)
+	for i := range lists {
+		fmt.Fprintf(&mod, " list l%d { key k; leaf k { type string; } }", i)
+		fmt.Fprintf(&data, `,"l%d":[{"k":"1"}]`, i)
+	}
+	mod.WriteString(" } }")
+	data.WriteString("}}")
+	dir := t.TempDir()
+	if err := os.WriteFile(dir+"/m.yang", []byte(mod.String()), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	load := func() *schema.Set {
+		c, ds, err := yang.NewContext(yang.Options{NoYangLibrary: true}, os.DirFS(dir))
+		if err != nil {
+			t.Fatal(ds, err)
+		}
+		if ds, err := c.Load("m", "", nil); err != nil {
+			t.Fatal(ds, err)
+		}
+		return snap.Set(c.Schema())
+	}
+	setA, setB := load(), load()
+	tr, err := parseOrdered(t, setA, false, data.String(), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	src, err := parseOrdered(t, setA, false, `{"m:top":"t"}`, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	fb, _, err := parseJSONString(setB, `{"m:c":{"b":"y"}}`, Reject, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	f := fb.top.first()
+	if err := unlink(f); err != nil {
+		t.Fatal(err)
+	}
+	if err := src.link(nil, &src.top, f, src.top.SchemaLen()); err != nil {
+		t.Fatal(err)
+	}
+	if err := tr.Merge(src); err != nil {
+		t.Fatal(err)
+	}
+	var c *Node
+	for n := range tr.Top() {
+		if n.Name() == "c" {
+			c = n
+		}
+	}
+	if !c.kids.st.interleaved() || c.kids.ht == nil || !c.kids.mixedContexts() {
+		t.Fatal("fixture: want an interleaved level with a table and two contexts")
+	}
+	var l7 *schema.Node
+	for _, k := range setA.Implemented("m").Top[1].Children {
+		if k.Name == "l7" {
+			l7 = k
+		}
+	}
+	var charged int64
+	got, ok := (xn{c, setA}).FirstChild(xs{l7, setA}, func(n int64) error { charged += n; return nil })
+	if !ok || got == nil || got.(xn).n.schema != l7 || charged < lists {
+		t.Fatalf("found %v %v, charged %d", got, ok, charged)
+	}
+	for _, refusal := range []error{xpath.ErrBudget, context.Canceled} {
+		if _, ok := (xn{c, setA}).FirstChild(xs{l7, setA}, func(int64) error { return refusal }); ok {
+			t.Fatalf("%v: the lookup went on", refusal)
+		}
+	}
+}
+
+// TestCaseReplacedReversedFirst: an old case kept as b, a (ordered input) whose b is the module's
+// first node is replaced. lyd_validate_cases frees a, then b, moving lyd_validate's first after
+// each free (lyd_del_move_root): past b it skips a, already freed, so the duplicate replacement
+// leaves are still checked. The deletion is one batch here (delMoveRoots counts the earlier
+// members as freed). The tree holding both cases' data comes from a MultiError validation that
+// fails yet clears FlagNew, which no oracle sequence continues past; the fixture
+// protocol-v2/ordered-validate-case-reversed-first covers the replacement placed between b and a.
+func TestCaseReplacedReversedFirst(t *testing.T) {
+	set := ordered2Set(t, "pv2-lyds", "pv2-ordered6")
+	tr, err := parseOrdered(t, set, false, `{"pv2-lyds:ll":[1],"pv2-ordered6:b":"b","pv2-ordered6:a":"a","pv2-ordered6:c":"1","pv2-ordered6:c":"2"}`, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := tr.Validate(context.Background(), ValidateOptions{MultiError: true}); err == nil {
+		t.Fatal("both cases validated")
+	}
+	o6 := func(n *Node) bool { return n.schema != nil && n.schema.Module.Name == "pv2-ordered6" }
+	for n := range tr.Top() {
+		if o6(n) && n.Name() == "c" {
+			if _, err := n.SetValue("3"); err != nil {
+				t.Fatal(err)
+			}
+			break
+		}
+	}
+	d, err := tr.ValidateModule(context.Background(), "pv2-ordered6", ValidateOptions{})
+	if err == nil || !slices.ContainsFunc(d, func(x yang.Diagnostic) bool { return strings.Contains(x.Msg, `Duplicate instance of "c"`) }) {
+		t.Fatalf("%v %v", d, err)
+	}
+	var got []string
+	for n := range tr.Top() {
+		if o6(n) {
+			got = append(got, n.Name()+"="+n.Value())
+		}
+	}
+	if !slices.Equal(got, []string{"c=3", "c=2"}) {
+		t.Fatalf("%v", got)
+	}
+}
+
+// TestKeyPastTrailingOpaqueReserve: a key appended behind a trailing opaque child (the link that
+// first interleaves the set) is outside lyd_hash's key run, so the link reserves no hashing for
+// its value: a large value parses within a quota well below its size.
+func TestKeyPastTrailingOpaqueReserve(t *testing.T) {
+	set := ordered2Set(t)
+	big := strings.Repeat("y", 1<<20)
+	in := `{"pv2-ordered2:c":{"l":[{"k":"x","zz":"u","k":"` + big + `"}]}}`
+	parse := func(limit uint64) (*Tree, error) {
+		o := parseOpts{ParseOptions: ParseOptions{Unknown: Opaque, ParseOnly: true, Ordered: true}, ordered: true}
+		tr, _, err := parseWith(context.Background(), strings.NewReader(in), set, o, parseJSON, func(lc *lydCtx) {
+			lc.tree.work.hashLimit = limit
+		})
+		return tr, err
+	}
+	tr, err := parse(0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	used := tr.work.hashUsed
+	if used >= uint64(len(big)) {
+		t.Fatalf("the parse hashed %d units for a key outside the run", used)
+	}
+	// the reservations of the other links are conservative bounds; none is the value's size
+	if _, err := parse(used + uint64(len(big))/2); err != nil {
+		t.Fatalf("a quota of %d plus half the value: %v", used, err)
+	}
+}
+
+// TestKeysSplitByOpaqueReserve: keys a b with an opaque child between them never complete the
+// physical key prefix (lyd_insert_has_keys), so linking b reserves no hashing of a's value: a
+// large a under a small quota ends as libyang does, on the missing key, not on the budget.
+func TestKeysSplitByOpaqueReserve(t *testing.T) {
+	set := reviewDiffSet(t, `module m { yang-version 1.1; namespace "urn:m"; prefix m;
+	  list l { key "a b"; leaf a { type string; } leaf b { type string; } } }`)
+	in := `<l xmlns="urn:m"><a>` + strings.Repeat("x", 1<<20) + `</a><zz>u</zz><b>v</b></l>`
+	for _, parseOnly := range []bool{true, false} {
+		o := parseOpts{ParseOptions: ParseOptions{Unknown: Opaque, ParseOnly: parseOnly, Ordered: true}, ordered: true}
+		_, _, err := parseWith(context.Background(), strings.NewReader(in), set, o, parseXML, func(lc *lydCtx) {
+			lc.tree.work.hashLimit = 64 << 10
+		})
+		if errors.Is(err, yang.ErrBudget) {
+			t.Fatalf("parse only %v: %v", parseOnly, err)
+		}
+	}
+}
+
+// TestKeyRunPastOpaque: an Ordered ParseOnly list instance k=x, zz, k=y hashes the leading key
+// run in document order, which stops at zz (lyd_hash). Unlinking zz joins the run without a
+// rehash (lyd_unlink does not rehash the parent); the next native rehash, a changed key value,
+// takes both keys (oracle: protocol-v2/ordered-list-key-past-opaque for the lookup and the dup).
+func TestKeyRunPastOpaque(t *testing.T) {
+	set := ordered2Set(t)
+	tr, err := parseOrdered(t, set, false, `{"pv2-ordered2:c":{"l":[{"k":"x","zz":"u","k":"y"}]}}`, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	l, err := tr.Find("/pv2-ordered2:c/l[k='x']")
+	if err != nil || l == nil {
+		t.Fatalf("lookup by the hashed key: %v %v", l, err)
+	}
+	if l.keyRun() != 1 || l.lkeyN != 1 {
+		t.Fatalf("run %d, hashed %d", l.keyRun(), l.lkeyN)
+	}
+	hash := l.hash
+	var zz, k *Node
+	for c := range l.Children() {
+		switch {
+		case c.schema == nil:
+			zz = c
+		case k == nil:
+			k = c
+		}
+	}
+	if err := zz.Unlink(); err != nil {
+		t.Fatal(err)
+	}
+	if l.keyRun() != 2 || l.lkeyN != 1 || l.hash != hash {
+		t.Fatalf("after the unlink: run %d, hashed %d, hash changed %v", l.keyRun(), l.lkeyN, l.hash != hash)
+	}
+	if _, err := k.SetValue("z"); err != nil {
+		t.Fatal(err)
+	}
+	if l.lkeyN != 2 {
+		t.Fatalf("after the rehash: hashed %d", l.lkeyN)
+	}
+	opidxAssertTreeInvariant(t, tr)
+}
+
+// TestMetaDocIndexReuseCancelled: the forward-metadata matching polls the parse's context also
+// when it reuses the document index another container built, before and while it merges the
+// candidate lists.
+func TestMetaDocIndexReuseCancelled(t *testing.T) {
+	set := opIndexSet(t, orderedSchema)
+	var in strings.Builder
+	in.WriteString(`{"m:c":{"zz":"u","a":"x","u":"1"`)
+	for range 3000 {
+		in.WriteString(`,"v":"1"`)
+	}
+	in.WriteString("}}")
+	tr, err := parseOrdered(t, set, false, in.String(), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var c *Node
+	for c = range tr.Top() {
+		break
+	}
+	var x metaDocIndex
+	if _, err := x.match(&lydCtx{ctx: context.Background(), tree: tr}, &c.kids, nil, "u"); err != nil {
+		t.Fatal(err)
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	if _, err := x.match(&lydCtx{ctx: ctx, tree: tr}, &c.kids, nil, "v"); !errors.Is(err, context.Canceled) {
+		t.Fatalf("reused index: %v", err)
+	}
+	// cancelled during the merge: the poll before it passes, a later one fails
+	at := &cancelAtContext{Context: context.Background(), at: 2}
+	if _, err := x.match(&lydCtx{ctx: at, tree: tr}, &c.kids, nil, "v"); !errors.Is(err, context.Canceled) {
+		t.Fatalf("during the merge: %v", err)
+	}
+}
+
+// TestRepeatedKeysPastOpaqueScaling: Ordered ParseOnly k=x, zz, then many repeated k=y. lyd_hash's
+// key run stops at zz, so each repeated key's link reserves and hashes only that run: the work
+// per key stays flat, and the parse stays inside the default quota.
+func TestRepeatedKeysPastOpaqueScaling(t *testing.T) {
+	set := ordered2Set(t)
+	work := func(n int) float64 {
+		var in strings.Builder
+		in.WriteString(`{"pv2-ordered2:c":{"l":[{"k":"x","zz":"u"`)
+		for range n {
+			in.WriteString(`,"k":"y"`)
+		}
+		in.WriteString(`}]}}`)
+		var tr *Tree
+		if _, err := parseOrdered(t, set, false, in.String(), func(lc *lydCtx) { tr = lc.tree }); err != nil {
+			t.Fatal(n, err)
+		}
+		return float64(tr.work.hashUsed) / float64(n)
+	}
+	small, large := work(1000), work(8000)
+	if large > 2*small {
+		t.Fatalf("reserved work per key: %.1f at 1000, %.1f at 8000", small, large)
+	}
+}
+
+// TestKeyBookkeepingPastOpaque: in an Ordered ParseOnly list instance k=x, v, zz, then many
+// repeated k=y, unlinking v and changing the first key walk the keys only up to zz (keyRun),
+// so their work does not grow with the repeated keys, and every walk is reserved before the
+// change: a refusal at any charge point leaves the tree as it was.
+func TestKeyBookkeepingPastOpaque(t *testing.T) {
+	set := opIndexSet(t, orderedSchema)
+	build := func(n int) (*Tree, *Node, *Node) {
+		var in strings.Builder
+		in.WriteString(`{"m:c":{"l":[{"k":"x","v":"v","zz":"u"`)
+		for range n {
+			in.WriteString(`,"k":"y"`)
+		}
+		in.WriteString(`}]}}`)
+		tr, err := parseOrdered(t, set, false, in.String(), nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var l *Node
+		for c := range tr.Top() {
+			for l = range c.Children() {
+				break
+			}
+		}
+		var key, v *Node
+		for c := range l.Children() {
+			switch c.Name() {
+			case "k":
+				if key == nil {
+					key = c
+				}
+			case "v":
+				v = c
+			}
+		}
+		return tr, key, v
+	}
+	edit := func(key, v *Node) error {
+		if err := v.Unlink(); err != nil {
+			return err
+		}
+		_, err := key.SetValue("z")
+		return err
+	}
+	work := func(n int) int64 {
+		tr, key, v := build(n)
+		before := tr.work.Load()
+		if err := edit(key, v); err != nil {
+			t.Fatal(err)
+		}
+		return tr.work.Load() - before
+	}
+	if small, large := work(200), work(3200); large > 2*small {
+		t.Fatalf("bookkeeping work: %d at 200 keys, %d at 3200", small, large)
+	}
+	checkEveryHashBudgetPoint(t, func() (*Tree, func() error) {
+		tr, key, v := build(64)
+		return tr, func() error { return edit(key, v) }
+	})
+}
+
+// TestUnorderedAnchorCharged: lyd_insert_get_next_anchor's linear walk over a top level out of
+// schema order is charged step by step, so a small enforced quota refuses a long walk; in an
+// interleaved top level the walk stops at the first opaque sibling and stays cheap.
+func TestUnorderedAnchorCharged(t *testing.T) {
+	set := opIndexSet(t, `module m { yang-version 1.1; namespace "urn:m"; prefix m;
+	  leaf a { type string; } leaf-list u { type uint32; ordered-by user; } leaf b { type string; } }`)
+	const n = 20000
+	parse := func(opaque bool) *Tree {
+		var in strings.Builder
+		in.WriteString(`{`)
+		if opaque {
+			in.WriteString(`"m:a":"a","m:zz":"u",`)
+		}
+		in.WriteString(`"m:u":[`)
+		for i := range n {
+			if i > 0 {
+				in.WriteString(",")
+			}
+			fmt.Fprint(&in, i)
+		}
+		in.WriteString(`]`)
+		if !opaque {
+			in.WriteString(`,"m:a":"a"`)
+		}
+		in.WriteString(`}`)
+		tr, err := parseOrdered(t, set, false, in.String(), nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return tr
+	}
+	tr := parse(false)
+	if _, err := tr.NewTerm(nil, "m:b", "x", NewOptions{}); err != nil { // the default quota: a legitimate walk
+		t.Fatalf("a walk over %d siblings under the default quota: %v", n, err)
+	}
+	tr = parse(false)
+	tr.work.hashLimit = 8192 // per operation (beginHashWork)
+	if _, err := tr.NewTerm(nil, "m:b", "x", NewOptions{}); !errors.Is(err, yang.ErrBudget) {
+		t.Fatalf("a walk over %d siblings under a small quota: %v", n, err)
+	}
+	opidxAssertTreeInvariant(t, tr)
+	tr = parse(true)
+	tr.work.hashLimit = 8192 // per operation (beginHashWork)
+	if _, err := tr.NewTerm(nil, "m:b", "x", NewOptions{}); err != nil {
+		t.Fatalf("the walk stops at the opaque sibling: %v", err)
+	}
+	if got := names(tr.Top())[:3]; !slices.Equal(got, []string{"a=a", "b=x", "zz"}) {
+		t.Fatalf("%v", got)
+	}
+}
+
+// mixedTableLevel parses an Ordered c of pv2-ordered8 in context A (a children table) and links a
+// child z of context B last, the layout of the merge construction of protocol-v2/merge-foreign-child
+// once the foreign child no longer leads.
+func mixedTableLevel(t *testing.T, in string) (*Tree, *Node) {
+	t.Helper()
+	setA, setB := ordered2Set(t, "pv2-ordered8"), ordered2Set(t, "pv2-ordered8")
+	tr, err := parseOrdered(t, setA, false, in, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var c *Node
+	for c = range tr.Top() {
+		break
+	}
+	fb, _, err := parseJSONString(setB, `{"pv2-ordered8:c":{"z":"zz"}}`, Reject, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	z := fb.top.first().kids.first()
+	if err := unlink(z); err != nil {
+		t.Fatal(err)
+	}
+	if err := tr.link(c, &c.kids, z, c.kids.SchemaLen()); err != nil {
+		t.Fatal(err)
+	}
+	if c.kids.ht == nil || !c.kids.mixedContexts() || !c.kids.schemaUnordered || c.kids.st.interleaved() {
+		t.Fatal("fixture: want a table level of two contexts out of schema order, not interleaved")
+	}
+	return tr, c
+}
+
+// TestMixedTableDupInstRun: lyd_find_sibling_first of a duplicate-instance list with a children
+// table starts at the first-instance record and walks node->next while the schema matches, so
+// the value of the piece after b is not found, also among siblings of two contexts.
+func TestMixedTableDupInstRun(t *testing.T) {
+	tr, _ := mixedTableLevel(t, `{"pv2-ordered8:c":{"p":"p","st":[1],"b":"b","st":[2]}}`)
+	if n, err := tr.Find("/pv2-ordered8:c/st[.='2']"); err != nil || n != nil {
+		t.Fatalf("the later piece: %v %v", n, err)
+	}
+	if n, err := tr.Find("/pv2-ordered8:c/st[.='1']"); err != nil || n == nil {
+		t.Fatalf("the first piece: %v %v", n, err)
+	}
+}
+
+// TestMixedTableInsertLeader: inserting 0 replaces the first ll piece's record, so the anchor of a
+// later insertion of a (lyd_insert_get_next_anchor's lyd_find_sibling_schema) is the other piece's
+// record, also when only a schema node splits the run among siblings of two contexts.
+func TestMixedTableInsertLeader(t *testing.T) {
+	tr, c := mixedTableLevel(t, `{"pv2-ordered8:c":{"p":"p","ll":[2],"b":"b","ll":[4]}}`)
+	if _, err := tr.NewTerm(c, "ll", "0", NewOptions{}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := tr.NewTerm(c, "a", "x", NewOptions{}); err != nil {
+		t.Fatal(err)
+	}
+	opidxAssertTreeInvariant(t, tr)
+	if got := names(c.Children()); !slices.Equal(got, []string{"p=p", "ll=0", "ll=2", "b=b", "a=x", "ll=4", "z=zz"}) {
+		t.Fatalf("%v", got)
+	}
+}
+
+// TestMixedTableReadsShareNothing: Find in a table level of two contexts out of schema order
+// answers by the table's registration order (tableSchemaFirst) without writing shared tree
+// state: concurrent readers race on nothing, and any number of repeated lookups gives the same
+// node, the second x, re-registered after the first one's unlink and reinsertion.
+func TestMixedTableReadsShareNothing(t *testing.T) {
+	tr, c := mixedTableLevel(t, `{"pv2-ordered8:c":{"p":"p","x":"first","b":"b","x":"second"}}`)
+	var first *Node
+	for n := range c.Children() {
+		if n.Name() == "x" {
+			first = n
+			break
+		}
+	}
+	if err := first.Unlink(); err != nil {
+		t.Fatal(err)
+	}
+	if err := tr.Insert(c, first); err != nil {
+		t.Fatal(err)
+	}
+	want := func() string {
+		n, err := tr.Find("/pv2-ordered8:c/x")
+		if err != nil || n == nil {
+			t.Fatalf("%v %v", n, err)
+		}
+		return n.Value()
+	}()
+	if want != "second" {
+		t.Fatalf("the table's first registered x: %s", want)
+	}
+	used := tr.work.lookupUsed
+	for range 20000 {
+		if n, err := tr.Find("/pv2-ordered8:c/x"); err != nil || n == nil || n.Value() != want {
+			t.Fatalf("a repeated lookup: %v %v", n, err)
+		}
+	}
+	if tr.work.lookupUsed != used || tr.work.lookupErr != nil {
+		t.Fatal("a read-only lookup wrote the tree's lookup quota")
+	}
+	// an instance lookup of x (lyd_find_sibling_first): a leaf matches by schema alone in the
+	// table (lyd_hash_table_val_equal), so a probe with the first one's value finds the second
+	probe, _, err := parseJSONString(ctxOf(first), `{"pv2-ordered8:c":{"x":"first"}}`, Reject, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if m, err := tr.findFirstWork(&c.kids, probe.top.first().kids.first(), nil); err != nil || m == nil || m.Value() != "second" {
+		t.Fatalf("instance lookup: %v %v", m, err)
+	}
+	var wg sync.WaitGroup
+	for range 32 {
+		wg.Go(func() {
+			for range 200 {
+				if n, err := tr.Find("/pv2-ordered8:c/x"); err != nil || n == nil || n.Value() != want {
+					t.Errorf("a concurrent lookup: %v %v", n, err)
+					return
+				}
+				var b strings.Builder
+				if err := tr.PrintJSON(&b, PrintOptions{EmptyLeafList: true}); err != nil {
+					t.Error(err)
+					return
+				}
+			}
+		})
+	}
+	wg.Wait()
+	// an insertion anchor (lyd_insert_get_next_anchor's lyd_find_sibling_schema) is the table's
+	// first registered x as well: a goes right before the second x
+	if _, err := tr.NewTerm(c, "a", "v", NewOptions{}); err != nil {
+		t.Fatal(err)
+	}
+	opidxAssertTreeInvariant(t, tr)
+	var seq []string
+	for n := range c.Children() {
+		seq = append(seq, n.Name()+"="+n.Value())
+	}
+	if i := slices.Index(seq, "a=v"); i < 0 || i+1 >= len(seq) || seq[i+1] != "x=second" {
+		t.Fatalf("a's anchor: %v", seq)
+	}
+}
+
+// TestTableLookupCallersAgree: every caller of the children-table lookup answers alike, for each
+// node kind (a repeated leaf, a leaf-list split by another node, a state leaf-list), siblings of
+// one or two contexts, in or out of schema order: Find, schemaLookup, FirstChild and the keyed
+// XPath lookup, and for a value Find, findFirstWork and LookupChild. Out of schema order with a
+// re-registered first x the answer is the second x, libyang's first registered one.
+func TestTableLookupCallersAgree(t *testing.T) {
+	for _, ordered := range []bool{false, true} {
+		for _, mixed := range []bool{false, true} {
+			setA, setB := ordered2Set(t, "pv2-ordered8"), ordered2Set(t, "pv2-ordered8")
+			in := `{"pv2-ordered8:c":{"p":"p","x":"first","ll":[2],"b":"b","st":[1,2]}}`
+			if ordered {
+				in = `{"pv2-ordered8:c":{"p":"p","x":"first","ll":[2],"st":[1],"b":"b","x":"second","ll":[4],"st":[2]}}`
+			}
+			var tr *Tree
+			var err error
+			if ordered {
+				tr, err = parseOrdered(t, setA, false, in, nil)
+			} else {
+				tr, _, err = parseJSONString(setA, in, Opaque, true)
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+			var c *Node
+			for c = range tr.Top() {
+				break
+			}
+			if mixed {
+				fb, _, err := parseJSONString(setB, `{"pv2-ordered8:c":{"z":"zz"}}`, Reject, false)
+				if err != nil {
+					t.Fatal(err)
+				}
+				z := fb.top.first().kids.first()
+				if err := unlink(z); err != nil {
+					t.Fatal(err)
+				}
+				if err := tr.link(c, &c.kids, z, c.kids.SchemaLen()); err != nil {
+					t.Fatal(err)
+				}
+			}
+			if ordered { // re-register the first x
+				for n := range c.Children() {
+					if n.Name() == "x" {
+						if err := n.Unlink(); err != nil {
+							t.Fatal(err)
+						}
+						if err := tr.Insert(c, n); err != nil {
+							t.Fatal(err)
+						}
+						break
+					}
+				}
+			}
+			label := fmt.Sprintf("ordered %v, mixed %v", ordered, mixed)
+			for _, name := range []string{"x", "ll", "st"} {
+				var sn *schema.Node
+				for _, k := range setA.Implemented("pv2-ordered8").Top[0].Children {
+					if k.Name == name {
+						sn = k
+					}
+				}
+				direct := tr.schemaLookup(&c.kids, sn)
+				byPath := direct
+				if name == "x" { // a leaf-list path needs a predicate
+					if byPath, err = tr.Find("/pv2-ordered8:c/" + name); err != nil {
+						t.Fatal(label, name, err)
+					}
+				}
+				// FirstChild may decline (the evaluator's charged scan then answers): only an
+				// answer is compared, never a substitute
+				if fc, ok := (xn{c, setA}).FirstChild(xs{sn, setA}, nil); ok && (fc == nil) != (direct == nil) ||
+					ok && fc != nil && fc.(xn).n != direct {
+					t.Fatalf("%s %s: FirstChild %v, schemaLookup %v", label, name, fc, direct)
+				}
+				first := direct
+				if byPath != direct || first != direct {
+					t.Fatalf("%s %s: Find %v, schemaLookup %v, FirstChild %v", label, name, byPath, direct, first)
+				}
+				if name == "x" && ordered && mixed && direct.Value() != "second" {
+					t.Fatalf("%s: the first registered x is the second one, got %s", label, direct.Value())
+				}
+			}
+			for _, v := range []string{"2", "4"} {
+				byPath, err := tr.Find("/pv2-ordered8:c/ll[.='" + v + "']")
+				if err != nil {
+					t.Fatal(label, err)
+				}
+				var sn *schema.Node
+				for _, k := range setA.Implemented("pv2-ordered8").Top[0].Children {
+					if k.Name == "ll" {
+						sn = k
+					}
+				}
+				// end to end: the evaluator, whatever route its child lookup takes
+				nodes, _, err := tr.FindXPath("/pv2-ordered8:c/ll[.='"+v+"']", XPathOptions{})
+				if err != nil {
+					t.Fatal(label, err)
+				}
+				var viaXPath *Node
+				if len(nodes) > 0 {
+					viaXPath = nodes[0]
+				}
+				_ = sn
+				probe, _, err := parseJSONString(setA, `{"pv2-ordered8:c":{"ll":[`+v+`]}}`, Reject, false)
+				if err != nil {
+					t.Fatal(err)
+				}
+				inst, err := tr.findFirstWork(&c.kids, probe.top.first().kids.first(), nil)
+				if err != nil {
+					t.Fatal(err)
+				}
+				if byPath != inst || viaXPath != inst {
+					t.Fatalf("%s ll=%s: Find %v, findFirstWork %v, LookupChild %v", label, v, byPath, inst, viaXPath)
+				}
+			}
+		}
+	}
+}
+
+// TestMixedTableMergeScaling: merging instances of n distinct list schemas into a table level of
+// two contexts out of schema order looks each one up in the children table's bucket of its own
+// module and node names (equivalents: one candidate per context), so the work per schema stays
+// flat; every lookup step is charged to the merge, and a refusal at any charge point leaves the
+// tree as it was.
+func TestMixedTableMergeScaling(t *testing.T) {
+	setup := func(n int) (func() (*Tree, func() error), *schema.Set) {
+		var mod, have, add strings.Builder
+		mod.WriteString("module m { yang-version 1.1; namespace \"urn:m\"; prefix m; leaf top { type string; } container c { leaf a { type string; } leaf z { type string; }")
+		have.WriteString(`{"m:c":{"z":"z0","a":"x"`)
+		add.WriteString(`{"m:c":{`)
+		for i := range n {
+			fmt.Fprintf(&mod, " list l%d { key k; leaf k { type string; } }", i)
+			fmt.Fprintf(&have, `,"l%d":[{"k":"1"}]`, i)
+			if i > 0 {
+				add.WriteString(",")
+			}
+			fmt.Fprintf(&add, `"l%d":[{"k":"2"}]`, i)
+		}
+		mod.WriteString(" } }")
+		have.WriteString("}}")
+		add.WriteString("}}")
+		dir := t.TempDir()
+		if err := os.WriteFile(dir+"/m.yang", []byte(mod.String()), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		load := func() *schema.Set {
+			c, ds, err := yang.NewContext(yang.Options{NoYangLibrary: true}, os.DirFS(dir))
+			if err != nil {
+				t.Fatal(ds, err)
+			}
+			if ds, err := c.Load("m", "", nil); err != nil {
+				t.Fatal(ds, err)
+			}
+			return snap.Set(c.Schema())
+		}
+		setA, setB := load(), load()
+		return func() (*Tree, func() error) {
+			tr, err := parseOrdered(t, setA, false, have.String(), nil)
+			if err != nil {
+				t.Fatal(err)
+			}
+			var c *Node
+			for c = range tr.Top() {
+				break
+			}
+			fb, _, err := parseJSONString(setB, `{"m:c":{"a":"y"}}`, Reject, false)
+			if err != nil {
+				t.Fatal(err)
+			}
+			f := fb.top.first().kids.first()
+			if err := unlink(f); err != nil {
+				t.Fatal(err)
+			}
+			if err := tr.link(c, &c.kids, f, c.kids.SchemaLen()); err != nil {
+				t.Fatal(err)
+			}
+			if c.kids.ht == nil || !c.kids.mixedContexts() || !c.kids.schemaUnordered {
+				t.Fatal("fixture: want a table level of two contexts out of schema order")
+			}
+			src, _, err := parseJSONString(setA, add.String(), Reject, false)
+			if err != nil {
+				t.Fatal(err)
+			}
+			return tr, func() error { return tr.Merge(src) }
+		}, setA
+	}
+	work := func(n int) float64 {
+		build, _ := setup(n)
+		tr, merge := build()
+		tr.work.Store(0)
+		tr.work.visits = true
+		if err := merge(); err != nil {
+			t.Fatal(err)
+		}
+		return float64(tr.work.Load()) / float64(n)
+	}
+	if small, large := work(100), work(800); large > 2*small {
+		t.Fatalf("merge work per schema: %.1f at 100, %.1f at 800", small, large)
+	}
+	build, _ := setup(6)
+	checkEveryHashBudgetPoint(t, build)
+}
+
+// TestEquivalentCacheKeepsNoContext: equivalentIn reads the target set's lineage index, which holds
+// only that set's own nodes, so concurrent readers share it safely, and a dropped context becomes
+// collectable after lookups, as a source and as a target.
+func TestEquivalentCacheKeepsNoContext(t *testing.T) {
+	first := func(set *schema.Set) *schema.Node { return set.Implemented("pv2-ordered2").Top[0].Children[0] }
+	collected := func(w func() bool, stale func() bool) bool {
+		for range 50 {
+			runtime.GC()
+			if w() && !stale() {
+				return true
+			}
+			time.Sleep(10 * time.Millisecond)
+		}
+		return false
+	}
+	setA := ordered2Set(t)
+	var wb weak.Pointer[schema.Set]
+	func() {
+		setB := ordered2Set(t)
+		wb = weak.Make(setB)
+		snB := first(setB)
+		if eqIn(snB, setA) != first(setA) {
+			t.Fatal("no equivalent")
+		}
+		var wg sync.WaitGroup
+		for range 16 {
+			wg.Go(func() {
+				for range 500 {
+					if eqIn(snB, setA) != first(setA) {
+						t.Error("a concurrent reader saw another equivalent")
+						return
+					}
+				}
+			})
+		}
+		wg.Wait()
+	}()
+	if !collected(func() bool { return wb.Value() == nil }, func() bool { return false }) {
+		t.Fatal("the dropped source context is still reachable")
+	}
+	var wc weak.Pointer[schema.Set]
+	func() {
+		setC := ordered2Set(t)
+		wc = weak.Make(setC)
+		if eqIn(first(setA), setC) != first(setC) {
+			t.Fatal("no equivalent")
+		}
+	}()
+	if !collected(func() bool { return wc.Value() == nil }, func() bool { return false }) {
+		t.Fatal("the dropped target context is still reachable")
+	}
+	runtime.KeepAlive(setA)
+}
+
+// TestEquivalentInOutputAndScaling: equivalentIn resolves a node by its full lineage, an rpc
+// output descendant included (lyd_find_schema_ctx's input-only walk would miss it). Each lookup reads the lineage index, so mapping many distinct schemas of a wide context costs
+// O(depth) apiece after one linear build of the index.
+func TestEquivalentInOutputAndScaling(t *testing.T) {
+	const module = `module rb { yang-version 1.1; namespace "urn:rb"; prefix rb;
+  rpc r { input { leaf in { type string; } } output { leaf-list v { type uint32; } leaf w { type string; } } } }`
+	setA, setB := reviewDiffSet(t, module), reviewDiffSet(t, module)
+	out := func(set *schema.Set, name string) *schema.Node {
+		for _, n := range set.Implemented("rb").Top[0].Children {
+			if n.Kind == schema.Output {
+				for _, c := range n.Children {
+					if c.Name == name {
+						return c
+					}
+				}
+			}
+		}
+		t.Fatalf("no output %s", name)
+		return nil
+	}
+	for _, name := range []string{"v", "w"} {
+		if got := eqIn(out(setA, name), setB); got != out(setB, name) {
+			t.Fatalf("output %s: %v", name, got)
+		}
+	}
+	if got := eqIn(setA.Implemented("rb").Top[0].Children[0].Children[0], setB); got == nil || got.Name != "in" {
+		t.Fatalf("input in: %v", got)
+	}
+	// many distinct schemas of a wide context: each lookup reads the index
+	var mod strings.Builder
+	mod.WriteString(`module w { yang-version 1.1; namespace "urn:w"; prefix w; container c {`)
+	const n = 4000
+	for i := range n {
+		fmt.Fprintf(&mod, " leaf l%d { type string; }", i)
+	}
+	mod.WriteString(" } }")
+	wa, wb := reviewDiffSet(t, mod.String()), reviewDiffSet(t, mod.String())
+	start := time.Now()
+	for _, c := range wa.Implemented("w").Top[0].Children {
+		if eqIn(c, wb) == nil {
+			t.Fatalf("no equivalent of %s", c.Name)
+		}
+	}
+	if d := time.Since(start); d > 2*time.Second {
+		t.Fatalf("%d cold lookups in a wide context took %v", n, d)
+	}
+}
+
+// eqIn is equivalentIn uncharged, for tests.
+func eqIn(sn *schema.Node, set *schema.Set) *schema.Node {
+	k, _ := equivalentIn(sn, set, nil)
+	return k
+}
+
+// TestEquivalentInColdBudgetAndDepth: mapping a node into another context pays every level and
+// every cold child index before building it, so a refusal builds nothing and is returned; and a
+// deep lineage of long names maps with memory linear in the schema (no concatenated ancestry).
+func TestEquivalentInColdBudgetAndDepth(t *testing.T) {
+	const depth = 256
+	name := strings.Repeat("n", 16<<10)
+	var mod strings.Builder
+	mod.WriteString(`module d { yang-version 1.1; namespace "urn:d"; prefix d;`)
+	for i := range depth {
+		fmt.Fprintf(&mod, " container %s%d {", name, i)
+	}
+	mod.WriteString(" leaf x { type string; }")
+	mod.WriteString(strings.Repeat(" }", depth))
+	mod.WriteString(" }")
+	setA, setB := reviewDiffSet(t, mod.String()), reviewDiffSet(t, mod.String())
+	leaf := setA.Implemented("d").Top[0]
+	for leaf.Kind != schema.Leaf {
+		leaf = leaf.Children[0]
+	}
+	refused := errors.New("refused")
+	if k, err := equivalentIn(leaf, setB, func(int64) error { return refused }); k != nil || !errors.Is(err, refused) {
+		t.Fatalf("a refused cold mapping: %v %v", k, err)
+	}
+	var charged int64
+	runtime.GC()
+	var before, after runtime.MemStats
+	runtime.ReadMemStats(&before)
+	k, err := equivalentIn(leaf, setB, func(n int64) error { charged += n; return nil })
+	runtime.ReadMemStats(&after)
+	if err != nil || k == nil || k.Name != "x" || k.Module.Owner == setA {
+		t.Fatalf("the deep mapping: %v %v", k, err)
+	}
+	if charged < depth {
+		t.Fatalf("charged %d for %d levels", charged, depth)
+	}
+	if grown := after.TotalAlloc - before.TotalAlloc; grown > 8<<20 {
+		t.Fatalf("a deep mapping allocated %d bytes", grown)
+	}
+	// a warm mapping is one fixed-size map read per level (interned identifiers, 16 KiB names or
+	// not), and pays exactly that
+	if !leaf.Interned() || !k.Interned() {
+		t.Fatal("snapshot nodes without interned identifiers")
+	}
+	charged = 0
+	for range 512 {
+		if _, err := equivalentIn(leaf, setB, func(n int64) error { charged += n; return nil }); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if charged != 512*(depth+1) {
+		t.Fatalf("warm mappings charged %d", charged)
+	}
+	// a cold build pays per module and child as it goes: a refusal partway stores nothing
+	setC := reviewDiffSet(t, mod.String())
+	left := 3
+	if _, err := setC.ChildByName(nil, schema.ChildKey{Kind: leaf.Kind, ID: leaf.ID()}, func(int64) error {
+		if left--; left < 0 {
+			return refused
+		}
+		return nil
+	}); !errors.Is(err, refused) {
+		t.Fatalf("a refused cold build: %v", err)
+	}
+	if k, err := equivalentIn(leaf, setC, nil); err != nil || k == nil {
+		t.Fatalf("after a refused build: %v %v", k, err)
+	}
+}
+
+// TestLongOpaqueNamesMerge: opaque names are interned at creation, so the merge's
+// lyd_find_sibling_opaq_next walk compares each candidate in O(1) whatever the names' length
+// (long, equal-length names sharing a prefix), and pays each probe's name bytes once.
+func TestLongOpaqueNamesMerge(t *testing.T) {
+	set := reviewDiffSet(t, `module m { yang-version 1.1; namespace "urn:m"; prefix m;
+	  container c { leaf a { type string; } } }`)
+	const n, l = 256, 16 << 10
+	var z strings.Builder
+	for i := range n {
+		fmt.Fprintf(&z, `"%s%04d":"v",`, strings.Repeat("x", l-4), i)
+	}
+	in := `{"m:c":{` + z.String() + `"a":"x"}}`
+	dst, err := parseOrdered(t, set, false, in, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for c := range dst.top.first().Children() {
+		if c.schema == nil && c.opaq.nameID == (unique.Handle[string]{}) {
+			t.Fatal("an opaque name not interned")
+		}
+	}
+	src, err := parseOrdered(t, set, false, in, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	used := dst.work.hashUsed
+	if err := dst.Merge(src); err != nil {
+		t.Fatal(err)
+	}
+	if paid := dst.work.hashUsed - used; paid < n*l {
+		t.Fatalf("the merge paid %d for %d probes of %d-byte names", paid, n, l)
+	}
+}
+
+// TestOpaqueMergeAfterSeparatorRemoved: a level interleaved once (an opaque child before a
+// schema one) and back in ordinary order after that child's unlink matches opaque children as a
+// freshly parsed level of the same children does (the opaque lookup reads the layout, not the
+// history): merging n opaque children costs what it costs fresh.
+func TestOpaqueMergeAfterSeparatorRemoved(t *testing.T) {
+	set := reviewDiffSet(t, `module m { yang-version 1.1; namespace "urn:m"; prefix m;
+	  container c { leaf a { type string; } } }`)
+	n := raceScale(1500, 3)
+	var z strings.Builder
+	for i := range n {
+		fmt.Fprintf(&z, `,"z%05d":"v"`, i)
+	}
+	work := func(cut bool) int64 {
+		in := `{"m:c":{"a":"x"` + z.String() + `}}`
+		if cut {
+			in = `{"m:c":{"cut":"u","a":"x"` + z.String() + `}}`
+		}
+		dst, err := parseOrdered(t, set, false, in, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		c := dst.top.first()
+		if cut {
+			if !c.kids.st.interleaved() {
+				t.Fatal("fixture: want an interleaved level")
+			}
+			if err := c.kids.docFirst().Unlink(); err != nil {
+				t.Fatal(err)
+			}
+		}
+		src, err := parseOrdered(t, set, false, `{"m:c":{"a":"x"`+z.String()+`}}`, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		load, used := dst.work.Load(), dst.work.hashUsed
+		if err := dst.Merge(src); err != nil {
+			t.Fatal(cut, err)
+		}
+		if got := c.kids.Len(); got != n+1 {
+			t.Fatalf("%d children after the merge, want %d", got, n+1)
+		}
+		return dst.work.Load() - load + int64(dst.work.hashUsed-used) //nolint:gosec // test sizes
+	}
+	if fresh, after := work(false), work(true); float64(after) > 1.1*float64(fresh) {
+		t.Fatalf("merge work: %d fresh, %d after the separator's unlink", fresh, after)
+	}
+}
+
+// countCtx is canceled from its after-th Err call on.
+type countCtx struct {
+	context.Context
+	calls, after int
+}
+
+func (c *countCtx) Err() error {
+	if c.calls++; c.calls > c.after {
+		return context.Canceled
+	}
+	return nil
+}
+
+// TestForeignIndexBuildPolls: a validation's schema lookup in a mixed level builds the foreign
+// child index through chargeOf, which polls the operation's cancellation per charge: a
+// cancellation partway stops the build, publishes nothing and is the operation's error.
+func TestForeignIndexBuildPolls(t *testing.T) {
+	var leaves strings.Builder
+	for i := range 2000 {
+		fmt.Fprintf(&leaves, " leaf f%d { type string; }", i)
+	}
+	mod := `module m { yang-version 1.1; namespace "urn:m"; prefix m;
+	  container c { leaf p { type string; } leaf x { type string; } leaf b { type string; }
+	  leaf q { type string; } leaf z { type string; } leaf absent { type string; }
+	  list l { key k; leaf k { type string; } }` + leaves.String() + ` } }`
+	setA, setB := xctxSets(t, mod)
+	tr, err := parseOrdered(t, setA, false, `{"m:c":{"x":"1","p":"p","b":"b","q":"q"}}`, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	c := tr.top.first()
+	linkForeign(t, tr, c, setB, `{"m:c":{"z":"z"}}`)
+	sn := setA.Implemented("m").Top[0].Children[5]
+	ctx := &countCtx{Context: context.Background(), after: 50}
+	end := tr.work.beginHashWork()
+	restore := tr.work.pollWith(ctx)
+	n, ok := tr.tableSchemaFirst(&c.kids, sn)
+	err = tr.work.hashErr
+	restore()
+	end()
+	if n != nil || !ok || !errors.Is(err, context.Canceled) {
+		t.Fatalf("a cancellation during the foreign index build: %v %v %v", n, ok, err)
+	}
+	var charged int64
+	parent := setB.Implemented("m").Top[0]
+	if _, err := setB.ChildByName(parent, schema.ChildKey{Kind: sn.Kind, ID: sn.ID()}, func(k int64) error { charged += k; return nil }); err != nil || charged < 2000 {
+		t.Fatalf("the canceled build published the index (a lookup charged %d): %v", charged, err)
+	}
+	// the instance walk of validation (instanceRun: lys_getnext_data, LYD_LIST_FOR_INST) maps
+	// its first-instance probe the same way, paid and polled by the operation's charge
+	setA, setB = xctxSets(t, mod)
+	tr, err = parseOrdered(t, setA, false, `{"m:c":{"x":"1","p":"p","l":[{"k":"a"}],"b":"b","q":"q"}}`, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	c = tr.top.first()
+	linkForeign(t, tr, c, setB, `{"m:c":{"z":"z"}}`)
+	l := setA.Implemented("m").Top[0].Children[6]
+	ctx = &countCtx{Context: context.Background(), after: 50}
+	end = tr.work.beginHashWork()
+	restore = tr.work.pollWith(ctx)
+	for range tr.instanceRun(&c.kids, l) {
+		break
+	}
+	err = tr.work.hashErr
+	restore()
+	end()
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("a cancellation during instanceRun's foreign index build: %v", err)
+	}
+	// and the instance lookup of a mutation (findFirstChecked: lyd_find_sibling_first, the
+	// instance-identifier and merge lookups), through its counter's polling charge
+	setA, setB = xctxSets(t, mod)
+	tr, err = parseOrdered(t, setA, false, `{"m:c":{"x":"1","p":"p","l":[{"k":"a"}],"b":"b","q":"q"}}`, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	c = tr.top.first()
+	linkForeign(t, tr, c, setB, `{"m:c":{"z":"z"}}`)
+	var target *Node
+	for n := range c.Children() {
+		if n.Name() == "l" {
+			target = n
+		}
+	}
+	ctx = &countCtx{Context: context.Background(), after: 50}
+	end = tr.work.beginHashWork()
+	restore = tr.work.pollWith(ctx)
+	_, err = tr.findFirstChecked(&c.kids, target)
+	if err == nil {
+		err = tr.work.hashErr
+	}
+	restore()
+	end()
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("a cancellation during findFirstChecked's foreign index build: %v", err)
+	}
+}
+
+// TestColdNameHashCharged: a schema-only table lookup of a never-instantiated node in a mixed
+// level pays the cold module/name hash (16 KiB name) before computing it: a small mutation quota
+// refuses, and nothing is cached.
+func TestColdNameHashCharged(t *testing.T) {
+	long := strings.Repeat("n", 16<<10)
+	mod := `module m { yang-version 1.1; namespace "urn:m"; prefix m;
+	  container c { leaf p { type string; } leaf x { type string; } leaf b { type string; }
+	  leaf q { type string; } leaf z { type string; } leaf ` + long + ` { type string; } } }`
+	setA, setB := xctxSets(t, mod)
+	tr, err := parseOrdered(t, setA, false, `{"m:c":{"x":"1","p":"p","b":"b","q":"q"}}`, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	c := tr.top.first()
+	linkForeign(t, tr, c, setB, `{"m:c":{"z":"z"}}`)
+	if c.kids.ht == nil || !c.kids.mixedContexts() || !c.kids.schemaUnordered {
+		t.Fatal("fixture: want a table level of two contexts out of schema order")
+	}
+	sn := setA.Implemented("m").Top[0].Children[5]
+	end := tr.work.beginHashWork()
+	tr.work.hashLimit = 1024
+	n, ok := tr.tableSchemaFirst(&c.kids, sn)
+	err = tr.work.hashErr
+	end()
+	if n != nil || !ok || !errors.Is(err, yang.ErrBudget) {
+		t.Fatalf("a cold 16 KiB name under a 1024-unit quota: %v %v %v", n, ok, err)
+	}
+	cold := false
+	if _, err := setA.CachedNameHash(sn, func() (uint32, error) { cold = true; return 0, nil }); err != nil || !cold {
+		t.Fatal("the refused lookup cached the name hash")
+	}
+}
+
+// TestMutationSchemaLookupCharged: a schema-only table lookup inside a mutation (Merge, ApplyDiff,
+// edits) pays its steps to the mutation's quota, warm indexes included, so a spent quota refuses
+// it instead of answering for free; outside an operation it charges nothing.
+func TestMutationSchemaLookupCharged(t *testing.T) {
+	tr, c := mixedTableLevel(t, `{"pv2-ordered8:c":{"p":"p","x":"first","b":"b","x":"second"}}`)
+	var x *schema.Node
+	for n := range c.Children() {
+		if n.Name() == "x" {
+			x = n.schema
+			break
+		}
+	}
+	if n, ok := tr.tableSchemaFirst(&c.kids, x); !ok || n == nil { // warm
+		t.Fatal("no x")
+	}
+	used := tr.work.hashUsed
+	if n, ok := tr.tableSchemaFirst(&c.kids, x); !ok || n == nil || tr.work.hashUsed != used {
+		t.Fatal("a read-only lookup charged the tree")
+	}
+	end := tr.work.beginHashWork()
+	tr.work.hashLimit = 1
+	tr.work.hashUsed = 1
+	n, ok := tr.tableSchemaFirst(&c.kids, x)
+	err := tr.work.hashErr
+	end()
+	if !ok || n != nil || !errors.Is(err, yang.ErrBudget) {
+		t.Fatalf("a spent mutation quota: %v %v %v", n, ok, err)
+	}
+	// a public read from user code while the mutation waits on it (suspended) is read-only: it
+	// neither pays from nor fails the waiting operation's quota, and concurrent readers share
+	// nothing they write
+	want, err := tr.Find("/pv2-ordered8:c/x")
+	if err != nil || want == nil {
+		t.Fatalf("Find: %v %v", want, err)
+	}
+	end = tr.work.beginHashWork()
+	tr.work.hashLimit, tr.work.hashUsed, tr.work.hashErr = 1, 1, nil
+	release := tr.work.suspend()
+	var wg sync.WaitGroup
+	for range 4 {
+		wg.Go(func() {
+			if got, err := tr.Find("/pv2-ordered8:c/x"); got != want || err != nil {
+				t.Errorf("suspended Find: %v %v", got, err)
+			}
+		})
+	}
+	wg.Wait()
+	release()
+	used, herr := tr.work.hashUsed, tr.work.hashErr
+	end()
+	if used != 1 || herr != nil {
+		t.Fatalf("a suspended read charged the waiting operation: %d %v", used, herr)
+	}
+}
+
+// xctxSets compiles one module twice: two contexts of identical schemas.
+func xctxSets(t *testing.T, module string) (*schema.Set, *schema.Set) {
+	t.Helper()
+	return reviewDiffSet(t, module), reviewDiffSet(t, module)
+}
+
+// linkForeign parses in in set and links the children of its first top node, in order, last
+// into parent (a level of siblings of another context).
+func linkForeign(t *testing.T, tr *Tree, parent *Node, set *schema.Set, in string) {
+	t.Helper()
+	fb, _, err := parseJSONString(set, in, Reject, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, n := range slices.Collect(fb.top.first().Children()) {
+		if err := unlink(n); err != nil {
+			t.Fatal(err)
+		}
+		if err := tr.link(parent, &parent.kids, n, parent.kids.SchemaLen()); err != nil {
+			t.Fatal(err)
+		}
+	}
+}
+
+// TestHomogeneousForeignBehindOpaque: a level of c_A whose schema children are all of context B,
+// behind an opaque first sibling of A: the foreign match is chosen from the schemas represented
+// (the opaque node and the parent are not), so an A probe finds l_B(2) by the table's lineage
+// match, through findFirstWork and the XPath lookup alike (lyd_find_sibling_first).
+func TestHomogeneousForeignBehindOpaque(t *testing.T) {
+	setA, setB := xctxSets(t, `module m { yang-version 1.1; namespace "urn:m"; prefix m;
+	  container c { list l { key k; leaf k { type uint32; } } } }`)
+	tr, err := parseOrdered(t, setA, false, `{"m:c":{"zz":"u"}}`, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	c := tr.top.first()
+	linkForeign(t, tr, c, setB, `{"m:c":{"l":[{"k":1},{"k":2},{"k":3},{"k":4}]}}`)
+	if c.kids.ht == nil || c.kids.mixedContexts() || c.kids.schemaContext() != setB {
+		t.Fatal("fixture: want a table level of B schema children under c_A")
+	}
+	probe, _, err := parseJSONString(setA, `{"m:c":{"l":[{"k":2}]}}`, Reject, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	m, err := tr.findFirstWork(&c.kids, probe.top.first().kids.first(), nil)
+	if err != nil || m == nil || m.kids.first().Value() != "2" {
+		t.Fatalf("findFirstWork: %v %v", m, err)
+	}
+	l := setA.Implemented("m").Top[0].Children[0]
+	got, handled := (xn{c, setA}).LookupChild(xs{l, setA}, []string{"2"})
+	if !handled || len(got) != 1 || got[0].(xn).n != m {
+		t.Fatalf("LookupChild: %v %v", got, handled)
+	}
+}
+
+// TestForeignOutputXPath: an A probe of an output leaf-list finds the B instance among r_A's
+// output children, with and without a children table: libyang compares the probe and the
+// candidate directly (lyd_find_sibling_first), it does not translate the probe through
+// lyd_find_schema_ctx, whose input-only walk loses outputs.
+func TestForeignOutputXPath(t *testing.T) {
+	const module = `module rb { yang-version 1.1; namespace "urn:rb"; prefix rb;
+  rpc r { input { leaf in { type string; } } output { leaf-list v { type uint32; } leaf w { type string; } } } }`
+	for _, values := range []string{"[1,2]", "[1,2,3,4]"} {
+		setA, setB := xctxSets(t, module)
+		reply := func(set *schema.Set, data string) *Tree {
+			res, ds, err := ParseOp(context.Background(), strings.NewReader(data), FormatJSON, snap.New(set), OpReply, ParseOpOptions{})
+			if err != nil {
+				t.Fatalf("%v (%v)", err, ds)
+			}
+			return res.Tree
+		}
+		tr := reply(setA, `{"rb:r":{"w":"x"}}`)
+		r := tr.top.first()
+		fb := reply(setB, `{"rb:r":{"v":`+values+`}}`)
+		for _, n := range slices.Collect(fb.top.first().Children()) {
+			if err := unlink(n); err != nil {
+				t.Fatal(err)
+			}
+			if err := tr.link(r, &r.kids, n, r.kids.SchemaLen()); err != nil {
+				t.Fatal(err)
+			}
+		}
+		var v *schema.Node
+		for _, n := range setA.Implemented("rb").Top[0].Children {
+			if n.Kind == schema.Output {
+				v = n.Children[0]
+			}
+		}
+		got, handled := (xn{r, setA}).LookupChild(xs{v, setA}, []string{"2"})
+		if !handled || len(got) != 1 || got[0].(xn).n.Value() != "2" || ctxOf(got[0].(xn).n) != setB {
+			t.Fatalf("v%s (table %v): %v %v", values, r.kids.ht != nil, got, handled)
+		}
+	}
+}
+
+// TestFirstSiblingParentGuard: lyd_find_sibling_first's schema-parent check reads the physical
+// first sibling and is skipped when that one is opaque: behind an opaque first sibling a mismatching
+// q does not hide l(2); with q first the instance lookup finds nothing, and its opaque fallback
+// none either (the last sibling is a schema node).
+func TestFirstSiblingParentGuard(t *testing.T) {
+	setA, setB := xctxSets(t, `module m { yang-version 1.1; namespace "urn:m"; prefix m;
+	  leaf q { type string; } container c { list l { key k; leaf k { type uint32; } } } }`)
+	l := setA.Implemented("m").Top[1].Children[0]
+	for _, qFirst := range []bool{false, true} {
+		tr, err := parseOrdered(t, setA, false, `{"m:c":{"zz":"u","l":[{"k":2}]}}`, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		c := tr.top.first()
+		if c.Name() != "c" {
+			c = tr.top.docSpan().At(1)
+		}
+		fb, _, err := parseJSONString(setB, `{"m:q":"x"}`, Reject, false)
+		if err != nil {
+			t.Fatal(err)
+		}
+		q := fb.top.first()
+		if err := unlink(q); err != nil {
+			t.Fatal(err)
+		}
+		if qFirst {
+			c.kids.setPlace(placement{mode: placeBefore, node: c.kids.docFirst(), target: q})
+		} else {
+			zz := c.kids.docFirst()
+			c.kids.setPlace(placement{mode: placeAfter, node: zz, target: q})
+		}
+		if err := tr.link(c, &c.kids, q, 0); err != nil {
+			t.Fatal(err)
+		}
+		c.kids.clearPlace()
+		probe, _, err := parseJSONString(setA, `{"m:c":{"l":[{"k":2}]}}`, Reject, false)
+		if err != nil {
+			t.Fatal(err)
+		}
+		m, err := tr.findFirstWork(&c.kids, probe.top.first().kids.first(), nil)
+		if err != nil || (m != nil) == qFirst {
+			t.Fatalf("q first %v: findFirstWork %v %v (%v)", qFirst, m, err, names(c.Children()))
+		}
+		got, handled := (xn{c, setA}).LookupChild(xs{l, setA}, []string{"2"})
+		if !handled || (len(got) == 1) == qFirst {
+			t.Fatalf("q first %v: LookupChild %v %v (%v)", qFirst, got, handled, names(c.Children()))
+		}
+	}
+}
+
+// TestThreeContextRegistrationOrder: a table level holding a repeated leaf x and list l instances
+// with the same key from three contexts, linked in every order: every lookup returns the first
+// registered one (the children table's bucket order across equivalent schema nodes), whatever its
+// context, for the schema lookup, the instance lookup and XPath alike.
+func TestThreeContextRegistrationOrder(t *testing.T) {
+	const module = `module m { yang-version 1.1; namespace "urn:m"; prefix m;
+	  container c { leaf p { type string; } leaf x { type string; } leaf b { type string; }
+	    list l { key k; leaf k { type uint32; } } } }`
+	perms := [][3]int{{0, 1, 2}, {0, 2, 1}, {1, 0, 2}, {1, 2, 0}, {2, 0, 1}, {2, 1, 0}}
+	for _, perm := range perms {
+		sets := [3]*schema.Set{reviewDiffSet(t, module), reviewDiffSet(t, module), reviewDiffSet(t, module)}
+		tr, err := parseOrdered(t, sets[0], false, `{"m:c":{"b":"b","p":"p"}}`, nil) // out of schema order
+		if err != nil {
+			t.Fatal(err)
+		}
+		c := tr.top.first()
+		for _, i := range perm {
+			linkForeign(t, tr, c, sets[i], fmt.Sprintf(`{"m:c":{"x":"x%d","l":[{"k":7}]}}`, i))
+		}
+		if c.kids.ht == nil || len(c.kids.contexts) != 3 || !c.kids.schemaUnordered {
+			t.Fatalf("%v: fixture (table %v, contexts %d)", perm, c.kids.ht != nil, len(c.kids.contexts))
+		}
+		wantX := fmt.Sprintf("x%d", perm[0])
+		x := sets[0].Implemented("m").Top[0].Children[1]
+		if n := tr.schemaLookup(&c.kids, x); n == nil || n.Value() != wantX {
+			t.Fatalf("%v: schemaLookup %v", perm, n)
+		}
+		if n, err := tr.Find("/m:c/x"); err != nil || n == nil || n.Value() != wantX {
+			t.Fatalf("%v: Find %v %v", perm, n, err)
+		}
+		probe, _, err := parseJSONString(sets[0], `{"m:c":{"l":[{"k":7}]}}`, Reject, false)
+		if err != nil {
+			t.Fatal(err)
+		}
+		m, err := tr.findFirstWork(&c.kids, probe.top.first().kids.first(), nil)
+		if err != nil || m == nil || ctxOf(m) != sets[perm[0]] {
+			t.Fatalf("%v: findFirstWork %v %v", perm, m, err)
+		}
+		nodes, _, err := tr.FindXPath("/m:c/l[k='7']", XPathOptions{})
+		if err != nil || len(nodes) == 0 || nodes[0] != m {
+			t.Fatalf("%v: FindXPath %v %v, want %v", perm, nodes, err, m)
+		}
+	}
+}
+
+// TestLongProbeMissCharged: a long probe against short candidates is rejected on the stored hash
+// before its bytes are charged, same-context (Match) and foreign (crossEqual), with and without a
+// children table, so a cheap miss stays within a budget that the probe's bytes per candidate
+// would exceed.
+func TestLongProbeMissCharged(t *testing.T) {
+	setA, setB := xctxSets(t, `module m { yang-version 1.1; namespace "urn:m"; prefix m;
+	  container c { leaf a { type string; } list l { key k; ordered-by user; leaf k { type string; } } } }`)
+	key := strings.Repeat("X", 16<<10)
+	const n = 256
+	var ls strings.Builder
+	for i := range n {
+		if i > 0 {
+			ls.WriteString(",")
+		}
+		fmt.Fprintf(&ls, `{"k":"%d"}`, i)
+	}
+	for _, foreign := range []bool{false, true} {
+		in := `{"m:c":{"a":"x","zz":"u"}}` // a schema first sibling: no opaque fallback match
+		if !foreign {
+			in = `{"m:c":{"a":"x","zz":"u","l":[` + ls.String() + `]}}`
+		}
+		tr, err := parseOrdered(t, setA, false, in, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		c := tr.top.first()
+		if foreign {
+			linkForeign(t, tr, c, setB, `{"m:c":{"l":[`+ls.String()+`]}}`)
+		}
+		l := setA.Implemented("m").Top[0].Children[1]
+		var charged int64
+		probe, err := (xs{l, setA}).PrepareInstance([]string{key}, func(k int64) error { charged += k; return nil })
+		if err != nil {
+			t.Fatal(err)
+		}
+		prepared := charged
+		got, handled, err := (xn{c, setA}).LookupPrepared(probe)
+		if err != nil || !handled || len(got) != 0 {
+			t.Fatalf("foreign %v: %v %v %v", foreign, got, handled, err)
+		}
+		if spent := charged - prepared; spent >= int64(len(key)) {
+			t.Fatalf("foreign %v: a miss over %d short candidates charged %d", foreign, n, spent)
+		}
+	}
+	// the top level has no children table: every candidate is compared, linear branch
+	topA, topB := xctxSets(t, `module m { yang-version 1.1; namespace "urn:m"; prefix m;
+	  leaf x { type string; } list l { key k; ordered-by user; leaf k { type string; } } leaf z { type string; } }`)
+	for _, foreign := range []bool{false, true} {
+		in := `{"m:x":"x","m:zz":"u","m:z":"z"}`
+		if !foreign {
+			in = `{"m:x":"x","m:zz":"u","m:l":[` + ls.String() + `],"m:z":"z"}`
+		}
+		tr, err := parseOrdered(t, topA, false, in, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if foreign {
+			fb, _, err := parseJSONString(topB, `{"m:l":[`+ls.String()+`]}`, Reject, false)
+			if err != nil {
+				t.Fatal(err)
+			}
+			for _, n := range slices.Collect(fb.Top()) {
+				if err := unlink(n); err != nil {
+					t.Fatal(err)
+				}
+				if err := tr.link(nil, &tr.top, n, tr.top.SchemaLen()); err != nil {
+					t.Fatal(err)
+				}
+			}
+		}
+		l := topA.Implemented("m").Top[1]
+		var charged int64
+		probe, err := (xs{l, topA}).PrepareInstance([]string{key}, func(k int64) error { charged += k; return nil })
+		if err != nil {
+			t.Fatal(err)
+		}
+		prepared := charged
+		got, handled, err := xroot{sib: &tr.top, set: topA}.LookupPrepared(probe)
+		if err != nil || !handled || len(got) != 0 {
+			t.Fatalf("top, foreign %v: %v %v %v", foreign, got, handled, err)
+		}
+		if spent := charged - prepared; spent >= int64(len(key)) {
+			t.Fatalf("top, foreign %v: a miss over %d short candidates charged %d", foreign, n, spent)
+		}
+	}
+}
+
+// TestForeignCompareCharged: a foreign candidate's direct comparison (crossEqual) is charged
+// like Match charges a local one, one step and the probe's key bytes, through the probe's own
+// budget: a long key is paid per candidate, a refused or cancelled budget stops the lookup, and
+// the queried tree's counters stay untouched.
+func TestForeignCompareCharged(t *testing.T) {
+	setA, setB := xctxSets(t, `module m { yang-version 1.1; namespace "urn:m"; prefix m;
+	  container c { leaf a { type string; } list l { key k; leaf k { type string; } } } }`)
+	key := strings.Repeat("k", 4096)
+	for _, n := range []int{2, 6} { // without and with a children table
+		tr, err := parseOrdered(t, setA, false, `{"m:c":{"zz":"u","a":"x"}}`, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		c := tr.top.first()
+		var ls strings.Builder
+		for i := range n {
+			if i > 0 {
+				ls.WriteString(",")
+			}
+			fmt.Fprintf(&ls, `{"k":"%s%d"}`, key, i)
+		}
+		linkForeign(t, tr, c, setB, `{"m:c":{"l":[`+ls.String()+`]}}`)
+		l := setA.Implemented("m").Top[0].Children[1]
+		var charged int64
+		probe, err := (xs{l, setA}).PrepareInstance([]string{key + "1"}, func(k int64) error { charged += k; return nil })
+		if err != nil {
+			t.Fatal(err)
+		}
+		prepared := charged
+		used, load := tr.work.hashUsed, tr.work.Load()
+		got, handled, err := (xn{c, setA}).LookupPrepared(probe)
+		if err != nil || !handled || len(got) != 1 {
+			t.Fatalf("n=%d: %v %v %v", n, got, handled, err)
+		}
+		if charged-prepared < int64(len(key)) {
+			t.Fatalf("n=%d (table %v): the comparison charged %d for a %d-byte key", n, c.kids.ht != nil, charged-prepared, len(key))
+		}
+		if tr.work.hashUsed != used || tr.work.Load() != load {
+			t.Fatal("the lookup wrote the queried tree's counters")
+		}
+		for _, refusal := range []error{xpath.ErrBudget, context.Canceled} {
+			budget := prepared + 2 // the comparison does not fit
+			spent := int64(0)
+			probe, err := (xs{l, setA}).PrepareInstance([]string{key + "1"}, func(k int64) error {
+				if spent += k; spent > budget {
+					return refusal
+				}
+				return nil
+			})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if _, _, err := (xn{c, setA}).LookupPrepared(probe); !errors.Is(err, refusal) {
+				t.Fatalf("n=%d: a %v during the comparison: %v", n, refusal, err)
+			}
+		}
+	}
+}
+
+// TestMixedIdentityDiffLongStateLeafList: one state leaf-list of n values in a hashed level of
+// two or three contexts: each value's lyd_find_sibling_first reads its equal-hash candidates of
+// the run (indexed once per diff), not the run from its first instance, so the identity diff
+// stays within the default lookup quota.
+func TestMixedIdentityDiffLongStateLeafList(t *testing.T) {
+	const n = 2048 // quadratic: the audit's 512 already exceeded the quota
+	mod := `module m { yang-version 1.1; namespace "urn:m"; prefix m; container c { leaf a { type string; } leaf b { type string; } leaf z { type string; }
+	  leaf-list s { config false; type uint32; } } }`
+	vals := make([]string, n)
+	for i := range vals {
+		vals[i] = strconv.Itoa(i)
+	}
+	for _, three := range []bool{false, true} {
+		setA, setB := xctxSets(t, mod)
+		tr, err := parseOrdered(t, setA, false, `{"m:c":{"z":"z0","s":[`+strings.Join(vals, ",")+`]}}`, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		c := tr.top.first()
+		linkForeign(t, tr, c, setB, `{"m:c":{"a":"y"}}`)
+		if three {
+			linkForeign(t, tr, c, reviewDiffSet(t, mod), `{"m:c":{"b":"x"}}`)
+		}
+		if c.kids.ht == nil || !c.kids.mixedContexts() || !c.kids.schemaUnordered {
+			t.Fatal("fixture: want a hashed level of several contexts out of schema order")
+		}
+		if diff, err := Diff(tr, tr, DiffOptions{}); err != nil || diff != nil {
+			t.Fatalf("three %v: identity diff: %v %v", three, diff, err)
+		}
+	}
+}
+
+// TestMixedIdentityDiffManyStateLeafLists: Diff of a tree with itself, whose hashed child level
+// out of schema order holds 2000 distinct state leaf-lists and a child of another context, stays
+// within the default lookup quota: each lookup pays the candidate records it reads (one per
+// equivalent schema node), not every first-instance record of the level.
+func TestMixedIdentityDiffManyStateLeafLists(t *testing.T) {
+	const n = 2000 // the audit's 260 already exceeded the quota when every record was charged
+	var mod, data strings.Builder
+	mod.WriteString(`module m { yang-version 1.1; namespace "urn:m"; prefix m; container c { leaf a { type string; } leaf z { type string; }`)
+	data.WriteString(`{"m:c":{"z":"z0"`)
+	for i := range n {
+		fmt.Fprintf(&mod, " leaf-list s%d { config false; type uint8; }", i)
+		fmt.Fprintf(&data, `,"s%d":[1,2]`, i)
+	}
+	mod.WriteString(" } }")
+	data.WriteString(`}}`)
+	setA, setB := xctxSets(t, mod.String())
+	tr, err := parseOrdered(t, setA, false, data.String(), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	c := tr.top.first()
+	linkForeign(t, tr, c, setB, `{"m:c":{"a":"y"}}`)
+	if c.kids.ht == nil || !c.kids.mixedContexts() || !c.kids.schemaUnordered {
+		t.Fatal("fixture: want a hashed level of two contexts out of schema order")
+	}
+	if diff, err := Diff(tr, tr, DiffOptions{}); err != nil || diff != nil {
+		t.Fatalf("identity diff: %v %v", diff, err)
+	}
+}
+
+// readerCtx runs, at the first poll after x became dead, two concurrent FindXPath reads of the
+// tree its validation waits on (the operation is suspended in Err).
+type readerCtx struct {
+	context.Context
+	tr    *Tree
+	x     *Node
+	found [2]int
+	done  bool
+}
+
+func (c *readerCtx) Err() error {
+	if !c.done && c.x.flags&flagDead != 0 {
+		c.done = true
+		var wg sync.WaitGroup
+		for i := range 2 {
+			wg.Go(func() {
+				for range 50 {
+					ns, _, err := c.tr.FindXPath("/m:c/a", XPathOptions{})
+					if err == nil {
+						c.found[i] = len(ns)
+					}
+				}
+			})
+		}
+		wg.Wait()
+	}
+	return nil
+}
+
+// TestDeadEndsSuspendedReads: public reads from user code while the when pass waits on it, with
+// the pass's tombstones live, read its view and write nothing (race detector), and see the
+// opaque sibling the deletion exposed.
+func TestDeadEndsSuspendedReads(t *testing.T) {
+	set := reviewDiffSet(t, `module m { yang-version 1.1; namespace "urn:m"; prefix m;
+	  leaf guard2 { when "/m:c/m:a"; type string; }
+	  container c { leaf x { when "false()"; type string; } leaf a { type string; } leaf y { type string; } } }`)
+	o := parseOpts{ParseOptions: ParseOptions{Unknown: Opaque, ParseOnly: true, Ordered: true, WhenTrue: true}, ordered: true, whenTrue: true}
+	tr, _, err := parseWith(context.Background(), strings.NewReader(`{"m:guard2":"g","m:c":{"x":"x","a":false,"y":"y"}}`), set, o, parseJSON, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx := &readerCtx{Context: context.Background(), tr: tr}
+	for _, n := range tr.top.docSpan().All() {
+		if n.Name() == "c" {
+			ctx.x = n.kids.docFirst()
+		}
+	}
+	if _, err := tr.Validate(ctx, ValidateOptions{NotFinal: true}); err != nil {
+		t.Fatal(err)
+	}
+	if !ctx.done || ctx.found != [2]int{1, 1} {
+		t.Fatalf("suspended reads: ran %v, found %v", ctx.done, ctx.found)
+	}
+}
+
+// TestEmptyTableCopyLookups: a recursive copy of a level that had a children table and lost all
+// its children keeps the table and has its storage, so lookups that read both (an XPath miss,
+// Find, a merge into the copy) work on the empty level (oracle:
+// protocol-v2/ordered-empty-table-dup-xpath).
+func TestEmptyTableCopyLookups(t *testing.T) {
+	set := reviewDiffSet(t, `module m { yang-version 1.1; namespace "urn:m"; prefix m;
+	  container c { presence p; leaf a { type string; } leaf b { type string; } leaf d { type string; } leaf e { type string; } } }`)
+	for _, ordered := range []bool{false, true} {
+		tr, err := parseOrdered(t, set, false, `{"m:c":{"a":"1","b":"2","d":"3","e":"4"}}`, nil)
+		if !ordered {
+			tr, _, err = parseJSONString(set, `{"m:c":{"a":"1","b":"2","d":"3","e":"4"}}`, Reject, false)
+		}
+		if err != nil {
+			t.Fatal(err)
+		}
+		c := tr.top.first()
+		if c.kids.ht == nil {
+			t.Fatal("fixture: want a children table")
+		}
+		for _, n := range slices.Collect(c.Children()) {
+			if err := n.Unlink(); err != nil {
+				t.Fatal(err)
+			}
+		}
+		dst := newTree(set)
+		cp, _, err := dst.Dup(c, nil, DupOptions{Recursive: true})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if cp.kids.ht == nil || cp.kids.st == nil {
+			t.Fatalf("the copy: table %v, storage %v", cp.kids.ht != nil, cp.kids.st != nil)
+		}
+		if ns, _, err := dst.FindXPath("/m:c/a", XPathOptions{}); err != nil || len(ns) != 0 {
+			t.Fatalf("XPath miss: %v %v", ns, err)
+		}
+		if n, err := dst.Find("/m:c/a"); err != nil || n != nil {
+			t.Fatalf("Find miss: %v %v", n, err)
+		}
+		src, _, err := parseJSONString(set, `{"m:c":{"a":"x"}}`, Reject, false)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := dst.Merge(src); err != nil {
+			t.Fatal(err)
+		}
+		if n, err := dst.Find("/m:c/a"); err != nil || n == nil {
+			t.Fatalf("after the merge: %v %v", n, err)
+		}
+	}
+}
+
+// assertNoTransient checks that an operation that returned, refused or cancelled or not, left
+// no transient state behind (a pending placement, a dead flag) and that every
+// linked schema node is found through the indexes as it is physically (the tree invariant, and
+// each node's own path or schema lookup). A validation's modWalk lives in its valCtx and is
+// dropped by validate's defer.
+func assertNoTransient(t *testing.T, tr *Tree) {
+	t.Helper()
+	var walk func(s *siblings)
+	walk = func(s *siblings) {
+		if s.st != nil && s.st.place != (placement{}) {
+			t.Fatalf("a pending placement outlived its link: %+v", s.st.place)
+		}
+		for _, n := range s.docNodes() {
+			if n.flags&flagDead != 0 {
+				t.Fatalf("%s: still dead", n.Path())
+			}
+			// a lookup without a table stops at the first opaque sibling (design 15)
+			if n.schema != nil && (s.ht != nil || !s.st.interleaved()) && tr.schemaLookup(s, n.schema) == nil {
+				t.Fatalf("%s: linked, not indexed", n.Path())
+			}
+			walk(&n.kids)
+		}
+	}
+	walk(&tr.top)
+	opidxAssertTreeInvariant(t, tr)
+}
+
+// TestSortedForestMoveRefusalReleasesSource: moving a sorted forest into an interleaved level
+// (ordered-forest-sorted-move) refused at every budget point leaves no pending placement, and
+// the source tree is unreachable from the destination once the test drops it.
+func TestSortedForestMoveRefusalReleasesSource(t *testing.T) {
+	set := ordered2Set(t, "pv2-lyds")
+	build := func() (*Tree, *Tree) {
+		dst, err := parseOrdered(t, set, false, `{"pv2-lyds:ll":[3],"pv2-lyds:zz":"u","pv2-lyds:bucket":[{"name":"b"}]}`, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		src, err := parseOrdered(t, set, false, `{"pv2-lyds:ll":[5,6]}`, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return dst, src
+	}
+	full, src := build()
+	var points []uint64
+	full.work.hashTrace = &points
+	if err := full.Insert(nil, src.top.first()); err != nil {
+		t.Fatal(err)
+	}
+	refused := 0
+	for _, at := range points {
+		if at == 0 {
+			continue
+		}
+		dst, src := build()
+		dst.work.hashLimit = at - 1
+		err := dst.Insert(nil, src.top.first())
+		assertNoTransient(t, dst)
+		if !errors.Is(err, yang.ErrBudget) {
+			continue
+		}
+		refused++
+		w := weak.Make(src)
+		src = nil //nolint:wastedassign // dropped for the collection below
+		runtime.GC()
+		if w.Value() != nil {
+			t.Fatalf("limit %d: the refused move keeps the source tree reachable", at-1)
+		}
+		runtime.KeepAlive(dst)
+	}
+	if refused == 0 {
+		t.Fatal("no refusal point")
+	}
+}
+
+// TestPendingPlacementClearedOnRefusal: a placement set for a link that a refusal prevents is
+// cleared when the operation's journal ends (and when a savepoint level rolls back), so it
+// keeps no node of another tree reachable.
+func TestPendingPlacementClearedOnRefusal(t *testing.T) {
+	set := ordered2Set(t, "pv2-lyds")
+	dst, err := parseOrdered(t, set, false, `{"pv2-lyds:ll":[3],"pv2-lyds:zz":"u"}`, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	src, err := parseOrdered(t, set, false, `{"pv2-lyds:ll":[5]}`, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, level := range []bool{false, true} {
+		j := beginHashTransaction(dst)
+		sp := 0
+		if level {
+			if sp, err = j.savepoint(); err != nil {
+				t.Fatal(err)
+			}
+		}
+		dst.top.setPlace(placement{mode: placeEnd, target: src.top.first()})
+		if level {
+			j.rollbackLevel(sp)
+			if dst.top.st.place != (placement{}) {
+				t.Fatal("a rolled-back level kept its placement")
+			}
+		}
+		refusal := yang.ErrBudget
+		j.end(&refusal)
+		if dst.top.st.place != (placement{}) {
+			t.Fatal("the refused operation kept its placement")
+		}
+	}
+}
+
+// TestWhenDeleteCancelDiffConsistent: a validation with a diff cancelled at every cancellation
+// check returns a diff that, applied to the original tree, gives the tree it left: a deletion's
+// diff is emitted only once nothing can cancel it (the nested entries are found first).
+func TestWhenDeleteCancelDiffConsistent(t *testing.T) {
+	set := reviewDiffSet(t, `module m { yang-version 1.1; namespace "urn:m"; prefix m;
+	  leaf guard { type string; when "true()"; }
+	  container gone { presence p; when "false()"; leaf x { type string; } } }`)
+	in := `{"m:guard":"g","m:gone":{"x":"x"}}`
+	dump := func(tr *Tree) string {
+		var b strings.Builder
+		if err := tr.PrintJSON(&b, PrintOptions{}); err != nil {
+			t.Fatal(err)
+		}
+		return b.String()
+	}
+	eachCancelPoint(t, func(ctx *cancelAtContext) {
+		tr, err := parseOrdered(t, set, false, in, func(lc *lydCtx) { lc.opts.whenTrue = true })
+		if err != nil {
+			t.Fatal(err)
+		}
+		orig, err := parseOrdered(t, set, false, in, func(lc *lydCtx) { lc.opts.whenTrue = true })
+		if err != nil {
+			t.Fatal(err)
+		}
+		diff, _, err := tr.ValidateModuleDiff(ctx, "m", ValidateOptions{NotFinal: true})
+		if err != nil && !errors.Is(err, context.Canceled) {
+			t.Fatalf("at %d: %v", ctx.at, err)
+		}
+		if diff != nil {
+			if err := orig.ApplyDiff(diff, ApplyDiffOptions{}); err != nil {
+				t.Fatalf("at %d: apply: %v", ctx.at, err)
+			}
+		}
+		if got, want := dump(orig), dump(tr); got != want {
+			t.Fatalf("at %d: the diff gives\n%s\nthe tree is\n%s", ctx.at, got, want)
+		}
+	})
+}
+
+// TestWhenDeadCancelSweep: the when pass of a mixed-context level with three consecutive dead
+// members of a retained RB tree, cancelled at every cancellation check: whatever it returns, no
+// node stays linked with its index part unlinked (the pass's journal level is rolled back when
+// its storage unlink cannot run), and no transient state remains.
+func TestWhenDeadCancelSweep(t *testing.T) {
+	mod := func(when string) string {
+		return `module m { yang-version 1.1; namespace "urn:m"; prefix m;
+		  container c { leaf g { when "../l[k='live' != 'zz']"; type string; }
+		  list l { key k; ` + when + ` leaf k { type string; } }
+		  leaf f1 { type string; } leaf f2 { type string; } leaf f3 { type string; } } }`
+	}
+	setA, setB := reviewDiffSet(t, mod(`when "false()";`)), reviewDiffSet(t, mod(""))
+	o := parseOpts{ParseOptions: ParseOptions{Unknown: Opaque, ParseOnly: true, WhenTrue: true}, whenTrue: true}
+	in := `{"m:c":{"g":"g","l":[{"k":"dead0"},{"k":"dead1"},{"k":"dead2"}],"f1":"1","f2":"2","f3":"3"}}`
+	eachCancelPoint(t, func(ctx *cancelAtContext) {
+		tr, _, err := parseWith(context.Background(), strings.NewReader(in), setA, o, parseJSON, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		linkForeign(t, tr, tr.top.first(), setB, `{"m:c":{"l":[{"k":"live"}]}}`)
+		_, err = tr.ValidateModule(ctx, "m", ValidateOptions{NotFinal: true})
+		if err != nil && !errors.Is(err, context.Canceled) {
+			t.Fatalf("at %d: %v", ctx.at, err)
+		}
+		assertNoTransient(t, tr)
+	})
+}
+
+// TestWhenDeadCancelSweepDiff: TestWhenDeadCancelSweep through ValidateModuleDiff. Cancelled at
+// every check, the returned diff applied to the original tree gives the tree left: each deletion
+// is whole (its diff and its unlink, whose mixed-context leader lookup polls), and a cancellation
+// the work quota observes keeps the completed deletions and their diff, as any other.
+func TestWhenDeadCancelSweepDiff(t *testing.T) {
+	mod := func(when string) string {
+		return `module m { yang-version 1.1; namespace "urn:m"; prefix m;
+		  container c { leaf g { when "../l[k='live' != 'zz']"; type string; }
+		  list l { key k; ` + when + ` leaf k { type string; } }
+		  leaf d1 { type string; default x; } leaf d2 { type string; default y; } leaf-list dl { type string; default a; default b; default c; }
+		  leaf f1 { type string; } leaf f2 { type string; } leaf f3 { type string; } } }`
+	}
+	setA, setB := reviewDiffSet(t, mod(`when "false()";`)), reviewDiffSet(t, mod(""))
+	o := parseOpts{ParseOptions: ParseOptions{Unknown: Opaque, ParseOnly: true, WhenTrue: true}, whenTrue: true}
+	in := `{"m:c":{"g":"g","l":[{"k":"dead0"},{"k":"dead1"},{"k":"dead2"}],"f1":"1","f2":"2","f3":"3"}}`
+	build := func() *Tree {
+		tr, _, err := parseWith(context.Background(), strings.NewReader(in), setA, o, parseJSON, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		linkForeign(t, tr, tr.top.first(), setB, `{"m:c":{"l":[{"k":"live"}]}}`)
+		return tr
+	}
+	dump := func(tr *Tree) string {
+		var b strings.Builder
+		if err := tr.PrintJSON(&b, PrintOptions{WithDefaults: WDAll}); err != nil {
+			t.Fatal(err)
+		}
+		return b.String()
+	}
+	eachCancelPoint(t, func(ctx *cancelAtContext) {
+		tr, orig := build(), build()
+		diff, _, err := tr.ValidateModuleDiff(ctx, "m", ValidateOptions{NotFinal: true})
+		if err != nil && !errors.Is(err, context.Canceled) {
+			t.Fatalf("at %d: %v", ctx.at, err)
+		}
+		assertNoTransient(t, tr)
+		if diff != nil {
+			if err := orig.ApplyDiff(diff, ApplyDiffOptions{}); err != nil {
+				t.Fatalf("at %d: apply: %v", ctx.at, err)
+			}
+		}
+		if got, want := dump(orig), dump(tr); got != want {
+			t.Fatalf("at %d: the diff gives\n%s\nthe tree is\n%s", ctx.at, got, want)
+		}
+	})
+}
+
+// TestWhenDeadRootHidesNoForeignRoot: a non-interleaved top level guard_A, x_A, x_B (A's x has
+// a false when): the reverse pass deletes x_A, then guard's "/m:x" scans the cached root view,
+// which still holds x_A: a deleted root is absent there, so the scan goes on to x_B, as
+// libyang's lookup in the tree x_A left, and guard stays.
+func TestWhenDeadRootHidesNoForeignRoot(t *testing.T) {
+	mod := func(when string) string {
+		return `module m { yang-version 1.1; namespace "urn:m"; prefix m;
+		  leaf guard { type string; when "/m:x"; } leaf x { type string; ` + when + ` } }`
+	}
+	setA, setB := reviewDiffSet(t, mod(`when "false()";`)), reviewDiffSet(t, mod(""))
+	o := parseOpts{ParseOptions: ParseOptions{Unknown: Opaque, ParseOnly: true, Ordered: true, WhenTrue: true}, ordered: true, whenTrue: true}
+	parse := func(set *schema.Set, in string) *Tree {
+		tr, _, err := parseWith(context.Background(), strings.NewReader(in), set, o, parseJSON, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return tr
+	}
+	trA, trB := parse(setA, `{"m:guard":"g","m:x":"dead"}`), parse(setB, `{"m:x":"live"}`)
+	if err := trB.Insert(nil, trA.top.first()); err != nil {
+		t.Fatal(err)
+	}
+	var got []string
+	for _, n := range trB.top.docSpan().All() {
+		got = append(got, n.Name()+"="+n.value.Canonical())
+	}
+	if want := []string{"guard=g", "x=dead", "x=live"}; !slices.Equal(got, want) {
+		t.Fatalf("fixture: top level %v, want %v", got, want)
+	}
+	if _, err := trB.ValidateModule(context.Background(), "m", ValidateOptions{NotFinal: true}); err != nil {
+		t.Fatal(err)
+	}
+	got = got[:0]
+	for _, n := range trB.top.docSpan().All() {
+		got = append(got, n.Name()+"="+n.value.Canonical())
+	}
+	if want := []string{"guard=g", "x=live"}; !slices.Equal(got, want) {
+		t.Fatalf("after the when pass %v, want %v", got, want)
+	}
+}
+
+// TestMixedTableDeepLineagePaid: a hashed level 64 containers deep, out of schema order, holding
+// A's z and 1,024 instances of B's state leaf-list s; a lookup of A's absent s 9999 compares each
+// B instance with the probe across contexts. The schema parents are compared once per schema
+// node and paid level by level (xprobe.lineage), not walked again for every candidate unpaid:
+// the levels compared stay O(depth + candidates) and within what the lookup paid.
+func TestMixedTableDeepLineagePaid(t *testing.T) {
+	const depth, n = 64, 1024
+	var mod, open, shut strings.Builder
+	mod.WriteString(`module m { yang-version 1.1; namespace "urn:m"; prefix m;`)
+	for i := range depth {
+		fmt.Fprintf(&mod, " container c%d {", i)
+		if i == 0 {
+			fmt.Fprintf(&open, `{"m:c%d":{`, i)
+		} else {
+			fmt.Fprintf(&open, `"c%d":{`, i)
+		}
+		shut.WriteString("}")
+	}
+	mod.WriteString(` leaf a { type string; } leaf z { type string; } leaf-list s { config false; type uint32; }`)
+	mod.WriteString(strings.Repeat(" }", depth) + " }")
+	vals := make([]string, n)
+	for i := range vals {
+		vals[i] = strconv.Itoa(i)
+	}
+	doc := func(inner string) string { return open.String() + inner + shut.String() + "}" }
+	deepest := func(tr *Tree) *Node {
+		c := tr.top.first()
+		for range depth - 1 {
+			c = c.kids.first()
+		}
+		return c
+	}
+	setA, setB := xctxSets(t, mod.String())
+	tr, err := parseOrdered(t, setA, false, doc(`"z":"z0"`), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	c := deepest(tr)
+	fb, _, err := parseJSONString(setB, doc(`"s":[`+strings.Join(vals, ",")+`],"a":"y"`), Reject, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, k := range slices.Collect(deepest(fb).Children()) {
+		if err := unlink(k); err != nil {
+			t.Fatal(err)
+		}
+		if err := tr.link(c, &c.kids, k, c.kids.SchemaLen()); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if c.kids.ht == nil || !c.kids.mixedContexts() || !c.kids.schemaUnordered {
+		t.Fatal("fixture: want a hashed level of two contexts out of schema order")
+	}
+	probe, err := parseOrdered(t, setA, false, doc(`"s":[9999]`), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	target := deepest(probe).kids.first()
+	if m, err := tr.findFirstWork(&c.kids, target, &workCounter{}); err != nil || m != nil {
+		t.Fatalf("warm-up: %v %v", m, err)
+	}
+	levels := 0
+	compareLevelHook = func() { levels++ }
+	defer func() { compareLevelHook = nil }()
+	w := &workCounter{hashLimit: 5000}
+	if m, err := tr.findFirstWork(&c.kids, target, w); err != nil || m != nil {
+		t.Fatalf("the lookup: %v %v", m, err)
+	}
+	if levels > 4*depth+2*n || uint64(levels) > w.hashUsed {
+		t.Fatalf("%d schema levels compared, %d paid, for %d candidates %d deep", levels, w.hashUsed, n, depth)
+	}
+	// Find with a value predicate: the prepared probe of the same lookup
+	var path strings.Builder
+	for i := range depth {
+		if i == 0 {
+			path.WriteString("/m:c0")
+		} else {
+			fmt.Fprintf(&path, "/c%d", i)
+		}
+	}
+	levels = 0
+	if m, err := tr.Find(path.String() + "/s[.='9999']"); err != nil || m != nil {
+		t.Fatalf("Find: %v %v", m, err)
+	}
+	if levels > 8*depth+2*n {
+		t.Fatalf("Find compared %d schema levels for %d candidates %d deep", levels, n, depth)
+	}
+	levels = 0
+	if m, _, err := tr.FindXPath(path.String()+"/s[.='9999']", XPathOptions{}); err != nil || len(m) != 0 {
+		t.Fatalf("FindXPath: %v %v", m, err)
+	}
+	if levels > 8*depth+2*n {
+		t.Fatalf("FindXPath compared %d schema levels for %d candidates %d deep", levels, n, depth)
+	}
+}
+
+// TestCopiedListInsertReservesPhysicalPrefix: a list copied from a context where it has key a
+// into one where it has keys a b c keeps its document order (a, zz, b, c, d); a new b goes
+// before c, and the link's reservation reads the physical prefix the hash reads (a, zz, old b:
+// a 1 MiB value), not the logical one: the prepaid scope does not overdraw.
+func TestCopiedListInsertReservesPhysicalPrefix(t *testing.T) {
+	mod := func(keys string) string {
+		return `module m { yang-version 1.1; namespace "urn:m"; prefix m;
+		  container c { leaf x { type string; } leaf y { type string; } leaf z { type string; }
+		  list l { key "` + keys + `"; ordered-by user; leaf a { type string; } leaf b { type string; }
+		  leaf c { type string; } leaf d { type string; } } } }`
+	}
+	setA, setB := reviewDiffSet(t, mod("a")), reviewDiffSet(t, mod("a b c"))
+	big := strings.Repeat("v", 1<<20)
+	src, err := parseOrdered(t, setA, false, `{"m:c":{"l":[{"a":"A","zz":"u","b":"`+big+`","c":"C","d":"D"}]}}`, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	dst, _, err := parseJSONString(setB, `{"m:c":{"x":"1","y":"2","z":"3"}}`, Reject, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var l *Node
+	for n := range src.top.first().Children() {
+		if n.Name() == "l" {
+			l = n
+		}
+	}
+	cp, _, err := dst.Dup(l, dst.top.first(), DupOptions{Recursive: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	saved := overdraftPanics
+	overdraftPanics = true
+	defer func() { overdraftPanics = saved }()
+	if _, err := dst.NewTerm(cp, "b", "s", NewOptions{}); err != nil {
+		t.Log(err) // a refusal is fine; an overdraft panics
+	}
+}
+
+// TestWhenDeadKeyedForeignTransition: C's reference to l[k='live'] in a table level of A and B,
+// where the when pass deletes A's only l: libyang unlinks it at once, and the keyed lookup
+// compares C's target with B's surviving l, so guard stays.
+func TestWhenDeadKeyedForeignTransition(t *testing.T) {
+	mod := func(when string) string {
+		return `module m { yang-version 1.1; namespace "urn:m"; prefix m;
+		  leaf guard { type string; when "deref(../ref)"; }
+		  leaf ref { type instance-identifier; }
+		  container c { list l { key k; ordered-by user; ` + when + ` leaf k { type string; } }
+		  leaf f1 { type string; } leaf f2 { type string; } leaf f3 { type string; } } }`
+	}
+	setA, setB, setC := reviewDiffSet(t, mod(`when "false()";`)), reviewDiffSet(t, mod("")), reviewDiffSet(t, mod(""))
+	o := parseOpts{ParseOptions: ParseOptions{Unknown: Opaque, ParseOnly: true, Ordered: true, WhenTrue: true}, ordered: true, whenTrue: true}
+	tr, _, err := parseWith(context.Background(), strings.NewReader(`{"m:guard":"g","m:ref":"/m:c/l[k='live']","m:c":{}}`), setC, o, parseJSON, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var c *Node
+	for _, n := range tr.top.docSpan().All() {
+		if n.Name() == "c" {
+			c = n
+		}
+	}
+	linkForeign(t, tr, c, setA, `{"m:c":{"l":[{"k":"dead"}]}}`)
+	c.kids.docLast().flags |= FlagWhenTrue
+	linkForeign(t, tr, c, setB, `{"m:c":{"l":[{"k":"live"}],"f1":"1","f2":"2","f3":"3"}}`)
+	if c.kids.ht == nil || !c.kids.mixedContexts() {
+		t.Fatal("fixture: want a table level of two contexts")
+	}
+	if _, err := tr.ValidateModule(context.Background(), "m", ValidateOptions{NotFinal: true}); err != nil {
+		t.Fatal(err)
+	}
+	if n, err := tr.Find("/m:guard"); err != nil || n == nil {
+		t.Fatalf("guard deleted: %v %v", n, err)
+	}
+	assertNoTransient(t, tr)
+}
+
+// TestWhenDeadContextTransition: the when pass deletes the last node of one context (two
+// contexts to one) or of two (three to one); the set's context is then the survivors' (live
+// context counts), not the stored first sibling's, so the instance-identifier deref of guard's
+// when finds B's b (libyang unlinks x at once) and guard stays.
+func TestWhenDeadContextTransition(t *testing.T) {
+	mod := `module m { yang-version 1.1; namespace "urn:m"; prefix m;
+	  leaf guard { type string; when "deref(../ref)"; }
+	  leaf ref { type instance-identifier; }
+	  container c { leaf x { type string; when "false()"; } leaf b { type string; }
+	  leaf f1 { type string; } leaf f2 { type string; } leaf f3 { type string; } } }`
+	for _, three := range []bool{false, true} {
+		setA, setB, setC := reviewDiffSet(t, mod), reviewDiffSet(t, mod), reviewDiffSet(t, mod)
+		o := parseOpts{ParseOptions: ParseOptions{Unknown: Opaque, ParseOnly: true, Ordered: true, WhenTrue: true}, ordered: true, whenTrue: true}
+		tr, _, err := parseWith(context.Background(), strings.NewReader(`{"m:guard":"g","m:ref":"/m:c/b","m:c":{"x":"x"}}`), setA, o, parseJSON, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var c *Node
+		for _, n := range tr.top.docSpan().All() {
+			if n.Name() == "c" {
+				c = n
+			}
+		}
+		if three {
+			linkForeign(t, tr, c, setC, `{"m:c":{"x":"x"}}`)
+			c.kids.docLast().flags |= FlagWhenTrue // deleted by the pass as A's x
+		}
+		linkForeign(t, tr, c, setB, `{"m:c":{"b":"yes","f1":"1","f2":"2","f3":"3"}}`)
+		if _, err := tr.ValidateModule(context.Background(), "m", ValidateOptions{NotFinal: true}); err != nil {
+			t.Fatal(three, err)
+		}
+		if n, err := tr.Find("/m:guard"); err != nil || n == nil {
+			t.Fatalf("three %v: guard deleted: %v %v", three, n, err)
+		}
+		if n, err := tr.Find("/m:c/b"); err != nil || n == nil || ctxOf(n) != setB {
+			t.Fatalf("three %v: Find of B's b: %v %v", three, n, err)
+		}
+		if len(c.kids.contexts) != 1 {
+			t.Fatalf("three %v: contexts left %d", three, len(c.kids.contexts))
+		}
+	}
+}
+
+// TestWhenDeadLeaderMixedContexts: the when pass deletes A's first instance of l, whose record
+// libyang removes at once; in a children table of two contexts the next lookup of l finds B's
+// instance (FirstChild, the predicate's first-instance probe), so g's when holds and g stays.
+func TestWhenDeadLeaderMixedContexts(t *testing.T) {
+	mod := func(when string) string {
+		return `module m { yang-version 1.1; namespace "urn:m"; prefix m;
+		  container c { leaf g { when "../l[k='live' != 'zz']"; type string; }
+		  list l { key k; ` + when + ` leaf k { type string; } }
+		  leaf f1 { type string; } leaf f2 { type string; } leaf f3 { type string; } } }`
+	}
+	// ordered: one dead instance; not: two consecutive dead instances in a retained RB tree,
+	// removed one after the other among the live neighbours (lyds_unlink, then lyd_unlink_hash)
+	for _, ordered := range []bool{true, false} {
+		setA, setB := reviewDiffSet(t, mod(`when "false()";`)), reviewDiffSet(t, mod(""))
+		o := parseOpts{ParseOptions: ParseOptions{Unknown: Opaque, ParseOnly: true, Ordered: ordered, WhenTrue: true}, ordered: ordered, whenTrue: true}
+		in := `{"m:c":{"g":"g","l":[{"k":"dead"}],"f1":"1","f2":"2","f3":"3"}}`
+		if !ordered {
+			in = `{"m:c":{"g":"g","l":[{"k":"dead0"},{"k":"dead1"}],"f1":"1","f2":"2","f3":"3"}}`
+		}
+		tr, _, err := parseWith(context.Background(), strings.NewReader(in), setA, o, parseJSON, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		c := tr.top.first()
+		linkForeign(t, tr, c, setB, `{"m:c":{"l":[{"k":"live"}]}}`)
+		if c.kids.ht == nil || !c.kids.mixedContexts() {
+			t.Fatal("fixture: want a table level of two contexts")
+		}
+		if _, err := tr.ValidateModule(context.Background(), "m", ValidateOptions{NotFinal: true}); err != nil {
+			t.Fatal(ordered, err)
+		}
+		var names []string
+		for n := range c.Children() {
+			names = append(names, n.Name())
+		}
+		if !slices.Contains(names, "g") || len(names) != 5 {
+			t.Fatalf("ordered %v: children after validation: %v", ordered, names)
+		}
+		opidxAssertTreeInvariant(t, tr)
+	}
+}
+
+// TestLeafListDefaultsScaling: system-ordered leaf-lists with two defaults each, after an
+// instance run, in a top level out of schema order: each second default joins its leader's run
+// (lyds_insert), and the module walk is kept across it, so the work per default stays flat,
+// defaults ascending or descending.
+func TestLeafListDefaultsScaling(t *testing.T) {
+	work := func(n int, desc bool) float64 {
+		var m strings.Builder
+		m.WriteString(`module m { yang-version 1.1; namespace "urn:m"; prefix m;
+		  leaf marker { type string; } leaf-list u { type uint32; ordered-by user; }`)
+		d1, d2 := "a", "b"
+		if desc {
+			d1, d2 = d2, d1
+		}
+		for i := range n {
+			fmt.Fprintf(&m, ` leaf-list d%d { type string; default %q; default %q; }`, i, d1, d2)
+		}
+		m.WriteString(" }")
+		vals := make([]string, n)
+		for i := range vals {
+			vals[i] = strconv.Itoa(i)
+		}
+		tr, err := parseOrdered(t, reviewDiffSet(t, m.String()), false, `{"m:u":[`+strings.Join(vals, ",")+`],"m:marker":"m"}`, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := tr.top.docLast().Unlink(); err != nil { // marker: the level stays out of order
+			t.Fatal(err)
+		}
+		load := tr.work.Load()
+		if _, err := tr.ValidateModule(context.Background(), "m", ValidateOptions{NotFinal: true}); err != nil {
+			t.Fatal(n, desc, err)
+		}
+		top := slices.Collect(tr.Top())
+		if len(top) != 3*n {
+			t.Fatalf("%d top-level nodes, want %d", len(top), 3*n)
+		}
+		if v := top[n+1].Value(); top[n].Name() != "d0" || top[n].Value() != "a" || v != "b" {
+			t.Fatalf("order: %s=%s %s", top[n].Name(), top[n].Value(), v)
+		}
+		return (float64(tr.work.Load()-load) + float64(tr.work.hashUsed)) / float64(n)
+	}
+	for _, desc := range []bool{false, true} {
+		if small, large := work(raceScale(1000, 4), desc), work(raceScale(4000, 4), desc); large > 1.5*small {
+			t.Fatalf("work per leaf-list (descending %v): %.1f, then %.1f at 4x", desc, small, large)
+		}
+	}
+}
+
+// TestModuleRelativeDefaultsScaling: n default leaves of module m created in a top level out of
+// module order (z:x, then m's marker): each module-relative insertion resumes the anchor walk
+// where the previous one ended, so the work per default stays flat and a large module validates
+// under the default quota; every step is charged, so a small quota refuses.
+func TestModuleRelativeDefaultsScaling(t *testing.T) {
+	// before: an instance run (a leaf-list of n entries) precedes every default in schema and
+	// document order, so no walk finds an anchor (each default goes after first->prev); first:
+	// the module starts at the tree's first root (lyd_validate passes the tree as first), and
+	// every walk stops at an opaque root; firstEnd: marker before a, then marker unlinked (the
+	// top level stays out of schema order), so every walk runs off the end and appends
+	const (
+		anchored = iota
+		before
+		first
+		firstEnd
+	)
+	build := func(n int, shape int) *Tree {
+		var m strings.Builder
+		m.WriteString(`module m { yang-version 1.1; namespace "urn:m"; prefix m;`)
+		in := `{"z:x":"x","m:marker":"x"}`
+		if shape == first || shape == firstEnd {
+			m.WriteString(` leaf a { type string; }`)
+			in = `{"m:a":"a","m:zz":"u","m:marker":"m"}`
+			if shape == firstEnd {
+				in = `{"m:marker":"m","m:a":"a"}`
+			}
+		}
+		if shape == before {
+			m.WriteString(` leaf-list u { type uint32; ordered-by user; }`)
+			vals := make([]string, n)
+			for i := range vals {
+				vals[i] = strconv.Itoa(i)
+			}
+			in = `{"z:x":"x","m:u":[` + strings.Join(vals, ",") + `]}`
+		}
+		for i := range n {
+			fmt.Fprintf(&m, ` leaf d%d { type string; default "v"; }`, i)
+		}
+		m.WriteString(` leaf marker { type string; } }`)
+		dir := t.TempDir()
+		if err := os.WriteFile(dir+"/m.yang", []byte(m.String()), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(dir+"/z.yang", []byte(`module z { yang-version 1.1; namespace "urn:z"; prefix z; leaf x { type string; } }`), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		c, ds, err := yang.NewContext(yang.Options{NoYangLibrary: true}, os.DirFS(dir))
+		if err != nil {
+			t.Fatal(ds, err)
+		}
+		for _, mod := range []string{"m", "z"} {
+			if ds, err := c.Load(mod, "", nil); err != nil {
+				t.Fatal(ds, err)
+			}
+		}
+		tr, err := parseOrdered(t, snap.Set(c.Schema()), false, in, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if shape == firstEnd {
+			if err := tr.top.docFirst().Unlink(); err != nil {
+				t.Fatal(err)
+			}
+			if !tr.top.schemaUnordered {
+				t.Fatal("the top level is in schema order again")
+			}
+		}
+		return tr
+	}
+	work := func(n int, shape int) float64 {
+		tr := build(n, shape)
+		load := tr.work.Load()
+		if _, err := tr.ValidateModule(context.Background(), "m", ValidateOptions{NotFinal: true}); err != nil {
+			t.Fatal(n, shape, err)
+		}
+		top := slices.Collect(tr.Top())
+		want := n + 2
+		if shape == first {
+			want = n + 3
+			// a, then the defaults in schema order before zz (the anchor every walk stops at)
+			if top[1].Name() != "d0" || top[2].Name() != "d1" || top[n+1].Name() != "zz" {
+				t.Fatalf("order: %s %s %s", top[1].Name(), top[2].Name(), top[n+1].Name())
+			}
+		}
+		if shape == firstEnd {
+			want = n + 1
+			if top[1].Name() != "d0" || top[n].Name() != fmt.Sprintf("d%d", n-1) {
+				t.Fatalf("order: %s %s", top[1].Name(), top[n].Name())
+			}
+		}
+		if shape == before {
+			want = 2*n + 1
+			// x, then the defaults in schema order, then the run: each after first->prev
+			if top[1].Name() != "d0" || top[2].Name() != "d1" || top[n+1].Name() != "u" {
+				t.Fatalf("order: %s %s %s", top[1].Name(), top[2].Name(), top[n+1].Name())
+			}
+		}
+		if len(top) != want {
+			t.Fatalf("%d top-level nodes, want %d", len(top), want)
+		}
+		return (float64(tr.work.Load()-load) + float64(tr.work.hashUsed)) / float64(n)
+	}
+	// flat up to the O(log n) index operations of each link: 4x the defaults, at most 1.5x the
+	// work per default (the walk alone, rescanned, grew 4x), an anchor or none
+	for _, shape := range []int{anchored, before, first, firstEnd} {
+		small, large := work(raceScale(2400, 4), shape), work(raceScale(9600, 4), shape)
+		if large > 1.5*small {
+			t.Fatalf("work per default (shape %d): %.1f, then %.1f at 4x the defaults", shape, small, large)
+		}
+	}
+	tr := build(300, anchored)
+	tr.work.hashLimit = 64
+	if _, err := tr.ValidateModule(context.Background(), "m", ValidateOptions{NotFinal: true}); !errors.Is(err, yang.ErrBudget) {
+		t.Fatalf("a small quota: %v", err)
+	}
+}

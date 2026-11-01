@@ -1,0 +1,21 @@
+# a metadata diff (LYD_DIFF_META) over a table level of two contexts with repeated x leaves annotated differently: lyd_diff_find_match's lyd_find_sibling_first matches a leaf by schema alone in the children table (lyd_hash_table_val_equal), taking the first registered x, here the second one after the first's unlink and reinsertion, whose annotation the diff compares
+fixtures:
+  - id: protocol-v2/ordered-mixed-table-meta-diff
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: []   # libyang diff metadata across contexts: no RFC behaviour
+    areas: [diff]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      context_options: ["no_yanglibrary"]
+      modules: [{name: "pv2-lyds"}, {name: "pv2-ordered8"}, {name: "pv2-find-meta"}]
+      steps:
+        - {do: parse, format: json, data_type: get, data: '{"pv2-ordered8:c": {"z": "zz"}}'}
+        - {do: insert, format: json, data_type: get, data: '{"pv2-lyds:ll": [5]}', target: {searchdirs: [schemas], modules: [{name: "pv2-lyds"}, {name: "pv2-ordered8"}, {name: "pv2-find-meta"}], context_options: ["no_yanglibrary"]}}
+        - {do: edit, format: xml, data_type: get, parse_options: [ordered], merge_into: '<c xmlns="urn:vibe-ports:yang:conformance:pv2-ordered8" xmlns:n="urn:vibe-ports:yang:conformance:pv2-find-meta"><p>p</p><x n:note="one">first</x><b>b</b><x n:note="two">second</x></c>'}
+        - {do: unlink, node: /pv2-ordered8:c/x}
+        - {do: insert, detached: true, parent: /pv2-ordered8:c}
+        - {do: dump}
+        - {do: diff, format: xml, data_type: get, parse_options: [ordered], data: '<c xmlns="urn:vibe-ports:yang:conformance:pv2-ordered8" xmlns:n="urn:vibe-ports:yang:conformance:pv2-find-meta"><x n:note="one">first</x><p>p</p><b>b</b><x n:note="one">second</x><z>zz</z></c>', options: [meta]}
+    golden: golden/ordered-mixed-table-meta-diff.json

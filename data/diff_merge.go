@@ -371,7 +371,7 @@ func (t *Tree) isRedundantUserordMove(dm, child *Node) (bool, error) {
 	if sib == nil {
 		return false, nil
 	}
-	all := sib.CollectRange(0, sib.Len())
+	all := sib.docNodes()
 	at := slices.Index(all, dm)
 	for k := 1; k < len(all); k++ { // the previous siblings, cyclically (prev of the first is the last)
 		it := all[(at-k+len(all))%len(all)]
@@ -513,8 +513,8 @@ func (t *Tree) diffMergeMetadataR(src, trg *Node, keysOnly bool) error {
 	if err := t.diffMergeMetadata(src, trg); err != nil {
 		return err
 	}
-	tc := trg.kids.CollectRange(0, trg.kids.Len())
-	for i, c := range src.kids.CollectRange(0, src.kids.Len()) {
+	tc := trg.kids.docNodes()
+	for i, c := range src.kids.docNodes() {
 		if keysOnly && !c.isKey() {
 			break
 		}

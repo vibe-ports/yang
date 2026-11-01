@@ -1,0 +1,18 @@
+# a list instance whose key follows an opaque child: libyang's key check walks lyd_child (lyd_parse_check_keys)
+fixtures:
+  - id: protocol-v2/ordered-xml-key-after-opaque
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#7.5.7"]
+    areas: [codecs]
+    request:
+      op: "data"
+      searchdirs: [schemas]
+      context_options: ["no_yanglibrary"]
+      modules: [{name: "pv2-ordered2"}]
+      format: xml
+      data_type: get
+      unknown: opaque
+      parse_options: [ordered]
+      data: '<c xmlns="urn:vibe-ports:yang:conformance:pv2-ordered2"><l><zz>u</zz><k>k1</k></l></c>'
+    golden: golden/ordered-xml-key-after-opaque.json

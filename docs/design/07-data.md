@@ -852,7 +852,7 @@ previous constructor behavior.
 | `t.ValidateModule(ctx, module, o)` | `lyd_validate_module(&tree, module, val_opts, NULL)` (VAL:2302) | mutation of t |
 | `t.ValidateModuleDiff(ctx, module, o)` | `lyd_validate_module(&tree, module, val_opts, &diff)` | mutation of t; returns diff |
 | `ParseOptions.WhenTrue` | `LYD_PARSE_WHEN_TRUE` | — |
-| `LYD_PARSE_ORDERED` | not exported (D-0058) | — |
+| `ParseOptions.Ordered` | `LYD_PARSE_ORDERED` | — |
 
 - `ValidateModule` validates only the data of `module` (an implemented module's name, as
   `ApplyDiffOptions.Module`), its implicit nodes included (#100). `o.Present` is refused as libyang
@@ -866,9 +866,12 @@ previous constructor behavior.
   Validate removes them silently when their when turns false instead of failing. This is how a
   server reloads a datastore it validated before and then applies edits. Already internal
   (`parseOpts.whenTrue`); the engine's `when_true` refusal goes.
-- `ordered` stays unexported. Its behaviour is not mirrored (D-0058), and libyang documents it as
-  undefined for input not in schema order, so it is a speed knob with no value for a Go user. The two
-  `protocol-v2/ordered-*` fixtures stay unsupported under D-0058.
+- `Ordered` (#247, design 15): parsed siblings are appended after the last sibling, whatever it is
+  (`LYD_INSERT_NODE_LAST`), with no schema- or value-order search: the flag trusts the input order,
+  it does not sort it. Input out of schema order keeps its order, and a schema node may follow an
+  opaque one; later insertions, lookups, validation, copies and printing then behave on that tree as
+  libyang's do (design 15, `protocol-v2/ordered-*`). libyang documents misuse as undefined; the one
+  restriction the port keeps is a run that an opaque sibling splits (design 15).
 
 #### 6.1.5 Envelopes (NETCONF/RESTCONF): in v1, parse only, M5
 
@@ -973,7 +976,7 @@ of a registry entry. So #105 cannot pass with them unsupported; they must agree.
 | `LYD_DUP_NO_EXT`, `LYD_DUP_WITH_PRIV`, `lyd_dup_meta_single` | nothing to act on (no extension data, no private pointers); metadata copies come with Dup |
 | `struct lyd_leafref_links_rec`, LY_EDENIED/LY_ENOTFOUND of `lyd_leafref_get_links` | two slices carry the record; the error cases are "no links" |
 | `lyd_validate_op`'s `diff` | no user yet; ValidateDiff is the shape to copy |
-| `LYD_PARSE_ORDERED`, `LYD_PARSE_NO_NEW` | D-0058; NO_NEW is internal validation plumbing |
+| `LYD_PARSE_NO_NEW` | internal validation plumbing |
 | `lyd_parse_op` with a parent for `RPC_YANG`/`NOTIF_YANG` (a nested action or notification parsed into an existing parent) | no fixture or user; ParseOp returns the operation with its parents in a new tree instead. `Request` is refused with OpRPC/OpNotif (§6.1.1); allowing it later is additive |
 | `lyd_parser_find_operation`, `lyd_parser_notif_eventtime_validate` | parser internals (#93, #94) |
 | `lyd_validate_ext`, extension data trees | U-0023 / U-0060, after M4 |
@@ -994,7 +997,7 @@ entries owned by this stream: **D-0001** (candidate: `when` reading a top-level 
 | D-0055 (candidate, registered) | dummy-when: an unresolvable `when` on an absent mandatory node is ignored under multi-error (the check runs) but is `LY_EINT` otherwise | RFC 7950 §7.21.5 |
 | D-0056 (candidate) | a must reaching a node left unresolved after a when error fails with `LY_EINCOMPLETE` (LOGERR, no vecode) | — |
 | D-0057 (candidate) | a tree of only top-level opaque nodes reports the opaque error once per implemented module | — |
-| D-0058 (registered) | **not mirrored**: `LYD_INSERT_NODE_LAST` (`LYD_PARSE_ORDERED`) appends after the last sibling whatever it is; the port keeps schema nodes in schema order and before all opaque nodes (opaque nodes are a separate slice), so input that is not in schema order or mixes unknown nodes is placed by schema; likewise `lyd_insert_after` of a schema node after an opaque sibling (libyang links it there) places it after the last instance of its own run, keeping schema order | none: container children may come in any order (RFC 7950 §7.5.7; schema order binds only RPC/action parameters), so libyang is compliant; schema-ordered placement is the port's storage constraint, a compatibility trade-off |
+| D-0058 (registered) | **not mirrored**: `lyd_insert_after` next to an opaque sibling (libyang links the node right after the anchor; `InsertAfter` places it by its run or among the opaque nodes). The `LYD_PARSE_ORDERED` part is mirrored since #247 (`ParseOptions.Ordered`, design 15) | none: RFC 7950 §7.5.7 lets container children appear in any order, so libyang is compliant; the placement is a compatibility trade-off |
 | D-0061 (retired) | **mirrored** since v0.5.0: moving a sorted run into a sorted run (`lyds_merge_nodes3`) visits the retained source tree in `rb_iter` order | RFC 7950 §7.7.7 |
 | D-0062 | **not mirrored**: moving a sorted run into an untreed run (`lyds_merge_nodes2`): libyang is UB (SIGSEGV / allocation failure and hang); the port does the stable merge, source first on equal values | RFC 7950 §7.7.7 |
 | U-0040 | input size budget | libyang reads anything |

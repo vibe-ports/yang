@@ -1,0 +1,17 @@
+# ordered-when-dead-separator-position with a children table
+fixtures:
+  - id: protocol-v2/ordered-when-dead-separator-position-table
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#7.21.5"]
+    areas: [validation]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      context_options: ["no_yanglibrary"]
+      modules: [{name: "pv2-ordered14"}]
+      steps:
+        - {do: parse, format: xml, data_type: data, parse_only: true, unknown: opaque, parse_options: [ordered, when_true], data: '<guard xmlns="urn:vibe-ports:yang:conformance:pv2-ordered14">g</guard><ref xmlns="urn:vibe-ports:yang:conformance:pv2-ordered14" xmlns:o="urn:vibe-ports:yang:conformance:pv2-ordered14">/o:c/o:s[2]</ref><c xmlns="urn:vibe-ports:yang:conformance:pv2-ordered14"><s>1</s><x>x</x><s>2</s><f1>1</f1><f2>2</f2><f3>3</f3></c>'}
+        - {do: validate, module: pv2-ordered14, validate_options: [not_final]}
+        - {do: dump}
+    golden: golden/ordered-when-dead-separator-position-table.json

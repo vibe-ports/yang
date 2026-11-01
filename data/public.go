@@ -45,7 +45,7 @@ func Parse(ctx context.Context, r io.Reader, f Format, s *yang.Schema, o ParseOp
 		o.ParseOnly = true // LYD_PARSE_STORE_ONLY = 0x01010000 contains LYD_PARSE_ONLY = 0x010000
 	}
 	return parseWith(ctx, r, snap.Set(s), parseOpts{ParseOptions: o, storeOnly: o.StoreOnly, whenTrue: o.WhenTrue, jsonNull: o.JSONNull,
-		jsonStringDatatypes: o.JSONStringDatatypes}, fp, nil)
+		jsonStringDatatypes: o.JSONStringDatatypes, ordered: o.Ordered}, fp, nil)
 }
 
 // Path is lyd_path(LYD_PATH_STD): "/mod:a/b[k='v']/c", the module name on every module change,

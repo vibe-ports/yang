@@ -137,8 +137,10 @@ type OpaqueSchema interface {
 
 // FirstLookup is an optional interface of a Node: its first lyd_child_any instance of sn found
 // through an index (lyd_find_sibling_schema), nil if it has none. ok=false declines: the evaluator scans.
+// charge pays data-dependent lookup work to the evaluation's budget and polls its context; its
+// error sticks in the evaluation.
 type FirstLookup interface {
-	FirstChild(sn SchemaNode) (n Node, ok bool)
+	FirstChild(sn SchemaNode, charge func(int64) error) (n Node, ok bool)
 }
 
 // contextSchema is an optional interface of a SchemaNode that knows its context
@@ -311,6 +313,9 @@ type EvalContext struct {
 	Tree    []Node          // top-level siblings in document order; every node reached is under them
 	// TreeLookup finds top-level nodes like ChildLookup finds children (nil: scan Tree).
 	TreeLookup ChildLookup
+	// TreeGone, when set, reports the nodes of Tree deleted since it was built (a cached view):
+	// every read of the root skips them, as absent.
+	TreeGone   func(Node) bool
 	Root       RootKind
 	IgnoreWhen bool // LYXP_IGNORE_WHEN: do not fail on unresolved when
 	Schema     SchemaInfo

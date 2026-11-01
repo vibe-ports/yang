@@ -378,7 +378,10 @@ func (n *Node) takeAnyChildren(t *Tree, child *Node) error {
 			}
 		}
 		for _, c := range nodes {
-			if err := n.any.children.appendNode(c); err != nil {
+			n.any.children.setPlace(placement{mode: placeEnd, target: c}) // the forest as linked
+			err := n.any.children.appendNode(c)
+			n.any.children.clearPlace()
+			if err != nil {
 				return err
 			}
 		}

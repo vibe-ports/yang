@@ -1,0 +1,19 @@
+# lyd_dup_r copies children with LYD_INSERT_NODE_LAST: the copy keeps an opaque node between schema nodes
+fixtures:
+  - id: protocol-v2/ordered-dup-interleaved
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#7.5.7"]
+    areas: [codecs]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      context_options: ["no_yanglibrary"]
+      modules: [{name: "pv2-ordered2"}]
+      steps:
+        - {do: parse, format: json, data_type: get, unknown: opaque, parse_options: [ordered], data: '{"pv2-ordered2:c": {"b": "y", "zz": "u", "a": "x", "ll": [2, 1]}}'}
+        - {do: dup, node: /pv2-ordered2:c, options: [recursive]}
+        - {do: dump}
+        - {do: edit, set: {path: /pv2-ordered2:c/c, value: "z"}}
+        - {do: dump}
+    golden: golden/ordered-dup-interleaved.json

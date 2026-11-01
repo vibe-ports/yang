@@ -522,7 +522,6 @@ var inventoryGapClasses = map[string]struct {
 	exact   string
 	request func(map[string]any) bool
 }{
-	"ordered-input":              {id: "D-0058", reasons: []string{"LYD_PARSE_ORDERED input order"}},
 	"any-direct":                 {id: "U-0112", exact: "unsupported: native pointer-level any-value calls have no public Go equivalent, U-0112", request: inventoryAnyDirectStep},
 	"operation-parent":           {id: "U-0106", reasons: []string{"rpc input into an existing", "operation input into an existing parent", "an rpc request with data_type", "a reply into an opaque request"}},
 	"reply-non-operation-parent": {id: "U-0110", reasons: []string{"reply into a non-operation parent"}},
@@ -1293,7 +1292,7 @@ func requestDiffSeeds() []requestDiffSeed {
 func TestParseFlagsDifferential(t *testing.T) {
 	oracle, base := requestOracle(t)
 	contexts := newInventoryContextCache()
-	for _, flag := range []string{"when_true", "anydata_strict"} {
+	for _, flag := range []string{"when_true", "anydata_strict", "ordered"} {
 		for _, format := range []string{"json", "xml"} {
 			t.Run(flag+"/"+format, func(t *testing.T) {
 				p := inventoryCommon("data")

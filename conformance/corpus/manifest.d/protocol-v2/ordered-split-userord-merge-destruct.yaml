@@ -1,0 +1,17 @@
+# lyd_merge_siblings(LYD_MERGE_DESTRUCT), the edit merge step, of two new instances into a user-ordered leaf-list run that another node splits: lyds_is_supported fails for user-ordered nodes, so the destructive merge pools nothing and inserts as Tree.Merge does (supported, unlike U-0113)
+fixtures:
+  - id: protocol-v2/ordered-split-userord-merge-destruct
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#7.7.7"]
+    areas: [codecs]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      context_options: ["no_yanglibrary"]
+      modules: [{name: "pv2-ordered13"}]
+      steps:
+        - {do: parse, format: json, data_type: data, parse_only: true, parse_options: [ordered], data: '{"pv2-ordered13:c": {"u": [1], "b": "x", "u": [2]}}'}
+        - {do: edit, merge: '{"pv2-ordered13:c": {"u": [3, 4]}}'}
+        - {do: dump}
+    golden: golden/ordered-split-userord-merge-destruct.json

@@ -1,0 +1,20 @@
+# an Ordered ParseOnly list instance whose repeated key follows an opaque child (k=x, zz, k=y): lyd_hash hashes the leading key run in document order, which stops at zz, so a lookup by k=x finds the instance and k=y does not; a recursive duplicate rehashes the same run
+fixtures:
+  - id: protocol-v2/ordered-list-key-past-opaque
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#7.8.2"]
+    areas: [xpath]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      context_options: ["no_yanglibrary"]
+      modules: [{name: "pv2-ordered2"}]
+      steps:
+        - {do: parse, format: json, data_type: get, parse_only: true, unknown: opaque, parse_options: [ordered], data: '{"pv2-ordered2:c": {"l": [{"k": "x", "zz": "u", "k": "y"}]}}'}
+        - {do: xpath, xpath: "/pv2-ordered2:c/l[k='x']"}
+        - {do: xpath, xpath: "/pv2-ordered2:c/l[k='y']"}
+        - {do: dup, node: /pv2-ordered2:c, options: [recursive]}
+        - {do: xpath, xpath: "/pv2-ordered2:c/l[k='x']"}
+        - {do: dump}
+    golden: golden/ordered-list-key-past-opaque.json

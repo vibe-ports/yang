@@ -1,0 +1,13 @@
+module pv2-o9root {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:pv2-o9root";
+  prefix o9r;
+
+  description
+    "Hand-written (this repo): a top-level leaf sorting before pv2-ordered9,
+     the first root of a tree of the ordered9-alt context (design 15).";
+
+  leaf r {
+    type string;
+  }
+}

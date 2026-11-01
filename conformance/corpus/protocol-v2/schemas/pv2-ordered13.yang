@@ -1,0 +1,37 @@
+module pv2-ordered13 {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:pv2-ordered13";
+  prefix o13;
+
+  description
+    "Hand-written (this repo): a user-ordered leaf-list run split by
+     another node, merged; top-level leaf-list defaults after a run in a
+     top level out of schema order (design 15).";
+
+  leaf marker {
+    type string;
+  }
+  leaf-list tu {
+    type uint32;
+    ordered-by user;
+  }
+  leaf-list d1 {
+    type string;
+    default "b";
+    default "a";
+  }
+  leaf-list d2 {
+    type string;
+    default "a";
+    default "b";
+  }
+  container c {
+    leaf-list u {
+      type uint32;
+      ordered-by user;
+    }
+    leaf b {
+      type string;
+    }
+  }
+}

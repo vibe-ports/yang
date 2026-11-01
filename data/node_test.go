@@ -205,8 +205,8 @@ func TestResortRun(t *testing.T) {
 	}
 }
 
-// TestOpaqueTail: insertLast keeps schema nodes before the opaque tail, and a node that would
-// break schema order is placed by schema, so siblings stay monotone for the binary searches.
+// TestOpaqueTail: insertLast (LYD_INSERT_NODE_LAST) appends after the last sibling whatever it
+// is: input order is kept and a schema node follows the opaque one (design 15).
 func TestOpaqueTail(t *testing.T) {
 	f := newFixture()
 	tr := newTree(f.set)
@@ -216,7 +216,7 @@ func TestOpaqueTail(t *testing.T) {
 	mustLink(t, tr.insert(c, newOpaque(opaque{Name: "op"}), insertLast))
 	mustLink(t, tr.insert(c, f.term(t, f.x, "x"), insertLast))
 	mustLink(t, tr.insert(c, f.term(t, f.ll, "1"), insertLast))
-	if got := names(c.Children()); !reflect.DeepEqual(got, []string{"ll=1", "x=x", "z=z", "op"}) {
+	if got := names(c.Children()); !reflect.DeepEqual(got, []string{"z=z", "op", "x=x", "ll=1"}) {
 		t.Fatalf("%v", got)
 	}
 	if !panics(func() { mustLink(t, tr.insert(c, c.kids.At(0), insertDefault)) }) {
@@ -664,7 +664,7 @@ func TestRBTreeRunEmptied(t *testing.T) {
 	// issue #101/#208: 3,5 are indexed, 9 and 1 are appended outside the tree (LYD_DUP_NO_LYDS),
 	// then a bulk trim removes indexed nodes and 4 is inserted sorted. The native orders are the
 	// goldens of seq/trim-lyds-emptied-run and seq/trim-lyds-partial-run, which the conformance
-	// engine reports unsupported (their ordered parse is D-0058; dup no_lyds is DupOptions.NoSort): when the last indexed instance
+	// engine runs (their ordered parse is ParseOptions.Ordered, dup no_lyds DupOptions.NoSort): when the last indexed instance
 	// goes, the next sorted insertion rebuilds and re-sorts the run; while one survives, 4 goes
 	// into the remaining index and the appended instances stay where they are.
 	for _, tc := range []struct {

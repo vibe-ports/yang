@@ -1,7 +1,7 @@
 fixtures:
   - id: protocol-v2/ordered-schema-order
     dir: protocol-v2
-    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # D-0058: LYD_PARSE_ORDERED appends every node last, so b before a stays in input order; the port places by schema
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # LYD_PARSE_ORDERED appends every node last, so b before a stays in input order (design 15)
     rfc: ["RFC7950#7.5.7"]
     areas: [codecs]
     request:

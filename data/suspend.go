@@ -414,3 +414,10 @@ func normalizeRefusal(set *schema.Set, err *error, diags *[]yang.Diagnostic) {
 		*diags = append(*diags, ve.Diags[len(ve.Diags)-1])
 	}
 }
+
+// opLookup reports whether a running diff's lookup quota pays the reads made now: a diff is
+// running and is not waiting on user code (a public read from a callback is read-only, class C).
+func (w *workCounter) opLookup() bool { return w.lookupDepth != 0 && !w.held() }
+
+// opHash is opLookup for a mutation's hash quota.
+func (w *workCounter) opHash() bool { return w.hashDepth != 0 && !w.held() }

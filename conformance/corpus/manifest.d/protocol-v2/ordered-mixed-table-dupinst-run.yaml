@@ -1,0 +1,20 @@
+# a state leaf-list split by another schema node in a children table holding siblings of two contexts: lyd_find_sibling_first starts at the first-instance record and walks only its run, so the value of the later piece is not found
+fixtures:
+  - id: protocol-v2/ordered-mixed-table-dupinst-run
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: []   # libyang children-table lookups across contexts: no RFC behaviour
+    areas: [xpath]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      context_options: ["no_yanglibrary"]
+      modules: [{name: "pv2-lyds"}, {name: "pv2-ordered8"}]
+      steps:
+        - {do: parse, format: json, data_type: get, data: '{"pv2-ordered8:c": {"z": "zz"}}'}
+        - {do: insert, format: json, data_type: get, data: '{"pv2-lyds:ll": [5]}', target: {searchdirs: [schemas], modules: [{name: "pv2-lyds"}, {name: "pv2-ordered8"}], context_options: ["no_yanglibrary"]}}
+        - {do: edit, format: json, data_type: get, parse_options: [ordered], merge_into: '{"pv2-ordered8:c": {"p": "p", "st": [1], "b": "b", "st": [2]}}'}
+        - {do: dump}
+        - {do: xpath, xpath: "/pv2-ordered8:c/st[.='2']"}
+        - {do: xpath, xpath: "/pv2-ordered8:c/st[.='1']"}
+    golden: golden/ordered-mixed-table-dupinst-run.json

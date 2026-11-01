@@ -42,8 +42,9 @@ comments cite this document as "design 14".
 
 ## Invariants
 
-1. Every linked child of a set occurs once in its store, schema before opaque; its slot is its
-   handle there (`storeCheckInvariant`, run by every tree invariant and budget sweep).
+1. Every linked child of a set occurs once in its store, schema before opaque until the set is
+   interleaved (design 15: the store then holds document order and positions are logical); its
+   slot is its handle there (`storeCheckInvariant`, run by every tree invariant and budget sweep).
 2. An ordered index registers exactly the store's handles and owns no sequence.
 3. Every store write while a state runs is journaled in that state (`bind.state`: bound by the
    whole capture, by a narrow write, or with the store's allocation); rollback restores the

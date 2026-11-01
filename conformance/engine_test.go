@@ -587,15 +587,7 @@ func xpathKind(req map[string]any) string {
 
 // xpathUnsupported are the xpath fixtures that may stay unsupported after M3, each with the
 // deviations.md id its reason must name.
-var xpathUnsupported = map[string]string{
-	// native evidence for TrimXPath's run and link cleanup; the Go side is TestRBTreeRunEmptied
-	// and the Go-expressible seq/trim-lyds-all-indexed, seq/trim-links-lkorder-* fixtures
-	// step 2 parses with LYD_PARSE_ORDERED (D-0058) before step 3's LYD_DUP_NO_LYDS (DupOptions.NoSort): the
-	// engine refuses at the first unsupported step it executes
-	"seq/trim-lyds-emptied-run":     "D-0058",
-	"seq/trim-lyds-partial-run":     "D-0058",
-	"seq/trim-links-referrer-first": "D-0058", // LYD_PARSE_ORDERED puts referrers first
-}
+var xpathUnsupported = map[string]string{}
 
 // xpathAllowed reports whether fixture id may be unsupported with this reason.
 func xpathAllowed(id, reason string) bool {
@@ -705,14 +697,9 @@ var validationUnsupported = map[string]string{
 	"any-core/dup-into-anyxml":               "U-0112",
 	"ut-new/any-create-json":                 "U-0112",
 	"ut-new/any-create-xml":                  "U-0112",
-	// D-0058: LYD_PARSE_ORDERED input order is not exported.
-	"seq/trim-links-referrer-first": "D-0058",
-	"seq/trim-lyds-emptied-run":     "D-0058", // parse ordered (step 2) before dup no_lyds (step 3)
-	"seq/trim-lyds-partial-run":     "D-0058",
 	// U-0106: an rpc input parsed into an existing request (Request is for replies only).
 	"ops/parse-json-rpc-parent-opaque-meta":   "U-0106",
 	"ops/opidx-meta-doc-first":                "U-0106",
-	"ops/opidx-split-run-leader-switch":       "D-0058",
 	"ops/parse-json-reply-opaque-request":     "U-0106",
 	"ops/seq-parse-json-reply-opaque-request": "U-0106",
 	"ops/parse-json-rpc-rollback-key":         "U-0106",
@@ -770,22 +757,22 @@ func codecsSkippedFieldsAllowed(op string, fields []string) bool {
 // codecsUnsupported names every codecs fixture allowed to remain unsupported and the registry id
 // that must occur in its unsupported reason.
 var codecsUnsupported = map[string]string{
-	"any-core/create-invalid-json":            "U-0112",
-	"any-core/create-invalid-text":            "U-0112",
-	"any-core/create-invalid-xml":             "U-0112",
-	"any-core/create-warning-xml-key-order":   "U-0112",
-	"any-core/create-xml-scan-error-anydata":  "U-0112",
-	"any-core/create-xml-scan-error-anyxml":   "U-0112",
-	"ext/structure-data-json":                 "U-0060",
-	"ops/parse-json-rpc-parent-opaque-meta":   "U-0106",
-	"ops/parse-json-rpc-rollback-key":         "U-0106",
-	"ops/parse-json-rpc-rollback-keys-order":  "U-0106",
-	"ops/parse-xml-rpc-parent-envelope-value": "U-0106",
-	"ops/parse-xml-rpc-parent-input":          "U-0106",
-	"protocol-v2/ordered-opaque-between":      "D-0058",
-	"protocol-v2/ordered-schema-order":        "D-0058",
-	"ut-new/any-create-json":                  "U-0112",
-	"ut-new/any-create-xml":                   "U-0112",
+	"protocol-v2/ordered-split-list-merge-destruct":           "U-0113",
+	"protocol-v2/ordered-split-list-merge-destruct-augmented": "U-0113",
+	"any-core/create-invalid-json":                            "U-0112",
+	"any-core/create-invalid-text":                            "U-0112",
+	"any-core/create-invalid-xml":                             "U-0112",
+	"any-core/create-warning-xml-key-order":                   "U-0112",
+	"any-core/create-xml-scan-error-anydata":                  "U-0112",
+	"any-core/create-xml-scan-error-anyxml":                   "U-0112",
+	"ext/structure-data-json":                                 "U-0060",
+	"ops/parse-json-rpc-parent-opaque-meta":                   "U-0106",
+	"ops/parse-json-rpc-rollback-key":                         "U-0106",
+	"ops/parse-json-rpc-rollback-keys-order":                  "U-0106",
+	"ops/parse-xml-rpc-parent-envelope-value":                 "U-0106",
+	"ops/parse-xml-rpc-parent-input":                          "U-0106",
+	"ut-new/any-create-json":                                  "U-0112",
+	"ut-new/any-create-xml":                                   "U-0112",
 }
 
 func codecsAllowed(id, reason string, registry map[string]bool) bool {

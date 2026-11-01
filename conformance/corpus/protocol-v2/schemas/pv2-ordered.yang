@@ -4,7 +4,7 @@ module pv2-ordered {
   prefix o;
 
   description
-    "Hand-written (this repo): input order under LYD_PARSE_ORDERED, D-0058.";
+    "Hand-written (this repo): input order under LYD_PARSE_ORDERED.";
 
   container c {
     leaf a {

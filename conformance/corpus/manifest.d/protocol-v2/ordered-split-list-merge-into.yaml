@@ -1,0 +1,17 @@
+# lyd_merge_siblings without LYD_MERGE_DESTRUCT (Merge) into a list run that an opaque node splits: each new instance looks its run leader up again (lyd_insert_node; lyds_insert2's cached leader needs the destructed source's pool, tree_data.c:2721-2760)
+fixtures:
+  - id: protocol-v2/ordered-split-list-merge-into
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#7.5.7"]
+    areas: [codecs]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      context_options: ["no_yanglibrary"]
+      modules: [{name: "pv2-ordered2"}]
+      steps:
+        - {do: parse, format: json, data_type: get, unknown: opaque, data: '{"pv2-ordered2:c": {"l": [{"k": "k0"}, {"k": "k1", "v": "w"}, {"k": "k3"}]}}'}
+        - {do: edit, merge_into: '<c xmlns="urn:vibe-ports:yang:conformance:pv2-ordered2"><a>x</a><l><k>k2</k></l><zz>u</zz><l><k>k1</k></l><b>y</b><c>z</c></c>', format: xml, data_type: get, unknown: opaque, parse_options: [ordered]}
+        - {do: dump}
+    golden: golden/ordered-split-list-merge-into.json

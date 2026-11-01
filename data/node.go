@@ -5,9 +5,11 @@
 package data
 
 import (
+	"context"
 	"iter"
 	"sync"
 	"sync/atomic"
+	"unique"
 
 	"github.com/vibe-ports/yang/internal/opidx"
 	"github.com/vibe-ports/yang/internal/schema"
@@ -39,8 +41,9 @@ const (
 // lenient parsing. The parsers fill it (design 07 D4).
 type opaque struct {
 	Name     string
-	Prefix   string // as written in the input
-	ModuleNS string // XML namespace, JSON module name (lyd_node_opaq.name.module_ns/module_name)
+	nameID   unique.Handle[string] // Name interned (newOpaque): O(1) name comparisons
+	Prefix   string                // as written in the input
+	ModuleNS string                // XML namespace, JSON module name (lyd_node_opaq.name.module_ns/module_name)
 	Value    string
 	// Format is how ModuleNS and the value's prefixes are given: types.FormatXML or
 	// types.FormatJSON; Prefixes resolves the value's prefixes (val_prefix_data), Hints are the
@@ -117,12 +120,18 @@ type Tree struct {
 	// mixedDiff makes insertion follow libyang's cross-context scans from the first copied node,
 	// before the destination itself contains nodes from both input contexts.
 	mixedDiff bool
+	// sortedAt: the last insertPos found its position in a run's RB tree (lyds_insert), not by
+	// lyd_insert_node_find_anchor (design 15)
+	sortedAt bool
 	// foreignSchema indexes sibling schema lineages only while a cross-context diff is running.
 	// The inputs are immutable for that operation, so the cache needs no mutation invalidation.
 	foreignSchema      map[foreignSchemaCacheKey]map[foreignSchemaIndexKey][]foreignCandidate
 	foreignSchemaInput map[*siblings]bool
 	// foreignInstance indexes the instances of those inputs for cross-context first-match lookups.
-	foreignInstance   map[*siblings]map[foreignInstanceKey][]*Node
+	foreignInstance map[*siblings]map[foreignInstanceKey][]*Node
+	// dupRun indexes, per first-instance record, the duplicate-instance run lyd_find_sibling_first
+	// walks from it, by stored hash, in run order (findFirstMixedTable, the same inputs)
+	dupRun            map[*Node]map[uint32][]*Node
 	schemaLineage     map[*schema.Node]schemaLineageID
 	lineageComponents map[schemaLineageComponent]schemaLineageID
 	nextLineageID     schemaLineageID
@@ -134,6 +143,9 @@ type Tree struct {
 // The hash quota fields belong to a mutation operation; read-only probes use a
 // private counter rather than changing the queried tree's quota.
 type workCounter struct {
+	// pollCtx is the running operation's cancellation (a validation's or a parse's), polled by
+	// chargeOf's charges, which pay schema- and input-sized loops (nil: none)
+	pollCtx context.Context
 	atomic.Int64
 	visits     bool        // count sibling/link-record visits too (tests only; set before measured calls)
 	hashUsed   uint64      // cumulative reserved hash transitions in the current mutation
@@ -209,7 +221,23 @@ func newInner(s *schema.Node, counters ...*workCounter) *Node {
 }
 
 // newOpaque returns an unlinked opaque node (lyd_create_opaq).
-func newOpaque(o opaque) *Node { return &Node{opaq: &o} }
+func newOpaque(o opaque) *Node {
+	o.nameID = unique.Make(o.Name)
+	o.Name = o.nameID.Value() // the interned copy only
+	return &Node{opaq: &o}
+}
+
+// nameID is n's interned LYD_NAME (its schema node's name, or its opaque name), compared in
+// O(1) by the opaque-name walks.
+func (n *Node) nameID() unique.Handle[string] {
+	if n.schema != nil {
+		return n.schema.ID().Name
+	}
+	if n.opaq.nameID != (unique.Handle[string]{}) {
+		return n.opaq.nameID
+	}
+	return unique.Make(n.opaq.Name)
+}
 
 // Parent returns the parent node, nil at the top level.
 func (n *Node) Parent() *Node {

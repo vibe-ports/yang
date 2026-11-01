@@ -1,0 +1,18 @@
+# a top-level XPath name test past the first opaque root: the root lookup stops at the opaque node, and no trailing opaque block names it
+fixtures:
+  - id: protocol-v2/ordered-xpath-top-past-opaque
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#7.5.7"]
+    areas: [codecs]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      context_options: ["no_yanglibrary"]
+      modules: [{name: "pv2-ordered3"}]
+      steps:
+        - {do: parse, format: json, data_type: get, unknown: opaque, parse_options: [ordered], data: '{"pv2-ordered3:a": "x", "pv2-ordered3:zz": "u", "pv2-ordered3:b": "y"}'}
+        - {do: xpath, xpath: /pv2-ordered3:b}
+        - {do: xpath, xpath: /pv2-ordered3:a}
+        - {do: xpath, xpath: /pv2-ordered3:zz}
+    golden: golden/ordered-xpath-top-past-opaque.json

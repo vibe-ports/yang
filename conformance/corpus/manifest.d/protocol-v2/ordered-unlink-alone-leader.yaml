@@ -1,0 +1,23 @@
+# unlinking a leaf-list instance whose node->prev is an opaque sibling: LYD_NODE_IS_ALONE reads the physical neighbours, so the leader keeps its RB metadata on the detached node (lyds_unlink), then it is inserted again
+fixtures:
+  - id: protocol-v2/ordered-unlink-alone-leader
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#7.5.7"]
+    areas: [codecs]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      context_options: ["no_yanglibrary"]
+      modules: [{name: "pv2-ordered2"}]
+      steps:
+        - {do: parse, format: xml, data_type: get, unknown: opaque, parse_options: [ordered], data: '<c xmlns="urn:vibe-ports:yang:conformance:pv2-ordered2"><zz>u</zz><ll>1</ll><yy>t</yy><ll>9</ll><ll>10</ll><ll>11</ll></c>'}
+        - {do: edit, insert_term: {parent: /pv2-ordered2:c, name: ll, value: "2"}}
+        - {do: edit, delete: "/pv2-ordered2:c/ll[.='2']"}
+        - {do: unlink, node: "/pv2-ordered2:c/ll[.='1']"}
+        - {do: dump}
+        - {do: insert, detached: true, parent: /pv2-ordered2:c}
+        - {do: dump}
+        - {do: edit, insert_term: {parent: /pv2-ordered2:c, name: ll, value: "0"}}
+        - {do: dump}
+    golden: golden/ordered-unlink-alone-leader.json

@@ -1,0 +1,17 @@
+# lyd_validate_module of a module whose data follows another module's root and precedes all its missing defaults (ordered input): no anchor search finds an anchor, so every default goes after first->prev, the choice's first
+fixtures:
+  - id: protocol-v2/ordered-implicit-no-anchor-run
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#7.9.3"]
+    areas: [validation]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      context_options: ["no_yanglibrary"]
+      modules: [{name: "pv2-ordered10"}, {name: "pv2-ordered11"}]
+      steps:
+        - {do: parse, format: json, data_type: data, parse_only: true, parse_options: [ordered], data: '{"pv2-ordered10:marker": "m", "pv2-ordered11:x": "x"}'}
+        - {do: validate, module: pv2-ordered11, validate_options: [not_final]}
+        - {do: dump}
+    golden: golden/ordered-implicit-no-anchor-run.json

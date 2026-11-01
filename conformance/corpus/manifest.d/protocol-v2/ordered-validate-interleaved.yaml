@@ -1,0 +1,17 @@
+# lyd_validate_all of an ordered tree with an opaque node between schema nodes: the implicit default goes by libyang's anchor walk
+fixtures:
+  - id: protocol-v2/ordered-validate-interleaved
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#7.5.7"]
+    areas: [codecs]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      context_options: ["no_yanglibrary"]
+      modules: [{name: "pv2-ordered2"}]
+      steps:
+        - {do: parse, format: json, data_type: get, unknown: opaque, parse_options: [ordered], data: '{"pv2-ordered2:c": {"a": "x", "zz": "u", "c": "z"}}'}
+        - {do: validate, data_type: data}
+        - {do: dump, with_defaults: all}
+    golden: golden/ordered-validate-interleaved.json

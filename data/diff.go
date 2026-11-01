@@ -57,14 +57,9 @@ func (t *Tree) ValidateDiff(ctx context.Context, o ValidateOptions) (diff *Tree,
 	if dt.work.hashErr != nil {
 		err = dt.work.hashErr
 	}
-	if t.work.hashErr != nil || dt.work.hashErr != nil { // validation returned t's hash error
-		journal.end(&err)
-		journal = nil
-		return nil, d, err
-	}
-	journal.endKeeping(&err) // a guard refusal restores and fails; other failures keep
+	restored := t.endValidateJournal(journal, dt, &err)
 	journal = nil
-	if isGuardRefusal(err) {
+	if restored {
 		return nil, d, err
 	}
 	if dt.top.len() == 0 {
@@ -110,20 +105,29 @@ func (t *Tree) ValidateModuleDiff(ctx context.Context, module string, o Validate
 	if dt.work.hashErr != nil {
 		err = dt.work.hashErr
 	}
-	if t.work.hashErr != nil || dt.work.hashErr != nil { // validation returned t's hash error
-		journal.end(&err)
-		journal = nil
-		return nil, d, err
-	}
-	journal.endKeeping(&err) // a guard refusal restores and fails; other failures keep
+	restored := t.endValidateJournal(journal, dt, &err)
 	journal = nil
-	if isGuardRefusal(err) {
+	if restored {
 		return nil, d, err
 	}
 	if dt.top.len() == 0 {
 		dt = nil
 	}
 	return dt, d, err
+}
+
+// endValidateJournal ends a diff-returning validation's journal. A hash error (t's or the
+// diff's) ends it through end, which restores for a budget failure or a rollback; any other
+// failure, cancellation included however it was observed (a poll of the operation's charge
+// sets the sticky hash error too), keeps the changes and so the partial diff that records them.
+// restored reports a restored tree, whose diff is dropped: a returned diff is always what the
+// tree kept.
+func (t *Tree) endValidateJournal(journal *hashTransaction, dt *Tree, err *error) bool {
+	if t.work.hashErr != nil || dt.work.hashErr != nil { // validation returned t's hash error
+		return journal.end(err)
+	}
+	restored := journal.endKeeping(err) // a guard refusal restores and fails; other failures keep
+	return restored || isGuardRefusal(*err)
 }
 
 // isUserOrdered is lysc_is_userordered.
@@ -134,7 +138,7 @@ func isUserOrdered(s *schema.Node) bool {
 // listPredicate is lyd_path_list_predicate: the key predicates of the list instance n.
 func listPredicate(n *Node) string {
 	var b strings.Builder
-	for _, k := range n.kids.SchemaAll() {
+	for _, k := range n.kids.All() { // lyd_child, in document order
 		if k.schema == nil || !k.schema.IsKey() {
 			break
 		}
@@ -835,7 +839,7 @@ func lastInst(n *Node) *Node {
 		return last
 	}
 	if at := sib.indexOf(sib.schemaSpan(), n); at >= 0 {
-		for _, c := range sib.schemaSpan().Slice(at+1, sib.SchemaLen()).All() {
+		for _, c := range sib.schemaSpan().Slice(at+1, max(at+1, sib.runPiece(at, sib.SchemaLen()))).All() {
 			if c.schema != n.schema {
 				break
 			}
@@ -925,7 +929,10 @@ func (t *Tree) diffMergeDelete(dm *Node, cur diffOp, src *Node) error {
 		var found *Node
 		switch {
 		case c.schema == nil:
-			found = opaqNext(&src.kids, c.Name())
+			var err error
+			if found, err = opaqNext(&t.work, &src.kids, c.Name()); err != nil {
+				return err
+			}
 		case c.schema.Kind == schema.List || c.schema.Kind == schema.LeafList:
 			var err error
 			if found, err = t.findFirstChecked(&src.kids, c); err != nil {
@@ -983,7 +990,7 @@ func (t *Tree) diffIsRedundant(n *Node) (bool, error) {
 				return false, nil
 			}
 		}
-		for _, k := range n.kids.SchemaAll() { // … and on its keys
+		for _, k := range keyPrefix(n).All() { // … and on its keys
 			if !k.isKey() {
 				break
 			}

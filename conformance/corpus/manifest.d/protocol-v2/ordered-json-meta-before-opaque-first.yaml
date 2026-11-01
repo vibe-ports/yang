@@ -1,0 +1,18 @@
+# JSON metadata before the data it names, which an opaque node and a schema node share (deferred metadata, lydjson_metadata_finish): the first in document order, the opaque one, gets it
+fixtures:
+  - id: protocol-v2/ordered-json-meta-before-opaque-first
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7952#5.2.1"]
+    areas: [codecs]
+    request:
+      op: "data"
+      searchdirs: [schemas]
+      context_options: ["no_yanglibrary"]
+      modules: [{name: "pv2-ordered2"}, {name: "pv2-mdapi"}]
+      format: "json"
+      data_type: "get"
+      unknown: "opaque"
+      parse_options: [ordered]
+      data: '{"pv2-ordered2:c":{"@b":{"pv2-mdapi:num":300},"b":false,"b":"ok"}}'
+    golden: golden/ordered-json-meta-before-opaque-first.json

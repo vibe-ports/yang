@@ -36,9 +36,18 @@ func storeCheckInvariant(s *siblings) error {
 	if err := s.st.seq.CheckInvariants(); err != nil {
 		return fmt.Errorf("storage sequence: %w", err)
 	}
+	if s.st.seq.HeavyLen() != s.st.nschema {
+		return fmt.Errorf("storage holds %d schema handles, count %d", s.st.seq.HeavyLen(), s.st.nschema)
+	}
+	if s.st.interleaved() != s.st.seq.KindThreads() {
+		return fmt.Errorf("interleaved %v without matching kind threads", s.st.interleaved())
+	}
 	i := 0
 	for h := s.st.seq.First(); h != nil; h = s.st.seq.Next(h) {
-		if (i < s.st.nschema) != (h.Value.schema != nil) {
+		if h.Heavy() != (h.Value.schema != nil) {
+			return fmt.Errorf("storage position %d has the wrong kind", i)
+		}
+		if !s.st.interleaved() && (i < s.st.nschema) != (h.Value.schema != nil) {
 			return fmt.Errorf("storage position %d breaks the schema prefix of %d", i, s.st.nschema)
 		}
 		if !s.st.view && h.Value.slot.Get() != h {
@@ -152,10 +161,10 @@ func opidxCheckOrderInvariant(tr *Tree, s *siblings) error {
 		return fmt.Errorf("ordered occurrence index retains a non-live class")
 	}
 
-	runs := map[*schema.Node]int{}
+	runs := map[*schema.Node]int{} // in document order: an opaque node ends a run (design 15)
 	var previous *schema.Node
-	for i, n := range s.SchemaAll() {
-		if i == 0 || n.schema != previous {
+	for i, n := range s.All() {
+		if n.schema != nil && (i == 0 || n.schema != previous) {
 			runs[n.schema]++
 		}
 		previous = n.schema

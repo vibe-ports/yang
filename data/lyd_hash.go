@@ -109,6 +109,53 @@ func snapshotKeys(n *Node) siblingSpan {
 	return n.kids.schemaSpan().Slice(0, n.lkeyN)
 }
 
+// keyPrefix is the schema children of list n before its first opaque child, lyd_child's
+// document order: libyang's key walks (lyd_hash, rb_compare_lists, key predicates, the dup and
+// diff key loops) stop at an opaque or a non-key child, and an Ordered ParseOnly input can put
+// an opaque child between keys (design 15). Callers stop at the first non-key.
+func keyPrefix(n *Node) siblingSpan { return n.kids.schemaSpan().Slice(0, n.kids.beforeOpaque()) }
+
+// keyRun is the length of n's leading key run in document order: keyN (the logical run that the
+// link and unlink bookkeeping maintain) cut at the first opaque child.
+func (n *Node) keyRun() int { return min(n.keyN, n.kids.beforeOpaque()) }
+
+// linkDocPos is the document position n takes when linked at logical position at with the
+// placement pending for it (linkAnchor): the physical index the link's preflights simulate.
+func (s *siblings) linkDocPos(n *Node, at int) int {
+	if h := s.linkAnchor(n, at); h != nil {
+		p, _ := s.st.seq.Pos(h)
+		return p
+	}
+	return s.Len()
+}
+
+// keysLead is lyd_insert_has_keys: whether list's first children in document order (lyd_child)
+// are its keys, in order. With n, it answers for after n's link at logical position at, n where
+// its pending physical placement puts it (the link's preflight); without, for the children as
+// linked (keyLinked): one predicate for the reservation and the hash it pays for. step runs per
+// key read.
+func keysLead(list, n *Node, at int, step func() error) (bool, error) {
+	kids := &list.kids
+	docAt := -1
+	if n != nil {
+		docAt = kids.linkDocPos(n, at)
+	}
+	cur := positionalChildren(list) // lyd_child: the first children in document order
+	for i, key := range list.schema.Keys {
+		if err := step(); err != nil {
+			return false, err
+		}
+		c := n
+		if i != docAt {
+			c = cur.next()
+		}
+		if c == nil || c.schema != key {
+			return false, nil
+		}
+	}
+	return true, nil
+}
+
 func (t *Tree) beforeKeyLink(list, child *Node, at int) {
 	// lyd_insert_hash leaves children of an opaque parent unhashed
 	// (tree_data_hash.c:173-175); it has no list-key prefix state either.
@@ -148,25 +195,22 @@ func (t *Tree) keyLinked(list, child *Node) {
 		reindexComparedParent(child)
 		return
 	}
-	prefix := list.kids.schemaSpan().cursor()
-	for _, key := range list.schema.Keys {
-		t.work.Add(1)
-		if c := prefix.next(); c == nil || c.schema != key {
-			// No native hash or registration event, but positional equality has
-			// changed. Keep the existing record's place in its native chain.
-			reindexList(list)
-			return
-		}
+	if ok, err := keysLead(list, nil, 0, func() error { t.work.Add(1); return nil }); err != nil || !ok {
+		// No native hash or registration event, but positional equality has
+		// changed. Keep the existing record's place in its native chain.
+		reindexList(list)
+		return
 	}
 	if err := list.touch(); err != nil {
 		return
 	}
 	start := list.lkeyN
-	if !list.lkeyOK || list.lkeyFrozen != nil || list.lkeyDirty {
+	run := list.keyRun()
+	if !list.lkeyOK || list.lkeyFrozen != nil || list.lkeyDirty || start > run {
 		start = 0
 		list.lkeyPrefix = schemaHashWork(list.schema, &t.work)
 	}
-	list.lkeyN, list.lkeyFrozen, list.lkeyOK, list.lkeyDirty = list.keyN, nil, true, false
+	list.lkeyN, list.lkeyFrozen, list.lkeyOK, list.lkeyDirty = run, nil, true, false
 	for i, key := range snapshotKeys(list).Slice(start, snapshotKeys(list).Len()).All() {
 		t.work.Add(1)
 		if err := key.touch(); err != nil {
@@ -188,7 +232,7 @@ func reindexComparedParent(child *Node) {
 	if list == nil || list.schema == nil || list.schema.Kind != schema.List {
 		return
 	}
-	if !child.isKey() && list.keyN >= len(list.schema.Keys) {
+	if !child.isKey() && list.keyRun() >= len(list.schema.Keys) {
 		return
 	}
 	children := positionalChildren(list)
@@ -224,7 +268,7 @@ func resetListKey(work *workCounter, list *Node) {
 		return
 	}
 	list.keyN = 0
-	for _, key := range list.kids.SchemaAll() {
+	for _, key := range keyPrefix(list).All() { // past an opaque child no key is in lyd_hash's run
 		if work != nil {
 			work.Add(1)
 		}
@@ -235,9 +279,12 @@ func resetListKey(work *workCounter, list *Node) {
 		if err := key.touch(); err != nil {
 			return
 		}
-		key.keySlot = list.keyN
+		key.keySlot = 0
+		if list.keyN <= list.keyRun() {
+			key.keySlot = list.keyN // in lyd_hash's run
+		}
 	}
-	list.lkeyN, list.lkeyFrozen, list.lkeyOK = list.keyN, nil, true
+	list.lkeyN, list.lkeyFrozen, list.lkeyOK = list.keyRun(), nil, true
 	list.refreshHash(work)
 }
 
@@ -268,8 +315,9 @@ func exposeListKeys(work *workCounter, list *Node) {
 	if err := list.touch(); err != nil {
 		return
 	}
-	// a removal reserves the walk: prepareUnlink, or a batch's charge per sibling set
-	for _, key := range list.kids.Range(list.keyN, list.kids.SchemaLen()) {
+	// a removal reserves the walk: prepareUnlink, or a batch's charge per sibling set. It stops at
+	// the first opaque child, where keyRun stops (design 15)
+	for _, key := range list.kids.Range(list.keyN, max(list.keyN, list.kids.beforeOpaque())) {
 		if work != nil {
 			work.Add(1)
 		}

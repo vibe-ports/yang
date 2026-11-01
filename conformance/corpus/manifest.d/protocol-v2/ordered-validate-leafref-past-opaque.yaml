@@ -1,0 +1,17 @@
+# lyd_validate_module of a module whose first top-level node follows an opaque root in an unknown namespace (ordered parse): the subtree walk starts at the module's first node by document position, so the leafref to an absent target is checked
+fixtures:
+  - id: protocol-v2/ordered-validate-leafref-past-opaque
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#9.9"]
+    areas: [validation]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      context_options: ["no_yanglibrary"]
+      modules: [{name: "pv2-lyds"}, {name: "pv2-ordered4"}]
+      steps:
+        - {do: parse, format: xml, data_type: data, parse_only: true, unknown: opaque, parse_options: [ordered], data: '<ll xmlns="urn:vibe-ports:yang:conformance:pv2-lyds">1</ll><zz xmlns="urn:unknown">u</zz><r xmlns="urn:vibe-ports:yang:conformance:pv2-ordered4">x</r>'}
+        - {do: validate, module: pv2-ordered4}
+        - {do: dump}
+    golden: golden/ordered-validate-leafref-past-opaque.json

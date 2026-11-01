@@ -1,0 +1,18 @@
+# lyd_validate_module after the earlier root out of schema order is deleted (ordered input): two system-ordered leaf-lists with two defaults each, descending and ascending, after a user-ordered run: each second default joins its leader's run (lyds_insert), every anchor search runs off the end
+fixtures:
+  - id: protocol-v2/ordered-implicit-leaflist-defaults-run
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#7.9.3"]
+    areas: [validation]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      context_options: ["no_yanglibrary"]
+      modules: [{name: "pv2-ordered13"}]
+      steps:
+        - {do: parse, format: json, data_type: data, parse_only: true, unknown: opaque, parse_options: [ordered], data: '{"pv2-ordered13:tu": [1, 2], "pv2-ordered13:marker": "m"}'}
+        - {do: edit, delete: /pv2-ordered13:marker}
+        - {do: validate, module: pv2-ordered13, validate_options: [not_final]}
+        - {do: dump}
+    golden: golden/ordered-implicit-leaflist-defaults-run.json

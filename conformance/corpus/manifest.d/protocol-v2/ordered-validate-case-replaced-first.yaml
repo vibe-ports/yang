@@ -1,0 +1,19 @@
+# lyd_validate_module after new data of another case of a top-level choice arrives: the old case's leaf is the module's first node, so its auto-deletion moves lyd_validate's first on (lyd_del_move_root) and the duplicate new leaves are still checked
+fixtures:
+  - id: protocol-v2/ordered-validate-case-replaced-first
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#7.9"]
+    areas: [validation]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      context_options: ["no_yanglibrary"]
+      modules: [{name: "pv2-lyds"}, {name: "pv2-ordered5"}]
+      steps:
+        - {do: parse, format: json, data_type: data, data: '{"pv2-lyds:ll": [1], "pv2-ordered5:old": "o"}'}
+        - {do: insert, format: json, data_type: data, parse_only: true, parse_options: [ordered], data: '{"pv2-ordered5:new": "1", "pv2-ordered5:new": "2"}'}
+        - {do: dump}
+        - {do: validate, module: pv2-ordered5}
+        - {do: dump}
+    golden: golden/ordered-validate-case-replaced-first.json

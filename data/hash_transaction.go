@@ -21,7 +21,12 @@ import (
 // old sibling sets are restored; no failed operation returns a reference to them.
 type hashTransaction struct {
 	tree *Tree
-	err  error // a journal charge failed: the operation fails with it and rolls back
+	// placedSets are the sibling sets given a pending placement (setPlace) during the operation:
+	// a placement is transient and unjournaled, valid only up to its own link, so a level's
+	// rollback and the operation's end clear any left (a link refused before it ran), which
+	// would otherwise keep its target, and that node's tree and context, reachable
+	placedSets []*siblings
+	err        error // a journal charge failed: the operation fails with it and rolls back
 	// rollback makes any failure restore, not only a budget one: an operation that could not
 	// undo its own temporary change (validateOpNode's refused cleanup) sets it
 	rollback bool
@@ -144,6 +149,7 @@ type wholeImages struct {
 type level struct {
 	parent                     uint32
 	whole, undo, placed, index int
+	placements                 int // placedSets at the level's start
 }
 
 // addWhole appends a whole capture of k at the current level.
@@ -181,7 +187,7 @@ func (j *hashTransaction) savepoint() (int, error) {
 		return 0, err
 	}
 	j.levels = append(j.levels, level{parent: j.serial, whole: len(j.whole), undo: len(j.undo),
-		placed: len(j.placed), index: j.index.Mark()})
+		placed: len(j.placed), index: j.index.Mark(), placements: len(j.placedSets)})
 	j.issued++
 	j.serial = j.issued
 	return len(j.levels), nil
@@ -205,6 +211,19 @@ func (j *hashTransaction) rollbackLevel(sp int) {
 	l := j.levels[sp-1]
 	j.rollbackTo(l)
 	j.closeLevel(sp)
+	j.clearPlaced(l.placements)
+}
+
+// clearPlaced ends every placement set since placedSets[from] whose link did not run.
+func (j *hashTransaction) clearPlaced(from int) {
+	if from > len(j.placedSets) {
+		return
+	}
+	for _, s := range j.placedSets[from:] {
+		s.clearPlace()
+	}
+	clear(j.placedSets[from:])
+	j.placedSets = j.placedSets[:from]
 }
 
 // endLevel commits the level on success and rolls it back on any failure.
@@ -484,16 +503,16 @@ func (j *hashTransaction) recordPlace(d *dirtyOrder, n *Node, parent *dirtyOrder
 
 // end detaches the transaction from its tree. A failed journal charge becomes the operation's
 // result, and a budget failure (any failure with rollback set) restores the tree. A nil result
-// keeps the changes.
-func (j *hashTransaction) end(result *error) {
+// keeps the changes. It reports whether it restored the tree.
+func (j *hashTransaction) end(result *error) (restored bool) {
 	if j == nil {
-		return
+		return false
 	}
 	if j.refusing {
 		if result != nil && (*result == nil || isGuardRefusal(*result)) {
 			*result = j.err
 		}
-		return
+		return false
 	}
 	j.tree.work.journal = nil
 	for _, w := range j.lent {
@@ -513,9 +532,12 @@ func (j *hashTransaction) end(result *error) {
 			*result = errInProgress
 		}
 		j.restore()
+		restored = true
 	case result != nil && (errors.Is(*result, yang.ErrBudget) || j.rollback && *result != nil):
 		j.restore()
+		restored = true
 	}
+	j.clearPlaced(0)
 	j.release()
 	j.index.Commit() // after a restore the log is empty; otherwise its tombstones go
 	for _, b := range j.bound {
@@ -525,18 +547,18 @@ func (j *hashTransaction) end(result *error) {
 	}
 	j.done()
 	j.spare()
+	return restored
 }
 
 // endKeeping ends the journal of an operation whose ordinary failures keep their changes
 // (validation, including its MaxNodes, XPath-step and cancellation failures): a guard refusal
 // (refuse: rollback with its error) restores and becomes the result instead of being committed;
 // otherwise the changes stay (a hash-budget failure is the caller's end(&err)).
-func (j *hashTransaction) endKeeping(result *error) {
+func (j *hashTransaction) endKeeping(result *error) (restored bool) {
 	if j != nil && (j.rollback && j.err != nil || j.guardRefused(result)) {
-		j.end(result)
-		return
+		return j.end(result)
 	}
-	j.end(nil)
+	return j.end(nil)
 }
 
 // guardRefused reports whether the operation met the guard's refusal: its sticky flag, or the

@@ -1,0 +1,17 @@
+# lyd_merge_siblings into a tree whose opaque node lies between schema nodes
+fixtures:
+  - id: protocol-v2/ordered-merge-into-interleaved
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#7.5.7"]
+    areas: [codecs]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      context_options: ["no_yanglibrary"]
+      modules: [{name: "pv2-ordered2"}]
+      steps:
+        - {do: parse, format: json, data_type: get, unknown: opaque, parse_options: [ordered], data: '{"pv2-ordered2:c": {"a": "x", "zz": "u", "c": "z"}}'}
+        - {do: edit, merge: '{"pv2-ordered2:c": {"b": "y", "ll": [4, 2], "l": [{"k": "k1"}]}}', data_type: get}
+        - {do: dump}
+    golden: golden/ordered-merge-into-interleaved.json

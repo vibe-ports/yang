@@ -1,0 +1,17 @@
+# lyd_validate_module of a module whose data sits between another module's roots (ordered input): lyd_new_implicit creates the default choice's leaf before the earlier ordinary default, and each anchor search starts afresh at the module's first node
+fixtures:
+  - id: protocol-v2/ordered-implicit-choice-first
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#7.9.3"]
+    areas: [validation]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      context_options: ["no_yanglibrary"]
+      modules: [{name: "pv2-ordered10"}, {name: "pv2-ordered11"}]
+      steps:
+        - {do: parse, format: json, data_type: data, parse_only: true, parse_options: [ordered], data: '{"pv2-ordered11:x": "x", "pv2-ordered10:marker": "m", "pv2-ordered11:y": "y"}'}
+        - {do: validate, module: pv2-ordered10, validate_options: [not_final]}
+        - {do: dump}
+    golden: golden/ordered-implicit-choice-first.json

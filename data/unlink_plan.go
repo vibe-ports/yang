@@ -39,10 +39,6 @@ func prepareUnlink(n *Node) (*unlinkPlan, error) {
 	if err := linkGuard(n, w); err != nil {
 		return nil, err
 	}
-	nodes := sib.schemaSpan()
-	if n.schema == nil {
-		nodes = sib.opaqueSpan()
-	}
 	at := sib.orderPosition(n) // the storage's rank walk, paid before it runs
 	if w.hashErr != nil {
 		return nil, w.hashErr
@@ -53,17 +49,22 @@ func prepareUnlink(n *Node) (*unlinkPlan, error) {
 	if at < 0 {
 		return nil, &opError{"LY_EINT", "Unlinked node in sibling storage."}
 	}
-	var prev, next *Node // n's thread neighbours within its partition
+	// n's node->prev and node->next: the document neighbours, whatever their kind (design 15);
+	// a schema node's opaque successor is passed as none, as no RB metadata moves onto it
 	h := sib.handle(n)
-	if at > 0 {
-		prev = sib.st.seq.Prev(h).Value
-	}
-	if at+1 < nodes.Len() {
-		next = sib.st.seq.Next(h).Value
+	prev, next := handleValue(sib.st.seq.Prev(h)), handleValue(sib.st.seq.Next(h))
+	if n.schema != nil && next != nil && next.schema == nil {
+		next = nil
 	}
 	var left *Node
-	if n.schema != nil && prev != nil && next != nil && n.schema != prev.schema &&
-		prev.schema == next.schema && len(sib.rbTree) != 0 {
+	separates := n.schema != nil && prev != nil && next != nil && n.schema != prev.schema &&
+		prev.schema == next.schema
+	if n.schema == nil && sib.st.interleaved() {
+		// an opaque node between two instances of one schema node separates a run too (design 15)
+		pp, nn := sib.st.seq.Prev(h), sib.st.seq.Next(h)
+		separates = pp != nil && nn != nil && pp.Value.schema != nil && pp.Value.schema == nn.Value.schema
+	}
+	if separates && len(sib.rbTree) != 0 {
 		// removing a separator joins two runs: unlink marks the left run's tree unsorted
 		l := sib.st.seq.Prev(h) // prev, walked back to its run's first member, a charged step each
 		for {
@@ -72,15 +73,16 @@ func prepareUnlink(n *Node) (*unlinkPlan, error) {
 			}
 			sib.visit()
 			p := sib.st.seq.Prev(l)
-			if p == nil || p.Value.schema != prev.schema {
+			if p == nil || p.Value.schema != l.Value.schema {
 				break
 			}
 			l = p
 		}
 		left = l.Value
 	}
-	if p := n.parent; n.schema != nil && !n.isKey() && p != nil && p.schema != nil &&
-		p.schema.Kind == schema.List && at == p.keyN {
+	if p := n.parent; p != nil && p.schema != nil && p.schema.Kind == schema.List &&
+		(n.schema != nil && !n.isKey() && at == p.keyN ||
+			n.schema == nil && sib.st.seq.FirstKind(false) == h) { // the first opaque child ends keyRun
 		// detach exposes the keys n preceded (exposeListKeys), however many repeat: this walk
 		// pays for itself and for that one, before any write
 		for c := sib.st.seq.Next(h); c != nil && c.Value.isKey(); c = sib.st.seq.Next(c) {

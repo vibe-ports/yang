@@ -1,0 +1,17 @@
+# an ordered top-level forest of leaf-list instances moved into a top level whose run an opaque node follows: each instance goes after its RB predecessor (lyd_insert_sibling, lyds_merge_nodes1)
+fixtures:
+  - id: protocol-v2/ordered-forest-sorted-move
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#7.5.7"]
+    areas: [codecs]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      context_options: ["no_yanglibrary"]
+      modules: [{name: "pv2-lyds"}]
+      steps:
+        - {do: parse, format: json, data_type: get, unknown: opaque, parse_options: [ordered], data: '{"pv2-lyds:ll": [3], "pv2-lyds:zz": "u", "pv2-lyds:bucket": [{"name": "b"}]}'}
+        - {do: insert, format: json, data_type: get, unknown: opaque, parse_options: [ordered], data: '{"pv2-lyds:ll": [5, 6]}'}
+        - {do: dump}
+    golden: golden/ordered-forest-sorted-move.json

@@ -87,6 +87,8 @@ type evaluator struct {
 	varASTs map[int]varAST   // parsed variable values, by index in ec.Vars
 	intErrs int              // Result.InternalErrors; Log receives each one at its evaluation point
 	spec    *speculativeEval // non-nil only while trying a hashed predicate compilation
+	live    []Node           // ec.Tree less ec.TreeGone's nodes, once read (root)
+	liveOK  bool
 }
 
 // speculativeEval is one eval_name_test_try_compile_predicates attempt. libyang disables
@@ -210,6 +212,28 @@ func (ev *evaluator) start() value {
 }
 
 // tick charges one step of the budget and polls cancellation; the error sticks.
+// root is the document root's children: ec.Tree less the nodes ec.TreeGone reports (deleted, so
+// absent for every axis and lookup), filtered when first read, one step per node; without
+// TreeGone it is ec.Tree as given.
+func (ev *evaluator) root() []Node {
+	if ev.ec.TreeGone == nil {
+		return ev.ec.Tree
+	}
+	if !ev.liveOK {
+		ev.liveOK = true
+		ev.live = make([]Node, 0, len(ev.ec.Tree))
+		for _, c := range ev.ec.Tree {
+			if ev.tick() != nil {
+				break // sticky: the evaluation fails
+			}
+			if !ev.ec.TreeGone(c) {
+				ev.live = append(ev.live, c)
+			}
+		}
+	}
+	return ev.live
+}
+
 func (ev *evaluator) tick() error {
 	if ev.err != nil {
 		return ev.err
@@ -820,13 +844,17 @@ func (ev *evaluator) firstInstance(set value, sn SchemaNode) Node {
 	var kids []Node
 	switch it := set.nodes[0]; it.t {
 	case itRoot:
-		kids = ev.ec.Tree
+		kids = ev.root()
 	case itElem:
 		if f, ok := it.n.(FirstLookup); ok {
 			if err := ev.tick(); err != nil {
 				return nil
 			}
-			if n, ok := f.FirstChild(sn); ok {
+			n, ok := f.FirstChild(sn, ev.probeCharge)
+			if ev.err != nil {
+				return nil
+			}
+			if ok {
 				return n
 			}
 		}
@@ -1042,7 +1070,7 @@ func (ev *evaluator) hashChild(set value, sn SchemaNode, name string, vals []str
 			var kids []Node
 			switch it.t {
 			case itRoot:
-				kids = ev.ec.Tree
+				kids = ev.root()
 			case itElem:
 				if sn := it.n.Schema(); sn != nil && (sn.Kind() == KindAnydata || sn.Kind() == KindAnyxml) {
 					continue // lyd_child, even when the adapter has no ChildLookup
@@ -1246,7 +1274,7 @@ func (ev *evaluator) siblings(n Node) []Node {
 	if p := n.Parent(); p != nil {
 		return p.Children()
 	}
-	return ev.ec.Tree
+	return ev.root()
 }
 
 // index returns n's siblings and its index among them. Each sibling list is
@@ -1340,7 +1368,7 @@ func (ev *evaluator) axis(it item, axis string, yield func(item) error) error {
 		var kids []Node
 		switch it.t {
 		case itRoot:
-			kids = ev.ec.Tree
+			kids = ev.root()
 		case itElem:
 			kids = it.n.Children()
 		}
@@ -1713,7 +1741,7 @@ func (ev *evaluator) stringValue(it item) string {
 	}
 	if it.t == itRoot {
 		b.line(0, "", true)
-		for _, c := range ev.ec.Tree {
+		for _, c := range ev.root() {
 			rec(c, 1)
 		}
 		b.line(0, "", true)

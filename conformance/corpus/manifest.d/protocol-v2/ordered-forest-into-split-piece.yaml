@@ -1,0 +1,20 @@
+# a leaf-list instance moved under a parent into the second piece of a run that an opaque node splits, ahead of its leader, then another insertion: lyd_insert_hash_add reads node->prev, the opaque node, and replaces the piece record (a forest under a parent has no protocol step; TestForestIntoSplitRunRecord)
+fixtures:
+  - id: protocol-v2/ordered-forest-into-split-piece
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#7.5.7"]
+    areas: [codecs]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      context_options: ["no_yanglibrary"]
+      modules: [{name: "pv2-ordered2"}]
+      steps:
+        - {do: parse, format: xml, data_type: get, unknown: opaque, parse_options: [ordered], data: '<c xmlns="urn:vibe-ports:yang:conformance:pv2-ordered2"><a>x</a><b>y</b><ll>3</ll><ll>4</ll><ll>6</ll><zz>u</zz><ll>2</ll><ll>5</ll></c>'}
+        - {do: edit, insert_term: {parent: /pv2-ordered2:c, name: ll, value: "1"}}
+        - {do: insert, parent: /pv2-ordered2:c, node: "/pv2-ordered2:c/ll[.='0']", format: json, data_type: get, data: '{"pv2-ordered2:c": {"ll": [0, 7]}}'}
+        - {do: dump}
+        - {do: edit, insert_term: {parent: /pv2-ordered2:c, name: ll, value: "9"}}
+        - {do: dump}
+    golden: golden/ordered-forest-into-split-piece.json

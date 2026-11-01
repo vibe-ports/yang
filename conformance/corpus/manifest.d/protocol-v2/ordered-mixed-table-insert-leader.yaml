@@ -1,0 +1,20 @@
+# a leaf-list run split by another schema node in a children table holding siblings of two contexts: inserting 0 replaces the first piece's record, so the next insertion's anchor (lyd_insert_get_next_anchor, lyd_find_sibling_schema) is the other piece's record, 4
+fixtures:
+  - id: protocol-v2/ordered-mixed-table-insert-leader
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: []   # libyang children-table lookups across contexts: no RFC behaviour
+    areas: [xpath]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      context_options: ["no_yanglibrary"]
+      modules: [{name: "pv2-lyds"}, {name: "pv2-ordered8"}]
+      steps:
+        - {do: parse, format: json, data_type: get, data: '{"pv2-ordered8:c": {"z": "zz"}}'}
+        - {do: insert, format: json, data_type: get, data: '{"pv2-lyds:ll": [5]}', target: {searchdirs: [schemas], modules: [{name: "pv2-lyds"}, {name: "pv2-ordered8"}], context_options: ["no_yanglibrary"]}}
+        - {do: edit, format: json, data_type: get, parse_options: [ordered], merge_into: '{"pv2-ordered8:c": {"p": "p", "ll": [2], "b": "b", "ll": [4]}}'}
+        - {do: edit, insert_term: {parent: /pv2-ordered8:c, name: ll, value: "0"}}
+        - {do: edit, insert_term: {parent: /pv2-ordered8:c, name: a, value: "x"}}
+        - {do: dump}
+    golden: golden/ordered-mixed-table-insert-leader.json

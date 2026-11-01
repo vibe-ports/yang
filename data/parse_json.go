@@ -414,6 +414,8 @@ func (p *jsonParser) metadataFinish(parent *Node) (result error) {
 	}
 	runs := map[*schema.Node]siblingSpan{} // the instances of a schema node in sibling order
 	firstList := map[string]int{}          // index of the first list-hinted opaque node of a name, -1: none
+	docMatches := map[string]docMatch{}    // interleaved sets, by container name
+	var docIndex metaDocIndex
 	var done []*Node
 	// libyang frees each one when it is attached; none of them is a target of another (their
 	// names start with '@'), except for a "@@name" member
@@ -439,45 +441,64 @@ func (p *jsonParser) metadataFinish(parent *Node) (result error) {
 			name, prefix, _, isAttr := parseName(at.opaq.Name)
 			sn, _ = p.getSnode(isAttr, prefix, name, parent)
 		}
-		r, ok := runs[sn]
-		if !ok && sn != nil {
-			if opChild(sn) || sib.schemaUnordered {
-				// Anchors may split operation children and unordered copies:
-				// libyang counts every instance in sibling order
-				r = spanOf(slices.Clone(sib.opInst(sn)))
-				lc.tree.work.Add(int64(r.Len()))
-			} else if i := lc.tree.schemaIndex(sib, sn); i >= 0 {
-				// Non-operation metadata numbering uses a logarithmic start lookup,
-				// then this counted run walk, cached once per schema.
-				// The run is collected, so numbering an instance reads no position.
-				var nodes []*Node
-				for _, c := range sib.schemaSpan().Slice(i, sib.SchemaLen()).All() {
-					if c.schema != sn {
-						break
-					}
-					lc.tree.work.Add(1)
-					nodes = append(nodes, c)
-				}
-				r = spanOf(nodes)
-			}
-			runs[sn] = r
-		}
 		var n *Node
-		if instance <= r.Len() {
-			n = r.At(instance - 1)
-		} else {
-			// then the opaque siblings of the name; a list-hinted one before the instance fails
-			m, same := instance-r.Len(), byName[at.opaq.Name[1:]]
-			fl, ok := firstList[at.opaq.Name[1:]]
+		if sib.st != nil && sib.st.interleaved() {
+			// lydjson_metadata_finish walks every sibling in document order and counts the schema
+			// and opaque matches together (design 15)
+			mx, ok := docMatches[at.opaq.Name]
 			if !ok {
-				fl = slices.IndexFunc(same, func(o *Node) bool { return o.opaq.Hints&hintList != 0 })
-				firstList[at.opaq.Name[1:]] = fl
+				var err error
+				if mx, err = docIndex.match(lc, sib, sn, at.opaq.Name[1:]); err != nil {
+					return err
+				}
+				docMatches[at.opaq.Name] = mx
 			}
-			if fl >= 0 && fl < m {
-				return lc.log.val(at, "", ly.Syntax, "Metadata container references a sibling list node %s.", same[fl].opaq.Name)
+			if mx.list >= 0 && mx.list < instance {
+				return lc.log.val(at, "", ly.Syntax, "Metadata container references a sibling list node %s.", mx.nodes[mx.list].opaq.Name)
 			}
-			if m <= len(same) {
-				n = same[m-1]
+			if instance <= len(mx.nodes) {
+				n = mx.nodes[instance-1]
+			}
+		} else {
+			r, ok := runs[sn]
+			if !ok && sn != nil {
+				if opChild(sn) || sib.schemaUnordered {
+					// Anchors may split operation children and unordered copies:
+					// libyang counts every instance in sibling order
+					r = spanOf(slices.Clone(sib.opInst(sn)))
+					lc.tree.work.Add(int64(r.Len()))
+				} else if i := lc.tree.schemaIndex(sib, sn); i >= 0 {
+					// Non-operation metadata numbering uses a logarithmic start lookup,
+					// then this counted run walk, cached once per schema.
+					// The run is collected, so numbering an instance reads no position.
+					var nodes []*Node
+					for _, c := range sib.schemaSpan().Slice(i, sib.runPiece(i, sib.SchemaLen())).All() {
+						if c.schema != sn {
+							break
+						}
+						lc.tree.work.Add(1)
+						nodes = append(nodes, c)
+					}
+					r = spanOf(nodes)
+				}
+				runs[sn] = r
+			}
+			if instance <= r.Len() {
+				n = r.At(instance - 1)
+			} else {
+				// then the opaque siblings of the name; a list-hinted one before the instance fails
+				m, same := instance-r.Len(), byName[at.opaq.Name[1:]]
+				fl, ok := firstList[at.opaq.Name[1:]]
+				if !ok {
+					fl = slices.IndexFunc(same, func(o *Node) bool { return o.opaq.Hints&hintList != 0 })
+					firstList[at.opaq.Name[1:]] = fl
+				}
+				if fl >= 0 && fl < m {
+					return lc.log.val(at, "", ly.Syntax, "Metadata container references a sibling list node %s.", same[fl].opaq.Name)
+				}
+				if m <= len(same) {
+					n = same[m-1]
+				}
 			}
 		}
 		switch {
@@ -508,6 +529,76 @@ func (p *jsonParser) metadataFinish(parent *Node) (result error) {
 		done = append(done, at)
 	}
 	return rc
+}
+
+// docMatch is the data siblings a metadata container name couples with in an interleaved set.
+type docMatch struct {
+	nodes []*Node // schema and opaque matches in document order
+	list  int     // index of the first list-hinted opaque match, -1: none
+}
+
+type docEntry struct {
+	n  *Node
+	at int // document position
+}
+
+// metaDocIndex is lydjson_metadata_finish's sibling walk for an interleaved set, built once: the
+// schema instances and the opaque nodes by name, each in document order. A container's matches
+// merge one schema list with one name list, each list merged for at most the two spellings of
+// its name, so numbering every container stays linear in the siblings.
+type metaDocIndex struct {
+	bySchema map[*schema.Node][]docEntry
+	byName   map[string][]docEntry
+}
+
+func (x *metaDocIndex) match(lc *lydCtx, sib *siblings, sn *schema.Node, name string) (docMatch, error) {
+	w := &lc.tree.work
+	if x.bySchema == nil {
+		x.bySchema, x.byName = map[*schema.Node][]docEntry{}, map[string][]docEntry{}
+		for i, c := range sib.docSpan().All() {
+			if err := w.chargeHash(1); err != nil {
+				return docMatch{}, err
+			}
+			if i%1024 == 1023 {
+				if err := poll(lc.ctx); err != nil {
+					return docMatch{}, err
+				}
+			}
+			if c.schema != nil {
+				x.bySchema[c.schema] = append(x.bySchema[c.schema], docEntry{c, i})
+			} else {
+				x.byName[c.opaq.Name] = append(x.byName[c.opaq.Name], docEntry{c, i})
+			}
+		}
+	}
+	var a []docEntry
+	if sn != nil {
+		a = x.bySchema[sn]
+	}
+	b := x.byName[name]
+	if err := w.chargeHash(uint64(len(a)+len(b)) + 1); err != nil {
+		return docMatch{}, err
+	}
+	if err := poll(lc.ctx); err != nil { // also when the index is reused
+		return docMatch{}, err
+	}
+	mx := docMatch{nodes: make([]*Node, 0, len(a)+len(b)), list: -1}
+	for steps := 1; len(a) > 0 || len(b) > 0; steps++ {
+		if steps%1024 == 0 {
+			if err := poll(lc.ctx); err != nil {
+				return docMatch{}, err
+			}
+		}
+		if len(b) == 0 || len(a) > 0 && a[0].at < b[0].at {
+			mx.nodes, a = append(mx.nodes, a[0].n), a[1:]
+			continue
+		}
+		if b[0].n.opaq.Hints&hintList != 0 && mx.list < 0 {
+			mx.list = len(mx.nodes)
+		}
+		mx.nodes, b = append(mx.nodes, b[0].n), b[1:]
+	}
+	return mx, nil
 }
 
 // attachMeta turns the members of the opaque metadata container at into metadata of n.
@@ -599,7 +690,17 @@ func (p *jsonParser) metaAttr(node *Node, idx int) (rc error) {
 		return walk.next()
 	}
 	var pastRun func() *Node // the sibling after a contiguous run, located on demand
-	if nodetype == schema.LeafList {
+	if nodeSibs != nil && nodeSibs.st != nil && nodeSibs.st.interleaved() {
+		// node->next in document order: an opaque sibling ends the coupling (design 15); an
+		// interleaved set has no deferred run, and its runs may be split
+		cur := node
+		next = func(int) *Node {
+			if cur != nil {
+				cur = nodeSibs.docNext(cur)
+			}
+			return cur
+		}
+	} else if nodetype == schema.LeafList {
 		// parseAttribute found the first instance in document order. lydjson_meta_attr then uses
 		// node->next, so a different schema node ends the metadata-to-instance coupling even when
 		// more instances of this operation child occur after it.
@@ -963,8 +1064,13 @@ func (p *jsonParser) parseAttribute(attrNode *Node, sn *schema.Node, name, prefi
 				idx = lc.tree.schemaIndex(sib, sn)
 			}
 		}
-		if attrNode == nil && mod != "" {
-			attrNode = p.opqFirst[opqKey{parent, name, mod}]
+		if mod != "" {
+			// libyang's scan takes the first sibling that matches, schema or opaque: in an
+			// interleaved set an opaque one can come first (design 15)
+			if o := p.opqFirst[opqKey{parent, name, mod}]; o != nil && (attrNode == nil ||
+				sib.st != nil && sib.st.interleaved() && sib.docSpan().Index(o) < sib.docSpan().Index(attrNode)) {
+				attrNode = o
+			}
 		}
 	}
 	if attrNode != nil {

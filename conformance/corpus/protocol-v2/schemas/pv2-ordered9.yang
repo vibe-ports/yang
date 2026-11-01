@@ -1,0 +1,28 @@
+module pv2-ordered9 {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:pv2-ordered9";
+  prefix o9;
+
+  description
+    "Hand-written (this repo): c/l inside a choice; schemas/ordered9-alt
+     holds the same module with c/l directly under c (design 15).";
+
+  container c {
+    leaf a {
+      type string;
+    }
+    choice ch {
+      case cs {
+        list l {
+          key "k";
+          leaf k {
+            type string;
+          }
+        }
+      }
+    }
+    leaf b {
+      type string;
+    }
+  }
+}

@@ -1,0 +1,21 @@
+# a merge into an ordered child level with a children table links children of another context (lyd_merge_sibling_r); once the first schema node is foreign but the first sibling is the opaque node, lyd_insert_get_next_anchor reads LYD_CTX(first_sibling), the opaque node's
+fixtures:
+  - id: protocol-v2/ordered-foreign-first-hashed
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#7.5.7"]
+    areas: [codecs]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      context_options: ["no_yanglibrary"]
+      modules: [{name: "pv2-ordered2"}, {name: "pv2-lyds"}]
+      steps:
+        - {do: parse, format: json, data_type: get, data: '{"pv2-ordered2:c": {"a": "x", "b": "y"}}'}
+        - {do: insert, format: json, data_type: get, data: '{"pv2-lyds:ll": [5]}', target: {searchdirs: [schemas], modules: [{name: "pv2-ordered2"}, {name: "pv2-lyds"}], context_options: ["no_yanglibrary"]}}
+        - {do: edit, format: json, data_type: get, unknown: opaque, parse_options: [ordered], merge_into: '{"pv2-ordered2:c": {"zz": "u", "d": "q", "ll": [1, 2]}}'}
+        - {do: dump}
+        - {do: unlink, node: /pv2-ordered2:c/a}
+        - {do: edit, set: {path: /pv2-ordered2:c/c, value: "z"}}
+        - {do: dump}
+    golden: golden/ordered-foreign-first-hashed.json

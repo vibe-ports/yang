@@ -626,6 +626,9 @@ func (t *Tree) nextAnchor(n *Node) *Node {
 		} else {
 			at = t.unorderedAnchor(sib, n)
 		}
+		if o := sib.walkStop(n, at); o != nil {
+			return o // an opaque sibling before the anchor (design 15)
+		}
 		if at < sib.SchemaLen() {
 			return sib.At(at)
 		}

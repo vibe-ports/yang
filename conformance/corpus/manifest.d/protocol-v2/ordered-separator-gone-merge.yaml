@@ -1,0 +1,20 @@
+# freeing the opaque node that splits a run joins the pieces; a later merge into the joined run inserts each instance again (lyds_insert)
+fixtures:
+  - id: protocol-v2/ordered-separator-gone-merge
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#7.5.7"]
+    areas: [codecs]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      context_options: ["no_yanglibrary"]
+      modules: [{name: "pv2-ordered2"}]
+      steps:
+        - {do: parse, format: xml, data_type: get, unknown: opaque, parse_options: [ordered], data: '<c xmlns="urn:vibe-ports:yang:conformance:pv2-ordered2"><ll>3</ll><zz>u</zz><ll>1</ll></c>'}
+        - {do: edit, insert_term: {parent: /pv2-ordered2:c, name: ll, value: "4"}}
+        - {do: trim, xpath: /pv2-ordered2:c/ll}
+        - {do: dump}
+        - {do: edit, merge: '{"pv2-ordered2:c": {"ll": [5, 6]}}', data_type: get}
+        - {do: dump}
+    golden: golden/ordered-separator-gone-merge.json

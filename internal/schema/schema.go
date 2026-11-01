@@ -10,6 +10,7 @@ package schema
 import (
 	"iter"
 	"sync"
+	"unique"
 )
 
 // Set is every module of one context, in load order (libyang ly_ctx module list).
@@ -17,6 +18,10 @@ type Set struct {
 	Modules    []*Module
 	nameHashes sync.Map // *Node -> uint32, immutable module/name prefixes shared by trees
 	indexNames sync.Map // *Node -> [32]byte, immutable positional-index name digests
+	// children indexes the children of one of this set's nodes (nil: the top level) by node type,
+	// module name and node name, built per parent on first use (ChildByName); it holds only the
+	// set's own nodes
+	children sync.Map // *Node -> map[ChildKey]*Node
 	// LeafrefLinking is the context flag LY_CTX_LEAFREF_LINKING: data trees over the set keep
 	// leafref links (lyd_leafref_link_node_tree).
 	LeafrefLinking bool
@@ -34,6 +39,95 @@ func (s *Set) CachedNameHash(n *Node, compute func() (uint32, error)) (uint32, e
 	}
 	actual, _ := s.nameHashes.LoadOrStore(n, h)
 	return actual.(uint32), nil
+}
+
+// Ident is a schema node's module and node name, the identifiers lyd_compare_schema_equal
+// compares at one level, each interned on its own: equal names have equal handles, so comparing
+// or hashing an Ident is O(1) whatever the names' length, and a module's name is interned once
+// for all its nodes (a pair handle would clone it per node).
+type Ident struct{ Mod, Name unique.Handle[string] }
+
+// ID is n's Ident. Snapshot nodes carry it (interned once, at the copy); another node interns its
+// names here.
+func (n *Node) ID() Ident {
+	if n.Interned() {
+		return n.ident
+	}
+	return Ident{n.Module.NameID(), unique.Make(n.Name)}
+}
+
+// Interned reports whether n carries its Ident (SetID).
+func (n *Node) Interned() bool { return n.ident != (Ident{}) }
+
+// SetID interns n's Ident into n (the snapshot copy, before the set is shared); n's module is
+// interned first (Module.SetID).
+func (n *Node) SetID() { n.ident = Ident{n.Module.NameID(), unique.Make(n.Name)} }
+
+// NameID is m's interned name ("" for a nil module).
+func (m *Module) NameID() unique.Handle[string] {
+	switch {
+	case m == nil:
+		return unique.Make("")
+	case m.nameID != (unique.Handle[string]{}):
+		return m.nameID
+	}
+	return unique.Make(m.Name)
+}
+
+// SetID interns m's name into m (the snapshot copy, before the set is shared).
+func (m *Module) SetID() { m.nameID = unique.Make(m.Name) }
+
+// ChildKey identifies a schema child under its parent: node type and interned identifiers, the
+// fields lyd_compare_schema_equal compares at one level.
+type ChildKey struct {
+	Kind Kind
+	ID   Ident
+}
+
+// ChildByName is the child of parent (a node of this set, nil: the top level of every module)
+// with the given key: data children, the cases of a choice, the input and output of an operation,
+// and actions and notifications in containers and lists; nil if none. The parent's index is
+// built on first use, paying through charge as it goes, one unit per module enumerated and per
+// child (a fixed-size key), so a charge that polls cancels the build; a refusal stores nothing
+// and is returned. A warm lookup is one map read of a fixed-size key. Extension-instance schema
+// trees are not indexed.
+func (s *Set) ChildByName(parent *Node, key ChildKey, charge func(int64) error) (*Node, error) {
+	if v, ok := s.children.Load(parent); ok {
+		return v.(map[ChildKey]*Node)[key], nil
+	}
+	pay := func() error {
+		if charge == nil {
+			return nil
+		}
+		return charge(1)
+	}
+	if err := pay(); err != nil {
+		return nil, err
+	}
+	var kids [][]*Node
+	if parent == nil {
+		for _, m := range s.Modules {
+			if err := pay(); err != nil {
+				return nil, err
+			}
+			kids = append(kids, m.Top)
+		}
+	} else {
+		kids = [][]*Node{parent.Children, parent.Actions, parent.Notifs}
+	}
+	idx := make(map[ChildKey]*Node)
+	for _, k := range kids {
+		for _, n := range k {
+			if err := pay(); err != nil {
+				return nil, err
+			}
+			if key := (ChildKey{n.Kind, n.ID()}); idx[key] == nil {
+				idx[key] = n
+			}
+		}
+	}
+	v, _ := s.children.LoadOrStore(parent, idx)
+	return v.(map[ChildKey]*Node)[key], nil
 }
 
 // CachedIndexName shares the immutable positional discriminator component across trees.
@@ -123,6 +217,7 @@ type Module struct {
 	// a data node whatever its tree (LYD_CTX: the schema node's module context), nil for modules of
 	// hand-built sets.
 	Owner                             *Set
+	nameID                            unique.Handle[string] // NameID, interned by the snapshot
 	Name, Revision, Namespace, Prefix string
 	Version                           uint8 // Version1 (also when yang-version is absent) or Version11
 	Implemented                       bool
@@ -258,6 +353,7 @@ const (
 type Node struct {
 	Kind   Kind
 	Name   string
+	ident  Ident   // ID, interned by the snapshot
 	Module *Module // module whose namespace the node is in (the augmenting module for augments)
 	Parent *Node
 	// Children are the data children (for a choice its cases, for an rpc/action its input and

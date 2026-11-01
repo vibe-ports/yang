@@ -1,0 +1,26 @@
+# a children table holding siblings of two contexts, out of schema order: lyd_find_sibling_schema returns the bucket's first registered x (lyd_hash_table_schema_val_equal), which after an unlink and reinsertion of the first x is the second one, for a path, an XPath query, an update and the anchor of an insertion of a
+fixtures:
+  - id: protocol-v2/ordered-mixed-table-schema-lookup
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: []   # libyang children-table lookups across contexts: no RFC behaviour
+    areas: [xpath]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      context_options: ["no_yanglibrary"]
+      modules: [{name: "pv2-lyds"}, {name: "pv2-ordered8"}]
+      steps:
+        - {do: parse, format: json, data_type: get, data: '{"pv2-ordered8:c": {"z": "zz"}}'}
+        - {do: insert, format: json, data_type: get, data: '{"pv2-lyds:ll": [5]}', target: {searchdirs: [schemas], modules: [{name: "pv2-lyds"}, {name: "pv2-ordered8"}], context_options: ["no_yanglibrary"]}}
+        - {do: edit, format: json, data_type: get, parse_options: [ordered], merge_into: '{"pv2-ordered8:c": {"p": "p", "x": "first", "b": "b", "x": "second"}}'}
+        - {do: dump}
+        - {do: unlink, node: /pv2-ordered8:c/x}
+        - {do: insert, detached: true, parent: /pv2-ordered8:c}
+        - {do: dump}
+        - {do: xpath, xpath: /pv2-ordered8:c/x}
+        - {do: edit, set: {path: /pv2-ordered8:c/x, value: "upd"}}
+        - {do: dump}
+        - {do: edit, insert_term: {parent: /pv2-ordered8:c, name: a, value: "v"}}
+        - {do: dump}
+    golden: golden/ordered-mixed-table-schema-lookup.json

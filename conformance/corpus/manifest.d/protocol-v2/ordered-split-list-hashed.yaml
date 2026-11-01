@@ -1,0 +1,17 @@
+# a list run that an opaque node splits, then a merge into it: the match in the second piece, the new instance in the first (its leader's RB tree)
+fixtures:
+  - id: protocol-v2/ordered-split-list-hashed
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#7.5.7"]
+    areas: [codecs]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      context_options: ["no_yanglibrary"]
+      modules: [{name: "pv2-ordered2"}]
+      steps:
+        - {do: parse, format: xml, data_type: get, unknown: opaque, parse_options: [ordered], data: '<c xmlns="urn:vibe-ports:yang:conformance:pv2-ordered2"><a>x</a><l><k>k2</k></l><zz>u</zz><l><k>k1</k></l><b>y</b><c>z</c></c>'}
+        - {do: edit, merge: '{"pv2-ordered2:c": {"l": [{"k": "k1", "v": "w"}, {"k": "k3"}]}}', data_type: get}
+        - {do: dump}
+    golden: golden/ordered-split-list-hashed.json

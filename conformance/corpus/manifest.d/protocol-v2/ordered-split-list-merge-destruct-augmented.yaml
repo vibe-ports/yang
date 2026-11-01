@@ -1,0 +1,17 @@
+# lyd_merge_siblings(LYD_MERGE_DESTRUCT), the edit merge step, of two new instances into a list run that an augmented leaf of another module with the same local name, l, splits: the destructive merge keeps the leader of k0 for k3 (lyds_insert2), so k3 joins the first piece; Tree.Merge has no destructive form (U-0113), and the engine tells the two l schemas apart by module
+fixtures:
+  - id: protocol-v2/ordered-split-list-merge-destruct-augmented
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#7.5.7"]
+    areas: [codecs]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      context_options: ["no_yanglibrary"]
+      modules: [{name: "pv2-ordered2"}, {name: "pv2-ordered2aug"}]
+      steps:
+        - {do: parse, format: xml, data_type: get, unknown: opaque, parse_options: [ordered], data: '<c xmlns="urn:vibe-ports:yang:conformance:pv2-ordered2"><a>x</a><l><k>k2</k></l><l xmlns="urn:vibe-ports:yang:conformance:pv2-ordered2aug">u</l><l><k>k1</k></l><b>y</b><c>z</c></c>'}
+        - {do: edit, merge: '{"pv2-ordered2:c": {"l": [{"k": "k0"}, {"k": "k1", "v": "w"}, {"k": "k3"}]}}', data_type: get}
+        - {do: dump}
+    golden: golden/ordered-split-list-merge-destruct-augmented.json

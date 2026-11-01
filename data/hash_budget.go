@@ -3,6 +3,7 @@
 package data
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/vibe-ports/yang"
@@ -15,6 +16,14 @@ import (
 // per-zero-run checkpoint bound therefore needs a cumulative operation bound.
 // Keep this internal, like the existing fixed XPath expression work limit.
 const defaultMaxHashWork uint64 = 1 << 26
+
+// pollWith makes ctx the cancellation chargeOf polls until the returned func restores the
+// previous one.
+func (w *workCounter) pollWith(ctx context.Context) func() {
+	old := w.pollCtx
+	w.pollCtx = ctx
+	return func() { w.pollCtx = old }
+}
 
 func (w *workCounter) beginHashWork() func() {
 	if w.hashDepth == 0 {
@@ -167,8 +176,8 @@ func addHashBound(total, next uint64) uint64 {
 
 // checkTermHash preflights a key link at its final position. A partial positional
 // prefix has no native hash event, even if many copies of its first key follow it.
-func (w *workCounter) checkTermHash(parent *Node, sn *schema.Node, value types.Value, insertionAt ...int) error {
-	amount, err := w.termHashBound(parent, sn, value, insertionAt...)
+func (w *workCounter) checkTermHash(parent *Node, sn *schema.Node, value types.Value) error {
+	amount, err := w.termHashBound(parent, sn, value, nil, 0)
 	if err != nil {
 		return err
 	}
@@ -176,15 +185,15 @@ func (w *workCounter) checkTermHash(parent *Node, sn *schema.Node, value types.V
 }
 
 // termHashBound is the hash work checkTermHash reserves, for callers that add
-// it to the rest of one link's work and check the total once.
-func (w *workCounter) termHashBound(parent *Node, sn *schema.Node, value types.Value, insertionAt ...int) (uint64, error) {
+// it to the rest of one link's work and check the total once. n is the node linked at logical
+// position at (nil: no position, a key reserves nothing).
+func (w *workCounter) termHashBound(parent *Node, sn *schema.Node, value types.Value, n *Node, at int) (uint64, error) {
 	if sn.Kind == schema.LeafList {
 		return types.HashLYBWorkBound(value), nil
 	}
-	if !sn.IsKey() || parent == nil || parent.schema == nil || len(insertionAt) == 0 {
+	if !sn.IsKey() || parent == nil || parent.schema == nil || n == nil {
 		return 0, nil
 	}
-	at := insertionAt[0]
 	if at < parent.lkeyN && parent.lkeyFrozen == nil {
 		// beforeKeyLink copies the captured prefix before publishing the key.
 		prefix := uint64(parent.lkeyN) //nolint:gosec // a count of existing nodes cannot be negative
@@ -192,24 +201,11 @@ func (w *workCounter) termHashBound(parent *Node, sn *schema.Node, value types.V
 			return 0, err
 		}
 	}
-	// Inspect only the declared positional prefix before considering hash inputs.
-	// In particular, repeated first keys must not rescan the entire incomplete run.
-	prefix := parent.kids.schemaSpan().cursor() // position i, then i-1 past at
-	for i, key := range parent.schema.Keys {
-		w.Add(1)
-		if err := w.chargeHash(1); err != nil {
-			return 0, err
-		}
-		current := sn
-		if i != at {
-			current = nil
-			if c := prefix.next(); c != nil {
-				current = c.schema
-			}
-		}
-		if current != key {
-			return 0, nil
-		}
+	// Inspect only the declared positional prefix before considering hash inputs, the physical
+	// one keyLinked checks (keysLead), with n where its pending placement puts it. In
+	// particular, repeated first keys must not rescan the entire incomplete run.
+	if ok, err := keysLead(parent, n, at, func() error { w.Add(1); return w.chargeHash(1) }); err != nil || !ok {
+		return 0, err
 	}
 	// keyLinked can restart from the list's schema prefix after insertion.
 	schemaHashWork(parent.schema, w)
@@ -223,9 +219,16 @@ func (w *workCounter) termHashBound(parent *Node, sn *schema.Node, value types.V
 		start = 0
 	}
 	var amount uint64
+	// lyd_hash's key run ends at the first opaque child (design 15): after the insertion it holds
+	// the schema children before that one, and the new key only when its pending physical
+	// placement puts it there (an append behind a trailing opaque child does not)
+	limit := parent.kids.beforeOpaque()
+	if parent.kids.landsBeforeOpaque(n, at) {
+		limit++
+	}
 	// the old children from start, in order, with the new one at at (start <= at)
 	old := parent.kids.schemaSpan().Slice(start, parent.kids.SchemaLen()).cursor()
-	for i := start; i <= parent.kids.SchemaLen(); i++ {
+	for i := start; i < limit; i++ {
 		w.Add(1)
 		if err := w.chargeHash(1); err != nil {
 			return 0, err
@@ -241,7 +244,7 @@ func (w *workCounter) termHashBound(parent *Node, sn *schema.Node, value types.V
 		amount = addHashBound(amount, types.HashLYBWorkBound(c.value))
 	}
 	if ps := parent.siblingsOf(); ps != nil && ps.ht != nil {
-		amount = addHashBound(amount, indexInsertedBound(parent, &Node{schema: sn, value: value}, at, w))
+		amount = addHashBound(amount, indexInsertedBound(parent, n, parent.kids.linkDocPos(n, at), w))
 		if w.hashErr != nil {
 			return 0, w.hashErr
 		}
@@ -249,7 +252,7 @@ func (w *workCounter) termHashBound(parent *Node, sn *schema.Node, value types.V
 	// keyLinked ends with reindexComparedParent(parent): an outer list whose
 	// compared prefix exposes parent is reindexed in its own siblings.
 	if gp := parent.parent; gp != nil && gp.schema != nil && gp.schema.Kind == schema.List &&
-		gp.keyN < len(gp.schema.Keys) {
+		gp.keyRun() < len(gp.schema.Keys) {
 		if gs := gp.siblingsOf(); gs != nil && gs.ht != nil {
 			children := positionalChildren(gp)
 			for range gp.schema.Keys {
@@ -292,7 +295,7 @@ func (w *workCounter) checkChangedHash(n *Node, value types.Value) (uint64, erro
 		}
 	}
 	var amount uint64
-	for _, key := range n.parent.kids.SchemaAll() {
+	for _, key := range keyPrefix(n.parent).All() {
 		w.Add(1)
 		if err := w.chargeHash(1); err != nil {
 			return 0, err
@@ -358,7 +361,7 @@ func (w *workCounter) checkRefreshHash(n *Node) error {
 		return nil
 	}
 	var amount uint64
-	for _, key := range n.kids.SchemaAll() {
+	for _, key := range keyPrefix(n).All() {
 		w.Add(1)
 		if err := w.chargeHash(1); err != nil {
 			return err

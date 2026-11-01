@@ -1,0 +1,16 @@
+# a parsed ordered forest whose first root is opaque moves as a whole (lyd_insert_sibling, lyd_move_nodes) into an empty tree, in its order
+fixtures:
+  - id: protocol-v2/ordered-forest-insert
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#7.5.7"]
+    areas: [codecs]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      context_options: ["no_yanglibrary"]
+      modules: [{name: "pv2-ordered2"}]
+      steps:
+        - {do: insert, format: json, data_type: get, unknown: opaque, parse_options: [ordered], data: '{"pv2-ordered2:zz": "u", "pv2-ordered2:c": {"a": "x"}, "pv2-ordered2:yy": "t"}'}
+        - {do: dump}
+    golden: golden/ordered-forest-insert.json

@@ -152,13 +152,19 @@ func (s *siblings) removalOrder(n, prev, next, tail *Node, around func(*Node) (*
 		leader = s.runLeader(n.schema)
 		if len(s.contexts) > 1 {
 			if s.ht != nil {
-				if err := w.chargeHash(uint64(len(s.leaders))); err != nil {
+				// the lookup pays the candidate records it reads, without polling the
+				// cancellation: an unlink is atomic for it, so every caller that records the
+				// deletion first (a diff, a queue) finds it done (the work is schema-bounded)
+				var err error
+				if leader, err = s.leaderFirstMixedCharged(n.schema, func(k int64) error {
+					return w.chargeHash(uint64(k)) //nolint:gosec // a charge is nonnegative
+				}); err != nil {
 					return nil, nil, err
 				}
-				leader = s.leaderFirstMixed(n.schema)
 			} else {
 				leader = nil
-				for _, c := range s.SchemaAll() {
+				// lyd_find_sibling_schema's linear walk stops at the first opaque sibling
+				for _, c := range s.schemaSpan().Slice(0, s.linearBound()).All() {
 					if err := w.chargeHash(1); err != nil {
 						return nil, nil, err
 					}
@@ -239,12 +245,5 @@ func (s *siblings) removalOrder(n, prev, next, tail *Node, around func(*Node) (*
 	return d, leader, nil
 }
 
-func (s *siblings) nativeTail() *Node {
-	if s.OpaqueLen() > 0 {
-		return s.opaqueAt(s.OpaqueLen() - 1)
-	}
-	if s.SchemaLen() > 0 {
-		return s.At(s.SchemaLen() - 1)
-	}
-	return nil
-}
+// nativeTail is the first sibling's prev in libyang: the last one in document order.
+func (s *siblings) nativeTail() *Node { return s.docLast() }
