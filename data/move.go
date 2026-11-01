@@ -1119,11 +1119,11 @@ func (t *Tree) merge(parent *Node, dst *siblings, run []*Node, state movedRunSta
 		if pred != nil {
 			anchor = pred
 		}
-		sortedPlace(dst, n, pred, leader) // lyds_link_data_node's physical place (design 15)
 		at, err := t.chargedIndex(dst, anchor)
 		if err != nil {
 			return err
 		}
+		pleader := leader
 		if pred != nil {
 			at++
 		} else {
@@ -1133,6 +1133,7 @@ func (t *Tree) merge(parent *Node, dst *siblings, run []*Node, state movedRunSta
 			return err
 		}
 		n.inRB, n.rbGroup = true, dstGroup
+		sortedPlace(dst, n, pred, pleader) // lyds_link_data_node's physical place (design 15), set right before the link
 		if err := t.link(parent, dst, n, at); err != nil {
 			return err
 		}

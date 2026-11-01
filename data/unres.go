@@ -266,6 +266,12 @@ type whenPass struct {
 	initialWhen  []*Node
 	initialFlags map[*Node]Flags
 	initialTypes nodeSet
+	// the pass's journal level (savepoint, or a pass-local journal): a deletion unlinks its
+	// index part at once (del), so a finish that cannot unlink the storage rolls the pass back
+	// whole, indexes included; one that can commits it
+	journal *hashTransaction
+	level   int
+	local   bool
 }
 
 // drop is ly_set_rm_index_ordered of entry i (a tombstone).
@@ -390,8 +396,19 @@ func (vc *valCtx) unresWhen() (rc error) {
 		}
 		p.initialTypes = nodeSet{items: slices.Clone(vc.nodeTypes.items), pos: positions, scans: vc.nodeTypes.scans}
 	}
+	if p.journal = vc.t.work.journal; p.journal != nil {
+		sp, err := p.journal.savepoint()
+		if err != nil {
+			return err
+		}
+		p.level = sp
+	} else if p.journal = beginHashTransaction(vc.t); p.journal != nil {
+		p.local = true
+	}
 	defer func() {
-		if err := p.finish(); err != nil {
+		err := p.finish()
+		p.endLevel(err)
+		if err != nil {
 			rc = err
 		}
 	}()
@@ -444,6 +461,23 @@ func (vc *valCtx) unresWhen() (rc error) {
 		p.drop(i) // resolved
 	}
 	return rc
+}
+
+// endLevel ends the pass's journal level: kept when finish unlinked the deletions (failed is
+// nil), else rolled back, so no node stays linked with its index part gone.
+func (p *whenPass) endLevel(failed error) {
+	switch j := p.journal; {
+	case j == nil:
+	case p.local:
+		if failed != nil {
+			j.rollback = true
+		}
+		j.end(&failed)
+	case failed != nil:
+		j.rollbackLevel(p.level)
+	default:
+		j.commitLevel(p.level)
+	}
 }
 
 // finish compacts node_when and unlinks the nodes the pass deleted.

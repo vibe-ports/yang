@@ -96,6 +96,11 @@ const (
 func (s *siblings) setPlace(p placement) {
 	if s.st != nil {
 		s.st.place = p
+		if j := s.work; p.target != nil && j != nil && j.journal != nil {
+			if l := j.journal.placedSets; len(l) == 0 || l[len(l)-1] != s {
+				j.journal.placedSets = append(j.journal.placedSets, s) // cleared at the end (clearPlaced)
+			}
+		}
 	}
 }
 

@@ -316,6 +316,7 @@ func checkEveryHashBudgetPoint(t *testing.T, build func() (*Tree, func() error))
 		before := snapshotHashBudgetTree(tr)
 		tr.work.hashLimit = limit
 		err := edit()
+		assertNoTransient(t, tr) // refused or not, no pending placement or dead view remains
 		if errors.Is(err, yang.ErrBudget) {
 			if after := snapshotHashBudgetTree(tr); !reflect.DeepEqual(after, before) {
 				t.Fatalf("limit %d used %d points %v: budget failure changed tree or registrations\nbefore=%v\nafter=%v\nindex before=%v\nindex after=%v\nsiblings before=%v\nsiblings after=%v", limit, tr.work.hashUsed, points, before.dump, after.dump, before.index, after.index, before.sibs, after.sibs)
@@ -364,6 +365,9 @@ func checkEveryHashBudgetPointPair(t *testing.T, build func() ([]*Tree, func() e
 			}
 			trial[tree].work.hashLimit = limit
 			err := edit()
+			for _, tr := range trial {
+				assertNoTransient(t, tr) // refused or not, no pending placement or dead view remains
+			}
 			switch {
 			case errors.Is(err, yang.ErrBudget):
 				for i, tr := range trial {

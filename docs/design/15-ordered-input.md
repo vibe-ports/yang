@@ -196,6 +196,18 @@ Read in document order (fixed):
   schema, holds only the target set's nodes, and the cost is O(depth) (`TestEquivalentInColdBudgetAndDepth`,
   `TestEquivalentInOutputAndScaling`, `TestEquivalentCacheKeepsNoContext`). `leaderFirstMixed`
   uses the same candidates.
+- round 29: the when pass runs in a journal level (a savepoint, or a pass-local journal):
+  it is kept when the pass's storage unlink ran, else rolled back whole, so a cancellation or
+  refusal after deletions unlinked their index part leaves no node linked and unindexed
+  (`TestWhenDeadCancelSweep`, every cancellation point). A pending placement is set right before
+  its link, and every set given one is recorded in the journal, which clears what is left at a
+  level's rollback and at its end, so a refused link keeps no other tree reachable
+  (`TestPendingPlacementClearedOnRefusal`, `TestSortedForestMoveRefusalReleasesSource`). The
+  budget sweeps check after every trial that no placement, dead view or dead flag remains and
+  that every linked node is indexed (`assertNoTransient`). Transient state outside the journal
+  and its cleanup: placements (link; level rollback and journal end), the dead view (the pass's
+  finish), the module walk (validate's end), the cancellation polled by charges (`pollWith`),
+  the schema-level child index and name hashes (published only on success);
 - round 28: a recursive copy that keeps a children table also allocates the copy's storage,
   so a set with a table always has its storage, even empty (the lookups read both); a lookup
   miss on an emptied, copied level returns no node (`ordered-empty-table-dup-xpath`,

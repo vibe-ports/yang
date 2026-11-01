@@ -2669,6 +2669,148 @@ func TestEmptyTableCopyLookups(t *testing.T) {
 	}
 }
 
+// assertNoTransient checks that an operation that returned, refused or cancelled or not, left
+// no transient state behind (a pending placement, the when pass's dead view) and that every
+// linked schema node is found through the indexes as it is physically (the tree invariant, and
+// each node's own path or schema lookup). A validation's modWalk lives in its valCtx and is
+// dropped by validate's defer.
+func assertNoTransient(t *testing.T, tr *Tree) {
+	t.Helper()
+	if tr.work.dead != nil {
+		t.Fatal("the when pass's dead view outlived the pass")
+	}
+	var walk func(s *siblings)
+	walk = func(s *siblings) {
+		if s.st != nil && s.st.place != (placement{}) {
+			t.Fatalf("a pending placement outlived its link: %+v", s.st.place)
+		}
+		for _, n := range s.docNodes() {
+			if n.flags&flagDead != 0 {
+				t.Fatalf("%s: still dead", n.Path())
+			}
+			// a lookup without a table stops at the first opaque sibling (design 15)
+			if n.schema != nil && (s.ht != nil || !s.st.interleaved()) && tr.schemaLookup(s, n.schema) == nil {
+				t.Fatalf("%s: linked, not indexed", n.Path())
+			}
+			walk(&n.kids)
+		}
+	}
+	walk(&tr.top)
+	opidxAssertTreeInvariant(t, tr)
+}
+
+// TestWhenDeadCancelSweep: the when pass of a mixed-context level with three consecutive dead
+// members of a retained RB tree, cancelled at every cancellation check: whatever it returns, no
+// node stays linked with its index part unlinked (the pass's journal level is rolled back when
+// its storage unlink cannot run), and no transient state remains.
+// TestSortedForestMoveRefusalReleasesSource: moving a sorted forest into an interleaved level
+// (ordered-forest-sorted-move) refused at every budget point leaves no pending placement, and
+// the source tree is unreachable from the destination once the test drops it.
+func TestSortedForestMoveRefusalReleasesSource(t *testing.T) {
+	set := ordered2Set(t, "pv2-lyds")
+	build := func() (*Tree, *Tree) {
+		dst, err := parseOrdered(t, set, false, `{"pv2-lyds:ll":[3],"pv2-lyds:zz":"u","pv2-lyds:bucket":[{"name":"b"}]}`, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		src, err := parseOrdered(t, set, false, `{"pv2-lyds:ll":[5,6]}`, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return dst, src
+	}
+	full, src := build()
+	var points []uint64
+	full.work.hashTrace = &points
+	if err := full.Insert(nil, src.top.first()); err != nil {
+		t.Fatal(err)
+	}
+	refused := 0
+	for _, at := range points {
+		if at == 0 {
+			continue
+		}
+		dst, src := build()
+		dst.work.hashLimit = at - 1
+		err := dst.Insert(nil, src.top.first())
+		assertNoTransient(t, dst)
+		if !errors.Is(err, yang.ErrBudget) {
+			continue
+		}
+		refused++
+		w := weak.Make(src)
+		src = nil //nolint:wastedassign // dropped for the collection below
+		runtime.GC()
+		if w.Value() != nil {
+			t.Fatalf("limit %d: the refused move keeps the source tree reachable", at-1)
+		}
+		runtime.KeepAlive(dst)
+	}
+	if refused == 0 {
+		t.Fatal("no refusal point")
+	}
+}
+
+// TestPendingPlacementClearedOnRefusal: a placement set for a link that a refusal prevents is
+// cleared when the operation's journal ends (and when a savepoint level rolls back), so it
+// keeps no node of another tree reachable.
+func TestPendingPlacementClearedOnRefusal(t *testing.T) {
+	set := ordered2Set(t, "pv2-lyds")
+	dst, err := parseOrdered(t, set, false, `{"pv2-lyds:ll":[3],"pv2-lyds:zz":"u"}`, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	src, err := parseOrdered(t, set, false, `{"pv2-lyds:ll":[5]}`, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, level := range []bool{false, true} {
+		j := beginHashTransaction(dst)
+		sp := 0
+		if level {
+			if sp, err = j.savepoint(); err != nil {
+				t.Fatal(err)
+			}
+		}
+		dst.top.setPlace(placement{mode: placeEnd, target: src.top.first()})
+		if level {
+			j.rollbackLevel(sp)
+			if dst.top.st.place != (placement{}) {
+				t.Fatal("a rolled-back level kept its placement")
+			}
+		}
+		refusal := yang.ErrBudget
+		j.end(&refusal)
+		if dst.top.st.place != (placement{}) {
+			t.Fatal("the refused operation kept its placement")
+		}
+	}
+}
+
+func TestWhenDeadCancelSweep(t *testing.T) {
+	mod := func(when string) string {
+		return `module m { yang-version 1.1; namespace "urn:m"; prefix m;
+		  container c { leaf g { when "../l[k='live' != 'zz']"; type string; }
+		  list l { key k; ` + when + ` leaf k { type string; } }
+		  leaf f1 { type string; } leaf f2 { type string; } leaf f3 { type string; } } }`
+	}
+	setA, setB := reviewDiffSet(t, mod(`when "false()";`)), reviewDiffSet(t, mod(""))
+	o := parseOpts{ParseOptions: ParseOptions{Unknown: Opaque, ParseOnly: true, WhenTrue: true}, whenTrue: true}
+	in := `{"m:c":{"g":"g","l":[{"k":"dead0"},{"k":"dead1"},{"k":"dead2"}],"f1":"1","f2":"2","f3":"3"}}`
+	eachCancelPoint(t, func(ctx *cancelAtContext) {
+		tr, _, err := parseWith(context.Background(), strings.NewReader(in), setA, o, parseJSON, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		linkForeign(t, tr, tr.top.first(), setB, `{"m:c":{"l":[{"k":"live"}]}}`)
+		_, err = tr.ValidateModule(ctx, "m", ValidateOptions{NotFinal: true})
+		if err != nil && !errors.Is(err, context.Canceled) {
+			t.Fatalf("at %d: %v", ctx.at, err)
+		}
+		assertNoTransient(t, tr)
+	})
+}
+
 func TestDeadEndsAmortized(t *testing.T) {
 	set := reviewDiffSet(t, `module m { yang-version 1.1; namespace "urn:m"; prefix m;
 	  container c { leaf-list a { type uint32; ordered-by user; } leaf b { type string; } leaf-list z { type uint32; ordered-by user; } } }`)
