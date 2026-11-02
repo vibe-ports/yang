@@ -2207,11 +2207,9 @@ func (t *Tree) linkIndexPlacedBound(parent *Node, sib *siblings, n *Node, p sibl
 	if parent != nil && parent.schema != nil && parent.schema.Kind == schema.List &&
 		(n.schema == nil || n.schema.IsKey() || parent.keyN < len(parent.schema.Keys)) {
 		if ps := parent.siblingsOf(); ps != nil && ps.ht != nil {
-			position := sib.linkDocPos(p)
-			if n.schema == nil && !sib.st.interleaved() && !sib.linkMixes(n, p) {
-				position = parent.kids.SchemaLen() + parent.kids.OpaqueLen()
-			}
-			amount = addHashBound(amount, indexInsertedBound(parent, n, position, &t.work))
+			// An opaque node may precede another opaque node without interleaving kinds.
+			// Simulate the resolved document position, just as insertPlaced applies it.
+			amount = addHashBound(amount, indexInsertedBound(parent, n, p.docAt, &t.work))
 		}
 	}
 	return amount

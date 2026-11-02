@@ -145,8 +145,9 @@ func TestSiblingPlacementKeyPreflight(t *testing.T) {
 }
 
 func TestSiblingFacadeInterleavedBounds(t *testing.T) {
-	overdraftPanics = true
-	t.Cleanup(func() { overdraftPanics = false })
+	if !overdraftPanics {
+		t.Fatal("test builds must panic on an overdrawn credit")
+	}
 	for _, journaled := range []bool{false, true} {
 		for _, operation := range []string{"interleave", "opaque", "remove", "keep", "replace", "publish"} {
 			t.Run(fmt.Sprintf("%t/%s", journaled, operation), func(t *testing.T) {

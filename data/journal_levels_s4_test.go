@@ -419,6 +419,8 @@ func TestS4RefusedLocalMoveRevivesHandle(t *testing.T) {
 // operation sees both trees on the same state; the every-limit refusals of op/validate in
 // TestS4JournalRefusalHistories restore both.
 func TestS4ValidateOpOneState(t *testing.T) {
+	previousHook := captureHook
+	t.Cleanup(func() { captureHook = previousHook })
 	set := reviewDiffSet(t, s4JournalModule)
 	for _, depFirst := range []bool{false, true} {
 		req, _ := s4OpTree(t, set, "5", "1", "9")
