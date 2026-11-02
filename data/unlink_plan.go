@@ -13,10 +13,12 @@ type unlinkPlan struct {
 	gen                      uint64
 	at, docAt                int
 	prev, next, tail, leader *Node
-	// left is the physical leader of the run a removed separator joins to the next one, found
-	// by a charged walk back from prev; nil when n separates no run or no run has an RB tree
-	left  *Node
-	order *dirtyOrder
+	// left is the physical leader of the piece extended by separator removal; moreLeft
+	// holds its interior retained owners from earlier joins. The charged backward walk
+	// collects them before mutation, preserving topology and registration order.
+	left     *Node
+	moreLeft []*Node
+	order    *dirtyOrder
 }
 
 func prepareUnlink(n *Node) (*unlinkPlan, error) {
@@ -49,15 +51,13 @@ func prepareUnlink(n *Node) (*unlinkPlan, error) {
 	if at < 0 {
 		return nil, &opError{"LY_EINT", "Unlinked node in sibling storage."}
 	}
-	// n's node->prev and node->next: the document neighbours, whatever their kind (design 15);
-	// a schema node's opaque successor is passed as none, as no RB metadata moves onto it
+	// n's node->prev and node->next: the document neighbours, whatever their kind.
+	// lyds_move_meta also accepts an opaque successor (tree_data_sorted.c:1344).
 	h := sib.handle(n)
 	prev, next := handleValue(sib.st.seq.Prev(h)), handleValue(sib.st.seq.Next(h))
-	if n.schema != nil && next != nil && next.schema == nil {
-		next = nil
-	}
 	var left *Node
-	separates := n.schema != nil && prev != nil && next != nil && n.schema != prev.schema &&
+	var moreLeft []*Node
+	separates := n.schema != nil && prev != nil && prev.schema != nil && next != nil && n.schema != prev.schema &&
 		prev.schema == next.schema
 	if n.schema == nil && sib.st.interleaved() {
 		// an opaque node between two instances of one schema node separates a run too (design 15)
@@ -65,7 +65,7 @@ func prepareUnlink(n *Node) (*unlinkPlan, error) {
 		separates = pp != nil && nn != nil && pp.Value.schema != nil && pp.Value.schema == nn.Value.schema
 	}
 	if separates && len(sib.rbTree) != 0 {
-		// removing a separator joins two runs: unlink marks the left run's tree unsorted
+		// Every retained owner in the left piece now has a larger physical suffix.
 		l := sib.st.seq.Prev(h) // prev, walked back to its run's first member, a charged step each
 		for {
 			if err := w.chargeHash(1); err != nil {
@@ -74,11 +74,14 @@ func prepareUnlink(n *Node) (*unlinkPlan, error) {
 			sib.visit()
 			p := sib.st.seq.Prev(l)
 			if p == nil || p.Value.schema != l.Value.schema {
+				left = l.Value
 				break
+			}
+			if sib.rbTree[l.Value] {
+				moreLeft = append(moreLeft, l.Value)
 			}
 			l = p
 		}
-		left = l.Value
 	}
 	docAt := at
 	if n.schema == nil {
@@ -109,7 +112,7 @@ func prepareUnlink(n *Node) (*unlinkPlan, error) {
 	if err != nil {
 		return nil, err
 	}
-	amount := uint64(1)
+	amount := addHashBound(1, uint64(len(moreLeft)))
 	if sib.rbGroups[n] != nil {
 		// Metadata surviving unlink travels on n. Pay its queue copies before any
 		// physical/hash mutation, including a NULL-root item made by duplication.
@@ -127,7 +130,19 @@ func prepareUnlink(n *Node) (*unlinkPlan, error) {
 	if err := w.chargeHash(amount); err != nil {
 		return nil, err
 	}
-	p := &unlinkPlan{node: n, sib: sib, gen: sib.gen, at: at, docAt: docAt, prev: prev, next: next, tail: tail, left: left, order: order, leader: leader}
+	p := &unlinkPlan{node: n, sib: sib, gen: sib.gen, at: at, docAt: docAt, prev: prev, next: next, tail: tail, left: left, moreLeft: moreLeft, order: order, leader: leader}
 	w.unlinkPlan = p
 	return p, nil
+}
+
+// markJoinedRun preserves the ordinary single-owner path without allocating an owner slice.
+// Interior owners from earlier joins share the same charged preparation and journal capture.
+func (p *unlinkPlan) markJoinedRun() {
+	if p.left != nil && p.sib.rbTree[p.left] {
+		markUnsorted(p.sib, p.left)
+	}
+	for _, owner := range p.moreLeft {
+		p.sib.visit()
+		markUnsorted(p.sib, owner)
+	}
 }

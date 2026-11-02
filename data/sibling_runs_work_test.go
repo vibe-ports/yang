@@ -18,6 +18,7 @@ func TestRunOrdinaryWork(t *testing.T) {
 			t.Run(fmt.Sprintf("%t/%d", journaled, count), func(t *testing.T) {
 				var visits int64
 				var hashes uint64
+				var observed *Tree
 				allocations := testing.AllocsPerRun(3, func() {
 					tr := newTree(set)
 					c, err := tr.NewInner(nil, "run-work:c", NewOptions{})
@@ -51,7 +52,9 @@ func TestRunOrdinaryWork(t *testing.T) {
 						t.Fatal(err)
 					}
 					visits, hashes = tr.work.Load(), tr.work.hashUsed
+					observed = tr
 				})
+				checkTreeRetainedRB(t, observed)
 				wantVisits, wantHash := int64(4691), uint64(918)
 				if count == 256 {
 					wantVisits, wantHash = 27322, 2390
@@ -64,6 +67,25 @@ func TestRunOrdinaryWork(t *testing.T) {
 				}
 				if visits != wantVisits || hashes != wantHash {
 					t.Fatalf("main work changed: visits=%d hash=%d", visits, hashes)
+				}
+				wantAllocs := float64(1175)
+				if count == 256 {
+					wantAllocs = 4245
+				}
+				if journaled {
+					wantAllocs = 1213
+					if count == 256 {
+						wantAllocs = 4293
+					}
+				}
+				// Map growth can vary by a few allocations. These are the origin/main probe
+				// totals, with the same duplicate-heavy descending input and journal modes.
+				// Race instrumentation adds four allocations in each probe mode.
+				if raceEnabled {
+					wantAllocs += 4
+				}
+				if allocations > wantAllocs+4 {
+					t.Fatalf("main allocations grew: %.2f, baseline %.2f", allocations, wantAllocs)
 				}
 				t.Logf("visits=%d hash=%d allocations=%.2f", visits, hashes, allocations)
 			})

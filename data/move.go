@@ -487,6 +487,10 @@ func (t *Tree) linkOrigin(n *Node) (restore func(), arm func(dst *siblings) (dis
 	var journaled, stays bool
 	var left *Node
 	var leftUns, leftHad bool
+	var moreLeft []struct {
+		node          *Node
+		unsorted, had bool
+	}
 	armOrigin := func() error {
 		plan, err := prepareUnlink(n)
 		if err != nil {
@@ -504,6 +508,19 @@ func (t *Tree) linkOrigin(n *Node) (restore func(), arm func(dst *siblings) (dis
 			// does not clear it, so the recovery restores the flag
 			if left = plan.left; left != nil {
 				leftUns, leftHad = sib.unsorted[left]
+			}
+			if len(plan.moreLeft) > 0 {
+				if err := t.work.chargeHash(uint64(len(plan.moreLeft))); err != nil {
+					return err
+				}
+				for _, owner := range plan.moreLeft {
+					t.work.Add(1)
+					unsorted, had := sib.unsorted[owner]
+					moreLeft = append(moreLeft, struct {
+						node          *Node
+						unsorted, had bool
+					}{owner, unsorted, had})
+				}
 			}
 		}
 		recordUndo, recordRecovery, err = linkRecordOrigin(sib, n, recordNext, &t.work)
@@ -658,6 +675,13 @@ func (t *Tree) linkOrigin(n *Node) (restore func(), arm func(dst *siblings) (dis
 				sib.unsorted[left] = leftUns
 			default:
 				delete(sib.unsorted, left)
+			}
+			for _, old := range moreLeft {
+				if old.had {
+					sib.unsorted[old.node] = old.unsorted
+				} else {
+					delete(sib.unsorted, old.node)
+				}
 			}
 			recordUndo()
 			linksUndo() // unlink's freeLinks: both endpoints of every reciprocal link

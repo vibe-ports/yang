@@ -201,7 +201,7 @@ func (s *siblings) removalOrder(n, prev, next, tail *Node, around func(*Node) (*
 					if p := s.st.seq.Prev(h); p != nil {
 						before = p.Value
 					}
-					if q := s.st.seq.Next(h); q != nil && q.Value.schema != nil {
+					if q := s.st.seq.Next(h); q != nil {
 						after = q.Value
 					}
 				}
