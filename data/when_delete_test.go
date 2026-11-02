@@ -11,6 +11,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/vibe-ports/yang"
 	"github.com/vibe-ports/yang/internal/schema"
 	"github.com/vibe-ports/yang/internal/types"
 	"github.com/vibe-ports/yang/internal/xpath"
@@ -384,5 +385,35 @@ func TestWhenRootDeletionsLinearSteps(t *testing.T) {
 	}
 	if small, large := steps(512), steps(4096); large > 10*small {
 		t.Fatalf("XPath steps %d for 512 deletions, %d for 4096", small, large)
+	}
+}
+
+// TestWhenDiffMergeFailureIgnored: the when pass deletes two equal state leaf-list instances
+// and recording the second delete fails to merge; lyd_validate_autodel_node_del ignores
+// lyd_val_diff_add's result, so both go, the merge diagnostics are logged and the validation
+// returns their LY_EINVAL, through both diff APIs (protocol-v2/when-dup-state-delete-*).
+func TestWhenDiffMergeFailureIgnored(t *testing.T) {
+	set := reviewDiffSet(t, `module m { yang-version 1.1; namespace "urn:m"; prefix m;
+	  leaf-list x { config false; type string; when "false()"; } leaf y { type string; } }`)
+	for _, module := range []bool{false, true} {
+		tr := parseWhenTrue(t, set, `{"m:x":["a","a","b"],"m:y":"y"}`)
+		var diff *Tree
+		var d []yang.Diagnostic
+		var err error
+		if module {
+			diff, d, err = tr.ValidateModuleDiff(context.Background(), "m", ValidateOptions{NotFinal: true})
+		} else {
+			diff, d, err = tr.ValidateDiff(context.Background(), ValidateOptions{NotFinal: true, Present: true})
+		}
+		var ve *ValidationError
+		if !errors.As(err, &ve) || ve.RC() != "LY_EINVAL" || len(d) != 2 || d[1].Msg != `Merging operation "delete" failed.` {
+			t.Fatalf("module %v: %v %v", module, err, d)
+		}
+		if got := slices.Collect(tr.Top()); len(got) != 1 || got[0].Name() != "y" {
+			t.Fatalf("module %v: %d top-level nodes left, want y", module, len(got))
+		}
+		if diff == nil || strings.Count(dumpJSON(t, diff), `"delete"`) != 2 {
+			t.Fatalf("module %v: diff %v", module, diff)
+		}
 	}
 }

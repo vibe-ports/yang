@@ -986,6 +986,10 @@ func (t *Tree) validateWith(ctx context.Context, mod *schema.Module, o ValidateO
 	}
 	if err == nil || errors.Is(err, errLogged) {
 		err = vc.log.result() // nil when only warnings were logged
+		var ve *ValidationError
+		if vc.diffRC != "" && errors.As(err, &ve) && ve.rc == "" {
+			ve.rc = vc.diffRC // an ignored diff failure's LY_ERR (logDiffErr)
+		}
 	}
 	return vc.log.diags, err
 }

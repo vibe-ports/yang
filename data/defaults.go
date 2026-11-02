@@ -59,7 +59,8 @@ type valCtx struct {
 	budget  xpathBudget  // MaxXPathSteps and cancellation (U-0042)
 	top     []xpath.Node // the top-level view of the evaluations (topNodes)
 	topGen  uint64
-	topDead int // roots of top the running when pass deleted (each read as absent: topGone)
+	topDead int    // roots of top the running when pass deleted (each read as absent: topGone)
+	diffRC  string // the LY_ERR of the first diff failure an autodelete logged and went past
 	// work counters for the tests: top-level view builds, when-pass position maps and the
 	// position entries read
 	topBuilds, posBuilds, posReads int

@@ -1,0 +1,19 @@
+module pv2-when-dup-state {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:pv2-when-dup-state";
+  prefix wds;
+
+  description
+    "Hand-written (this repo): duplicate state leaf-list instances that
+     the when pass deletes; recording the second delete in the diff
+     fails to merge (design 07, when-pass deletion contract).";
+
+  leaf-list x {
+    config false;
+    type string;
+    when "false()";
+  }
+  leaf y {
+    type string;
+  }
+}

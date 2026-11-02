@@ -1,0 +1,17 @@
+# the when pass deletes two equal state leaf-list instances; the diff's second delete fails to merge (ValidateDiff): libyang ignores lyd_val_diff_add's result and deletes both
+fixtures:
+  - id: protocol-v2/when-dup-state-delete-all
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#7.21.5"]
+    areas: [validation]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      context_options: ["no_yanglibrary"]
+      modules: [{name: "pv2-when-dup-state"}]
+      steps:
+        - {do: parse, format: json, data_type: data, parse_only: true, parse_options: [when_true], data: '{"pv2-when-dup-state:x": ["a", "a", "b"], "pv2-when-dup-state:y": "y"}'}
+        - {do: validate, validate_options: [not_final, present]}
+        - {do: dump}
+    golden: golden/when-dup-state-delete-all.json

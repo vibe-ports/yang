@@ -382,7 +382,7 @@ func (p *whenPass) del(n *Node) error {
 		return err
 	}
 	if vc.diff != nil {
-		if err := vc.diff(n, diffDelete); err != nil {
+		if err := vc.diff(n, diffDelete); err != nil && !vc.logDiffErr(err) {
 			return err
 		}
 	}
@@ -407,6 +407,35 @@ func (p *whenPass) del(n *Node) error {
 	n.flags |= flagDead
 	p.dead = append(p.dead, n)
 	return nil
+}
+
+// logDiffErr logs an ordinary failure to record a deletion in the validation diff (a merge
+// refusal: lyd_val_diff_add's LOGERRs), which lyd_validate_autodel_node_del ignores, deleting the
+// node anyway; false for a failure the operation stops at instead (a budget, the guard's refusal,
+// any other error).
+func (vc *valCtx) logDiffErr(err error) bool {
+	if errors.Is(err, yang.ErrBudget) || isGuardRefusal(err) {
+		return false
+	}
+	var de *diffError
+	var oe *opError
+	switch {
+	case errors.As(err, &de):
+		if vc.diffRC == "" {
+			vc.diffRC = de.rc
+		}
+		for _, it := range de.items {
+			_ = vc.log.logErr(it.Err, "%s", it.Msg)
+		}
+	case errors.As(err, &oe):
+		if vc.diffRC == "" {
+			vc.diffRC = oe.Err
+		}
+		_ = vc.log.logErr(oe.Err, "%s", oe.Msg)
+	default:
+		return false
+	}
+	return true
 }
 
 // nestedEntries are the node_when entries of n's descendants, which leave the queue with n:
