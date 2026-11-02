@@ -195,13 +195,27 @@ complete. A cancelled pass keeps its completed prefix, and the returned diff is 
 fails after its diff was recorded is the operation's sticky error; the journal is marked for
 rollback, so the tree and the diff go back together, and a budget failure follows the enclosing
 operation's rollback contract. The pass's end compacts node_when and clears the dead marks and
-cannot fail. The top-level XPath view (`topNodes`) is not rebuilt per deletion: a root deleted while
-the view is fresh stays in it, flagged dead, and every read of the root skips it as absent
-(`EvalContext.TreeGone`, filtered once per evaluation that reads the root, so a scan's first match
-goes on to the next root, possibly another context's). The view ends with the pass, so no cached
-view outlives it with a deleted node (Go tests TestWhenDeleteCancelDiffConsistent,
+cannot fail. Before the diff, a deletion also checks and captures what freeing its subtree's
+links changes (every linked node and each counterpart, possibly in another tree:
+`preflightFreeLinks`), so a held counterpart (D-0148) or a capture budget refuses it before it
+begins; a guard refusal stays the operation's result over a later cancellation. It pays the
+child scans of `lyd_np_cont_dflt_set` that its unlink makes (as libyang, up to the first explicit
+child of each NP ancestor, so a default prefix costs its length per deletion) and the queue's
+position bookkeeping to the hash-work quota, polled. A diff entry that fails to merge (two equal
+state leaf-list instances) is logged and the deletion goes on, as libyang ignores
+`lyd_val_diff_add`'s result there; the validation returns that LY_ERR
+(protocol-v2/when-dup-state-delete-*); a budget or guard failure still stops the pass.
+The top-level XPath view (`topNodes`) is not rebuilt per deletion: a root deleted while the view
+is fresh stays in it, flagged dead, absent for every read of the root (`EvalContext.TreeGone`).
+The first-instance and hash lookups skip such roots as they walk, so they stop as early as on the
+live tree; the whole-list reads (axes, positions) filter the view once per evaluation, and the
+view is rebuilt once more than half of it is deleted, which keeps that filter O(live) and the
+rebuilds paid by the deletions. The view ends with the pass, so no cached view outlives it with a
+deleted node (Go tests TestWhenDeleteCancelDiffConsistent,
 TestWhenDeadCancelSweep, TestWhenDeadCancelSweepDiff, TestWhenDeadRootHidesNoForeignRoot,
-TestWhenRootDeletionsKeepView, TestWhenRepeatedQueueLinear; protocol-v2/when-dead-root-leafref-plain).
+TestWhenRootDeletionsKeepView, TestWhenRootDeletionsLinearSteps, TestWhenRepeatedQueueLinear,
+TestWhenDiffMergeFailureIgnored, TestWhenDeleteHeldDescendantLink, TestWhenDeleteDefaultPrefixCharged,
+TestWhenQueueBookkeepingCharged; protocol-v2/when-dead-root-leafref-plain).
 
 Unchanged from there:
 `lyd_validate_unres_when` (VAL:462) walks it **from the end**, per node `lyd_validate_node_when`
