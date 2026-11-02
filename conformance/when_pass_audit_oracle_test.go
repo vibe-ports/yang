@@ -22,7 +22,7 @@ func TestWhenPassAuditLiveOracle(t *testing.T) {
 	oracle := nativeRequestRunner(t)
 	base := filepath.Join("corpus", "protocol-v2")
 	for _, module := range []bool{false, true} {
-		for _, kind := range []string{"when-leafref", "when", "leafref", "must", "payload", "prefix", "nested-passes", "final-rebuild"} {
+		for _, kind := range []string{"when-leafref", "when", "leafref", "must", "payload", "ordinary", "prefix", "nested-passes", "final-rebuild"} {
 			t.Run(fmt.Sprintf("module=%v/%s", module, kind), func(t *testing.T) {
 				body := `"pv2-when-audit:x":["a","a","b"]`
 				flags := []any{"not_final"}
@@ -46,6 +46,12 @@ func TestWhenPassAuditLiveOracle(t *testing.T) {
 					}
 					array := `[` + strings.Join(vals, ",") + `]`
 					body = `"pv2-when-audit:c":{"q":` + array + `,"keyed":` + array + `},"pv2-when-audit:x":[` + strings.Join(deleted, ",") + `],"pv2-when-audit:gate":"on","pv2-when-audit:g":[{"k":"g","v":"on"}],"pv2-when-audit:f":` + array
+				case "ordinary":
+					var values []string
+					for i := range 64 {
+						values = append(values, strconv.Quote(strconv.Itoa(64-i)))
+					}
+					body = `"pv2-when-audit:ordinary":{"value":[` + strings.Join(values, ",") + `]}`
 				case "final-rebuild":
 					body = `"pv2-when-audit:x":["a","b","c","d"]`
 				case "nested-passes":
@@ -87,7 +93,7 @@ func TestWhenPassAuditLiveOracle(t *testing.T) {
 				validated := nativeSteps[len(nativeSteps)-2].(map[string]any)
 				code, ok := validated["rc"].(map[string]any)
 				expected := "LY_EVALID"
-				if kind == "payload" || kind == "prefix" || kind == "nested-passes" || kind == "final-rebuild" {
+				if kind == "payload" || kind == "ordinary" || kind == "prefix" || kind == "nested-passes" || kind == "final-rebuild" {
 					expected = "LY_SUCCESS"
 				}
 				if !ok || code["name"] != expected {

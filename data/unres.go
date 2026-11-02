@@ -228,7 +228,10 @@ func (vc *valCtx) topSuccessor() func(int) int {
 }
 
 func (vc *valCtx) dropTop(n *Node) {
-	i := vc.topPos[n]
+	i, member := vc.topPos[n]
+	if !member {
+		return
+	}
 	l := vc.topLinks[i]
 	if l.prev < 0 {
 		vc.topHead = l.next
@@ -339,15 +342,16 @@ func truthy(r xpath.Result) bool {
 // lyd_parser_set_data_flags call, so the JSON parser queues a node with metadata several times
 // and ly_set_contains finds the first entry), built when a when-false or deleted subtree needs
 // it. A dropped entry stays in its node's list, a tombstone the readers skip (livePos,
-// nestedEntries): a drop is O(1) and the first live index amortized O(1), however often a node
+// deletedEntries): a drop is O(1) and the first live index amortized O(1), however often a node
 // is queued.
 type whenPass struct {
-	vc     *valCtx
-	live   int
-	pos    map[*Node][]int
-	dead   []*Node // WhenTrue nodes deleted (and unlinked) by this pass, flagged until its end
-	builds int     // pos maps built (one per pass at most; work tests)
-	reads  int     // pos entries read, tombstones passed included (work tests)
+	vc      *valCtx
+	live    int
+	pos     map[*Node][]int
+	metaPos map[*meta][]int // built once; indices stay valid until finish compacts tombstones
+	dead    []*Node         // WhenTrue nodes deleted (and unlinked) by this pass, flagged until its end
+	builds  int             // pos maps built (one per pass at most; work tests)
+	reads   int             // pos entries read, tombstones passed included (work tests)
 }
 
 // drop is ly_set_rm_index_ordered of entry i (a tombstone).
@@ -445,7 +449,7 @@ func (p *whenPass) whenFalse(n *Node, i int) (int, error) {
 // deletion (topGone). A node queued twice (the JSON parser queues a node once per metadata
 // member) is deleted once.
 //
-// The cancellable part (finding the nested entries) comes first; nothing after the diff polls
+// The cancellable ownership and queue planning comes first; nothing after the diff polls
 // (an unlink never does), so a cancellation finds a deletion not begun or complete, never a diff
 // for a node that stays. An unlink failure after the diff (a budget error, a held link) is the
 // operation's sticky error, and its journal restores the tree with the diff dropped
@@ -458,12 +462,15 @@ func (p *whenPass) del(n *Node) error {
 	if err := n.touch(); err != nil {
 		return err
 	}
-	nested, err := p.nestedEntries(n)
+	owned, err := vc.preflightFreeLinks(n)
 	if err != nil {
 		return err
 	}
-	owned, err := vc.preflightFreeLinks(n)
+	nested, metas, err := p.deletedEntries(owned)
 	if err != nil {
+		return err
+	}
+	if err := vc.t.work.chargeHash(1); err != nil { // p.dead output slot
 		return err
 	}
 	if err := vc.chargeDfltScan(n); err != nil {
@@ -487,8 +494,17 @@ func (p *whenPass) del(n *Node) error {
 	for _, j := range nested {
 		p.drop(j)
 	}
-	if err := vc.dropTypes(n, false); err != nil {
-		return err
+	for _, j := range metas {
+		(*vc.metaTypes)[j] = nil
+	}
+	// Reuse the paid ownership plan; Node.All would expand an unreserved
+	// ordinary-child stack here after the diff. node_types has one entry per value.
+	for _, d := range owned {
+		if vc.nodeTypes != nil && vc.nodeTypes.len() != 0 && d.isTerm() {
+			if i := vc.nodeTypes.contains(d); i >= 0 {
+				vc.nodeTypes.rmIndex(i)
+			}
+		}
 	}
 	fresh := vc.top != nil && vc.topGen == vc.t.top.gen && n.parent == nil
 	if err := unlink(n); err != nil {
@@ -605,40 +621,79 @@ func (vc *valCtx) logDiffErr(err error) bool {
 	return true
 }
 
-// nestedEntries are the node_when entries of n's descendants, which leave the queue with n:
-// libyang asserts there are none (lyd_validate_autodel_node_del's LYD_TREE_DFS, NDEBUG builds
-// keep them, pointing to freed nodes); here they go, as tombstones. It only reads, polling: the
-// caller drops them once the deletion cannot be cancelled.
-func (p *whenPass) nestedEntries(n *Node) ([]int, error) {
+// deletedEntries uses the already charged ownership plan, including the deleted
+// node itself: no duplicate can survive an ancestor rewind into the next pass.
+// Metadata indices also keep duplicates and are built once per pass. All output
+// and scan work is reserved before allocation; queue writes wait until the diff.
+func (p *whenPass) deletedEntries(nodes []*Node) (whens, metas []int, err error) {
 	vc := p.vc
-	if p.live <= 1 || n.isTerm() {
-		return nil, nil
-	}
-	if err := p.positions(); err != nil {
-		return nil, err
-	}
-	var out []int
-	for d := range n.All() {
-		if err := vc.checkContext(); err != nil {
-			return nil, err
+	if p.live > 0 {
+		if err := p.positions(); err != nil {
+			return nil, nil, err
 		}
-		if d == n {
-			continue
+	}
+	if vc.metaTypes != nil && len(*vc.metaTypes) > 0 && p.metaPos == nil {
+		q := *vc.metaTypes
+		// Index entries plus finish's compaction; tombstones do not move indices.
+		if err := vc.t.work.chargeHash(2 * uint64(len(q))); err != nil {
+			return nil, nil, err
+		}
+		pos := make(map[*meta][]int, len(q))
+		for i, m := range q {
+			if err := vc.checkContext(); err != nil {
+				return nil, nil, err
+			}
+			if m != nil {
+				pos[m] = append(pos[m], i)
+			}
+		}
+		p.metaPos = pos
+	}
+	// Both queue scans and the non-cancellable type removals reuse these nodes.
+	if err := vc.t.work.chargeHash(2 * uint64(len(nodes))); err != nil {
+		return nil, nil, err
+	}
+	for _, d := range nodes {
+		if err := vc.checkContext(); err != nil {
+			return nil, nil, err
 		}
 		l := p.pos[d]
-		if err := vc.t.work.chargeHash(uint64(len(l))); err != nil { // out may grow by as many
-			return nil, err
+		if err := vc.t.work.chargeHash(uint64(len(l))); err != nil {
+			return nil, nil, err
 		}
-		for _, j := range l { // each descendant leaves with n: its list is read once
+		for _, j := range l {
 			if err := vc.checkContext(); err != nil {
-				return nil, err
+				return nil, nil, err
 			}
 			if p.reads++; vc.nodeWhen.items[j] != nil {
-				out = append(out, j)
+				whens = append(whens, j)
+			}
+		}
+		if p.metaPos == nil {
+			continue
+		}
+		if err := vc.t.work.chargeHash(uint64(len(d.meta))); err != nil {
+			return nil, nil, err
+		}
+		for _, m := range d.meta {
+			if err := vc.checkContext(); err != nil {
+				return nil, nil, err
+			}
+			l := p.metaPos[m]
+			if err := vc.t.work.chargeHash(uint64(len(l))); err != nil {
+				return nil, nil, err
+			}
+			for _, j := range l {
+				if err := vc.checkContext(); err != nil {
+					return nil, nil, err
+				}
+				if (*vc.metaTypes)[j] != nil {
+					metas = append(metas, j)
+				}
 			}
 		}
 	}
-	return out, nil
+	return whens, metas, nil
 }
 
 // unresWhen is lyd_validate_unres_when: one pass over node_when from the end. A resolved node
@@ -717,6 +772,17 @@ func (p *whenPass) finish() {
 	}
 	clear(q.items[len(live):])
 	q.items, q.pos = live, nil
+	if p.metaPos != nil && len(p.dead) != 0 {
+		q := *p.vc.metaTypes
+		live := q[:0]
+		for _, m := range q {
+			if m != nil {
+				live = append(live, m)
+			}
+		}
+		clear(q[len(live):])
+		*p.vc.metaTypes = live
+	}
 	p.vc.posBuilds += p.builds
 	p.vc.posReads += p.reads
 	for _, n := range p.dead {

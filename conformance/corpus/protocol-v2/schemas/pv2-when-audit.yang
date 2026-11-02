@@ -44,5 +44,10 @@ module pv2-when-audit {
   leaf r { type leafref { path "/w:target"; } }
   leaf bad { type string; when "false()"; }
   leaf must { type string; must "false()"; }
+  container ordinary {
+    presence "Exercise deletion with ordinary unqueued descendants.";
+    when "false()";
+    leaf-list value { config false; type string; must "false()"; }
+  }
   anydata a { when "false()"; }
 }

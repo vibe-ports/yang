@@ -182,13 +182,14 @@ resumed (`whenPass.whenFalse`). An autodeleted node queued twice is deleted once
 
 **When-pass deletion contract** (`whenPass.del`, as `lyd_validate_autodel_node_del`). Each
 deletion is one complete unit, done at once: the diff's `delete`, the node_when entries of its
-descendants dropped (tombstones), its terminals out of node_types, the node unlinked from storage
-and indexes together, and its links freed. Every later evaluation of the pass therefore reads the
+descendants and of the node itself dropped (all duplicate positions as tombstones), its
+terminals out of node_types, its metadata entries out of meta_types, the node unlinked
+from storage and indexes together, and its links freed. Every later evaluation of the pass therefore reads the
 tree libyang has, and storage never holds a deleted node. libyang asserts that no descendant of an
 autodeleted node is still queued (its NDEBUG builds keep it queued, pointing to freed memory); the
 port drops those entries with the node, so a nested queued node is neither evaluated nor deleted
 twice (Go test TestWhenNestedQueuedDescendant). Ordering inside a deletion: the part that polls
-cancellation (finding the nested entries, `nestedEntries`) runs before the diff, and nothing after
+cancellation (the ownership plan and `deletedEntries`) runs before the diff, and nothing after
 the diff polls (an unlink never does), so a cancellation finds a deletion either not begun or
 complete. A cancelled pass keeps its completed prefix, and the returned diff is exactly that prefix
 (`endValidateJournal`: a diff is dropped only when the journal restored the tree). An unlink that
@@ -200,8 +201,13 @@ links changes (every linked node and each counterpart, possibly in another tree:
 `preflightFreeLinks`), so a held counterpart (D-0148) or a capture budget refuses it before it
 begins. Its ownership plan includes opaque and typed any-value payloads: output slots,
 traversal-stack expansion, reciprocal-link cleanup and captures are reserved against hash work,
-with cancellation checks throughout the preflight. Cleanup reuses that plan after unlinking;
-it neither traverses ownership again nor polls after recording the diff. A guard refusal stays
+with cancellation checks throughout the preflight. Queue removal and cleanup reuse that
+single plan, including ordinary descendants;
+neither expands a `Node.All` stack after planning. Metadata positions are indexed once
+per pass with reserved compaction, and all positions of deleted nodes leave before
+`finish` clears dead marks, including entries skipped by a multi-error ancestor rewind.
+Must checks have no queue: the final traversal reads only the retained tree. Cleanup
+neither traverses ownership again nor polls after recording the diff. A guard refusal stays
 the operation's result over a later cancellation. It pays the
 child scans of `lyd_np_cont_dflt_set` that its unlink makes (as libyang, up to the first explicit
 child of each NP ancestor, so a default prefix costs its length per deletion) and the queue's
@@ -214,7 +220,8 @@ validation succeeds does the oracle wrapper promote the first ignored diff error
 (protocol-v2/when-dup-state-delete-*); a budget or guard failure still stops the pass.
 The top-level XPath view (`topNodes`) is not rebuilt per deletion: a root deleted while the view
 is fresh stays in it, flagged dead, absent for every read of the root (`EvalContext.TreeGone`).
-Live view indices form a doubly linked list, updated in O(1) per root deletion; the first-instance,
+Live view indices form a doubly linked list, updated in O(1) per root deletion only
+after a successful membership lookup (a repeated removal or foreign node is a no-op); the first-instance,
 hash and whole-list reads all use its successors (`EvalContext.TreeNext`). Repeated short lookups
 therefore never rescan a deleted prefix. The view is rebuilt once more than half of it is deleted,
 which bounds its retained storage and total rebuilding work. Construction reserves the view's
