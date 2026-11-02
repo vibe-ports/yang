@@ -254,10 +254,7 @@ func TestSequenceKindModel(t *testing.T) {
 						case op == 9:
 							hs := slices.Clone(model[lo:hi])
 							r.Shuffle(len(hs), func(a, b int) { hs[a], hs[b] = hs[b], hs[a] })
-							bound = seq.ReplaceHandlesWorkBound(len(hs))
-							if len(hs) >= 2 {
-								bound = seq.ReplaceHandlesBound(model[lo], model[hi-1], len(hs), mode == "journal", nil)
-							}
+							bound = seq.ReplaceHandlesBound(valueAtHandle(model, lo, nil), valueAtHandle(model, hi-1, nil), len(hs), mode == "journal", nil)
 							if !seq.ReplaceHandles(lo, hi, hs) {
 								t.Fatal("ReplaceHandles refused")
 							}
@@ -278,7 +275,9 @@ func TestSequenceKindModel(t *testing.T) {
 								t.Fatal("rejected edit recorded writes")
 							}
 						}
-						bound = saturatingAdd(bound, captures)
+						if op != 10 { // KindThreadsBound already includes checkpoint captures.
+							bound = saturatingAdd(bound, captures)
+						}
 						if hooks.units > bound {
 							t.Fatalf("batch %d step %d op %d: used %d units, bound %d", batch, step, op, hooks.units, bound)
 						}
@@ -524,13 +523,11 @@ func TestSequenceKindBounds(t *testing.T) {
 						for i := range hs {
 							hs[i] = seq.Peek(length - 1 - i)
 						}
-						if length >= 2 {
-							check("replace", seq.ReplaceHandlesBound(seq.First(), seq.Last(), length, journaled, nil), func() {
-								if !seq.ReplaceHandles(0, length, hs) {
-									t.Fatal("ReplaceHandles refused")
-								}
-							})
-						}
+						check("replace", seq.ReplaceHandlesBound(seq.First(), seq.Last(), length, journaled, nil), func() {
+							if !seq.ReplaceHandles(0, length, hs) {
+								t.Fatal("ReplaceHandles refused")
+							}
+						})
 						slices.Reverse(hs)
 						republish := func() {
 							i := 0

@@ -272,9 +272,12 @@ func (r *Ranks) ReadBound() uint64 {
 // ReplaceHandlesBound bounds ReplaceHandles of the k live handles that occupy one contiguous range
 // of s, first and last its first and last in physical order: the ownership scans, the splits
 // and joins, the subtree build and the run's relabel, planned exactly (its images included when
-// journaled).
+// journaled). For k == 0, first and last may be nil: only the initial Select is charged.
 func (s *Seq[T]) ReplaceHandlesBound(first, last *Handle[T], k int, journaled bool, pay Pay) uint64 {
-	if first == nil || last == nil || k < 2 {
+	if k == 0 {
+		return s.SelectBound()
+	}
+	if first == nil || last == nil || k < 0 {
 		return 0
 	}
 	kk := uint64(k)

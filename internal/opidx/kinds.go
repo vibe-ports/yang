@@ -242,13 +242,18 @@ func (s *Seq[T]) SetKindThreads() {
 	s.threadKinds()
 }
 
-// KindThreadsBound bounds SetKindThreads.
+// KindThreadsBound bounds SetKindThreads, including captures at every active checkpoint.
 func (s *Seq[T]) KindThreadsBound(journaled bool) uint64 {
 	if s.kinds {
 		return 0
 	}
 	n := uint64(s.length) //nolint:gosec // a length is nonnegative
-	return saturatingAdd(n, images(n+1, journaled))
+	captures := saturatingMul(n, uint64(len(s.checkpoints)))
+	bound := saturatingAdd(n, captures)
+	if journaled {
+		bound = saturatingAdd(bound, saturatingMul(saturatingAdd(n, 1), 2))
+	}
+	return bound
 }
 
 // threadKinds links every handle to its kind neighbours, in one pass.

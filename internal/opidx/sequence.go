@@ -46,9 +46,32 @@ type seqHeader[T any] struct {
 type seqCheckpoint[T any] struct {
 	id         uint64
 	header     seqHeader[T]
-	before     map[*Handle[T]]Handle[T]
+	before     map[*Handle[T]]seqHandleBefore[T]
+	kindBefore map[*Handle[T]]seqKindBefore[T]
 	created    []*Handle[T]
 	createdSet map[*Handle[T]]struct{}
+}
+
+// seqHandleBefore preserves the pre-kind checkpoint image layout. Adding the kind fields to
+// this map value would push otherwise inline values past the runtime's 128-byte limit and
+// allocate per captured handle even when kinds are unused.
+type seqHandleBefore[T any] struct {
+	value       T
+	left, right *Handle[T]
+	parent      *Handle[T]
+	prev, next  *Handle[T]
+	owner       *Seq[T]
+	height      int
+	size        int
+	tag         uint64
+	stamp       uint64
+}
+
+// seqKindBefore is part of the same logical before-image, stored only for nonzero kind state.
+// Classification is immutable and needs no before-image.
+type seqKindBefore[T any] struct {
+	hsize      int
+	prev, next *Handle[T]
 }
 
 // Checkpoint identifies a mutation journal position. Checkpoints are completed
@@ -199,7 +222,14 @@ func (s *Seq[T]) touch(h *Handle[T]) {
 		if _, created := checkpoint.createdSet[h]; created {
 			continue
 		}
-		checkpoint.before[h] = *h
+		checkpoint.before[h] = seqHandleBefore[T]{h.Value, h.left, h.right, h.parent,
+			h.prev, h.next, h.owner, h.height, h.size, h.tag, h.stamp}
+		if h.hsize != 0 || h.kprev != nil || h.knext != nil {
+			if checkpoint.kindBefore == nil {
+				checkpoint.kindBefore = make(map[*Handle[T]]seqKindBefore[T])
+			}
+			checkpoint.kindBefore[h] = seqKindBefore[T]{h.hsize, h.kprev, h.knext}
+		}
 		s.charge()
 	}
 }
@@ -218,7 +248,7 @@ func (s *Seq[T]) Checkpoint() *Checkpoint[T] {
 	checkpoint := &seqCheckpoint[T]{
 		id:         s.checkpointID,
 		header:     s.header(),
-		before:     make(map[*Handle[T]]Handle[T]),
+		before:     make(map[*Handle[T]]seqHandleBefore[T]),
 		createdSet: make(map[*Handle[T]]struct{}),
 	}
 	s.checkpoints = append(s.checkpoints, checkpoint)
@@ -255,7 +285,11 @@ func (s *Seq[T]) Rollback(checkpoint *Checkpoint[T]) bool {
 		return false
 	}
 	for h, before := range top.before {
-		*h = before
+		kind := top.kindBefore[h]
+		*h = Handle[T]{Value: before.value, left: before.left, right: before.right,
+			parent: before.parent, prev: before.prev, next: before.next, owner: before.owner,
+			height: before.height, size: before.size, tag: before.tag, stamp: before.stamp,
+			heavy: h.heavy, hsize: kind.hsize, kprev: kind.prev, knext: kind.next}
 		s.charge()
 	}
 	for _, h := range top.created {

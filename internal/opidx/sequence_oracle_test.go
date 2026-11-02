@@ -25,6 +25,26 @@ import (
 // These parse requests do not validate Seq's internal edit/journal primitives.
 // No golden files are generated.
 func TestSequenceRound2LiveOracle(t *testing.T) {
+	checkSequenceLiveOracle(t, sequenceEditModelSnapshots(t))
+}
+
+// These requests supplement the direct accounting/allocation regressions. Libyang has no
+// equivalent of a Go checkpoint or budget; it checks only the independent logical states.
+func TestSequenceAuditLiveOracle(t *testing.T) {
+	for _, tc := range []struct {
+		name   string
+		states [][]int
+	}{
+		{"empty-singleton-replacement", [][]int{{}, {10}, {10}}},
+		{"checkpoint-thread-initialization", [][]int{{10, 11}, {10, 11}, {10, 11}}},
+		{"dormant-checkpoint-keep-rollback", [][]int{{10, 11, 12, 13}, {}, {10, 11, 12, 13}}},
+	} {
+		t.Run(tc.name, func(t *testing.T) { checkSequenceLiveOracle(t, tc.states) })
+	}
+}
+
+func checkSequenceLiveOracle(t *testing.T, snapshots [][]int) {
+	t.Helper()
 	oracle, err := filepath.Abs(filepath.Join("..", "..", "conformance", "oracle", "lyoracle-"+runtime.GOARCH))
 	if err != nil {
 		t.Fatal(err)
@@ -52,7 +72,6 @@ func TestSequenceRound2LiveOracle(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(dir, "seq-round2.yang"), []byte(module), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	snapshots := sequenceEditModelSnapshots(t)
 	steps := make([]map[string]any, len(snapshots))
 	for i, order := range snapshots {
 		data, err := json.Marshal(map[string]any{"seq-round2:v": order})
