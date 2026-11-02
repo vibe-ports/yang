@@ -240,9 +240,7 @@ func validateOpNode(ctx context.Context, set *schema.Set, opNode *Node, dep *Tre
 	if restoreErr := restore(false); restoreErr != nil {
 		return vc.log.diags, abandon(restoreErr)
 	}
-	if err == nil || errors.Is(err, errLogged) {
-		err = vc.log.result()
-	}
+	err = vc.validationResult(err)
 	return vc.log.diags, err
 }
 

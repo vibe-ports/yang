@@ -313,7 +313,10 @@ type EvalContext struct {
 	TreeLookup ChildLookup
 	// TreeGone, when set, reports the nodes of Tree deleted since it was built (a cached view):
 	// every read of the root skips them, as absent.
-	TreeGone   func(Node) bool
+	TreeGone func(Node) bool
+	// TreeNext optionally gives the next live index of Tree (-1 asks for the
+	// first, len(Tree) ends). It avoids repeated visits to deleted prefixes.
+	TreeNext   func(int) int
 	Root       RootKind
 	IgnoreWhen bool // LYXP_IGNORE_WHEN: do not fail on unresolved when
 	Schema     SchemaInfo

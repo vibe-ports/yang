@@ -7,6 +7,18 @@ package data
 // expansion of the traversal stack is reserved before allocating. Cleanup can then reserve
 // reciprocal-link work and journal all affected objects before detaching any root.
 func ownedNodes(roots []*Node, work *workCounter) ([]*Node, error) {
+	return ownedNodesChecked(roots, work, nil)
+}
+
+// ownedNodesChecked also polls validation cancellation, including for opaque payload
+// nodes that ordinary validation never visits. Every stack and output slot is paid
+// before it is appended; the returned plan is reused by the non-refusing cleanup.
+func ownedNodesChecked(roots []*Node, work *workCounter, check func() error) ([]*Node, error) {
+	if check != nil {
+		if err := check(); err != nil {
+			return nil, err
+		}
+	}
 	if err := work.chargeHash(uint64(len(roots)) + 1); err != nil {
 		return nil, err
 	}
@@ -16,6 +28,11 @@ func ownedNodes(roots []*Node, work *workCounter) ([]*Node, error) {
 	}
 	var nodes []*Node
 	for len(stack) > 0 {
+		if check != nil {
+			if err := check(); err != nil {
+				return nil, err
+			}
+		}
 		n := stack[len(stack)-1]
 		stack = stack[:len(stack)-1]
 		sib := &n.kids
@@ -27,9 +44,19 @@ func ownedNodes(roots []*Node, work *workCounter) ([]*Node, error) {
 		}
 		nodes = append(nodes, n)
 		for _, c := range sib.opaqueSpan().Reverse() {
+			if check != nil {
+				if err := check(); err != nil {
+					return nil, err
+				}
+			}
 			stack = append(stack, c)
 		}
 		for _, c := range sib.schemaSpan().Reverse() {
+			if check != nil {
+				if err := check(); err != nil {
+					return nil, err
+				}
+			}
 			stack = append(stack, c)
 		}
 	}
@@ -37,15 +64,34 @@ func ownedNodes(roots []*Node, work *workCounter) ([]*Node, error) {
 }
 
 func reserveFreeLinks(nodes []*Node, work *workCounter) error {
+	return reserveFreeLinksChecked(nodes, work, nil)
+}
+
+func reserveFreeLinksChecked(nodes []*Node, work *workCounter, check func() error) error {
 	// chargeBulkFreeLinks allocates the order map for all nodes before its incremental plan.
 	if err := work.chargeHash(uint64(len(nodes))); err != nil {
 		return err
 	}
-	if !chargeBulkFreeLinks(nodes, func(n int64) bool { return work.chargeHash(uint64(n)) == nil }, work) { //nolint:gosec // cleanup planner charges nonnegative counts
-		return work.hashErr
+	var refusal error
+	if !chargeBulkFreeLinks(nodes, func(n int64) bool {
+		if check != nil {
+			refusal = check()
+			if refusal != nil {
+				return false
+			}
+		}
+		refusal = work.chargeHash(uint64(n)) //nolint:gosec // cleanup planner charges nonnegative counts
+		return refusal == nil
+	}, work) {
+		return refusal
 	}
 	for _, n := range nodes {
-		if err := linkGuard(n, work); err != nil { // the cleaner's link edits (design 13 §2.4 (5))
+		if check != nil {
+			if err := check(); err != nil {
+				return err
+			}
+		}
+		if err := linkGuardChecked(n, work, check); err != nil { // the cleaner's link edits (design 13 §2.4 (5))
 			return err
 		}
 		if err := n.touch(); err != nil {

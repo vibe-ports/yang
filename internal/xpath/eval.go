@@ -213,24 +213,35 @@ func (ev *evaluator) start() value {
 
 // root is the document root's children for the whole-list reads (axes, positions, the string
 // value): ec.Tree less the nodes ec.TreeGone reports (deleted, so absent), filtered when first
-// read, one step per node; without TreeGone it is ec.Tree as given. The first-instance and hash
-// lookups walk ec.Tree and skip those nodes instead (gone), so they still stop early.
+// read, one step per live node with TreeNext. Without a live-view provider it is
+// ec.Tree as given. Early-terminating lookups use the same live successor walk.
 func (ev *evaluator) root() []Node {
-	if ev.ec.TreeGone == nil {
+	if ev.ec.TreeGone == nil && ev.ec.TreeNext == nil {
 		return ev.ec.Tree
 	}
 	if !ev.liveOK {
 		ev.liveOK = true
-		for _, c := range ev.ec.Tree {
+		for i := nextLiveIndex(ev.ec.TreeNext, -1); i < len(ev.ec.Tree); i = nextLiveIndex(ev.ec.TreeNext, i) {
+			c := ev.ec.Tree[i]
 			if ev.tick() != nil {
 				break // sticky: the evaluation fails
 			}
-			if !ev.ec.TreeGone(c) {
+			if !ev.gone(c) {
 				ev.live = append(ev.live, c)
 			}
 		}
 	}
 	return ev.live
+}
+
+// nextLiveIndex follows a cached root's successor, or the ordinary slice order
+// for other adapters and child scans. Keeping the walk indexed avoids allocating
+// an iterator closure per lookup, including on the FirstLookup fast path.
+func nextLiveIndex(next func(int) int, i int) int {
+	if next != nil {
+		return next(i)
+	}
+	return i + 1
 }
 
 // gone reports a root of ec.Tree that ec.TreeGone reports deleted.
@@ -845,9 +856,10 @@ func (ev *evaluator) firstInstance(set value, sn SchemaNode) Node {
 		return nil
 	}
 	var kids []Node
+	var next func(int) int
 	switch it := set.nodes[0]; it.t {
 	case itRoot:
-		kids = ev.ec.Tree // deleted roots skipped below: the walk stops early, no copy
+		kids, next = ev.ec.Tree, ev.ec.TreeNext
 	case itElem:
 		if f, ok := it.n.(FirstLookup); ok {
 			if err := ev.tick(); err != nil {
@@ -858,10 +870,13 @@ func (ev *evaluator) firstInstance(set value, sn SchemaNode) Node {
 			}
 		}
 		kids = it.n.Children()
+	default:
+		return nil
 	}
 	// the walk without a children hash table: the top level, or a node whose FirstLookup
 	// declined (the data adapter answers itself for every sibling list that has a table)
-	for _, c := range kids {
+	for i := nextLiveIndex(next, -1); i < len(kids); i = nextLiveIndex(next, i) {
+		c := kids[i]
 		if ev.tick() != nil {
 			return nil
 		}
@@ -1070,16 +1085,20 @@ func (ev *evaluator) hashChild(set value, sn SchemaNode, name string, vals []str
 		}
 		if !looked { // scan, one step per child
 			var kids []Node
+			var next func(int) int
 			switch it.t {
 			case itRoot:
-				kids = ev.ec.Tree // deleted roots skipped below: the scan stops early, no copy
+				kids, next = ev.ec.Tree, ev.ec.TreeNext
 			case itElem:
 				if sn := it.n.Schema(); sn != nil && (sn.Kind() == KindAnydata || sn.Kind() == KindAnyxml) {
 					continue // lyd_child, even when the adapter has no ChildLookup
 				}
 				kids = it.n.Children()
+			default:
+				continue
 			}
-			for _, c := range kids {
+			for i := nextLiveIndex(next, -1); i < len(kids); i = nextLiveIndex(next, i) {
+				c := kids[i]
 				if err := ev.tick(); err != nil {
 					return value{}, err
 				}
@@ -1096,7 +1115,11 @@ func (ev *evaluator) hashChild(set value, sn SchemaNode, name string, vals []str
 				}
 			}
 			if hit == nil { // lyd_find_sibling_opaq_next
-				for _, c := range kids {
+				for i := nextLiveIndex(next, -1); i < len(kids); i = nextLiveIndex(next, i) {
+					c := kids[i]
+					if err := ev.tick(); err != nil {
+						return value{}, err
+					}
 					if c.Schema() == nil && c.Name() == name && !ev.gone(c) {
 						hit = []Node{c}
 						break

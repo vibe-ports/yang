@@ -61,6 +61,11 @@ type valCtx struct {
 	topGen  uint64
 	topDead int    // roots of top the running when pass deleted (each read as absent: topGone)
 	diffRC  string // the LY_ERR of the first diff failure an autodelete logged and went past
+	// The live roots form a doubly linked list of view indices. Deletion updates
+	// two neighbors in O(1); every XPath scan starts with the live prefix.
+	topLinks []topLink
+	topPos   map[*Node]int
+	topHead  int
 	// work counters for the tests: top-level view builds, when-pass position maps and the
 	// position entries read
 	topBuilds, posBuilds, posReads int
@@ -77,6 +82,8 @@ type valCtx struct {
 	// module, lyd_validate_all)
 	module *schema.Module
 }
+
+type topLink struct{ prev, next int }
 
 type getnextKey struct {
 	sparent *schema.Node
@@ -122,15 +129,69 @@ func (vc *valCtx) getnextOf(sparent *schema.Node, mod *schema.Module, output boo
 	return v, nil
 }
 
-// stop is the test of LY_VAL_ERR_GOTO: go on after an error only when it is LY_EVALID under
-// multi-error validation. The error's LY_ERR is that of the last error logged (warnings logged
-// after it do not count).
+// validationStatus preserves a native validation return independently of later
+// diagnostics, including failures logged by an ignored lyd_val_diff_add call.
+type validationStatus struct {
+	error
+	rc string
+}
+
+func (e *validationStatus) Unwrap() error { return e.error }
+
+// captureError snapshots LY_ERR where a caller retains r as rc. Diagnostics can
+// keep growing while rc is retained, so reading ly_err_last later is insufficient.
+func (vc *valCtx) captureError(err error) error {
+	if !errors.Is(err, errLogged) {
+		return err
+	}
+	var saved *validationStatus
+	if errors.As(err, &saved) {
+		return err
+	}
+	var explicit *rcErr
+	if errors.As(err, &explicit) {
+		return &validationStatus{err, explicit.rc}
+	}
+	for i := len(vc.log.diags) - 1; i >= 0; i-- {
+		if d := vc.log.diags[i]; failing(d) {
+			return &validationStatus{err, d.Err}
+		}
+	}
+	return err
+}
+
+// validationResult collects the complete log, preserving an actual failed call's
+// code. The oracle wrapper promotes an ignored diff diagnostic only if the native
+// validation call succeeded (lyoracle.c:3184).
+func (vc *valCtx) validationResult(err error) error {
+	if err != nil && !errors.Is(err, errLogged) {
+		return err
+	}
+	native := vc.captureError(err)
+	result := vc.log.result()
+	var ve *ValidationError
+	if errors.As(result, &ve) {
+		var status *validationStatus
+		if errors.As(native, &status) {
+			ve.rc = status.rc
+		} else if native == nil && vc.diffRC != "" {
+			ve.rc = vc.diffRC
+		}
+	}
+	return result
+}
+
+// stop is LY_VAL_ERR_GOTO: continue only after LY_EVALID under multi-error.
 func (vc *valCtx) stop(err error) bool {
 	if err == nil {
 		return false
 	}
 	if !errors.Is(err, errLogged) || !vc.opts.MultiError {
 		return true // not a logged LY_EVALID (budget, cancellation, internal)
+	}
+	var status *validationStatus
+	if errors.As(err, &status) {
+		return status.rc != "LY_EVALID"
 	}
 	for i := len(vc.log.diags) - 1; i >= 0; i-- {
 		if d := vc.log.diags[i]; failing(d) {

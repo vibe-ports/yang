@@ -178,7 +178,7 @@ func sealedIn(err error) *userErr {
 // never walked), the internal packages', and fmt's and errors' joins and wraps.
 func ownWrapper(e error) bool {
 	switch e.(type) { //nolint:errorlint // the dynamic type itself, not the chain
-	case *ValidationError, *loggedContextError, *rcErr, *printerTypeError,
+	case *ValidationError, *validationStatus, *loggedContextError, *rcErr, *printerTypeError,
 		*xpathPrintNotice, *xpathPrintFailure, *xpathPrintResourceFailure:
 		return true
 	}
@@ -280,10 +280,19 @@ func (c *suspendCtx) Value(key any) any {
 // is made (nil: inside a scope whose own walk pays it), and the visited set is allocated only
 // once the walk recurses, so a refused budget stops it at its first units.
 func linkGuard(n *Node, w *workCounter) error {
+	return linkGuardChecked(n, w, nil)
+}
+
+func linkGuardChecked(n *Node, w *workCounter, check func() error) error {
 	if n == nil || n.links == nil {
 		return nil
 	}
 	pay := func() error {
+		if check != nil {
+			if err := check(); err != nil {
+				return err
+			}
+		}
 		if w == nil || w.prepaid {
 			return nil
 		}

@@ -1,0 +1,48 @@
+// SPDX-License-Identifier: BSD-3-Clause
+
+module pv2-when-audit {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:pv2-when-audit";
+  prefix w;
+
+  description
+    "Hand-written (this repo), BSD-3-Clause: live oracle cases for immediate
+     when-pass deletion, owned payloads, root lookups and mixed failures.";
+
+  container c {
+    leaf-list q {
+      type uint32;
+      when "/w:gate = 'on'";
+    }
+    leaf-list keyed {
+      type uint32;
+      when "/w:g[w:k='g']/w:v = 'on'";
+    }
+  }
+  container chain {
+    presence "Exercise several when passes without deleting a root.";
+    leaf g1 { type string; when "true()"; }
+    leaf d1 { type string; when "not(../g1)"; }
+    leaf g2 { type string; when "../g1"; }
+    leaf d2 { type string; when "not(../g2)"; }
+    leaf g3 { type string; when "../g2"; }
+    leaf d3 { type string; when "not(../g3)"; }
+  }
+  leaf-list x {
+    config false;
+    type string;
+    when "false()";
+  }
+  leaf gate { type string; }
+  list g {
+    key k;
+    leaf k { type string; }
+    leaf v { type string; }
+  }
+  leaf-list f { type uint32; }
+  leaf target { type string; }
+  leaf r { type leafref { path "/w:target"; } }
+  leaf bad { type string; when "false()"; }
+  leaf must { type string; must "false()"; }
+  anydata a { when "false()"; }
+}

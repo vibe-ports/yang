@@ -198,24 +198,41 @@ operation's rollback contract. The pass's end compacts node_when and clears the 
 cannot fail. Before the diff, a deletion also checks and captures what freeing its subtree's
 links changes (every linked node and each counterpart, possibly in another tree:
 `preflightFreeLinks`), so a held counterpart (D-0148) or a capture budget refuses it before it
-begins; a guard refusal stays the operation's result over a later cancellation. It pays the
+begins. Its ownership plan includes opaque and typed any-value payloads: output slots,
+traversal-stack expansion, reciprocal-link cleanup and captures are reserved against hash work,
+with cancellation checks throughout the preflight. Cleanup reuses that plan after unlinking;
+it neither traverses ownership again nor polls after recording the diff. A guard refusal stays
+the operation's result over a later cancellation. It pays the
 child scans of `lyd_np_cont_dflt_set` that its unlink makes (as libyang, up to the first explicit
 child of each NP ancestor, so a default prefix costs its length per deletion) and the queue's
 position bookkeeping to the hash-work quota, polled. A diff entry that fails to merge (two equal
 state leaf-list instances) is logged and the deletion goes on, as libyang ignores
-`lyd_val_diff_add`'s result there; the validation returns that LY_ERR
+`lyd_val_diff_add`'s result there. A retained validation failure carries its actual LY_ERR
+independently of subsequent diagnostics (`captureError`), so ignored diff errors cannot stop
+multi-error validation or replace a real when, leafref or must failure. Only when native
+validation succeeds does the oracle wrapper promote the first ignored diff error
 (protocol-v2/when-dup-state-delete-*); a budget or guard failure still stops the pass.
 The top-level XPath view (`topNodes`) is not rebuilt per deletion: a root deleted while the view
 is fresh stays in it, flagged dead, absent for every read of the root (`EvalContext.TreeGone`).
-The first-instance and hash lookups skip such roots as they walk, so they stop as early as on the
-live tree; the whole-list reads (axes, positions) filter the view once per evaluation, and the
-view is rebuilt once more than half of it is deleted, which keeps that filter O(live) and the
-rebuilds paid by the deletions. The view ends with the pass, so no cached view outlives it with a
-deleted node (Go tests TestWhenDeleteCancelDiffConsistent,
+Live view indices form a doubly linked list, updated in O(1) per root deletion; the first-instance,
+hash and whole-list reads all use its successors (`EvalContext.TreeNext`). Repeated short lookups
+therefore never rescan a deleted prefix. The view is rebuilt once more than half of it is deleted,
+which bounds its retained storage and total rebuilding work. Construction reserves the view's
+traversal and slots against the XPath quota before allocation. Before the first root deletion,
+the pass builds its successor index with a hash-work reservation; rebuilding an indexed view
+reserves that index again. Both builders poll cancellation and publish only complete views.
+Read-only queries never allocate the deletion index or write the tree's shared work counter.
+The evaluator receives the remaining XPath allowance afterward,
+including on the last evaluation of a pass. A view holding deleted roots ends with the pass,
+before their dead marks clear. An unchanged root list stays cached across child-only deletion
+passes, so a chain of relative whens cannot repeatedly wrap unrelated roots (Go tests TestWhenDeleteCancelDiffConsistent,
 TestWhenDeadCancelSweep, TestWhenDeadCancelSweepDiff, TestWhenDeadRootHidesNoForeignRoot,
 TestWhenRootDeletionsKeepView, TestWhenRootDeletionsLinearSteps, TestWhenRepeatedQueueLinear,
 TestWhenDiffMergeFailureIgnored, TestWhenDeleteHeldDescendantLink, TestWhenDeleteDefaultPrefixCharged,
-TestWhenQueueBookkeepingCharged; protocol-v2/when-dead-root-leafref-plain).
+TestWhenQueueBookkeepingCharged, TestWhenOwnedPayloadPreflight, TestWhenOwnedPayloadCancelDiff,
+TestWhenDeletedPrefixLookupWork, TestWhenChildPassesKeepRootView, TestWhenFinalViewRebuildBudget, TestWhenIgnoredDiffRealFailure,
+TestWhenViewQueryNoSharedWork, internal/xpath.TestRootLookupAllocations;
+live oracle TestWhenPassAuditLiveOracle; protocol-v2/when-dead-root-leafref-plain).
 
 Unchanged from there:
 `lyd_validate_unres_when` (VAL:462) walks it **from the end**, per node `lyd_validate_node_when`

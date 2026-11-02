@@ -10,7 +10,6 @@ package data
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"strings"
 
@@ -177,7 +176,7 @@ func (vc *valCtx) validate(validateSubtree bool) error {
 		}
 		vc.modFirst = nil
 		if err := vc.validateNew(nil, nil, mod); err != nil {
-			if rc = err; vc.stop(err) {
+			if rc = vc.captureError(err); vc.stop(rc) {
 				return rc
 			}
 		}
@@ -229,14 +228,14 @@ func (vc *valCtx) validate(validateSubtree bool) error {
 					return err
 				}
 				if err := vc.validateTree(c); err != nil {
-					if rc = err; vc.stop(err) {
+					if rc = vc.captureError(err); vc.stop(rc) {
 						return rc
 					}
 				}
 			}
 		}
 		if err := vc.unres(); err != nil {
-			if rc = err; vc.stop(err) {
+			if rc = vc.captureError(err); vc.stop(rc) {
 				return rc
 			}
 		}
@@ -256,7 +255,7 @@ func (vc *valCtx) validate(validateSubtree bool) error {
 			return err
 		}
 		if err := vc.finalR(nil, top.Slice(first, top.Len()), nil, mod); err != nil {
-			if rc = err; vc.stop(err) {
+			if rc = vc.captureError(err); vc.stop(rc) {
 				return rc
 			}
 		}
@@ -315,7 +314,7 @@ func (vc *valCtx) validateTree(root *Node) error {
 			}
 		}
 		if err != nil {
-			if rc = err; vc.stop(err) {
+			if rc = vc.captureError(err); vc.stop(rc) {
 				return rc
 			}
 		}
@@ -353,13 +352,13 @@ func (vc *valCtx) finalR(parent *Node, sibs siblingSpan, sparent *schema.Node, m
 			break // all top-level data of this module checked
 		}
 		if err != nil {
-			if rc = err; vc.stop(err) {
+			if rc = vc.captureError(err); vc.stop(rc) {
 				return rc
 			}
 		}
 	}
 	if err := vc.siblingsSchema(parent, sibs, sparent, mod); err != nil {
-		if rc = err; vc.stop(err) {
+		if rc = vc.captureError(err); vc.stop(rc) {
 			return rc
 		}
 	}
@@ -377,7 +376,7 @@ func (vc *valCtx) finalR(parent *Node, sibs siblingSpan, sparent *schema.Node, m
 			continue // logically non-existent: no children, no container default
 		}
 		if err := vc.finalR(n, slicesOf(&n.kids), n.schema, nil); err != nil {
-			if rc = err; vc.stop(err) {
+			if rc = vc.captureError(err); vc.stop(rc) {
 				return rc
 			}
 		}
@@ -472,8 +471,8 @@ func (vc *valCtx) siblingsSchema(parent *Node, sibs siblingSpan, sparent *schema
 	var rc error
 	keep := func(err error) bool {
 		if err != nil {
-			rc = err
-			return !vc.stop(err)
+			rc = vc.captureError(err)
+			return !vc.stop(rc)
 		}
 		return true
 	}
@@ -945,9 +944,7 @@ func (t *Tree) validateModuleFinal(ctx context.Context, mod *schema.Module, o Va
 	if t.work.hashErr != nil || isGuardRefusal(err) {
 		return vc.log.diags, err
 	}
-	if err == nil || errors.Is(err, errLogged) {
-		err = vc.log.result()
-	}
+	err = vc.validationResult(err)
 	return vc.log.diags, err
 }
 
@@ -984,12 +981,6 @@ func (t *Tree) validateWith(ctx context.Context, mod *schema.Module, o ValidateO
 	if t.work.hashErr != nil || isGuardRefusal(err) {
 		return vc.log.diags, err
 	}
-	if err == nil || errors.Is(err, errLogged) {
-		err = vc.log.result() // nil when only warnings were logged
-		var ve *ValidationError
-		if vc.diffRC != "" && errors.As(err, &ve) && ve.rc == "" {
-			ve.rc = vc.diffRC // an ignored diff failure's LY_ERR (logDiffErr)
-		}
-	}
+	err = vc.validationResult(err)
 	return vc.log.diags, err
 }

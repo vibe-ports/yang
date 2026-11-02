@@ -56,6 +56,12 @@ func (vc *valCtx) eval(e *xpath.Expr, ctx *Node, root xpath.RootKind, ignoreWhen
 		return xpath.Result{}, &xpath.Error{Err: "LY_EINVAL", Msg: fmt.Sprintf(
 			"Data node \"%s\" has no parent but is not instance of a top-level schema node.", first.Name())}
 	}
+	// Building a view consumes the same cumulative quota as evaluation. Reserve
+	// it first, then grant only the allowance that actually remains.
+	top, err := vc.topNodes()
+	if err != nil {
+		return xpath.Result{}, err
+	}
 	limit := b.max
 	if limit <= 0 {
 		limit = DefaultMaxXPathSteps
@@ -74,7 +80,7 @@ func (vc *valCtx) eval(e *xpath.Expr, ctx *Node, root xpath.RootKind, ignoreWhen
 	} else if vc.xpathContext == nil && ctxOf(ctx) != nil {
 		set = ctxOf(ctx)
 	}
-	r, err := e.EvalTo(xpath.EvalContext{Ctx: b.ctx, Node: wrap(set, ctx), Tree: vc.topNodes(), TreeGone: vc.topGone(), Root: root,
+	r, err := e.EvalTo(xpath.EvalContext{Ctx: b.ctx, Node: wrap(set, ctx), Tree: top, TreeGone: vc.topGone(), TreeNext: vc.topSuccessor(), Root: root,
 		IgnoreWhen: ignoreWhen, Schema: info{set}, Deref: vc.deref, Log: vc.xpathLog,
 		SuppressLog: vc.log.suppress, MaxSteps: int(per), Vars: vc.vars}, vc.to)
 	// A failed nested printer returns its own ValidationError. Route its log now;
@@ -149,21 +155,92 @@ func (vc *valCtx) xpathDiagnostic(item printDiagnostic, notice bool) {
 // when the top level changed (siblings.gen) and charged to the step budget then, one step per
 // node. A when-pass deletion of a root keeps a fresh view (whenPass.del): the deleted root stays
 // in it, absent for every read of the root (topGone), until the pass ends or more than half the
-// view is deleted. A lookup on the root skips the deleted roots as it walks (no filtered copy).
-func (vc *valCtx) topNodes() []xpath.Node {
+// view is deleted. Live successor indices bypass every deleted prefix without a copy per lookup.
+func (vc *valCtx) topNodes() ([]xpath.Node, error) {
 	// a view at most half deleted: whole-list reads of the root filter it (evaluator.root) in
 	// O(live), and the rebuild once it is more is paid by the deletions since the last one
 	if vc.top != nil && vc.topGen == vc.t.top.gen && 2*vc.topDead <= len(vc.top) {
-		return vc.top
+		return vc.top, nil
 	}
-	vc.top = vc.top[:0]
+	if err := vc.checkContext(); err != nil {
+		return nil, err
+	}
+	n := vc.t.top.len()
+	limit := vc.budget.max
+	if limit <= 0 {
+		limit = DefaultMaxXPathSteps
+	}
+	amount := int64(n) + 1
+	if amount > limit-vc.budget.steps {
+		return nil, fmt.Errorf("%w: more than %d XPath steps (root view)", yang.ErrBudget, limit)
+	}
+	vc.budget.steps += amount
+	top := make([]xpath.Node, 0, n)
 	for n := range vc.t.top.all() {
-		vc.top = append(vc.top, wrap(vc.xpathSet(), n))
+		if err := vc.checkContext(); err != nil {
+			return nil, err
+		}
+		top = append(top, wrap(vc.xpathSet(), n))
 	}
+	if vc.topPos != nil {
+		if err := vc.indexTop(top); err != nil {
+			return nil, err
+		}
+	}
+	vc.top = top
 	vc.topGen, vc.topDead = vc.t.top.gen, 0
 	vc.topBuilds++
-	vc.budget.steps += int64(len(vc.top)) + 1
-	return vc.top
+	return vc.top, nil
+}
+
+// indexTop is needed only by a when pass deleting roots. Query views keep their
+// accounting local to the evaluator, so concurrent or suspended-state readers
+// never write the tree's work counter. Reserve the two indices and map entry per
+// root before allocating, and publish only a fully constructed index.
+func (vc *valCtx) indexTop(top []xpath.Node) error {
+	if err := vc.t.work.chargeHash(3*uint64(len(top)) + 1); err != nil {
+		return err
+	}
+	links, pos := make([]topLink, 0, len(top)), make(map[*Node]int, len(top))
+	for i, x := range top {
+		if err := vc.checkContext(); err != nil {
+			return err
+		}
+		links = append(links, topLink{i - 1, i + 1})
+		pos[x.(xn).n] = i
+	}
+	vc.topLinks, vc.topPos, vc.topHead = links, pos, 0
+	return nil
+}
+
+// topSuccessor lets early-terminating and whole-root reads walk only live roots.
+// The links are validation-local; the evaluator never writes the shared tree.
+func (vc *valCtx) topSuccessor() func(int) int {
+	if vc.topDead == 0 {
+		return nil
+	}
+	return func(i int) int {
+		if i < 0 {
+			return vc.topHead
+		}
+		return vc.topLinks[i].next
+	}
+}
+
+func (vc *valCtx) dropTop(n *Node) {
+	i := vc.topPos[n]
+	l := vc.topLinks[i]
+	if l.prev < 0 {
+		vc.topHead = l.next
+	} else {
+		vc.topLinks[l.prev].next = l.next
+	}
+	if l.next < len(vc.topLinks) {
+		vc.topLinks[l.next].prev = l.prev
+	}
+	delete(vc.topPos, n)
+	vc.topGen = vc.t.top.gen
+	vc.topDead++
 }
 
 // topGone is the evaluations' test for the roots of the view that the running when pass
@@ -385,11 +462,22 @@ func (p *whenPass) del(n *Node) error {
 	if err != nil {
 		return err
 	}
-	if err := vc.preflightFreeLinks(n); err != nil {
+	owned, err := vc.preflightFreeLinks(n)
+	if err != nil {
 		return err
 	}
 	if err := vc.chargeDfltScan(n); err != nil {
 		return err
+	}
+	if vc.top != nil && vc.topGen == vc.t.top.gen && n.parent == nil {
+		if vc.topPos == nil {
+			if err := vc.indexTop(vc.top); err != nil {
+				return err
+			}
+		}
+		if err := vc.t.work.chargeHash(1); err != nil { // the cached root's O(1) removal
+			return err
+		}
 	}
 	if vc.diff != nil {
 		if err := vc.diff(n, diffDelete); err != nil && !vc.logDiffErr(err) {
@@ -410,10 +498,12 @@ func (p *whenPass) del(n *Node) error {
 		return err
 	}
 	if fresh {
-		vc.topGen = vc.t.top.gen // the view still holds n, now read as absent (topGone)
-		vc.topDead++
+		vc.dropTop(n)
 	}
-	freeSubtreeLinks(vc.t.context(), n) // lyd_free_tree
+	cleaner := bulkLinkCleaner{work: &vc.t.work}
+	for _, d := range owned {
+		cleaner.free(d) // lyd_free_tree: plan and captures reserved before the diff
+	}
 	n.flags |= flagDead
 	p.dead = append(p.dead, n)
 	return nil
@@ -422,28 +512,44 @@ func (p *whenPass) del(n *Node) error {
 // preflightFreeLinks checks and captures what lyd_free_tree's link part changes for n's subtree
 // before the deletion begins: every linked node's record and each counterpart's, the guard's
 // refusal of a held counterpart (D-0148) and the captures' budget included, so the cleanup after
-// the unlink (freeSubtreeLinks) meets no failure.
-func (vc *valCtx) preflightFreeLinks(n *Node) error {
-	for d := range n.allAny() {
-		rec := d.links
-		if rec == nil {
+// the unlink uses this plan and meets no failure. Ownership traversal and its
+// stack expansion are charged and polled even when the payload has no links.
+func (vc *valCtx) preflightFreeLinks(n *Node) ([]*Node, error) {
+	nodes, err := ownedNodesChecked([]*Node{n}, &vc.t.work, vc.checkContext)
+	if err != nil {
+		return nil, err
+	}
+	if err := reserveFreeLinksChecked(nodes, &vc.t.work, vc.checkContext); err != nil {
+		return nil, err
+	}
+	// The cleaner may empty a counterpart and recurse into free(c), whose
+	// touch captures the whole node beyond captureOwner's link-record image.
+	// Preserve that preflight before the diff, including foreign counterparts.
+	if err := vc.t.work.chargeHash(uint64(len(nodes))); err != nil {
+		return nil, err
+	}
+	for _, d := range nodes {
+		if err := vc.checkContext(); err != nil {
+			return nil, err
+		}
+		if d.links == nil {
 			continue
 		}
-		if err := linkGuard(d, &vc.t.work); err != nil {
-			return err
-		}
-		if err := d.touch(); err != nil {
-			return err
-		}
-		for _, side := range [2][]*Node{rec.leafrefs, rec.targets} {
+		for _, side := range [2][]*Node{d.links.leafrefs, d.links.targets} {
 			for _, c := range side {
+				if err := vc.t.work.chargeHash(1); err != nil {
+					return nil, err
+				}
+				if err := vc.checkContext(); err != nil {
+					return nil, err
+				}
 				if err := c.touch(); err != nil {
-					return err
+					return nil, err
 				}
 			}
 		}
 	}
-	return nil
+	return nodes, nil
 }
 
 // chargeDfltScan pays, before the deletion begins, the child scans lyd_unlink's
@@ -558,7 +664,7 @@ func (vc *valCtx) unresWhen() (rc error) {
 		case errors.Is(err, errIncomplete):
 			continue // stays queued
 		case err != nil:
-			if rc = err; vc.stop(err) {
+			if rc = vc.captureError(err); vc.stop(rc) {
 				return rc
 			}
 			continue
@@ -582,7 +688,7 @@ func (vc *valCtx) unresWhen() (rc error) {
 				i = at
 			}
 			err := vc.log.val(n, "", ly.Data, "When condition \"%s\" not satisfied.", w.Src)
-			if rc = err; vc.stop(err) {
+			if rc = vc.captureError(err); vc.stop(rc) {
 				p.drop(i)
 				return rc
 			}
@@ -596,10 +702,11 @@ func (vc *valCtx) unresWhen() (rc error) {
 // already (del). It cannot fail: a dead node was captured by del's touch, so its flag is restored
 // with that capture if the operation rolls back.
 func (p *whenPass) finish() {
-	if len(p.dead) != 0 {
-		// the top-level view kept the deleted roots; their marks end here, so the view does too
-		// (the next evaluation rebuilds it from the tree)
+	if len(p.dead) != 0 && (p.vc.topDead != 0 || p.vc.topGen != p.vc.t.top.gen) {
+		// Deleted roots cannot outlive their dead marks. Child-only deletions keep the
+		// unchanged root view, avoiding a full rebuild per when pass.
 		p.vc.top, p.vc.topGen, p.vc.topDead = nil, 0, 0
+		p.vc.topLinks, p.vc.topPos, p.vc.topHead = nil, nil, 0
 	}
 	q := p.vc.nodeWhen
 	live := q.items[:0]
@@ -628,7 +735,7 @@ func (vc *valCtx) unres() error {
 		for {
 			prev := vc.nodeWhen.len()
 			if err := vc.unresWhen(); err != nil {
-				if rc = err; vc.stop(err) {
+				if rc = vc.captureError(err); vc.stop(rc) {
 					return rc
 				}
 			}
@@ -645,7 +752,7 @@ func (vc *valCtx) unres() error {
 			}
 			n := vc.nodeTypes.items[i]
 			if err := vc.validateIncomplete(n); err != nil {
-				if rc = err; vc.stop(err) {
+				if rc = vc.captureError(err); vc.stop(rc) {
 					return rc
 				}
 			}
@@ -664,7 +771,7 @@ func (vc *valCtx) unres() error {
 			}
 			if n := owners[q[i]]; n != nil { // nil: a default="true" metadata the parser dropped
 				if err := vc.validateMetaIncomplete(n, q[i]); err != nil {
-					if rc = err; vc.stop(err) {
+					if rc = vc.captureError(err); vc.stop(rc) {
 						*vc.metaTypes = q[:i]
 						return rc
 					}
@@ -1151,7 +1258,7 @@ func (vc *valCtx) validateMust(n *Node) error {
 		} else {
 			err = vc.log.val(n, tag, ly.Data, "Must condition \"%s\" not satisfied.", m.Src)
 		}
-		if rc = err; vc.stop(err) {
+		if rc = vc.captureError(err); vc.stop(rc) {
 			return rc
 		}
 	}

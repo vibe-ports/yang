@@ -29,7 +29,7 @@ func (vc *valCtx) validateNew(parent *Node, sparent *schema.Node, mod *schema.Mo
 	sib := vc.t.childrenOf(parent)
 	var rc error
 	if err := vc.validateChoices(sib, sparent, mod); err != nil {
-		if rc = err; vc.stop(err) {
+		if rc = vc.captureError(err); vc.stop(rc) {
 			return rc
 		}
 	}
@@ -79,7 +79,7 @@ func (vc *valCtx) validateNew(parent *Node, sparent *schema.Node, mod *schema.Mo
 		}
 		if n.flags&FlagNew != 0 {
 			if err := vc.duplicates(&dups, n); err != nil {
-				if rc = err; vc.stop(err) {
+				if rc = vc.captureError(err); vc.stop(rc) {
 					return rc
 				}
 			}
@@ -120,12 +120,12 @@ func (vc *valCtx) validateChoices(sib *siblings, sparent *schema.Node, mod *sche
 			break
 		}
 		if err := vc.validateCases(sib, ch); err != nil {
-			if rc = err; vc.stop(err) {
+			if rc = vc.captureError(err); vc.stop(rc) {
 				return rc
 			}
 		}
 		if err := vc.validateChoices(sib, ch, mod); err != nil {
-			if rc = err; vc.stop(err) {
+			if rc = vc.captureError(err); vc.stop(rc) {
 				return rc
 			}
 		}
