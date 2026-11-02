@@ -11,7 +11,10 @@ import (
 )
 
 // Sibling storage (#240 step 5, design 14). One order-statistic sequence per set is the only
-// physical storage: the schema children occupy [0, SchemaLen()) and the opaque ones follow them.
+// physical storage, in document order. Positions are logical: the schema children occupy
+// [0, SchemaLen()) and the opaque ones follow them. Physically they coincide until a schema node
+// follows an opaque one (LYD_INSERT_NODE_LAST, design 15): the set is then interleaved, and
+// positions, spans and neighbours translate through the sequence's kind counts.
 // A linked node finds its handle through its slot. The ordered index (childOrder) registers the
 // same handles and owns no sequence.
 //
@@ -25,18 +28,25 @@ import (
 // siblings value never copies the sequence (its handles keep their owner).
 type siblingStore struct {
 	seq     opidx.Seq[*Node]
-	nschema int // schema nodes, the prefix of seq
+	nschema int // schema nodes: the logical prefix, physically the heavy handles
 	// bind is the one hook target of the sequence and of the ordered index over it
 	bind orderBinding
-	// view marks a non-owning view (sibsOf, printing, a payload copy's source): its handles are
-	// not its nodes' slots, which stay their own sets'
-	view bool
+	// flags shares the former view cell: viewStore marks non-owning storage whose handles
+	// are not its nodes' slots; mixedStore stays set once a schema node follows an opaque
+	// one. Its journaled transition enables kind threads. Packing both keeps ordinary
+	// storage allocations the same size as design 14.
+	flags int
 	// ver changes at every write that moves positions (an insertion or removal): borrowed spans
 	// and iterators check it in test builds. moves changes at a republication, which keeps every
 	// position and only reorders a run: an iterator walking it reseeks by position, as indexing a
 	// slice that was overwritten in place did.
 	ver, moves uint64
 }
+
+const (
+	viewStore  = 1
+	mixedStore = 2
+)
 
 // checkSpans makes a read through a span or iterator whose store changed since it was taken
 // panic (test builds).
@@ -48,6 +58,7 @@ func (s *siblings) store() *siblingStore {
 		st := &siblingStore{}
 		st.bind.owner = s
 		st.seq.SetLabeled(false) // an ordered index turns the labels on (orderBuild)
+		st.seq.SetWeigh(isSchemaNode)
 		st.seq.SetHooks(&st.bind)
 		s.st = st
 	}
@@ -62,6 +73,88 @@ func (s *siblings) bindStore(j *hashTransaction) {
 		st.bind.state = j
 		j.bound = append(j.bound, &st.bind)
 	}
+}
+
+// mixes reports whether inserting n before anchor makes st interleaved: in a set that was not, a
+// schema node after an opaque one, or an opaque node before a schema one.
+func (st *siblingStore) mixes(anchor *opidx.Handle[*Node], n *Node) bool {
+	if st.interleaved() {
+		return false
+	}
+	if n.schema == nil {
+		return anchor != nil && anchor.Value.schema != nil
+	}
+	if st.seq.Len() == st.nschema {
+		return false
+	}
+	if anchor == nil {
+		return true // the last sibling is opaque
+	}
+	p := st.seq.Prev(anchor)
+	return p != nil && p.Value.schema == nil
+}
+
+// isSchemaNode is the storage's kind: schema nodes are heavy, opaque ones light.
+func isSchemaNode(n *Node) bool { return n.schema != nil }
+
+// interleaved reports whether a schema node follows an opaque one in st (design 15).
+func (st *siblingStore) interleaved() bool { return st != nil && st.flags&mixedStore != 0 }
+
+// peek is the handle at logical position i, nil out of range; uncounted.
+func (st *siblingStore) peek(i int) *opidx.Handle[*Node] {
+	if !st.interleaved() {
+		return st.seq.Peek(i)
+	}
+	h, _ := st.peekLevels(i)
+	return h
+}
+
+func (st *siblingStore) peekLevels(i int) (*opidx.Handle[*Node], int) {
+	if i < st.nschema {
+		return st.seq.PeekKind(i, true)
+	}
+	return st.seq.PeekKind(i-st.nschema, false)
+}
+
+// pos is h's logical position.
+func (st *siblingStore) pos(h *opidx.Handle[*Node]) (int, bool) {
+	if !st.interleaved() {
+		return st.seq.Pos(h)
+	}
+	at, ok := st.seq.PosKind(h)
+	if ok && !h.Heavy() {
+		at += st.nschema
+	}
+	return at, ok
+}
+
+// nextL and prevL are h's logical neighbours: in an interleaved set the next handle of its kind,
+// the first opaque one after the last schema one (O(1) when physically adjacent, else O(log n)).
+func (st *siblingStore) nextL(h *opidx.Handle[*Node]) *opidx.Handle[*Node] {
+	if !st.interleaved() || h == nil {
+		return st.seq.Next(h)
+	}
+	if n := st.seq.NextKind(h); n != nil || !h.Heavy() {
+		return n
+	}
+	return st.seq.FirstKind(false)
+}
+
+func (st *siblingStore) prevL(h *opidx.Handle[*Node]) *opidx.Handle[*Node] {
+	if !st.interleaved() || h == nil {
+		return st.seq.Prev(h)
+	}
+	if p := st.seq.PrevKind(h); p != nil || h.Heavy() {
+		return p
+	}
+	return st.seq.LastKind(true)
+}
+
+func handleValue(h *opidx.Handle[*Node]) *Node {
+	if h == nil {
+		return nil
+	}
+	return h.Value
 }
 
 // storeJournaled reports whether s's storage writes are recorded now.
@@ -125,7 +218,36 @@ func (s *siblings) OpaqueLen() int { return s.Len() - s.SchemaLen() }
 // from, back) instead.
 func (s *siblings) At(i int) *Node { return s.st.at(i) }
 
+// at is the node at logical position i (At); atPhys at physical position i.
 func (st *siblingStore) at(i int) *Node {
+	if !st.interleaved() {
+		return st.atPhys(i)
+	}
+	h, steps := st.peekLevels(i)
+	st.countVisits(steps)
+	return h.Value
+}
+
+// interleave marks st interleaved and turns its kind threads on (charged by the caller's bound:
+// interleaveBound).
+func (st *siblingStore) interleave() {
+	opidx.AddInt(&st.bind, &st.flags, mixedStore)
+	st.seq.SetKindThreads()
+}
+
+// interleaveBound bounds interleave.
+func (st *siblingStore) interleaveBound(journaled bool) uint64 {
+	// The pass runs after insertion: include the new handle's visit and image too.
+	return addHashBound(1+2*mixedUnits(journaled), st.seq.KindThreadsBound(journaled))
+}
+
+func (st *siblingStore) countVisits(steps int) {
+	if o := st.bind.owner; o != nil && o.work != nil && o.work.visits && steps != 0 { // tests only
+		o.work.Add(int64(steps))
+	}
+}
+
+func (st *siblingStore) atPhys(i int) *Node {
 	n := st.seq.Len()
 	var h *opidx.Handle[*Node]
 	steps := 0
@@ -141,9 +263,7 @@ func (st *siblingStore) at(i int) *Node {
 	default:
 		h, steps = st.seq.PeekLevels(i)
 	}
-	if o := st.bind.owner; o != nil && o.work != nil && o.work.visits && steps != 0 { // tests only
-		o.work.Add(int64(steps))
-	}
+	st.countVisits(steps)
 	return h.Value
 }
 func (s *siblings) opaqueAt(i int) *Node {
@@ -160,7 +280,41 @@ func (s *siblings) schemaSpan() siblingSpan          { return s.span(0, s.Schema
 func (s *siblings) opaqueSpan() siblingSpan          { return s.span(s.SchemaLen(), s.Len()) }
 func (s *siblings) SchemaAll() iter.Seq2[int, *Node] { return s.schemaSpan().All() }
 func (s *siblings) opaqueAll() iter.Seq2[int, *Node] { return s.opaqueSpan().All() }
-func (s *siblings) All() iter.Seq2[int, *Node]       { return s.span(0, s.Len()).All() }
+
+// docSpan is the whole set in document order (libyang's sibling list): physical positions.
+func (s *siblings) docSpan() siblingSpan {
+	if s.st == nil {
+		return siblingSpan{}
+	}
+	return siblingSpan{st: s.st, lo: 0, hi: s.Len(), ver: s.st.ver, doc: true}
+}
+
+// All walks the set in document order; docNodes collects it.
+func (s *siblings) All() iter.Seq2[int, *Node] { return s.docSpan().All() }
+func (s *siblings) docNodes() []*Node          { return s.docSpan().Collect() }
+
+// docFirst and docLast are libyang's first child and its prev: the ends in document order.
+func (s *siblings) docFirst() *Node {
+	if s.st == nil {
+		return nil
+	}
+	return handleValue(s.st.seq.First())
+}
+
+func (s *siblings) docLast() *Node {
+	if s.st == nil {
+		return nil
+	}
+	return handleValue(s.st.seq.Last())
+}
+
+// docNext is the linked n's next sibling in document order (lyd_node.next), nil at the end.
+func (s *siblings) docNext(n *Node) *Node {
+	if s.st == nil {
+		return nil
+	}
+	return handleValue(s.st.seq.Next(s.handle(n)))
+}
 func (s *siblings) Range(lo, hi int) iter.Seq2[int, *Node] {
 	return s.span(lo, hi).All()
 }
@@ -174,7 +328,7 @@ func (s *siblings) handle(n *Node) *opidx.Handle[*Node] {
 	if h := n.slot.Get(); s.st.seq.Owns(h) {
 		return h
 	}
-	if s.st.view {
+	if s.st.flags&viewStore != 0 {
 		for h := s.st.seq.First(); h != nil; h = s.st.seq.Next(h) {
 			if h.Value == n {
 				return h
@@ -190,7 +344,7 @@ func (s *siblings) Index(n *Node) int {
 	if h == nil {
 		return -1
 	}
-	at, _ := s.st.seq.Pos(h)
+	at, _ := s.st.pos(h)
 	return at
 }
 
@@ -198,26 +352,43 @@ func (s *siblings) LowerBound(lo, hi int, pred func(*Node) bool) int {
 	return s.span(0, s.Len()).LowerBound(lo, hi, pred)
 }
 
-// view publishes nodes (schema nodes first) as a non-owning view of a fresh set: no node is
+// view publishes nodes (in document order) as a non-owning view of a fresh set: no node is
 // linked, re-slotted or reparented, and no work is bound.
 func (s *siblings) view(nodes ...*Node) {
-	st := &siblingStore{view: true}
+	st := &siblingStore{flags: viewStore}
 	st.seq.SetLabeled(false)
+	st.seq.SetWeigh(isSchemaNode)
 	st.seq.Splice(0, 0, nodes)
+	opaque := false
 	for _, n := range nodes {
-		if n.schema != nil {
+		switch {
+		case n.schema == nil:
+			opaque = true
+		case opaque: // a schema node after an opaque one: interleaved
+			st.flags |= mixedStore
+			st.nschema++
+		default:
 			st.nschema++
 		}
+	}
+	if st.interleaved() {
+		st.seq.SetKindThreads()
 	}
 	s.st = st
 }
 
-// insert places n before position at of the whole sequence (nil anchor: appended).
-func (s *siblings) insert(at int, n *Node) error {
+// insert places n physically before anchor (nil: appended), the anchor storeAnchor or the
+// physical end (insertLast) gives. A schema node appended after an opaque one makes the set
+// interleaved.
+func (s *siblings) insert(anchor *opidx.Handle[*Node], n *Node) error {
 	st := s.store()
-	anchor := st.seq.Peek(at)
 	journaled := s.storeJournaled()
-	paid, err := s.payStore(addHashBound(st.seq.InsertBound(anchor, journaled, s.work.planPay()), slotUnits(journaled)))
+	mixes := st.mixes(anchor, n)
+	bound := addHashBound(st.seq.InsertBound(anchor, journaled, s.work.planPay()), slotUnits(journaled))
+	if mixes {
+		bound = addHashBound(bound, st.interleaveBound(journaled))
+	}
+	paid, err := s.payStore(bound)
 	if err != nil {
 		return err
 	}
@@ -228,46 +399,85 @@ func (s *siblings) insert(at int, n *Node) error {
 	if n.schema != nil {
 		opidx.AddInt(&st.bind, &st.nschema, 1)
 	}
+	if mixes {
+		st.interleave()
+	}
 	return nil
 }
 
-// insertBound bounds insert at (an opaque n: among the opaque nodes, appended when out of range).
+// mixedUnits is what the interleaved counter's first write reports.
+func mixedUnits(journaled bool) uint64 {
+	if !journaled {
+		return 0
+	}
+	return 2
+}
+
+// insertBound is the legacy link bound, resolving its current logical placement.
 func (s *siblings) insertBound(n *Node, at int, journaled bool) uint64 {
+	return s.insertPlacedBound(n, s.linkPlacement(n, at), journaled)
+}
+
+// insertPlacedBound and insertPlaced consume the same resolved physical anchor.
+func (s *siblings) insertPlacedBound(n *Node, p siblingPlacement, journaled bool) uint64 {
 	if s.st == nil {
-		var empty opidx.Seq[*Node] // the store insert creates
+		var empty opidx.Seq[*Node]
 		empty.SetLabeled(false)
 		return empty.InsertBound(nil, journaled, nil) + slotUnits(journaled)
 	}
-	at = s.storePos(n, at)
-	return addHashBound(s.st.seq.InsertBound(s.st.seq.Peek(at), journaled, s.work.planPay()), slotUnits(journaled))
+	bound := addHashBound(s.st.seq.InsertBound(p.anchor, journaled, s.work.planPay()), slotUnits(journaled))
+	if s.st.mixes(p.anchor, n) {
+		bound = addHashBound(bound, s.st.interleaveBound(journaled))
+	}
+	return bound
 }
 
-// storePos is the sequence position link's at means for n.
-func (s *siblings) storePos(n *Node, at int) int {
+// storeAnchor is the handle n goes physically before when link puts it at at (nil: appended),
+// libyang's anchors (design 15): a schema node before schema node at, or after the last schema
+// node (lyd_insert_node_ordby_schema keeps data nodes before a trailing opaque block); an opaque
+// node right after opaque node at-1 (lyd_insert_after of the XML parser's opaque anchor), first
+// among them at 0, appended when out of range (lyd_insert_node_last).
+func (s *siblings) storeAnchor(n *Node, at int) *opidx.Handle[*Node] {
+	st := s.st
+	if st == nil {
+		return nil
+	}
 	if n.schema != nil {
-		return min(max(at, 0), s.SchemaLen())
+		return st.schemaAnchor(at)
 	}
 	if at < 0 || at >= s.OpaqueLen() {
-		return s.Len()
+		return nil
 	}
-	return s.SchemaLen() + at
+	if at == 0 || !st.interleaved() {
+		return st.peek(st.nschema + at)
+	}
+	return st.seq.Next(st.peek(st.nschema + at - 1))
 }
 
+// appendNode puts n last among its kind (an opaque node: appended).
 func (s *siblings) appendNode(n *Node) error {
 	if err := s.touch(); err != nil {
 		return err
 	}
-	at := s.Len()
+	at := -1
 	if n.schema != nil {
 		at = s.SchemaLen()
 	}
-	return s.insert(at, n)
+	p := s.linkPlacement(n, at)
+	return s.insert(s.linkAnchor(p), n)
 }
 
 // InsertAt puts n at position at of its partition's positions in s (an opaque n: at counts all
 // siblings, appended past the end). Under a narrow journal a schema node's insertion is recorded
 // in the store's journal instead of a whole capture.
 func (s *siblings) InsertAt(at int, n *Node) error {
+	if n.schema == nil {
+		at -= s.SchemaLen()
+	}
+	return s.insertPlaced(s.linkPlacement(n, at), n)
+}
+
+func (s *siblings) insertPlaced(p siblingPlacement, n *Node) error {
 	if j := s.narrow(); j != nil && n.schema != nil {
 		if s.st == nil {
 			if err := recordField(j, &s.st); err != nil {
@@ -278,10 +488,7 @@ func (s *siblings) InsertAt(at int, n *Node) error {
 	} else if err := s.touch(); err != nil {
 		return err
 	}
-	if n.schema == nil {
-		return s.insert(s.storePos(n, at-s.SchemaLen()), n)
-	}
-	return s.insert(at, n)
+	return s.insert(s.linkAnchor(p), n)
 }
 
 // removeBound bounds DeleteAt.
@@ -296,7 +503,7 @@ func (s *siblings) DeleteAt(at int) error {
 	if err := s.touch(); err != nil {
 		return err
 	}
-	return s.remove(s.st.seq.Peek(at))
+	return s.remove(s.st.peek(at))
 }
 
 func (s *siblings) remove(h *opidx.Handle[*Node]) error {
@@ -334,13 +541,11 @@ func (s *siblings) deleteMatching(schemaMatch, opaqueMatch func(*Node) bool) err
 		return err
 	}
 	defer paid.close()
-	i := 0
 	gone := st.seq.Keep(func(n *Node) bool {
 		match := schemaMatch
-		if i >= st.nschema {
+		if n.schema == nil {
 			match = opaqueMatch
 		}
-		i++
 		return match == nil || !match(n)
 	})
 	if len(gone) == 0 {
@@ -386,7 +591,7 @@ func (s *siblings) reset() error {
 	if err := s.touch(); err != nil {
 		return err
 	}
-	if st := s.st; st != nil && st.seq.Len() != 0 && !st.view {
+	if st := s.st; st != nil && st.seq.Len() != 0 && st.flags&viewStore == 0 {
 		paid, err := s.payStore(mulHashBound(uint64(st.seq.Len()), slotUnits(s.storeJournaled()))) //nolint:gosec // a length is nonnegative
 		if err != nil {
 			return err
@@ -413,7 +618,7 @@ func (s *siblings) replaceSchema(lo, hi int, nodes siblingSpan) error {
 	}
 	st := s.st
 	journaled := s.storeJournaled()
-	bound := st.seq.RepublishBound(lo, hi, 0, journaled, s.work.planPay())
+	bound := s.republishBound(lo, hi, 0, journaled, s.work.planPay())
 	if s.order != nil {
 		for _, n := range nodes.All() {
 			bound = addHashBound(bound, s.orderRegisterBound(n, journaled))
@@ -431,7 +636,8 @@ func (s *siblings) replaceSchema(lo, hi int, nodes siblingSpan) error {
 		}
 	}
 	st.moves++
-	if _, ok := st.seq.Republish(lo, hi, ordered, s.handle); !ok {
+	plo, phi := st.extent(lo, hi)
+	if _, ok := st.seq.Republish(plo, phi, st.extentValues(plo, phi, ordered, 0), s.handle); !ok {
 		panic("data: a republished run does not hold exactly its range")
 	}
 	if s.order != nil {
@@ -452,7 +658,7 @@ func (s *siblings) publishRun(lo, hi int, nodes []*Node) error {
 	st := s.store()
 	fresh := len(nodes) - (hi - lo)
 	journaled := s.storeJournaled()
-	bound := addHashBound(st.seq.RepublishBound(lo, hi, fresh, journaled, s.work.planPay()),
+	bound := addHashBound(s.republishBound(lo, hi, fresh, journaled, s.work.planPay()),
 		mulHashBound(uint64(fresh), slotUnits(journaled))) //nolint:gosec // a count is nonnegative
 	paid, err := s.payStore(bound)
 	if err != nil {
@@ -461,17 +667,89 @@ func (s *siblings) publishRun(lo, hi int, nodes []*Node) error {
 	defer paid.close()
 	s.order = nil
 	st.ver++
-	hs, ok := st.seq.Republish(lo, hi, nodes, s.handle)
+	plo, phi := st.extent(lo, hi)
+	values := st.extentValues(plo, phi, nodes, fresh)
+	hs, ok := st.seq.Republish(plo, phi, values, s.handle)
 	if !ok {
 		panic("data: a published run does not hold its range")
 	}
-	for i, n := range nodes {
+	for i, n := range values {
 		if n.slot.Get() != hs[i] {
 			n.slot.Set(&st.bind, hs[i])
 			opidx.AddInt(&st.bind, &st.nschema, 1)
 		}
 	}
 	return nil
+}
+
+// schemaAnchor is storeAnchor's handle for a schema node at at.
+func (st *siblingStore) schemaAnchor(at int) *opidx.Handle[*Node] {
+	at = min(max(at, 0), st.nschema)
+	if at < st.nschema || !st.interleaved() {
+		return st.peek(at)
+	}
+	if last := st.seq.LastKind(true); last != nil {
+		return st.seq.Next(last)
+	}
+	return st.seq.First()
+}
+
+// extent is the physical range [plo, phi) that the logical schema range [lo, hi) spans: the same
+// range unless s is interleaved, where it includes the opaque nodes between its members (an
+// empty range: where a schema node at lo goes).
+func (st *siblingStore) extent(lo, hi int) (int, int) {
+	if st == nil || !st.interleaved() {
+		return lo, hi
+	}
+	if lo >= hi {
+		anchor := st.schemaAnchor(lo)
+		if anchor == nil {
+			return st.seq.Len(), st.seq.Len()
+		}
+		at, _ := st.seq.Pos(anchor)
+		return at, at
+	}
+	a, _ := st.seq.Pos(st.peek(lo))
+	b, _ := st.seq.Pos(st.peek(hi - 1))
+	return a, b + 1
+}
+
+// extentValues is the republication of the extent [plo, phi) with the run's members in the
+// order of run: an opaque node inside the extent keeps its slot, the schema slots take run's
+// nodes in order, and the nodes past them (publishRun's new ones) follow the extent (design 15).
+func (st *siblingStore) extentValues(plo, phi int, run []*Node, fresh int) []*Node {
+	if !st.interleaved() {
+		return run
+	}
+	st.bind.Work(uint64(phi - plo + fresh)) //nolint:gosec // a physical range length is nonnegative; prepaid
+	values := make([]*Node, 0, phi-plo+fresh)
+	j := 0
+	for h, k := st.seq.Peek(plo), plo; k < phi; h, k = st.seq.Next(h), k+1 {
+		if h.Value.schema == nil {
+			values = append(values, h.Value)
+			continue
+		}
+		values = append(values, run[j])
+		j++
+	}
+	return append(values, run[j:]...)
+}
+
+// republishBound bounds republishing the logical schema range [lo, hi) with fresh new nodes:
+// the sequence's bound over its physical extent, and the extent's assembly.
+func (s *siblings) republishBound(lo, hi, fresh int, journaled bool, pay opidx.Pay) uint64 {
+	plo, phi := s.st.extent(lo, hi)
+	bound := s.st.seq.RepublishBound(plo, phi, fresh, journaled, pay)
+	if s.st.interleaved() {
+		bound = addHashBound(bound, uint64(phi-plo+fresh)) //nolint:gosec // a range length is nonnegative
+	}
+	return bound
+}
+
+// extentGap is the number of opaque nodes inside the physical extent of [lo, hi).
+func (s *siblings) extentGap(lo, hi int) int {
+	plo, phi := s.st.extent(lo, hi)
+	return phi - plo - (hi - lo)
 }
 
 // cacheDeque is unrelated duplication-cache storage: a node slice with its backing allocation
@@ -533,6 +811,33 @@ type siblingSpan struct {
 	st     *siblingStore
 	lo, hi int
 	ver    uint64
+	// doc: positions are physical (document order, docSpan), not logical
+	doc bool
+}
+
+// physical reports whether r's positions are physical ones: a document-order span, or any span
+// of a set that is not interleaved (where both coincide).
+func (r siblingSpan) physical() bool { return r.doc || !r.st.interleaved() }
+
+func (r siblingSpan) peek(i int) *opidx.Handle[*Node] {
+	if r.physical() {
+		return r.st.seq.Peek(i)
+	}
+	return r.st.peek(i)
+}
+
+func (r siblingSpan) next(h *opidx.Handle[*Node]) *opidx.Handle[*Node] {
+	if r.physical() {
+		return r.st.seq.Next(h)
+	}
+	return r.st.nextL(h)
+}
+
+func (r siblingSpan) prev(h *opidx.Handle[*Node]) *opidx.Handle[*Node] {
+	if r.physical() {
+		return r.st.seq.Prev(h)
+	}
+	return r.st.prevL(h)
 }
 
 func spanOf(nodes []*Node) siblingSpan { return siblingSpan{nodes: nodes} }
@@ -567,6 +872,9 @@ func (r siblingSpan) At(i int) *Node {
 	if i < 0 || i >= r.hi-r.lo {
 		panic("data: sibling span index out of range")
 	}
+	if r.physical() {
+		return r.st.atPhys(r.lo + i)
+	}
 	return r.st.at(r.lo + i)
 }
 
@@ -577,7 +885,7 @@ func (r siblingSpan) Slice(lo, hi int) siblingSpan {
 	if lo < 0 || hi < lo || hi > r.hi-r.lo {
 		panic("data: sibling span slice out of range")
 	}
-	return siblingSpan{st: r.st, lo: r.lo + lo, hi: r.lo + hi, ver: r.ver}
+	return siblingSpan{st: r.st, lo: r.lo + lo, hi: r.lo + hi, ver: r.ver, doc: r.doc}
 }
 
 func (r siblingSpan) Collect() []*Node { return r.AppendTo(make([]*Node, 0, r.Len())) }
@@ -600,16 +908,16 @@ func (r siblingSpan) All() iter.Seq2[int, *Node] {
 			return
 		}
 		st := r.st
-		h, moves := st.seq.Peek(r.lo), st.moves
+		h, moves := r.peek(r.lo), st.moves
 		for i := 0; i < r.hi-r.lo; i++ {
 			r.check()
 			if st.moves != moves {
-				h, moves = st.seq.Peek(r.lo+i), st.moves
+				h, moves = r.peek(r.lo+i), st.moves
 			}
 			if !yield(i, h.Value) {
 				return
 			}
-			h = st.seq.Next(h)
+			h = r.next(h)
 		}
 	}
 }
@@ -625,7 +933,7 @@ type spanCursor struct {
 func (r siblingSpan) cursor() spanCursor {
 	c := spanCursor{r: r}
 	if r.st != nil && r.Len() > 0 {
-		c.h = r.st.seq.Peek(r.lo)
+		c.h = r.peek(r.lo)
 	}
 	return c
 }
@@ -641,7 +949,7 @@ func (c *spanCursor) next() *Node {
 	}
 	c.r.check()
 	n := c.h.Value
-	c.h = c.r.st.seq.Next(c.h)
+	c.h = c.r.next(c.h)
 	return n
 }
 
@@ -657,16 +965,16 @@ func (r siblingSpan) Reverse() iter.Seq2[int, *Node] {
 			return
 		}
 		st := r.st
-		h, moves := st.seq.Peek(r.hi-1), st.moves
+		h, moves := r.peek(r.hi-1), st.moves
 		for i := r.hi - r.lo - 1; i >= 0; i-- {
 			r.check()
 			if st.moves != moves {
-				h, moves = st.seq.Peek(r.lo+i), st.moves
+				h, moves = r.peek(r.lo+i), st.moves
 			}
 			if !yield(i, h.Value) {
 				return
 			}
-			h = st.seq.Prev(h)
+			h = r.prev(h)
 		}
 	}
 }
@@ -674,8 +982,22 @@ func (r siblingSpan) Reverse() iter.Seq2[int, *Node] {
 // LowerBound returns the first index of the monotone bounded range [lo, hi) for which pred
 // holds, hi if none. Over storage it is one sequence descent (design 14): O(log n) structural
 // visits, counted as sibling visits, and at most one predicate call per level, which callers
-// count or charge themselves. A detached span keeps BinarySearchFunc's probes.
+// count or charge themselves. A detached span keeps BinarySearchFunc's probes. Over logical
+// positions of an interleaved set it is a binary search of kind-rank probes (design 15):
+// O(log² n) visits, counted, and one predicate call per probe.
 func (r siblingSpan) LowerBound(lo, hi int, pred func(*Node) bool) int {
+	if r.st != nil && !r.physical() {
+		r.check()
+		for lo < hi {
+			mid := lo + (hi-lo)/2
+			if pred(r.At(mid)) {
+				hi = mid
+			} else {
+				lo = mid + 1
+			}
+		}
+		return lo
+	}
 	if r.st != nil {
 		r.check()
 		var visit func()
@@ -706,13 +1028,23 @@ func (r siblingSpan) Index(n *Node) int {
 	}
 	r.check()
 	owner := siblings{st: r.st}
-	if at := owner.Index(n); at >= r.lo && at < r.hi {
+	h := owner.handle(n)
+	if h == nil {
+		return -1
+	}
+	var at int
+	if r.physical() {
+		at, _ = r.st.seq.Pos(h)
+	} else {
+		at, _ = r.st.pos(h)
+	}
+	if at >= r.lo && at < r.hi {
 		return at - r.lo
 	}
 	return -1
 }
 
-func (s *siblings) reverseAll() iter.Seq2[int, *Node] { return s.span(0, s.Len()).Reverse() }
+func (s *siblings) reverseAll() iter.Seq2[int, *Node] { return s.docSpan().Reverse() }
 
 // snapshotStorage is the whole-capture image of s: the store pointer, not its content (the
 // store's own journal restores that).

@@ -440,6 +440,7 @@ func (t *Tree) dupSingle(n, parent *Node, sourceSet, dest *schema.Set, opts dupO
 		d.value = n.value
 		if opts&dupRecursive != 0 && n.kids.ht != nil && !isAny(d.schema) {
 			d.kids.ht = map[idxKey]*recordChain{}
+			d.kids.store() // a children table always has storage, even when empty
 		}
 	}
 	d.kids.work = kidsWork(d, &t.work) // copied children are linked with this same counter

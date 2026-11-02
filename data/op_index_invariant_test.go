@@ -31,22 +31,31 @@ func opidxOccurrenceCount(index any) int {
 // schema prefix, and that every stored node's slot is its handle there.
 func storeCheckInvariant(s *siblings) error {
 	if s.st == nil {
+		if s.ht != nil {
+			return fmt.Errorf("children table without storage")
+		}
 		return nil
 	}
 	if err := s.st.seq.CheckInvariants(); err != nil {
 		return fmt.Errorf("storage sequence: %w", err)
 	}
-	i := 0
+	i, schemaCount := 0, 0
 	for h := s.st.seq.First(); h != nil; h = s.st.seq.Next(h) {
-		if (i < s.st.nschema) != (h.Value.schema != nil) {
+		if h.Heavy() != (h.Value.schema != nil) {
+			return fmt.Errorf("storage kind differs from schema at %d", i)
+		}
+		if h.Heavy() {
+			schemaCount++
+		}
+		if !s.st.interleaved() && (i < s.st.nschema) != (h.Value.schema != nil) {
 			return fmt.Errorf("storage position %d breaks the schema prefix of %d", i, s.st.nschema)
 		}
-		if !s.st.view && h.Value.slot.Get() != h {
+		if s.st.flags&viewStore == 0 && h.Value.slot.Get() != h {
 			return fmt.Errorf("storage position %d: the node's slot is not its handle", i)
 		}
 		i++
 	}
-	if i < s.st.nschema {
+	if schemaCount != s.st.nschema {
 		return fmt.Errorf("schema count %d above the stored %d", s.st.nschema, i)
 	}
 	return nil

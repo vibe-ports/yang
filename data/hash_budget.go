@@ -185,6 +185,14 @@ func (w *workCounter) termHashBound(parent *Node, sn *schema.Node, value types.V
 		return 0, nil
 	}
 	at := insertionAt[0]
+	p := parent.kids.linkPlacement(&Node{schema: sn}, at)
+	return w.termHashPlacedBound(parent, sn, value, at, parent.kids.linkDocPos(p))
+}
+
+func (w *workCounter) termHashPlacedBound(parent *Node, sn *schema.Node, value types.Value, at, docAt int) (uint64, error) {
+	if !sn.IsKey() || parent == nil || parent.schema == nil {
+		return 0, nil
+	}
 	if at < parent.lkeyN && parent.lkeyFrozen == nil {
 		// beforeKeyLink copies the captured prefix before publishing the key.
 		prefix := uint64(parent.lkeyN) //nolint:gosec // a count of existing nodes cannot be negative
@@ -194,22 +202,12 @@ func (w *workCounter) termHashBound(parent *Node, sn *schema.Node, value types.V
 	}
 	// Inspect only the declared positional prefix before considering hash inputs.
 	// In particular, repeated first keys must not rescan the entire incomplete run.
-	prefix := parent.kids.schemaSpan().cursor() // position i, then i-1 past at
-	for i, key := range parent.schema.Keys {
+	ok, err := keysLead(parent, sn, docAt, func() error {
 		w.Add(1)
-		if err := w.chargeHash(1); err != nil {
-			return 0, err
-		}
-		current := sn
-		if i != at {
-			current = nil
-			if c := prefix.next(); c != nil {
-				current = c.schema
-			}
-		}
-		if current != key {
-			return 0, nil
-		}
+		return w.chargeHash(1)
+	})
+	if err != nil || !ok {
+		return 0, err
 	}
 	// keyLinked can restart from the list's schema prefix after insertion.
 	schemaHashWork(parent.schema, w)

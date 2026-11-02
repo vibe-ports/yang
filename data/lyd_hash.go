@@ -148,15 +148,10 @@ func (t *Tree) keyLinked(list, child *Node) {
 		reindexComparedParent(child)
 		return
 	}
-	prefix := list.kids.schemaSpan().cursor()
-	for _, key := range list.schema.Keys {
-		t.work.Add(1)
-		if c := prefix.next(); c == nil || c.schema != key {
-			// No native hash or registration event, but positional equality has
-			// changed. Keep the existing record's place in its native chain.
-			reindexList(list)
-			return
-		}
+	if ok, err := keysLead(list, nil, -1, func() error { t.work.Add(1); return nil }); err != nil || !ok {
+		// No native hash or registration event; positional equality alone changed.
+		reindexList(list)
+		return
 	}
 	if err := list.touch(); err != nil {
 		return
@@ -294,4 +289,27 @@ func refreshInstanceHash(work *workCounter, n *Node) {
 	} else {
 		n.refreshHash(work)
 	}
+}
+
+// keysLead simulates lyd_insert_has_keys over the physical child prefix. Preflight supplies
+// the resolved document position and the incoming schema; application supplies nil/-1.
+// Both stop at an opaque or non-key child. step charges each inspected key to its caller.
+func keysLead(list *Node, incoming *schema.Node, docAt int, step func() error) (bool, error) {
+	cur := positionalChildren(list)
+	for i, key := range list.schema.Keys {
+		if err := step(); err != nil {
+			return false, err
+		}
+		current := incoming
+		if i != docAt {
+			current = nil
+			if n := cur.next(); n != nil {
+				current = n.schema
+			}
+		}
+		if current != key {
+			return false, nil
+		}
+	}
+	return true, nil
 }

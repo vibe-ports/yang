@@ -176,3 +176,48 @@ func TestInsertOutputOpaqueOnlyHashTable(t *testing.T) {
 		t.Fatalf("operation children %v", got)
 	}
 }
+
+// Recursive duplication preserves an empty native children table. Its lookup readers also
+// require allocated storage, even though no child link runs during the copy.
+func TestEmptyTableCopyLookups(t *testing.T) {
+	set := reviewDiffSet(t, `module m { yang-version 1.1; namespace "urn:m"; prefix m;
+	  container c { presence p; leaf a { type string; } leaf b { type string; }
+	    leaf d { type string; } leaf e { type string; } } }`)
+	tr, diags, err := parseJSONString(set, `{"m:c":{"a":"1","b":"2","d":"3","e":"4"}}`, Reject, true)
+	if err != nil {
+		t.Fatal(err, diags)
+	}
+	c := tr.top.first()
+	if c.kids.ht == nil {
+		t.Fatal("fixture needs a children table")
+	}
+	for _, n := range slices.Collect(c.Children()) {
+		if err := n.Unlink(); err != nil {
+			t.Fatal(err)
+		}
+	}
+	dst := newTree(set)
+	cp, diags, err := dst.Dup(c, nil, DupOptions{Recursive: true})
+	if err != nil || len(diags) != 0 {
+		t.Fatal(err, diags)
+	}
+	if cp.kids.ht == nil || cp.kids.st == nil {
+		t.Fatal("copied table must have storage")
+	}
+	if ns, diags, err := dst.FindXPath("/m:c/a", XPathOptions{}); err != nil || len(diags) != 0 || len(ns) != 0 {
+		t.Fatalf("XPath miss: %v %v %v", ns, diags, err)
+	}
+	if n, err := dst.Find("/m:c/a"); err != nil || n != nil {
+		t.Fatalf("Find miss: %v %v", n, err)
+	}
+	src, diags, err := parseJSONString(set, `{"m:c":{"a":"x"}}`, Reject, true)
+	if err != nil {
+		t.Fatal(err, diags)
+	}
+	if err := dst.Merge(src); err != nil {
+		t.Fatal(err)
+	}
+	if n, err := dst.Find("/m:c/a"); err != nil || n == nil {
+		t.Fatalf("merge into copy: %v %v", n, err)
+	}
+}

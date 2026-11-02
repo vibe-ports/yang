@@ -1,0 +1,59 @@
+# Sibling storage: logical ranks and document order (#247, part 4)
+
+This is the storage portion of design 15, extracted from `207566b2` onto the
+kind-aware sequence of part 3. Public producers keep their existing placement;
+Ordered parsing and interleaved native lookup/run rules belong to later parts.
+Only package tests select an explicit physical placement that interleaves kinds.
+
+`At`, `Index`, `SchemaLen`, `OpaqueLen`, partition spans, range searches and
+`orderPosition` use logical coordinates: schema ranks followed by opaque ranks.
+The sequence itself holds document order. `docSpan`, `All`, `all`, reverse walks,
+`docFirst`, `docLast`, `docNext` and `docPrev` follow physical positions/threads.
+After interleaving, logical iterators use the sequence's kind threads, crossing
+from the last schema node to the first opaque node. Kind-rank selection and rank
+walks cost O(log n); logical lower bounds cost O(log² n); iteration stays linear.
+
+A sticky storage flag records the first schema-after-opaque layout. Its transition
+and the sequence's kind threads share the existing journal, so rollback restores
+both together. The flag shares the former non-owning-view cell, retaining the
+ordinary store's allocation size. All ordinary layouts take their previous
+sequence paths and retain their counted work and allocations.
+
+A `siblingPlacement` is a local result containing the physical anchor, logical
+partition position and physical position. Reservation (`linkPlacedBound`) and
+application (`linkPlaced`) receive the same value; storage bounds, `linkAnchor`,
+`linkDocPos` and the key preflight consume that result. It is valid until a storage
+mutation. Legacy `link`/`linkBound` wrappers resolve their current logical
+placement, so existing callers preserve their behavior. Neither a destination nor
+a journal stores a pending placement, target node or source tree. A refused plan
+needs no cleanup and cannot retain its source through the destination.
+
+The default schema anchor is the next schema rank, or the physical successor of
+the last schema node. Opaque insertion at rank j follows opaque rank j−1 (rank 0
+precedes the first opaque node; out-of-range appends). Explicit physical anchors
+are resolved directly. The key preflight and `keyLinked` share `keysLead`, which
+reads the physical prefix, stops at an opaque child, and charges each inspected
+key through its existing caller's counter. A prefix reservation also checks the
+prospective layout, so the first opaque-before-schema insertion uses its physical
+position before the sticky interleaving flag is published.
+
+Republication expands a logical schema range to its physical extent. Schema
+slots take the new schema order; opaque slots keep their handles and positions;
+fresh schema nodes follow the extent. Bounds include extent assembly, sequence
+republication, journal images and kind-thread maintenance. First interleaving
+also reserves the newly inserted handle's part of the thread-enabling pass.
+Every storage write touches/captures first, or uses the existing narrow journal.
+Legacy append keeps its whole capture even inside a narrow transaction; only
+InsertAt and explicit placement use the narrow insertion path.
+
+Recursive duplication that preserves a native children table also allocates its
+storage, even if empty. This restores the invariant expected by table lookups.
+The regression has local and foreign-context live-oracle requests and never
+requires a generated golden. Model seeds 3, 99 and 4099 cover both rank spaces,
+physical anchors, republication and deletion; rollback tests cover initial and
+already-active kind threads. Work tests compare descending duplicate-heavy
+public construction and publication with `origin/main`, with and without a
+journal; weak-pointer tests cover reservation and application refusal.
+
+Excluded: ambient placement state, Ordered flags/producers, sorted-placement
+routing, interleaved lookup/run/history adaptation, and dead-node/view machinery.

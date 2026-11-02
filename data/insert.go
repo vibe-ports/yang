@@ -980,11 +980,12 @@ func (t *Tree) linkCost(parent *Node, sib *siblings, n *Node, at int) (uint64, e
 	return addHashBound(amount, bound), err
 }
 
-// indexAddBound is the storage and index work of n's link at at (orderAddBound), the labelling
+// indexAddPlacedBound is the storage and index work of n's resolved link, the labelling
 // of the storage included when this link builds the index (linkBuildsIndex).
-func (t *Tree) indexAddBound(parent *Node, sib *siblings, n *Node, at int) uint64 {
+func (t *Tree) indexAddPlacedBound(parent *Node, sib *siblings, n *Node, p siblingPlacement) uint64 {
+	at := p.at
 	journaled := sib.indexJournaled(&t.work)
-	bound := sib.orderAddBound(n, at, journaled)
+	bound := sib.orderAddPlacedBound(n, p, journaled)
 	if t.linkBuildsIndex(parent, sib, n, at) {
 		// the labels of every handle after n's insertion, the header's image, and the build
 		bound = addHashBound(bound, uint64(sib.Len()+1)+slotUnits(journaled)/2) //nolint:gosec // a length is nonnegative
@@ -1989,6 +1990,13 @@ func (t *Tree) childrenOf(parent *Node) *siblings {
 // at is -1) under parent, and updates the children index and the default flags of the NP-container
 // ancestors.
 func (t *Tree) link(parent *Node, sib *siblings, n *Node, at int) error {
+	return t.linkPlaced(parent, sib, n, sib.linkPlacement(n, at))
+}
+
+// linkPlaced applies exactly the placement passed to linkPlacedBound. Legacy callers use
+// link's wrapper; explicit placement never lives in Tree, siblings, storage or the journal.
+func (t *Tree) linkPlaced(parent *Node, sib *siblings, n *Node, p siblingPlacement) error {
+	at := p.at
 	// A schema lookup performed while finding at may already have exhausted the
 	// operation quota. Do not publish this child after that failed preflight.
 	if t.work.hashErr != nil {
@@ -2002,7 +2010,7 @@ func (t *Tree) link(parent *Node, sib *siblings, n *Node, at int) error {
 			return err
 		}
 	}
-	amount, err := t.linkApplyBound(parent, sib, n, at)
+	amount, err := t.linkApplyPlacedBound(parent, sib, n, p)
 	if err != nil {
 		return err
 	}
@@ -2012,7 +2020,7 @@ func (t *Tree) link(parent *Node, sib *siblings, n *Node, at int) error {
 	// The prepaid scope (design 13 §4.1-4.2): from here to the end of link no charge refuses.
 	// It debits every charge of the suffix (linkApplyBound) and the index edit's point bound
 	// now; journal captures stay fallible, and only exist where a journal restores them.
-	amount = addHashBound(amount, t.indexAddBound(parent, sib, n, at))
+	amount = addHashBound(amount, t.indexAddPlacedBound(parent, sib, n, p))
 	nested, err := t.work.prepay(amount, false)
 	if err != nil {
 		return err
@@ -2065,17 +2073,9 @@ func (t *Tree) link(parent *Node, sib *siblings, n *Node, at int) error {
 		n.detachedRB, n.detachedGroup = nil, nil
 	}
 	hadHT := sib.ht != nil
-	switch {
-	case n.schema == nil && (at < 0 || at >= sib.OpaqueLen()):
-		at = sib.OpaqueLen()
-		if err := sib.appendNode(n); err != nil {
-			return err
-		}
-		if err := sib.orderAddOpaque(t, parent, n); err != nil {
-			return err
-		}
-	case n.schema == nil:
-		if err := sib.InsertAt(sib.SchemaLen()+at, n); err != nil {
+	switch n.schema {
+	case nil:
+		if err := sib.insertPlaced(p, n); err != nil {
 			return err
 		}
 		if err := sib.orderAddOpaque(t, parent, n); err != nil {
@@ -2104,7 +2104,7 @@ func (t *Tree) link(parent *Node, sib *siblings, n *Node, at int) error {
 		}
 		t.markMixed(sib, parent, n) // a LAST copy appends without an anchor
 		t.beforeKeyLink(parent, n, at)
-		if err := sib.InsertAt(at, n); err != nil {
+		if err := sib.insertPlaced(p, n); err != nil {
 			return err
 		}
 		switch {
@@ -2131,15 +2131,20 @@ func (t *Tree) link(parent *Node, sib *siblings, n *Node, at int) error {
 // discriminator, including a child table the link creates. Callers check it
 // as one total; separate checks could each pass while their sum does not.
 func (t *Tree) linkBound(parent *Node, sib *siblings, n *Node, at int) (uint64, error) {
+	return t.linkPlacedBound(parent, sib, n, sib.linkPlacement(n, at))
+}
+
+func (t *Tree) linkPlacedBound(parent *Node, sib *siblings, n *Node, p siblingPlacement) (uint64, error) {
 	before := t.work.hashUsed
-	amount, err := t.linkApplyBound(parent, sib, n, at)
+	amount, err := t.linkApplyPlacedBound(parent, sib, n, p)
 	// link repeats this charged probe before applying its reserved work, and prepays the index
 	// edit's point bound with it.
-	amount = addHashBound(amount, t.indexAddBound(parent, sib, n, at))
+	amount = addHashBound(amount, t.indexAddPlacedBound(parent, sib, n, p))
 	return addHashBound(amount, t.work.hashUsed-before), err
 }
 
-func (t *Tree) linkApplyBound(parent *Node, sib *siblings, n *Node, at int) (uint64, error) {
+func (t *Tree) linkApplyPlacedBound(parent *Node, sib *siblings, n *Node, p siblingPlacement) (uint64, error) {
+	at := p.at
 	amount, err := rbAdoptionBound(sib, n, &t.work)
 	if err != nil {
 		return 0, err
@@ -2165,7 +2170,7 @@ func (t *Tree) linkApplyBound(parent *Node, sib *siblings, n *Node, at int) (uin
 		}
 	}
 	if n.schema != nil && n.schema.IsKey() && parent != nil {
-		a, err := t.work.termHashBound(parent, n.schema, n.value, at)
+		a, err := t.work.termHashPlacedBound(parent, n.schema, n.value, at, sib.linkDocPos(p))
 		if err != nil {
 			t.work.hashErr = err
 			return 0, err
@@ -2179,16 +2184,16 @@ func (t *Tree) linkApplyBound(parent *Node, sib *siblings, n *Node, at int) (uin
 		// (a term the prepaid scope exposed)
 		if ps := parent.siblingsOf(); ps != nil && ps.ht != nil {
 			// the compared prefix after the link: the first len(Keys) positions with n at at
-			amount = addHashBound(amount, indexInsertedBound(parent, n, at, &t.work))
+			amount = addHashBound(amount, indexInsertedBound(parent, n, sib.linkDocPos(p), &t.work))
 		}
 	}
-	amount = addHashBound(amount, t.linkIndexBound(parent, sib, n, at))
+	amount = addHashBound(amount, t.linkIndexPlacedBound(parent, sib, n, p))
 	return amount - min(amount, prepaySkew), t.work.hashErr
 }
 
-// linkIndexBound bounds the destination discriminators of n at position at;
+// linkIndexPlacedBound bounds the destination discriminators at the resolved placement;
 // immutable name components are cached and the bound itself spends no work.
-func (t *Tree) linkIndexBound(parent *Node, sib *siblings, n *Node, at int) uint64 {
+func (t *Tree) linkIndexPlacedBound(parent *Node, sib *siblings, n *Node, p siblingPlacement) uint64 {
 	var amount uint64
 	if n.schema != nil && parent != nil && parent.schema != nil &&
 		(sib.ht != nil || sib.SchemaLen()+1 >= htMinItems) {
@@ -2202,8 +2207,8 @@ func (t *Tree) linkIndexBound(parent *Node, sib *siblings, n *Node, at int) uint
 	if parent != nil && parent.schema != nil && parent.schema.Kind == schema.List &&
 		(n.schema == nil || n.schema.IsKey() || parent.keyN < len(parent.schema.Keys)) {
 		if ps := parent.siblingsOf(); ps != nil && ps.ht != nil {
-			position := at
-			if n.schema == nil {
+			position := sib.linkDocPos(p)
+			if n.schema == nil && !sib.st.interleaved() && !sib.linkMixes(n, p) {
 				position = parent.kids.SchemaLen() + parent.kids.OpaqueLen()
 			}
 			amount = addHashBound(amount, indexInsertedBound(parent, n, position, &t.work))

@@ -457,7 +457,7 @@ func (s *siblings) publicationIndexBound(lo, hi int) uint64 {
 		planned += units
 		return pay == nil || pay.Pay(units)
 	})
-	bound = addHashBound(bound, s.st.seq.RepublishBound(lo, hi, 0, journaled, counted))
+	bound = addHashBound(bound, s.republishBound(lo, hi, 0, journaled, counted))
 	return addHashBound(bound, planned) // replaceSchema plans the same walk again
 }
 
@@ -523,7 +523,15 @@ func (s *siblings) orderPosition(n *Node) int {
 	if err != nil {
 		return -1
 	}
-	rank, _ := s.st.seq.Rank(h)
+	var rank int
+	if s.st.interleaved() {
+		rank, _ = s.st.seq.RankKind(h)
+		if !h.Heavy() {
+			rank += s.SchemaLen()
+		}
+	} else {
+		rank, _ = s.st.seq.Rank(h)
+	}
 	s.work.closeRead(opened)
 	return rank
 }
@@ -773,8 +781,8 @@ func (s *siblings) indexJournaled(w *workCounter) bool {
 // orderAddBound bounds placing n at position at of its partition (an opaque n: of the opaque
 // nodes, appended when at is out of range), as link does: the storage insertion and the index's
 // registration.
-func (s *siblings) orderAddBound(n *Node, at int, journaled bool) uint64 {
-	bound := s.insertBound(n, at, journaled)
+func (s *siblings) orderAddPlacedBound(n *Node, p siblingPlacement, journaled bool) uint64 {
+	bound := s.insertPlacedBound(n, p, journaled)
 	o := s.order
 	if o == nil {
 		return bound - min(bound, prepaySkew)

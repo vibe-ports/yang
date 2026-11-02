@@ -43,7 +43,7 @@ const htMinItems = 4
 // tree_data.c:2280-2330). All child links go through keyLinked; unlink updates the
 // discriminator after detach, and value validation uses hashReindex directly.
 type siblings struct {
-	st          *siblingStore // the physical order: schema nodes, then opaque ones (design 14)
+	st          *siblingStore // document order; facade positions rank schema, then opaque nodes
 	ht          map[idxKey]*recordChain
 	exactByNode map[*Node]*record
 	// history retains unchecked native insertions, grouped by recorded hash.
@@ -537,6 +537,15 @@ type idxKey struct {
 
 func (s *siblings) all() iter.Seq[*Node] {
 	return func(yield func(*Node) bool) {
+		if s.st.interleaved() {
+			for _, n := range s.All() {
+				s.visit()
+				if !yield(n) {
+					return
+				}
+			}
+			return
+		}
 		for _, n := range s.SchemaAll() {
 			s.visit()
 			if !yield(n) {
@@ -760,7 +769,7 @@ func indexAfterRemovedBound(list *Node, removed map[*Node]bool, work *workCounte
 
 // positionalChildren follows lyd_child/next along the storage threads, including an opaque
 // child exposed by internal key removal. Both the discriminator and comparison must see it.
-func positionalChildren(n *Node) spanCursor { return n.kids.span(0, n.kids.Len()).cursor() }
+func positionalChildren(n *Node) spanCursor { return n.kids.docSpan().cursor() }
 
 // writeKeyPosition encodes the schema and data gates of the positional comparison
 // (tree_data.c:1775-1778). Names, not pointers, permit probes from another context.

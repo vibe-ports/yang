@@ -104,3 +104,53 @@ func TestSiblingFacadePublicationFollowupOracle(t *testing.T) {
 		})
 	}
 }
+
+// A fully emptied children table survives recursive duplication, within the context or into
+// an equivalent context. Lookup misses on that copy and a subsequent merge exercise the
+// table/storage invariant without generating goldens or enabling Ordered parsing.
+func TestSiblingDocumentOrderEmptyTableOracle(t *testing.T) {
+	oracle := nativeRequestRunner(t)
+	for _, foreign := range []bool{false, true} {
+		name := "local"
+		if foreign {
+			name = "foreign"
+		}
+		t.Run(name, func(t *testing.T) {
+			var params map[string]any
+			if err := json.Unmarshal([]byte(`{"op":"sequence","searchdirs":["hash-source"],"modules":[{"name":"pv2-hash-ctx"}],"context_options":["no_yanglibrary"],"steps":[
+			{"do":"parse","format":"json","parse_only":true,"data":"{\"pv2-hash-ctx:r\":{\"s\":[\"3\"],\"a\":\"a\",\"b\":\"b\",\"c\":\"c\"}}"},
+			{"do":"edit","delete":"/pv2-hash-ctx:r/a"},{"do":"edit","delete":"/pv2-hash-ctx:r/b"},
+			{"do":"edit","delete":"/pv2-hash-ctx:r/c"},{"do":"edit","delete":"/pv2-hash-ctx:r/s[1]"},
+			{"do":"dup","node":"/pv2-hash-ctx:r","options":["recursive"]},
+			{"do":"xpath","xpath":"/pv2-hash-ctx:r/pv2-hash-ctx:a"},
+			{"do":"edit","merge":"{\"pv2-hash-ctx:r\":{\"a\":\"new\"}}","format":"json"},
+			{"do":"xpath","xpath":"/pv2-hash-ctx:r/pv2-hash-ctx:a"},{"do":"dump"}]}`), &params); err != nil {
+				t.Fatal(err)
+			}
+			if foreign {
+				steps := params["steps"].([]any)
+				steps[5].(map[string]any)["target"] = map[string]any{
+					"searchdirs": []any{"hash-target"}, "modules": []any{map[string]any{"name": "pv2-hash-ctx"}},
+					"context_options": []any{"no_yanglibrary"},
+				}
+			}
+			base := filepath.Join("corpus", "protocol-v2")
+			want, err := oracle(base, params)
+			if err != nil {
+				t.Fatal(err)
+			}
+			got, err := (Yang{}).Run(Request{BaseDir: base, Params: params})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if want.Verdict() != "valid" {
+				t.Fatalf("native request failed: %v", want)
+			}
+			want, _ = withoutSkipped(want, Yang{}.SkippedFields("sequence"))
+			got, _ = withoutSkipped(got, Yang{}.SkippedFields("sequence"))
+			if diff := diffResponses(want, got); diff != "" {
+				t.Fatalf("oracle mismatch: %s\nnative: %v\nGo: %v", diff, want, got)
+			}
+		})
+	}
+}
