@@ -511,7 +511,8 @@ func TestUnresWork(t *testing.T) {
 		t.Fatalf("musts over a big top level: %d view builds", vc.topBuilds)
 	}
 
-	// n top-level WhenTrue nodes whose when is false: deleted in one pass, the view built once
+	// n top-level WhenTrue nodes whose when is false: deleted in one pass, the view rebuilt only
+	// once more than half of it is deleted (log n builds, O(n) in all)
 	ef, _ := xpath.Compile("false()", testNS("u"))
 	tw := &schema.Node{Kind: schema.LeafList, Name: "tw", Module: f.m, Type: &schema.Type{Base: schema.Uint16}, Config: true}
 	tw.Whens = []*schema.When{{Src: "false()", ContextNode: tw, Compiled: ef}}
@@ -527,7 +528,7 @@ func TestUnresWork(t *testing.T) {
 	if err := vc.unres(); err != nil {
 		t.Fatal(err)
 	}
-	if vc.topBuilds != 1 || vc.t.top.len() != 1 {
+	if vc.topBuilds > 1+bits.Len(uint(n)) || vc.t.top.len() != 1 {
 		t.Fatalf("top-level deletions: %d view builds, %d left", vc.topBuilds, vc.t.top.len())
 	}
 
