@@ -56,4 +56,51 @@ public construction and publication with `origin/main`, with and without a
 journal; weak-pointer tests cover reservation and application refusal.
 
 Excluded: ambient placement state, Ordered flags/producers, sorted-placement
-routing, interleaved lookup/run/history adaptation, and dead-node/view machinery.
+routing, interleaved lookup/history adaptation, and dead-node/view machinery.
+Run bookkeeping is added in part 5 below.
+
+## Runs
+
+Part 5 extracts physical run boundaries and mutation bookkeeping from `ref332`.
+A run piece ends at an opaque sibling or a different schema. `runPiece` and
+`runPieceStart` locate the nearest opaque boundary with logarithmic storage
+reads before a logical run walk starts. Bounds, retained-run walks and backward
+leader walks therefore visit the selected piece, rather than all later instances.
+Singleton pieces remain singletons even when another piece uses the same schema.
+
+Document order and registration order remain independent. Interleaved table
+construction includes opaque separators in its physical traversal. Leader insert
+and unlink read document neighbours, while replacement appends its record to the
+native registration chain. Ordinary layouts retain their original reads and
+allocation paths. No lookup kernel, equivalent-schema candidate search or
+lookup charging policy changes here.
+
+Opaque insertion counts the gap it opens; removal closes that gap before storage
+removal. Removing either kind of separator marks the left tree unsorted, while
+retaining its RB topology. Subsequent sorted insertion uses the selected retained tree; the
+unsorted flag prevents treating the joined run as entirely represented by it. Single and batch unlink use the same physical neighbours and cyclic
+tail for singleton metadata selection. Batch compaction rebuilds its summaries
+before returning, including on a published refusal prefix.
+
+Sorted placement is an explicit local `siblingPlacement`, after the RB predecessor
+or before the leader. Reservation and application consume that placement; after
+publication it is resolved again against the current handles. The first
+interleaving reserves the ordered-index transition as well as storage kind threads.
+Physical table-record construction pays for document assembly and both registration
+walks, including opaque separators; point and shared batch bounds reserve those
+passes. Existing prepaid scopes refund unused write credit, so charged work equals
+consumed work. No pending placement or source node is stored on a destination or journal.
+Every mutation uses the existing whole capture or index journal before writing.
+
+Tests build these interleaved layouts internally; public producers remain on the
+ordinary schema/opaque layout. Live native replay checks table-threshold changes,
+leader insertion/deletion, singleton unlink and unlink-between, including a run
+split by another schema node. Regression probes cover physical record construction,
+registration ordering, single/bulk parity, separator gaps, retained topology,
+opaque-triggered index transitions and budget rollback. The portable ordinary-work
+probe compares descending duplicate-heavy insertion and both unlink forms against
+`origin/main`, in both journal modes.
+
+Still excluded: Ordered parsing/producers, lookup kernel and consumers, key-prefix
+hash reservations, merge/dup/move/diff routing, validation/defaults, codecs, ambient
+placement and dead-node/live-view machinery.

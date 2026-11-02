@@ -874,6 +874,16 @@ func (s *siblings) hashAdd(parent, n *Node) {
 	if s.SchemaLen()-len(s.unattached) < htMinItems {
 		return
 	}
+	// Interleaved record construction walks the physical set once to assemble it, then
+	// walks its visible members twice for exact and first-instance registrations. Pay all
+	// three passes, including opaque separators, before allocating the table.
+	if s.st.interleaved() && s.work != nil {
+		visible := uint64(max(0, s.Len()-len(s.unattached)))
+		amount := addHashBound(uint64(s.Len()), mulHashBound(2, visible)) //nolint:gosec // a length is nonnegative
+		if err := s.work.chargeHash(amount); err != nil {
+			return
+		}
+	}
 	if err := s.touchWhole(); err != nil { // the table is built from every sibling
 		return
 	}
@@ -893,6 +903,9 @@ func (s *siblings) hashAdd(parent, n *Node) {
 // slot in its tree order. A node linked by another insertion path while the parser defers that
 // run is not in its RB tree; keep it in its physical slot so table construction sees it too.
 func (s *siblings) logical() siblingSpan {
+	if s.st != nil && s.st.interleaved() {
+		return s.logicalInterleaved()
+	}
 	if len(s.pending) == 0 && len(s.unattached) == 0 {
 		return s.schemaSpan()
 	}
@@ -1457,6 +1470,14 @@ func (s *siblings) checkRecords() error {
 
 // leaderInsert applies lyd_insert_hash_add to n already at position at.
 func (s *siblings) leaderInsert(n *Node, at int) {
+	if s.st.interleaved() {
+		if err := s.touchWhole(); err != nil {
+			return
+		}
+		prev, next := s.docNeighbours(n)
+		s.leaderInsertBetween(n, prev, next)
+		return
+	}
 	if err := s.touchLazy(); err != nil {
 		return
 	}
@@ -1540,13 +1561,7 @@ func (s *siblings) leaderUnlink(n *Node, at int, removing bool) {
 	if s.ht == nil || !s.firstRecordSchema(n.schema) || at < 0 || at >= s.SchemaLen() {
 		return
 	}
-	var prev, next *Node
-	if at > 0 {
-		prev = s.At(at - 1)
-	}
-	if at+1 < s.SchemaLen() {
-		next = s.At(at + 1)
-	}
+	prev, next := s.recordNeighbours(n, at)
 	s.leaderUnlinkBetween(n, prev, next, removing)
 }
 
@@ -2465,4 +2480,38 @@ func (s *siblings) mixedLeaderProbe(sn *schema.Node, w *workCounter) *Node {
 		prev = n.schema
 	}
 	return nil
+}
+
+// docNeighbours returns the linked node's physical neighbours. An opaque node ends a run.
+func (s *siblings) docNeighbours(n *Node) (prev, next *Node) {
+	h := s.handle(n)
+	return handleValue(s.st.seq.Prev(h)), handleValue(s.st.seq.Next(h))
+}
+
+// logicalInterleaved constructs table records in document order, keeping opaque separators.
+func (s *siblings) logicalInterleaved() siblingSpan {
+	out := make([]*Node, 0, s.Len())
+	for _, n := range s.docSpan().All() {
+		if s.work != nil {
+			s.work.Add(1)
+		}
+		if !s.unattached[n] {
+			out = append(out, n)
+		}
+	}
+	return spanOf(out)
+}
+
+// recordNeighbours keeps ordinary-layout accounting and uses physical neighbours after interleaving.
+func (s *siblings) recordNeighbours(n *Node, at int) (prev, next *Node) {
+	if s.st.interleaved() {
+		return s.docNeighbours(n)
+	}
+	if at > 0 {
+		prev = s.At(at - 1)
+	}
+	if at+1 < s.SchemaLen() {
+		next = s.At(at + 1)
+	}
+	return prev, next
 }

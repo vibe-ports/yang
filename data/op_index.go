@@ -418,12 +418,14 @@ func (s *siblings) orderAddSchema(t *Tree, n *Node) error {
 
 func (s *siblings) orderAddOpaque(t *Tree, parent, n *Node) error {
 	if s.order == nil {
-		if !isOp(schemaOf(parent)) {
+		if !isOp(schemaOf(parent)) && !s.schemaUnordered {
 			return nil
 		}
 		return s.orderBuild(t)
 	}
-	s.order.register(n, s.handle(n))
+	h := s.handle(n)
+	s.order.register(n, h)
+	s.opaqueSplit(h, 1)
 	return nil
 }
 
@@ -509,7 +511,14 @@ func (s *siblings) orderRemove(n *Node) (survives, survivesRB bool) {
 	return true, d.rb > 0
 }
 
-func (s *siblings) orderRemoveOpaque(n *Node) { s.orderUnregister(n) }
+func (s *siblings) orderRemoveOpaque(n *Node) {
+	if s.order != nil {
+		if h := s.handle(n); h != nil {
+			s.opaqueSplit(h, -1)
+		}
+	}
+	s.orderUnregister(n)
+}
 
 // orderPosition is the position of n in s, -1 if absent or refused: the storage's rank walk. A
 // class-A read on a mutation path pays it, reserved before it runs (design 13 §4.4); inside a
@@ -860,4 +869,14 @@ func (s *siblings) refreshExactBound(n *Node, journaled bool) uint64 {
 		return 0
 	}
 	return addHashBound(o.byExact.RemoveBound(h, journaled), o.byExact.InsertBoundAny(journaled))
+}
+
+// opaqueSplit counts the gap opened (+1) or closed (-1) by an opaque separator.
+func (s *siblings) opaqueSplit(h *opidx.Handle[*Node], delta int) {
+	left, right := s.st.seq.Prev(h), s.st.seq.Next(h)
+	if left != nil && right != nil && left.Value.schema != nil && left.Value.schema == right.Value.schema {
+		if d := s.order.entries[left.Value.schema]; d != nil {
+			opidx.AddInt(s.order.bind, &d.gaps, delta)
+		}
+	}
 }

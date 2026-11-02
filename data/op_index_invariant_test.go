@@ -163,8 +163,8 @@ func opidxCheckOrderInvariant(tr *Tree, s *siblings) error {
 
 	runs := map[*schema.Node]int{}
 	var previous *schema.Node
-	for i, n := range s.SchemaAll() {
-		if i == 0 || n.schema != previous {
+	for i, n := range s.All() {
+		if n.schema != nil && (i == 0 || n.schema != previous) {
 			runs[n.schema]++
 		}
 		previous = n.schema

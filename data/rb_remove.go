@@ -239,7 +239,11 @@ func (s *siblings) removalOrder(n, prev, next, tail *Node, around func(*Node) (*
 	return d, leader, nil
 }
 
+// nativeTail is first->prev: the last sibling in document order.
 func (s *siblings) nativeTail() *Node {
+	if s.st.interleaved() {
+		return s.docLast()
+	}
 	if s.OpaqueLen() > 0 {
 		return s.opaqueAt(s.OpaqueLen() - 1)
 	}
