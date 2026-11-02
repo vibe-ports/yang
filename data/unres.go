@@ -384,6 +384,9 @@ func (p *whenPass) del(n *Node) error {
 	if err := vc.preflightFreeLinks(n); err != nil {
 		return err
 	}
+	if err := vc.chargeDfltScan(n); err != nil {
+		return err
+	}
 	if vc.diff != nil {
 		if err := vc.diff(n, diffDelete); err != nil && !vc.logDiffErr(err) {
 			return err
@@ -435,6 +438,30 @@ func (vc *valCtx) preflightFreeLinks(n *Node) error {
 				}
 			}
 		}
+	}
+	return nil
+}
+
+// chargeDfltScan pays, before the deletion begins, the child scans lyd_unlink's
+// lyd_np_cont_dflt_set makes once n is gone (npContDfltSet: up the NP containers, each scanned
+// until its first explicit child): one hash-work unit per child visited, polled. libyang scans
+// as much per deletion, so a default prefix of K children costs K per deletion; here it is
+// charged to the validation's quota and cancellable instead of hidden in the unlink's
+// non-refusing suffix.
+func (vc *valCtx) chargeDfltScan(n *Node) error {
+	for p := n.parent; p != nil && p.flags&FlagDefault == 0 && isNPCont(p.schema); p = p.parent {
+		for c := range p.kids.all() {
+			if err := vc.t.work.chargeHash(1); err != nil {
+				return err
+			}
+			if err := vc.checkContext(); err != nil {
+				return err
+			}
+			if c != n && c.flags&FlagDefault == 0 {
+				return nil // an explicit child stays: the scan stops here
+			}
+		}
+		n = p // p becomes default; its parent is scanned past it
 	}
 	return nil
 }

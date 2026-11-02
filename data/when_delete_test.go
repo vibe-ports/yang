@@ -551,3 +551,37 @@ func TestWhenDeleteLinkedDescendantBudget(t *testing.T) {
 		}
 	}
 }
+
+// TestWhenDeleteDefaultPrefixCharged: an NP container holds K default leaf-list instances before
+// M explicit ones the when pass deletes. Each unlink rescans the default prefix
+// (lyd_np_cont_dflt_set, as libyang does), K×M visits in all: they are charged to the
+// validation's hash-work quota before each deletion (cancellable, refusable), so the quota used
+// grows by at least the visits added with K, and the container ends default.
+func TestWhenDeleteDefaultPrefixCharged(t *testing.T) {
+	const m = 200
+	used := func(k int) uint64 {
+		var mod strings.Builder
+		mod.WriteString(`module m { yang-version 1.1; namespace "urn:m"; prefix m; container np { leaf-list d { type uint32;`)
+		for i := range k {
+			mod.WriteString(" default " + strconv.Itoa(i) + ";")
+		}
+		mod.WriteString(` } leaf-list e { type uint32; when "false()"; } } }`)
+		set := reviewDiffSet(t, mod.String())
+		vals := make([]string, m)
+		for i := range vals {
+			vals[i] = strconv.Itoa(i)
+		}
+		tr := parseWhenTrue(t, set, `{"m:np":{"e":[`+strings.Join(vals, ",")+`]}}`)
+		if _, err := tr.ValidateModule(context.Background(), "m", ValidateOptions{NotFinal: true}); err != nil {
+			t.Fatal(err)
+		}
+		if np := tr.top.first(); np.kids.len() != k || np.flags&FlagDefault == 0 {
+			t.Fatalf("k %d: %d children, default %v", k, np.kids.len(), np.flags&FlagDefault != 0)
+		}
+		return tr.work.hashUsed
+	}
+	small, large := used(20), used(200)
+	if large-small < 180*m {
+		t.Fatalf("quota used %d with 20 defaults, %d with 200: the %d added prefix visits are not charged", small, large, 180*m)
+	}
+}
