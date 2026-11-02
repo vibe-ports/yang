@@ -381,6 +381,9 @@ func (p *whenPass) del(n *Node) error {
 	if err != nil {
 		return err
 	}
+	if err := vc.preflightFreeLinks(n); err != nil {
+		return err
+	}
 	if vc.diff != nil {
 		if err := vc.diff(n, diffDelete); err != nil && !vc.logDiffErr(err) {
 			return err
@@ -406,6 +409,33 @@ func (p *whenPass) del(n *Node) error {
 	freeSubtreeLinks(vc.t.context(), n) // lyd_free_tree
 	n.flags |= flagDead
 	p.dead = append(p.dead, n)
+	return nil
+}
+
+// preflightFreeLinks checks and captures what lyd_free_tree's link part changes for n's subtree
+// before the deletion begins: every linked node's record and each counterpart's, the guard's
+// refusal of a held counterpart (D-0148) and the captures' budget included, so the cleanup after
+// the unlink (freeSubtreeLinks) meets no failure.
+func (vc *valCtx) preflightFreeLinks(n *Node) error {
+	for d := range n.allAny() {
+		rec := d.links
+		if rec == nil {
+			continue
+		}
+		if err := linkGuard(d, &vc.t.work); err != nil {
+			return err
+		}
+		if err := d.touch(); err != nil {
+			return err
+		}
+		for _, side := range [2][]*Node{rec.leafrefs, rec.targets} {
+			for _, c := range side {
+				if err := c.touch(); err != nil {
+					return err
+				}
+			}
+		}
+	}
 	return nil
 }
 

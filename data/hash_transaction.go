@@ -589,7 +589,8 @@ func (j *hashTransaction) fail(result *error) {
 	}
 	if errors.Is(j.tree.work.hashErr, yang.ErrBudget) {
 		*result = j.tree.work.hashErr
-	} else if j.err != nil && (*result == nil || errors.Is(j.err, yang.ErrBudget)) {
+	} else if j.err != nil && (*result == nil || errors.Is(j.err, yang.ErrBudget) || isGuardRefusal(j.err)) {
+		// a guard refusal stays the result, whatever error (a cancellation) came after it
 		*result = j.err
 	}
 }

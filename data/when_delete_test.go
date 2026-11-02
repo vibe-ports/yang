@@ -417,3 +417,137 @@ func TestWhenDiffMergeFailureIgnored(t *testing.T) {
 		}
 	}
 }
+
+// TestWhenDeleteHeldDescendantLink: B's when pass deletes gone, whose descendant t is the target
+// of a leafref r moved into A (a retained cross-tree link), while A's ApplyDiff waits on its
+// callback. Freeing t's links would edit r's record, governed by A's suspended state: the
+// deletion is refused before it begins (preflightFreeLinks; D-0148), so the validation returns
+// the guard's refusal and B keeps gone, rather than a deletion half done.
+func TestWhenDeleteHeldDescendantLink(t *testing.T) {
+	set := reviewDiffSet(t, `module m { yang-version 1.1; namespace "urn:m"; prefix m;
+	  container c { leaf gate { type string; }
+	    container gone { presence p; when "../gate = 'on'"; leaf t { type string; } }
+	    container rc { presence p; leaf r { type leafref { path "../../gone/t"; } } } } }`)
+	set.LeafrefLinking = true
+	for _, diff := range []bool{false, true} {
+		b := parseWhenTrue(t, set, `{"m:c":{"gate":"on","gone":{"t":"x"},"rc":{"r":"x"}}}`)
+		if _, err := b.ValidateModule(context.Background(), "m", ValidateOptions{NotFinal: true}); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := b.LinkLeafrefs(context.Background()); err != nil {
+			t.Fatal(err)
+		}
+		a := parseWhenTrue(t, set, `{"m:c":{"gate":"a"}}`)
+		rc, err := b.Find("/m:c/rc")
+		if err != nil || rc == nil {
+			t.Fatal(rc, err)
+		}
+		if err := a.Insert(a.top.first(), rc); err != nil {
+			t.Fatal(err)
+		}
+		gate, _ := b.Find("/m:c/gate")
+		if _, err := gate.SetValue("off"); err != nil { // gone's when becomes false
+			t.Fatal(err)
+		}
+		target := parseWhenTrue(t, set, `{"m:c":{"gate":"b","rc":{"r":"x"}}}`)
+		d, err := Diff(a, target, DiffOptions{})
+		if err != nil || d == nil {
+			t.Fatal(d, err)
+		}
+		var refused error
+		called, half := false, false
+		r := rc.kids.first()
+		// every cancellation check looks at B: gone absent while r still has its link is a
+		// deletion half done; the check then cancels, which must not mask the refusal
+		ctx := &peekContext{Context: context.Background(), err: func() error {
+			if g, _ := b.Find("/m:c/gone"); g == nil {
+				half = half || r.links != nil && len(r.links.targets) != 0
+				return context.Canceled
+			}
+			return nil
+		}}
+		err = a.ApplyDiff(d, ApplyDiffOptions{Callback: func(_, _ *Node) error {
+			if !called {
+				called = true
+				if diff {
+					_, _, refused = b.ValidateModuleDiff(ctx, "m", ValidateOptions{NotFinal: true})
+				} else {
+					_, refused = b.ValidateModule(ctx, "m", ValidateOptions{NotFinal: true})
+				}
+			}
+			return nil
+		}})
+		if half {
+			t.Fatalf("diff=%t: a check saw gone deleted with r still linked to t", diff)
+		}
+		if err != nil || !called {
+			t.Fatalf("diff=%t: ApplyDiff %v, called %t", diff, err, called)
+		}
+		if !s4Refused(refused) {
+			t.Fatalf("diff=%t: validation: %v, want the guard's refusal", diff, refused)
+		}
+		if gone, _ := b.Find("/m:c/gone/t"); gone == nil {
+			t.Fatalf("diff=%t: B lost gone", diff)
+		}
+		if r.links == nil || len(r.links.targets) != 1 {
+			t.Fatalf("diff=%t: r's link is gone", diff)
+		}
+	}
+}
+
+// peekContext runs err at every cancellation check.
+type peekContext struct {
+	context.Context
+	err func() error
+}
+
+func (c *peekContext) Err() error { return c.err() }
+
+// TestWhenDeleteLinkedDescendantBudget: TestWhenDeleteHeldDescendantLink's trees with A idle,
+// B's validation given every hash-work limit until it succeeds: a refusal restores B and r's
+// link, a success deletes gone and frees the link, never a half-done deletion.
+func TestWhenDeleteLinkedDescendantBudget(t *testing.T) {
+	set := reviewDiffSet(t, `module m { yang-version 1.1; namespace "urn:m"; prefix m;
+	  container c { leaf gate { type string; }
+	    container gone { presence p; when "../gate = 'on'"; leaf t { type string; } }
+	    container rc { presence p; leaf r { type leafref { path "../../gone/t"; } } } } }`)
+	set.LeafrefLinking = true
+	build := func() (*Tree, *Node) {
+		b := parseWhenTrue(t, set, `{"m:c":{"gate":"on","gone":{"t":"x"},"rc":{"r":"x"}}}`)
+		if _, err := b.ValidateModule(context.Background(), "m", ValidateOptions{NotFinal: true}); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := b.LinkLeafrefs(context.Background()); err != nil {
+			t.Fatal(err)
+		}
+		a := parseWhenTrue(t, set, `{"m:c":{"gate":"a"}}`)
+		rc, _ := b.Find("/m:c/rc")
+		if err := a.Insert(a.top.first(), rc); err != nil {
+			t.Fatal(err)
+		}
+		gate, _ := b.Find("/m:c/gate")
+		if _, err := gate.SetValue("off"); err != nil {
+			t.Fatal(err)
+		}
+		return b, rc.kids.first()
+	}
+	for limit := uint64(1); ; limit++ {
+		if limit > 1<<16 {
+			t.Fatal("no limit lets the validation succeed")
+		}
+		b, r := build()
+		b.work.hashLimit = limit
+		diff, _, err := b.ValidateModuleDiff(context.Background(), "m", ValidateOptions{NotFinal: true})
+		gone, _ := b.Find("/m:c/gone")
+		linked := r.links != nil && len(r.links.targets) != 0
+		if err == nil {
+			if gone != nil || linked || diff == nil {
+				t.Fatalf("limit %d: success with gone %v, r linked %v, diff %v", limit, gone != nil, linked, diff != nil)
+			}
+			return
+		}
+		if !errors.Is(err, yang.ErrBudget) || gone == nil || !linked || diff != nil {
+			t.Fatalf("limit %d: %v, gone %v, r linked %v, diff %v", limit, err, gone != nil, linked, diff != nil)
+		}
+	}
+}
