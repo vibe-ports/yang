@@ -297,12 +297,16 @@ func (p *whenPass) livePos(n *Node) []int {
 	return l
 }
 
-// positions builds pos once per pass, polling.
+// positions builds pos once per pass, polling: its size (one slot per queue entry) is charged to
+// the validation's hash-work quota before it is allocated.
 func (p *whenPass) positions() error {
 	if p.pos != nil {
 		return nil
 	}
 	vc := p.vc
+	if err := vc.t.work.chargeHash(uint64(len(vc.nodeWhen.items))); err != nil {
+		return err
+	}
 	pos := make(map[*Node][]int, p.live)
 	for j, q := range vc.nodeWhen.items {
 		if err := vc.checkContext(); err != nil {
@@ -515,7 +519,14 @@ func (p *whenPass) nestedEntries(n *Node) ([]int, error) {
 		if d == n {
 			continue
 		}
-		for _, j := range p.pos[d] { // each descendant leaves with n: its list is read once
+		l := p.pos[d]
+		if err := vc.t.work.chargeHash(uint64(len(l))); err != nil { // out may grow by as many
+			return nil, err
+		}
+		for _, j := range l { // each descendant leaves with n: its list is read once
+			if err := vc.checkContext(); err != nil {
+				return nil, err
+			}
 			if p.reads++; vc.nodeWhen.items[j] != nil {
 				out = append(out, j)
 			}

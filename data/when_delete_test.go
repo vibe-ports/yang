@@ -585,3 +585,46 @@ func TestWhenDeleteDefaultPrefixCharged(t *testing.T) {
 		t.Fatalf("quota used %d with 20 defaults, %d with 200: the %d added prefix visits are not charged", small, large, 180*m)
 	}
 }
+
+// TestWhenQueueBookkeepingCharged: a leaf g inside a WhenTrue container gone whose when is
+// false, g queued k times before gone. Deleting gone builds the position map and collects g's k
+// entries: both are paid to the hash-work quota before they are made, so a quota below k refuses
+// before the map is built, and the collection polls per entry, so a cancellation stops it.
+func TestWhenQueueBookkeepingCharged(t *testing.T) {
+	const k = 1 << 12
+	build := func() *valCtx {
+		f := newUnresFixture(t)
+		str := &schema.Type{Base: schema.String}
+		et, _ := xpath.Compile("true()", testNS("u"))
+		ef, _ := xpath.Compile("false()", testNS("u"))
+		gone := &schema.Node{Kind: schema.Container, Name: "gone", Module: f.m, Config: true, Presence: true}
+		g := &schema.Node{Kind: schema.Leaf, Name: "g", Module: f.m, Parent: gone, Type: str, Config: true}
+		gone.Children = []*schema.Node{g}
+		g.Whens = []*schema.When{{Src: "true()", ContextNode: g, Compiled: et}}
+		gone.Whens = []*schema.When{{Src: "false()", ContextNode: gone, Compiled: ef}}
+		f.m.Top = append(f.m.Top, gone)
+		vc, _, _ := f.build(t, ValidateOptions{})
+		gonen := newInner(gone)
+		gonen.flags = FlagWhenTrue
+		gv, _ := types.Store(str, "g", types.FormatJSON, types.JSONHints("string"), nil, g)
+		gn := newTerm(g, gv)
+		mustLink(t, vc.t.insert(gonen, gn, insertDefault))
+		mustLink(t, vc.t.insert(nil, gonen, insertDefault))
+		for range k {
+			vc.nodeWhen.items = append(vc.nodeWhen.items, gn)
+		}
+		vc.nodeWhen.add(gonen)
+		return vc
+	}
+	vc := build()
+	vc.t.work.hashLimit = k / 2
+	if err := vc.unres(); !errors.Is(err, yang.ErrBudget) || vc.posBuilds != 0 {
+		t.Fatalf("quota %d: %v, %d position maps built", k/2, err, vc.posBuilds)
+	}
+	vc = build()
+	ctx := &cancelAtContext{Context: context.Background(), at: k + k/2} // within the collection
+	vc.budget.ctx = ctx
+	if err := vc.unres(); !errors.Is(err, context.Canceled) || vc.posReads >= k {
+		t.Fatalf("cancelled: %v after %d position reads of %d", err, vc.posReads, k)
+	}
+}
