@@ -110,7 +110,7 @@ func TestSiblingPlacementKeyPreflight(t *testing.T) {
 				t.Fatal("placement changed")
 			}
 			before := tr.work.hashUsed
-			bound, err := tr.work.termHashPlacedBound(list, b.schema, b.value, p.at, p.docAt)
+			bound, err := tr.work.termHashPlacedBound(list, b.schema, b.value, p.docAt)
 			if err != nil {
 				t.Fatal(err)
 			}

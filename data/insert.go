@@ -969,15 +969,10 @@ func (t *Tree) chargedIndex(sib *siblings, n *Node) (int, error) {
 }
 
 // linkCost is everything link reserves or charges for n at position at, so a caller that changes
-// state first can reserve it in advance.
+// state first can reserve it in advance. linkBound includes snapshot displacement at its
+// resolved physical position for both legacy and explicit placements.
 func (t *Tree) linkCost(parent *Node, sib *siblings, n *Node, at int) (uint64, error) {
-	var amount uint64
-	if n.schema != nil && !n.schema.IsKey() && parent != nil && parent.schema != nil &&
-		parent.schema.Kind == schema.List && at < parent.lkeyN && parent.lkeyFrozen == nil {
-		amount = uint64(parent.lkeyN) //nolint:gosec // a child count is nonnegative
-	}
-	bound, err := t.linkBound(parent, sib, n, at)
-	return addHashBound(amount, bound), err
+	return t.linkBound(parent, sib, n, at)
 }
 
 // indexAddPlacedBound is the storage and index work of n's resolved link, the labelling
@@ -2002,8 +1997,8 @@ func (t *Tree) linkPlaced(parent *Node, sib *siblings, n *Node, p siblingPlaceme
 	if t.work.hashErr != nil {
 		return t.work.hashErr
 	}
-	if n.schema != nil && !n.schema.IsKey() && parent != nil && parent.schema != nil &&
-		parent.schema.Kind == schema.List && at < parent.lkeyN && parent.lkeyFrozen == nil {
+	if (n.schema == nil || !n.schema.IsKey()) && parent != nil && parent.schema != nil &&
+		parent.schema.Kind == schema.List && p.docAt < parent.lkeyN && parent.lkeyFrozen == nil {
 		// Displacing a captured prefix copies its nodes before publishing the
 		// non-key. Reserve that work while the insertion can still fail cleanly.
 		if err := t.work.chargeHash(uint64(parent.lkeyN)); err != nil { //nolint:gosec // a child count is nonnegative
@@ -2073,6 +2068,10 @@ func (t *Tree) linkPlaced(parent *Node, sib *siblings, n *Node, p siblingPlaceme
 		n.detachedRB, n.detachedGroup = nil, nil
 	}
 	hadHT := sib.ht != nil
+	t.beforeKeyLink(parent, n, p.docAt)
+	if t.work.hashErr != nil {
+		return t.work.hashErr
+	}
 	switch n.schema {
 	case nil:
 		if err := sib.insertPlaced(p, n); err != nil {
@@ -2103,7 +2102,6 @@ func (t *Tree) linkPlaced(parent *Node, sib *siblings, n *Node, p siblingPlaceme
 			t.markUnordered(sib)
 		}
 		t.markMixed(sib, parent, n) // a LAST copy appends without an anchor
-		t.beforeKeyLink(parent, n, at)
 		if err := sib.insertPlaced(p, n); err != nil {
 			return err
 		}
@@ -2140,11 +2138,15 @@ func (t *Tree) linkPlacedBound(parent *Node, sib *siblings, n *Node, p siblingPl
 	// link repeats this charged probe before applying its reserved work, and prepays the index
 	// edit's point bound with it.
 	amount = addHashBound(amount, t.indexAddPlacedBound(parent, sib, n, p))
+	if (n.schema == nil || !n.schema.IsKey()) && parent != nil && parent.schema != nil &&
+		parent.schema.Kind == schema.List && p.docAt < parent.lkeyN && parent.lkeyFrozen == nil {
+		// linkPlaced charges this snapshot before opening its prepaid suffix.
+		amount = addHashBound(amount, uint64(parent.lkeyN)) //nolint:gosec // a child count is nonnegative
+	}
 	return addHashBound(amount, t.work.hashUsed-before), err
 }
 
 func (t *Tree) linkApplyPlacedBound(parent *Node, sib *siblings, n *Node, p siblingPlacement) (uint64, error) {
-	at := p.at
 	amount, err := rbAdoptionBound(sib, n, &t.work)
 	if err != nil {
 		return 0, err
@@ -2170,7 +2172,7 @@ func (t *Tree) linkApplyPlacedBound(parent *Node, sib *siblings, n *Node, p sibl
 		}
 	}
 	if n.schema != nil && n.schema.IsKey() && parent != nil {
-		a, err := t.work.termHashPlacedBound(parent, n.schema, n.value, at, sib.linkDocPos(p))
+		a, err := t.work.termHashPlacedBound(parent, n.schema, n.value, sib.linkDocPos(p))
 		if err != nil {
 			t.work.hashErr = err
 			return 0, err
@@ -2178,7 +2180,7 @@ func (t *Tree) linkApplyPlacedBound(parent *Node, sib *siblings, n *Node, p sibl
 		amount = addHashBound(amount, a)
 	}
 	if n.schema != nil && !n.schema.IsKey() && parent != nil && parent.schema != nil &&
-		parent.schema.Kind == schema.List && (parent.keyN < len(parent.schema.Keys) || at < len(parent.schema.Keys)) {
+		parent.schema.Kind == schema.List && (parent.keyN < len(parent.schema.Keys) || p.docAt < len(parent.schema.Keys)) {
 		// keyLinked → reindexComparedParent: a non-key can enter the compared prefix (incomplete,
 		// or made so by its position among the keys) and reindex the list in its own siblings
 		// (a term the prepaid scope exposed)
@@ -2823,7 +2825,7 @@ func unlink(n *Node) error {
 			}
 		}
 		if n.isKey() {
-			beforeKeyUnlink(n.parent, i, sib.work)
+			beforeKeyUnlink(n.parent, plan.docAt, sib.work)
 		}
 		sib.leaderUnlink(n, i, true) // lyd_unlink_hash observes n while it is still linked
 		survives := false

@@ -186,14 +186,14 @@ func (w *workCounter) termHashBound(parent *Node, sn *schema.Node, value types.V
 	}
 	at := insertionAt[0]
 	p := parent.kids.linkPlacement(&Node{schema: sn}, at)
-	return w.termHashPlacedBound(parent, sn, value, at, parent.kids.linkDocPos(p))
+	return w.termHashPlacedBound(parent, sn, value, parent.kids.linkDocPos(p))
 }
 
-func (w *workCounter) termHashPlacedBound(parent *Node, sn *schema.Node, value types.Value, at, docAt int) (uint64, error) {
+func (w *workCounter) termHashPlacedBound(parent *Node, sn *schema.Node, value types.Value, docAt int) (uint64, error) {
 	if !sn.IsKey() || parent == nil || parent.schema == nil {
 		return 0, nil
 	}
-	if at < parent.lkeyN && parent.lkeyFrozen == nil {
+	if docAt < parent.lkeyN && parent.lkeyFrozen == nil {
 		// beforeKeyLink copies the captured prefix before publishing the key.
 		prefix := uint64(parent.lkeyN) //nolint:gosec // a count of existing nodes cannot be negative
 		if err := w.chargeHash(prefix); err != nil {
@@ -209,7 +209,7 @@ func (w *workCounter) termHashPlacedBound(parent *Node, sn *schema.Node, value t
 	if err != nil || !ok {
 		return 0, err
 	}
-	// keyLinked can restart from the list's schema prefix after insertion.
+	// keyLinked can restart from the list's physical prefix after insertion.
 	schemaHashWork(parent.schema, w)
 	if w.hashErr != nil {
 		return 0, w.hashErr
@@ -217,18 +217,18 @@ func (w *workCounter) termHashPlacedBound(parent *Node, sn *schema.Node, value t
 	// A displaced snapshot or an incomplete old prefix rehashes all leading
 	// keys. An intact prefix hashes only the new suffix.
 	start := parent.lkeyN
-	if !parent.lkeyOK || parent.lkeyDirty || parent.lkeyFrozen != nil || at < parent.lkeyN {
+	if !parent.lkeyOK || parent.lkeyDirty || parent.lkeyFrozen != nil || docAt < parent.lkeyN {
 		start = 0
 	}
 	var amount uint64
-	// the old children from start, in order, with the new one at at (start <= at)
-	old := parent.kids.schemaSpan().Slice(start, parent.kids.SchemaLen()).cursor()
+	// the old children from start, in order, with the new one at docAt (when it lies in the prefix)
+	old := parent.kids.docSpan().Slice(start, parent.kids.Len()).cursor()
 	for i := start; i <= parent.kids.SchemaLen(); i++ {
 		w.Add(1)
 		if err := w.chargeHash(1); err != nil {
 			return 0, err
 		}
-		if i == at {
+		if i == docAt {
 			amount = addHashBound(amount, types.HashLYBWorkBound(value))
 			continue
 		}
@@ -239,7 +239,7 @@ func (w *workCounter) termHashPlacedBound(parent *Node, sn *schema.Node, value t
 		amount = addHashBound(amount, types.HashLYBWorkBound(c.value))
 	}
 	if ps := parent.siblingsOf(); ps != nil && ps.ht != nil {
-		amount = addHashBound(amount, indexInsertedBound(parent, &Node{schema: sn, value: value}, at, w))
+		amount = addHashBound(amount, indexInsertedBound(parent, &Node{schema: sn, value: value}, docAt, w))
 		if w.hashErr != nil {
 			return 0, w.hashErr
 		}
@@ -290,7 +290,7 @@ func (w *workCounter) checkChangedHash(n *Node, value types.Value) (uint64, erro
 		}
 	}
 	var amount uint64
-	for _, key := range n.parent.kids.SchemaAll() {
+	for _, key := range n.parent.kids.docSpan().Slice(0, n.parent.kids.SchemaLen()).All() {
 		w.Add(1)
 		if err := w.chargeHash(1); err != nil {
 			return 0, err
@@ -356,7 +356,7 @@ func (w *workCounter) checkRefreshHash(n *Node) error {
 		return nil
 	}
 	var amount uint64
-	for _, key := range n.kids.SchemaAll() {
+	for _, key := range n.kids.docSpan().Slice(0, n.kids.SchemaLen()).All() {
 		w.Add(1)
 		if err := w.chargeHash(1); err != nil {
 			return err

@@ -100,19 +100,27 @@ func (n *Node) refreshHash(work *workCounter) {
 	n.hash = types.FinishHash32(h)
 }
 
+// keyN counts consecutive physical key children, stopping at the first opaque or non-key.
+// Physical key scans need at most SchemaLen positions: every key is schema-bound.
+// This also preserves the ordinary layout's work without scanning its opaque tail.
+// An unfrozen lkeyN is a physical prefix too; displacement freezes the historical input.
 // snapshotKeys is the typed input of the last keyed-list lyd_hash call. A live
 // prefix avoids copying on every repeated last key; displacement freezes it once.
 func snapshotKeys(n *Node) siblingSpan {
 	if n.lkeyFrozen != nil {
 		return spanOf(n.lkeyFrozen)
 	}
-	return n.kids.schemaSpan().Slice(0, n.lkeyN)
+	return n.kids.docSpan().Slice(0, n.lkeyN)
 }
 
-func (t *Tree) beforeKeyLink(list, child *Node, at int) {
+func (t *Tree) beforeKeyLink(list, child *Node, docAt int) {
 	// lyd_insert_hash leaves children of an opaque parent unhashed
 	// (tree_data_hash.c:173-175); it has no list-key prefix state either.
-	if list == nil || list.schema == nil || list.schema.Kind != schema.List || list.schema.Keyless() || child.schema == nil {
+	if list == nil || list.schema == nil || list.schema.Kind != schema.List || list.schema.Keyless() {
+		return
+	}
+	// Opaque tails cannot change either prefix; preserve the ordinary append path.
+	if child.schema == nil && docAt >= list.keyN && (list.lkeyFrozen != nil || docAt >= list.lkeyN) {
 		return
 	}
 	t.work.Add(1)
@@ -122,17 +130,17 @@ func (t *Tree) beforeKeyLink(list, child *Node, at int) {
 	if err := child.touch(); err != nil {
 		return
 	}
-	if at < list.lkeyN && list.lkeyFrozen == nil {
+	if docAt < list.lkeyN && list.lkeyFrozen == nil {
 		t.work.Add(int64(list.lkeyN))
 		list.lkeyFrozen = snapshotKeys(list).Collect()
 	}
-	if !child.schema.IsKey() {
-		if at < list.keyN {
-			list.keyN = at
+	if child.schema == nil || !child.schema.IsKey() {
+		if docAt < list.keyN {
+			list.keyN = docAt
 		}
 		return
 	}
-	if at <= list.keyN {
+	if docAt <= list.keyN {
 		list.keyN++
 	}
 	child.keySlot = 0
@@ -219,7 +227,7 @@ func resetListKey(work *workCounter, list *Node) {
 		return
 	}
 	list.keyN = 0
-	for _, key := range list.kids.SchemaAll() {
+	for _, key := range list.kids.docSpan().Slice(0, list.kids.SchemaLen()).All() {
 		if work != nil {
 			work.Add(1)
 		}
@@ -238,20 +246,20 @@ func resetListKey(work *workCounter, list *Node) {
 
 // beforeKeyUnlink preserves the last native hash input before the child slice
 // moves. lyd_unlink_ignore_lyds does not rehash the parent (tree_data.c:1187-1239).
-func beforeKeyUnlink(list *Node, at int, work *workCounter) {
+func beforeKeyUnlink(list *Node, docAt int, work *workCounter) {
 	if list == nil || list.schema == nil || list.schema.Kind != schema.List {
 		return
 	}
 	if err := list.touch(); err != nil {
 		return
 	}
-	if at < list.lkeyN && list.lkeyFrozen == nil {
+	if docAt < list.lkeyN && list.lkeyFrozen == nil {
 		if work != nil {
 			work.Add(int64(list.lkeyN))
 		}
 		list.lkeyFrozen = snapshotKeys(list).Collect()
 	}
-	if at < list.keyN {
+	if docAt < list.keyN {
 		list.keyN--
 	}
 }
@@ -264,7 +272,7 @@ func exposeListKeys(work *workCounter, list *Node) {
 		return
 	}
 	// a removal reserves the walk: prepareUnlink, or a batch's charge per sibling set
-	for _, key := range list.kids.Range(list.keyN, list.kids.SchemaLen()) {
+	for _, key := range list.kids.docSpan().Slice(list.keyN, list.kids.SchemaLen()).All() {
 		if work != nil {
 			work.Add(1)
 		}

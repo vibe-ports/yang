@@ -11,7 +11,7 @@ type unlinkPlan struct {
 	node                     *Node
 	sib                      *siblings
 	gen                      uint64
-	at                       int
+	at, docAt                int
 	prev, next, tail, leader *Node
 	// left is the physical leader of the run a removed separator joins to the next one, found
 	// by a charged walk back from prev; nil when n separates no run or no run has an RB tree
@@ -79,15 +79,28 @@ func prepareUnlink(n *Node) (*unlinkPlan, error) {
 		}
 		left = l.Value
 	}
-	if p := n.parent; n.schema != nil && !n.isKey() && p != nil && p.schema != nil &&
-		p.schema.Kind == schema.List && at == p.keyN {
-		// detach exposes the keys n preceded (exposeListKeys), however many repeat: this walk
-		// pays for itself and for that one, before any write
-		for c := sib.st.seq.Next(h); c != nil && c.Value.isKey(); c = sib.st.seq.Next(c) {
-			if err := w.chargeHash(2); err != nil {
+	docAt := at
+	if n.schema == nil {
+		docAt += sib.SchemaLen()
+	}
+	if p := n.parent; p != nil && p.schema != nil && p.schema.Kind == schema.List {
+		if sib.st.interleaved() {
+			opened, err := w.openRead(rbHeight(sib.Len()) + 1)
+			if err != nil {
 				return nil, err
 			}
-			sib.visit()
+			docAt, _ = sib.st.seq.Rank(h)
+			w.closeRead(opened)
+		}
+		if !n.isKey() && docAt == p.keyN {
+			// Removing the physical prefix separator (including an opaque child)
+			// exposes this run. Pay for this walk and exposeListKeys before writes.
+			for c := sib.st.seq.Next(h); c != nil && c.Value.isKey(); c = sib.st.seq.Next(c) {
+				if err := w.chargeHash(2); err != nil {
+					return nil, err
+				}
+				sib.visit()
+			}
 		}
 	}
 	tail := sib.nativeTail()
@@ -113,7 +126,7 @@ func prepareUnlink(n *Node) (*unlinkPlan, error) {
 	if err := w.chargeHash(amount); err != nil {
 		return nil, err
 	}
-	p := &unlinkPlan{node: n, sib: sib, gen: sib.gen, at: at, prev: prev, next: next, tail: tail, left: left, order: order, leader: leader}
+	p := &unlinkPlan{node: n, sib: sib, gen: sib.gen, at: at, docAt: docAt, prev: prev, next: next, tail: tail, left: left, order: order, leader: leader}
 	w.unlinkPlan = p
 	return p, nil
 }
