@@ -667,8 +667,10 @@ func (t *Tree) crossContextSortedPos(sib *siblings, n *Node, lo int, placed *sib
 	hi := lo + 1
 	if !sib.rbTree[leader] {
 		for _, c := range l.Slice(hi, max(hi, sib.runPiece(lo, l.Len()))).All() {
-			if err := t.work.chargeHash(1); err != nil {
-				return lo, false
+			if sib.st.interleaved() {
+				if err := t.work.chargeHash(1); err != nil {
+					return lo, false
+				}
 			}
 			if c.schema != leader.schema {
 				break
@@ -838,13 +840,11 @@ func (t *Tree) rbPos(sib *siblings, n *Node, lo, hi int, compare func(*Node, *No
 		}
 		order = &dirtyOrder{nodes: make(map[*Node]*dirtyOrderNode, hi-lo+1)}
 		for _, a := range l.Slice(lo, hi).All() {
-			if sib.order != nil && a.schema != leader.schema {
+			if sib.st.interleaved() && sib.order != nil && a.schema != leader.schema {
 				// Reordering several schema identities can change their gap summaries.
 				if d := sib.order.entries[leader.schema]; d == nil || d.gaps != 0 {
 					rebuildCost = orderBuildBound(sib.Len())
-					if sib.st.interleaved() {
-						rebuildCost = addHashBound(rebuildCost, 2*uint64(sib.Len())) //nolint:gosec // a length is nonnegative
-					}
+					rebuildCost = addHashBound(rebuildCost, 2*uint64(sib.Len())) //nolint:gosec // a length is nonnegative
 				}
 			}
 			if _, ok := t.rbAdd(order, a, compare); !ok {
@@ -949,18 +949,19 @@ func (t *Tree) rbPos(sib *siblings, n *Node, lo, hi int, compare func(*Node, *No
 			if err != nil {
 				return lo, false
 			}
-			if !sib.st.interleaved() {
-				err = t.work.chargeHash(uint64(sib.Len())) //nolint:gosec // a length is nonnegative
-			}
-			if err == nil {
-				err = sib.opBuild(t)
-			}
+			err = sib.opBuild(t)
 			t.work.closeCredit(nested)
 			if err != nil {
 				return lo, false
 			}
 		} else if sib.order != nil {
-			sib.opRebuild() // same-schema republication and refreshRB updated the affected handles
+			if sib.st.interleaved() {
+				sib.opRebuild() // same-schema republication refreshed the affected handles
+			} else if d := sib.order.entries[leader.schema]; d != nil && d.gaps == 0 {
+				sib.opRebuild() // ordinary layout keeps its original rebuild and accounting
+			} else if err := sib.opBuild(t); err != nil {
+				return lo, false
+			}
 		}
 		sib.rbOrders[group] = order
 	}
@@ -1052,7 +1053,7 @@ func (t *Tree) linkBuildsIndex(parent *Node, sib *siblings, n *Node, p siblingPl
 	case sib.order != nil:
 		return false
 	case n.schema == nil:
-		return isOp(schemaOf(parent)) || sib.schemaUnordered || sib.linkMixes(n, p)
+		return isOp(schemaOf(parent)) || sib.st.interleaved() && sib.schemaUnordered || sib.linkMixes(n, p)
 	case opChild(n.schema) || sib.schemaUnordered || t.mixedSwitch(sib, parent, n) || sib.linkMixes(n, p):
 		return true
 	}
@@ -1105,8 +1106,10 @@ func (t *Tree) runBoundsMode(sib *siblings, n *Node, inserting bool) (lo, hi int
 			}
 			hi = lo
 			for _, c := range l.Slice(lo, sib.runPiece(lo, l.Len())).All() {
-				if err := t.work.chargeHash(1); err != nil {
-					return 0, 0
+				if sib.st.interleaved() {
+					if err := t.work.chargeHash(1); err != nil {
+						return 0, 0
+					}
 				}
 				if !schemaLookupMatch(c.schema, n.schema, sib.ht != nil) {
 					break
@@ -1149,8 +1152,10 @@ func (t *Tree) runBoundsMode(sib *siblings, n *Node, inserting bool) (lo, hi int
 		}
 		hi = lo
 		for _, c := range l.Slice(lo, sib.runPiece(lo, l.Len())).All() {
-			if err := t.work.chargeHash(1); err != nil {
-				return 0, 0
+			if sib.st.interleaved() {
+				if err := t.work.chargeHash(1); err != nil {
+					return 0, 0
+				}
 			}
 			sib.visit()
 			if c.schema != leader.schema {
@@ -3208,8 +3213,8 @@ func (t *Tree) unlinkAllDefaults(ns, defaults []*Node) (result error) {
 				prev = c
 			}
 		} else {
-			var prev *Node
 			for _, nodes := range []siblingSpan{sib.schemaSpan(), sib.opaqueSpan()} {
+				var prev *Node
 				for _, c := range nodes.All() {
 					if prev != nil {
 						l.prev[c], l.next[prev] = prev, c
@@ -3234,26 +3239,36 @@ func (t *Tree) unlinkAllDefaults(ns, defaults []*Node) (result error) {
 				return
 			}
 			// Removing separators joins physical runs, never their independent retained trees.
-			// Walk each suffix once. An interior metadata owner needs the same completeness
-			// check as the physical first node; checking just that first node loses later joins.
-			span := sib.schemaSpan()
 			if sib.st.interleaved() {
-				span = sib.docSpan()
-			}
-			var right *Node
-			var group *rbGroup
-			uniform := false
-			for _, n := range span.Reverse() {
-				t.work.Add(1)
-				if n.schema == nil || right == nil || n.schema != right.schema {
-					group, uniform = n.rbGroup, n.inRB
-				} else {
-					uniform = uniform && n.inRB && n.rbGroup == group
+				// Walk each suffix once. An interior metadata owner needs the same completeness
+				// check as the physical first node; checking just that first node loses later joins.
+				span := sib.docSpan()
+				var right *Node
+				var group *rbGroup
+				uniform := false
+				for _, n := range span.Reverse() {
+					t.work.Add(1)
+					if n.schema == nil || right == nil || n.schema != right.schema {
+						group, uniform = n.rbGroup, n.inRB
+					} else {
+						uniform = uniform && n.inRB && n.rbGroup == group
+					}
+					if n.schema != nil && sib.rbTree[n] && (!uniform || sib.rbGroups[n] != group) {
+						markUnsorted(sib, n)
+					}
+					right = n
 				}
-				if n.schema != nil && sib.rbTree[n] && (!uniform || sib.rbGroups[n] != group) {
-					markUnsorted(sib, n)
+			} else {
+				var leader *Node
+				for _, n := range sib.SchemaAll() {
+					t.work.Add(1)
+					if leader == nil || leader.schema != n.schema {
+						leader = n
+					}
+					if sib.rbTree[leader] && (!n.inRB || n.rbGroup != sib.rbGroups[leader]) {
+						markUnsorted(sib, leader)
+					}
 				}
-				right = n
 			}
 			if sib.order != nil {
 				if err := sib.opBuild(t); err != nil {

@@ -81,6 +81,10 @@ main(int argc, char **argv)
             struct lyd_node *copy = NULL;
             rc = lyd_dup_single(tree, NULL, LYD_DUP_RECURSIVE | LYD_DUP_WITH_FLAGS, &copy);
             if (!rc) { lyd_free_all(tree); tree = copy; }
+        } else if (!strncmp(argv[i], "move=", 5)) {
+            n = child_at(tree, (unsigned)strtoul(argv[i] + 5, NULL, 10));
+            if (!n) rc = LY_EINVAL;
+            else rc = lyd_insert_child(tree, n);
         } else if (!strncmp(argv[i], "del=", 4)) {
             unsigned at = (unsigned)strtoul(argv[i] + 4, NULL, 10);
             n = first_node(tree);

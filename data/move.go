@@ -487,10 +487,6 @@ func (t *Tree) linkOrigin(n *Node) (restore func(), arm func(dst *siblings) (dis
 	var journaled, stays bool
 	var left *Node
 	var leftUns, leftHad bool
-	var moreLeft []struct {
-		node          *Node
-		unsorted, had bool
-	}
 	armOrigin := func() error {
 		plan, err := prepareUnlink(n)
 		if err != nil {
@@ -509,23 +505,43 @@ func (t *Tree) linkOrigin(n *Node) (restore func(), arm func(dst *siblings) (dis
 			if left = plan.left; left != nil {
 				leftUns, leftHad = sib.unsorted[left]
 			}
-			if plan.moreLeft != nil {
-				if err := t.work.chargeHash(uint64(len(plan.moreLeft.nodes))); err != nil {
-					return err
-				}
-				for _, owner := range plan.moreLeft.nodes {
-					t.work.Add(1)
-					unsorted, had := sib.unsorted[owner]
-					moreLeft = append(moreLeft, struct {
-						node          *Node
-						unsorted, had bool
-					}{owner, unsorted, had})
-				}
-			}
 		}
 		recordUndo, recordRecovery, err = linkRecordOrigin(sib, n, recordNext, &t.work)
 		if err != nil {
 			return err
+		}
+		if plan != nil && plan.moreLeft != nil {
+			// Keep the snapshot and its closure environment entirely on the cold path.
+			// Wrapping recordUndo leaves ordinary arm/restore captures identical to main.
+			if err := t.work.chargeHash(uint64(len(plan.moreLeft.nodes))); err != nil {
+				return err
+			}
+			moreLeft := make([]struct {
+				node          *Node
+				unsorted, had bool
+			}, len(plan.moreLeft.nodes))
+			for i, owner := range plan.moreLeft.nodes {
+				t.work.Add(1)
+				moreLeft[i].node = owner
+				moreLeft[i].unsorted, moreLeft[i].had = sib.unsorted[owner]
+			}
+			if !journaled {
+				recordRecovery = addHashBound(recordRecovery, uint64(len(moreLeft)))
+			}
+			previous := recordUndo
+			recordUndo = func() {
+				if err := sib.touch(); err != nil {
+					return
+				}
+				for _, old := range moreLeft {
+					if old.had {
+						sib.unsorted[old.node] = old.unsorted
+					} else {
+						delete(sib.unsorted, old.node)
+					}
+				}
+				previous()
+			}
 		}
 		metaUndo, err = rbMetadataOrigin(sib, n, next, &t.work)
 		if err != nil {
@@ -548,7 +564,6 @@ func (t *Tree) linkOrigin(n *Node) (restore func(), arm func(dst *siblings) (dis
 			cost = addHashBound(cost, binding)
 			recovery = addHashBound(4*cost+64, sib.transferCost(next, n))
 			recovery = addHashBound(recovery, recordRecovery)
-			recovery = addHashBound(recovery, uint64(len(moreLeft)))
 			if err := t.work.chargeHash(recovery); err != nil {
 				return err
 			}
@@ -676,13 +691,6 @@ func (t *Tree) linkOrigin(n *Node) (restore func(), arm func(dst *siblings) (dis
 				sib.unsorted[left] = leftUns
 			default:
 				delete(sib.unsorted, left)
-			}
-			for _, old := range moreLeft {
-				if old.had {
-					sib.unsorted[old.node] = old.unsorted
-				} else {
-					delete(sib.unsorted, old.node)
-				}
 			}
 			recordUndo()
 			linksUndo() // unlink's freeLinks: both endpoints of every reciprocal link

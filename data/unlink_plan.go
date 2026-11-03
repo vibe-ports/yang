@@ -123,7 +123,7 @@ func prepareUnlink(n *Node) (*unlinkPlan, error) {
 		// physical/hash mutation, including a NULL-root item made by duplication.
 		groups := uint64(len(sib.rbMore[n])) + 1
 		// The selected item leaves n before runGone when the native branch transfers it.
-		if order != nil && leader == n && next != nil && !unlinkAlone(n, prev, next, tail) {
+		if sib.st.interleaved() && order != nil && leader == n && next != nil && !unlinkAlone(n, prev, next, tail) {
 			groups--
 		}
 		amount = addHashBound(amount, 4*groups)

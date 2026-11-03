@@ -122,3 +122,12 @@ the ordinary plan at 88 bytes on amd64 (the original 96-byte allocation class).
 Selected-piece scaling, actual prepaid-credit consumption, trailing opaque work
 comparisons and allocation-byte probes supplement the existing rollback and native
 replays. Error propagation at boundary consumers preserves budget refusals.
+
+Ordinary boundary scans retain their original quota even for equivalent foreign-context
+schemas and schema-separated fallback runs. Physical scan debits, rebuild reservations,
+and opaque-gap maintenance stay on the interleaved branch; ordinary removal keeps its
+original conservative allowances. Recovery snapshots for interior owners wrap the existing
+record undo only when such owners exist, leaving ordinary escaping closure environments
+unchanged. Portable probes compare credit, visits and allocation bytes with part 4 at
+64/256 siblings and both journal modes; native replay includes ordinary relocation and
+cold local/foreign insertion.

@@ -50,6 +50,8 @@ func TestRunNativeReplay(t *testing.T) {
 		name         string
 		input, steps []string
 	}{
+		{"ordinary-linked-leaf", []string{"a=x"}, []string{"move=0", "move=0", "move=0"}},
+		{"ordinary-linked-leaf-journaled", []string{"a=x"}, []string{"move=0", "move=0", "move=0"}},
 		{"joined-null-successor-queues", []string{"ll=1", "ll=2", "zz", "ll=3", "ll=4"}, []string{"add=0", "add=5", "del=3", "dup", "del=0", "del=0", "del=0"}},
 		{"selected-retained-64", runSelectedInput(64), []string{"add=65", "add=66"}},
 		{"selected-retained-4096", runSelectedInput(4096), []string{"add=4097", "add=4098"}},
@@ -93,6 +95,10 @@ func TestRunNativeReplay(t *testing.T) {
 				t.Logf("native diagnostics: %s", diagnostics.String())
 			}
 			tr, c := runTree(t, set, tc.input...)
+			var journal *hashTransaction
+			if tc.name == "ordinary-linked-leaf-journaled" {
+				journal = beginHashTransaction(tr)
+			}
 			var got strings.Builder
 			printState := func() { got.WriteString(runNativeState(tr.childrenOf(c))) }
 			printState()
@@ -120,6 +126,8 @@ func TestRunNativeReplay(t *testing.T) {
 						if err == nil {
 							err = tr.linkPlaced(c, &c.kids, n, p)
 						}
+					} else if op == "move" {
+						err = tr.Insert(c, c.kids.docSpan().At(at))
 					} else {
 						err = c.kids.docSpan().At(at).Unlink()
 					}
@@ -130,6 +138,10 @@ func TestRunNativeReplay(t *testing.T) {
 				opidxAssertTreeInvariant(t, tr)
 				checkTreeRetainedRB(t, tr)
 				printState()
+			}
+			journal.end(&err)
+			if err != nil {
+				t.Fatal(err)
 			}
 			if got.String() != string(native) {
 				t.Fatalf("native:\n%sGo:\n%s", native, got.String())
@@ -165,50 +177,55 @@ func TestRunNativeStoragePreflight(t *testing.T) {
 	const topSchema = `module run-test {yang-version 1.1; namespace "urn:run-test"; prefix r; leaf-list ll {type uint32;} }`
 	ctx, probe, model := runNativeProbe(t, topSchema)
 	a, b := reviewDiffSet(t, topSchema), reviewDiffSet(t, topSchema)
-	for _, foreign := range []bool{false, true} {
-		for _, count := range []int{64, 256} {
-			t.Run(fmt.Sprintf("foreign=%t/n=%d", foreign, count), func(t *testing.T) {
-				tr := newTree(a)
-				if _, err := tr.NewTerm(nil, "run-test:ll", "1", NewOptions{}); err != nil {
-					t.Fatal(err)
-				}
-				mustLink(t, tr.link(nil, &tr.top, newOpaque(opaque{Name: "zz", ModuleNS: "urn:run-test", Value: "u"}), -1))
-				var xml strings.Builder
-				xml.WriteString(`<ll xmlns="urn:run-test">1</ll><zz xmlns="urn:run-test">u</zz>`)
-				for i := range count {
-					value := strconv.Itoa(100 + i)
-					xml.WriteString(`<ll xmlns="urn:run-test">` + value + `</ll>`)
-					n := retainedRBTerm(t, tr.top.At(0).schema, value)
-					mustLink(t, tr.linkPlaced(nil, &tr.top, n, tr.top.physicalPlacement(n, nil)))
-				}
-				got := runNativeState(&tr.top)
-				source := newTree(a)
-				op := "insert=60"
-				if foreign {
-					source = newTree(b)
-					op = "foreign=60"
-				}
-				n, err := source.NewTerm(nil, "run-test:ll", "60", NewOptions{})
-				if err != nil {
-					t.Fatal(err)
-				}
-				mustLink(t, n.Unlink())
-				mustLink(t, tr.Insert(nil, n))
-				got += runNativeState(&tr.top)
-				command := exec.CommandContext(ctx, probe, model, xml.String(), op)
-				var diagnostics bytes.Buffer
-				command.Stderr = &diagnostics
-				native, err := command.Output()
-				if err != nil {
-					t.Fatalf("native: %v: %s", err, diagnostics.String())
-				}
-				if got != string(native) {
-					t.Fatalf("native:\n%sGo:\n%s", native, got)
-				}
-				checkTreeRetainedRB(t, tr)
-				opidxAssertTreeInvariant(t, tr)
-				t.Log("detached insertion and selected metadata match pinned native")
-			})
+	for _, interleaved := range []bool{false, true} {
+		for _, foreign := range []bool{false, true} {
+			for _, count := range []int{64, 256} {
+				t.Run(fmt.Sprintf("interleaved=%t/foreign=%t/n=%d", interleaved, foreign, count), func(t *testing.T) {
+					tr := newTree(a)
+					if _, err := tr.NewTerm(nil, "run-test:ll", "1", NewOptions{}); err != nil {
+						t.Fatal(err)
+					}
+					var xml strings.Builder
+					xml.WriteString(`<ll xmlns="urn:run-test">1</ll>`)
+					if interleaved {
+						mustLink(t, tr.link(nil, &tr.top, newOpaque(opaque{Name: "zz", ModuleNS: "urn:run-test", Value: "u"}), -1))
+						xml.WriteString(`<zz xmlns="urn:run-test">u</zz>`)
+					}
+					for i := range count {
+						value := strconv.Itoa(100 + i)
+						xml.WriteString(`<ll xmlns="urn:run-test">` + value + `</ll>`)
+						n := retainedRBTerm(t, tr.top.At(0).schema, value)
+						mustLink(t, tr.linkPlaced(nil, &tr.top, n, tr.top.physicalPlacement(n, nil)))
+					}
+					got := runNativeState(&tr.top)
+					source := newTree(a)
+					op := "insert=60"
+					if foreign {
+						source = newTree(b)
+						op = "foreign=60"
+					}
+					n, err := source.NewTerm(nil, "run-test:ll", "60", NewOptions{})
+					if err != nil {
+						t.Fatal(err)
+					}
+					mustLink(t, n.Unlink())
+					mustLink(t, tr.Insert(nil, n))
+					got += runNativeState(&tr.top)
+					command := exec.CommandContext(ctx, probe, model, xml.String(), op)
+					var diagnostics bytes.Buffer
+					command.Stderr = &diagnostics
+					native, err := command.Output()
+					if err != nil {
+						t.Fatalf("native: %v: %s", err, diagnostics.String())
+					}
+					if got != string(native) {
+						t.Fatalf("native:\n%sGo:\n%s", native, got)
+					}
+					checkTreeRetainedRB(t, tr)
+					opidxAssertTreeInvariant(t, tr)
+					t.Log("detached insertion and selected metadata match pinned native")
+				})
+			}
 		}
 	}
 }

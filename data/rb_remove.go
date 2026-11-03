@@ -256,6 +256,22 @@ func (s *siblings) nativeTail() *Node {
 // removalWorkCost follows removeRBNode's branches: an alone leader keeps its metadata,
 // a removed leader transfers it, and only removing the last topology member compacts it.
 func (s *siblings) removalWorkCost(n, leader, prev, next, tail *Node, order *dirtyOrder) uint64 {
+	if !s.st.interleaved() {
+		// Ordinary layouts retain main's quota, including its conservative transfer
+		// and queue allowances. Exact physical-branch accounting is cold.
+		// Main's ordinary schema scan stopped before the opaque partition.
+		if next != nil && next.schema == nil {
+			next = nil
+		}
+		cost := s.transferCost(leader, next)
+		if order.nodes[n] != nil {
+			cost = addHashBound(cost, order.removalBound())
+		}
+		if leader != n {
+			cost = addHashBound(cost, 4*(uint64(len(s.rbMore[leader]))+1))
+		}
+		return cost
+	}
 	if leader == n && unlinkAlone(n, prev, next, tail) {
 		return 0
 	}

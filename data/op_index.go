@@ -425,14 +425,16 @@ func (s *siblings) orderAddSchema(t *Tree, n *Node) error {
 
 func (s *siblings) orderAddOpaque(t *Tree, parent, n *Node) error {
 	if s.order == nil {
-		if !isOp(schemaOf(parent)) && !s.schemaUnordered {
-			return nil
+		if isOp(schemaOf(parent)) || s.st.interleaved() && s.schemaUnordered {
+			return s.orderBuild(t)
 		}
-		return s.orderBuild(t)
+		return nil
 	}
 	h := s.handle(n)
 	s.order.register(n, h)
-	s.opaqueSplit(h, 1)
+	if s.st.interleaved() {
+		s.opaqueSplit(h, 1)
+	}
 	return nil
 }
 
@@ -519,7 +521,7 @@ func (s *siblings) orderRemove(n *Node) (survives, survivesRB bool) {
 }
 
 func (s *siblings) orderRemoveOpaque(n *Node) {
-	if s.order != nil {
+	if s.st.interleaved() && s.order != nil {
 		if h := s.handle(n); h != nil {
 			s.opaqueSplit(h, -1)
 		}

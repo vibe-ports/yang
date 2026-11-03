@@ -5,6 +5,7 @@ package data
 import (
 	"fmt"
 	"runtime"
+	"runtime/debug"
 	"strconv"
 	"testing"
 	"unsafe"
@@ -148,6 +149,8 @@ func TestRunOrdinaryOpaqueUnlinkWork(t *testing.T) {
 func TestRunOrdinaryUnlinkBytes(t *testing.T) {
 	set := reviewDiffSet(t, runSchema)
 	tr, c := runTree(t, set)
+	gc := debug.SetGCPercent(-1)
+	defer debug.SetGCPercent(gc)
 	const count = 512
 	nodes := make([]*Node, count)
 	for i := range nodes {
@@ -237,7 +240,7 @@ func TestRunSelectedEndCredits(t *testing.T) {
 }
 
 // A singleton retained tree is detached intact: rb_remove_node never runs.
-// The plan may pay its rank, its own allocation and the metadata-queue inspection only.
+// Ordinary layouts keep main's conservative structural allowance nonetheless.
 func TestRunAloneUnlinkCredit(t *testing.T) {
 	set := reviewDiffSet(t, runSchema)
 	tr, c := runTree(t, set)
@@ -262,8 +265,8 @@ func TestRunAloneUnlinkCredit(t *testing.T) {
 	}
 	consumed := before - tr.work.credit
 	tr.work.closeCredit(nested)
-	if consumed != 6 {
-		t.Fatalf("alone plan consumed=%d, want 6 (no structural removal)", consumed)
+	if consumed != 70 {
+		t.Fatalf("ordinary alone plan consumed=%d, main=70", consumed)
 	}
 	mustLink(t, n.Unlink())
 	if n.detachedRB == nil {
@@ -355,10 +358,10 @@ func TestRunSuccessorQueueCompactionCredit(t *testing.T) {
 	consumed := before - tr.work.credit
 	tr.work.closeCredit(nested)
 	t.Logf("populated to NULL successor: plan consumed=%d", consumed)
-	// Two physical rank/plan units, 64 structural units, 8 transfer units,
-	// and two surviving metadata slots at four units each.
-	if consumed != 82 {
-		t.Fatalf("plan consumed=%d, want 82", consumed)
+	// The ordinary layout preserves main's 78-unit plan debit. Exact physical
+	// queue-compaction accounting applies only after interleaving.
+	if consumed != 78 {
+		t.Fatalf("ordinary plan consumed=%d, main=78", consumed)
 	}
 	mustLink(t, leader.Unlink())
 	if len(c.kids.metaGroups(next)) != 2 {
