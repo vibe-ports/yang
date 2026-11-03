@@ -136,7 +136,7 @@ func isUserOrdered(s *schema.Node) bool {
 // listPredicate is lyd_path_list_predicate: the key predicates of the list instance n.
 func listPredicate(n *Node) string {
 	var b strings.Builder
-	for _, k := range n.kids.SchemaAll() {
+	for _, k := range keyPrefix(n).All() {
 		if k.schema == nil || !k.schema.IsKey() {
 			break
 		}

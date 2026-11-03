@@ -216,14 +216,25 @@ func (w *workCounter) termHashPlacedBound(parent *Node, sn *schema.Node, value t
 	}
 	// A displaced snapshot or an incomplete old prefix rehashes all leading
 	// keys. An intact prefix hashes only the new suffix.
+	run := parent.keyRun()
+	if docAt <= run {
+		run++ // beforeKeyLink extends only the consecutive physical key run
+	}
 	start := parent.lkeyN
-	if !parent.lkeyOK || parent.lkeyDirty || parent.lkeyFrozen != nil || docAt < parent.lkeyN {
+	if restartKeyHash(parent, run, docAt < parent.lkeyN) {
 		start = 0
 	}
+	// The completion check and this value walk simulate the same physical link.
+	// In particular, a repeated key after an opaque tail can trigger a hash event
+	// without contributing its own value. Never reserve that value's byte length.
+	prefix := keyPrefix(parent)
+	limit := prefix.Len()
+	if docAt <= limit {
+		limit++
+	}
 	var amount uint64
-	// the old children from start, in order, with the new one at docAt (when it lies in the prefix)
-	old := parent.kids.docSpan().Slice(start, parent.kids.Len()).cursor()
-	for i := start; i <= parent.kids.SchemaLen(); i++ {
+	old := prefix.Slice(min(start, prefix.Len()), prefix.Len()).cursor()
+	for i := start; i < limit; i++ {
 		w.Add(1)
 		if err := w.chargeHash(1); err != nil {
 			return 0, err
@@ -290,7 +301,7 @@ func (w *workCounter) checkChangedHash(n *Node, value types.Value) (uint64, erro
 		}
 	}
 	var amount uint64
-	for _, key := range n.parent.kids.docSpan().Slice(0, n.parent.kids.SchemaLen()).All() {
+	for _, key := range keyPrefix(n.parent).All() {
 		w.Add(1)
 		if err := w.chargeHash(1); err != nil {
 			return 0, err
@@ -356,7 +367,7 @@ func (w *workCounter) checkRefreshHash(n *Node) error {
 		return nil
 	}
 	var amount uint64
-	for _, key := range n.kids.docSpan().Slice(0, n.kids.SchemaLen()).All() {
+	for _, key := range keyPrefix(n).All() {
 		w.Add(1)
 		if err := w.chargeHash(1); err != nil {
 			return err

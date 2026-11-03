@@ -135,3 +135,46 @@ not snapshot or reserve a transfer to that opaque node.
 Portable probes compare credit, visits and allocation bytes with part 4 at
 64/256 siblings and both journal modes; native replay includes ordinary relocation and
 cold local/foreign insertion.
+
+## Physical key prefixes and reservations
+
+Part 8 shares `keyPrefix` across native key hash preflights, unconditional hash
+resets, separator exposure, sort comparisons and their work bounds, path predicates,
+and instance comparison keys. It is the document prefix before the first opaque
+child; each caller stops at its first non-key. Ordinary layouts keep their previous
+schema-length span and counted visits. The first opaque position is a storage
+rank read, never a scan of the repeated-key suffix. `keyRun` uses PR 4's already
+physical `keyN`; it does not restore ref332's logical-key bookkeeping.
+
+`keysLead` remains the single declared-key completion predicate for reservation
+and application. Both receive the resolved document position from the same local
+`siblingPlacement`. Value reservation simulates insertion into `keyPrefix` at that
+position: a key beyond an opaque child can trigger a hash event when the declared
+prefix is complete, while contributing no bytes itself. Reservation and application
+also share the historical-prefix restart condition. Positional discriminators use
+document positions, including an opaque child within an incomplete copied prefix;
+an inner hash event reserves any exposed outer-list reindex as well.
+
+Unlinking a separator exposes consecutive physical keys without changing the
+stored hash, captured hash input, or native registration history. If the declared
+key prefix was already complete, removing a later separator also leaves every
+compared position unchanged. Both unlink forms therefore retain the existing
+comparison index, avoiding an unreserved scan of long key values. The next native
+hash event replaces or extends the historical input. Existing node touches and
+whole/narrow journals capture every prefix/slot write before mutation. No pending
+placement, reservation or source node is retained, and refused preflight publishes
+nothing. Tests enable overdraft panics and sweep public edit budget boundaries.
+
+Internal construction adapts the six key-prefix regressions from ref332; public
+Ordered parsing remains inactive. Live native replay uses repeated-key counts
+1, 3, 4 and 17 across parse, change, separator unlink and unlink-then-change,
+comparing stored hashes, key-run lengths, child counts and paths. A displaced
+multi-key prefix additionally checks native sorted insertion. The ordinary-work
+probe runs unchanged on origin/main with long, descending duplicate-heavy values
+and both journal modes, measuring hash work, visits and allocations.
+
+Excluded: lookup kernel and consumer routing, duplication/move/merge/diff routing,
+validation, codecs, Ordered producers, ambient placement and dead-node views.
+The shared path-predicate reader changes here; diff-specific key-copy loops remain
+for part 9. Several requested key bookkeeping and document-placement changes were
+already supplied by PR 4 and the PR 5 base and are retained rather than re-ported.

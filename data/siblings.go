@@ -642,15 +642,17 @@ func indexWorkBound(n, changed *Node, value *types.Value, work *workCounter) uin
 	return amount
 }
 
-func indexInsertedBound(list, inserted *Node, at int, work *workCounter) uint64 {
+// indexInsertedBound simulates insertion at a document position, just like the
+// positional discriminator. A logical schema rank can point past an opaque child.
+func indexInsertedBound(list, inserted *Node, docAt int, work *workCounter) uint64 {
 	if list == nil || list.schema == nil || list.schema.Kind != schema.List || list.schema.Keyless() {
 		return 0
 	}
 	var amount uint64
-	children := positionalChildren(list) // position i, then i-1 past at
+	children := positionalChildren(list) // position i, then i-1 past docAt
 	for i := range list.schema.Keys {
 		child := inserted
-		if i != at {
+		if i != docAt {
 			child = children.next()
 		}
 		if child == nil {
@@ -2222,7 +2224,7 @@ func compareInstanceKey(n *Node, typed, members bool) string {
 	if n.schema.Kind == schema.LeafList {
 		value(n.value)
 	} else {
-		for _, k := range n.kids.SchemaAll() {
+		for _, k := range keyPrefix(n).All() {
 			if !k.isKey() {
 				break
 			}

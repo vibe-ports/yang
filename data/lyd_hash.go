@@ -100,10 +100,31 @@ func (n *Node) refreshHash(work *workCounter) {
 	n.hash = types.FinishHash32(h)
 }
 
-// keyN counts consecutive physical key children, stopping at the first opaque or non-key.
-// Physical key scans need at most SchemaLen positions: every key is schema-bound.
-// This also preserves the ordinary layout's work without scanning its opaque tail.
-// An unfrozen lkeyN is a physical prefix too; displacement freezes the historical input.
+// keyPrefix is lyd_child's physical prefix before the first opaque child. Callers
+// stop at the first non-key. Ordinary layouts retain their schema-length span,
+// including any non-key that terminates the walk, and need no extra rank read.
+func keyPrefix(n *Node) siblingSpan {
+	limit := n.kids.SchemaLen()
+	if n.kids.st.interleaved() {
+		if h := n.kids.st.seq.FirstKind(false); h != nil {
+			limit, _ = n.kids.st.seq.Pos(h)
+		}
+	}
+	return n.kids.docSpan().Slice(0, limit)
+}
+
+// keyRun counts consecutive physical keys: keyN is maintained across both kinds
+// of separator, stopping at the first opaque or non-key child.
+// Do not reconstruct it from the logical schema ranks or scan repeated keys.
+func (n *Node) keyRun() int { return n.keyN }
+
+// restartKeyHash is shared by the prospective reservation and the hash event.
+// A copied/displaced snapshot can be longer than the current physical run;
+// extending its old running hash would retain values outside lyd_hash's input.
+func restartKeyHash(list *Node, run int, displaced bool) bool {
+	return !list.lkeyOK || list.lkeyFrozen != nil || list.lkeyDirty || displaced || list.lkeyN > run
+}
+
 // snapshotKeys is the typed input of the last keyed-list lyd_hash call. A live
 // prefix avoids copying on every repeated last key; displacement freezes it once.
 func snapshotKeys(n *Node) siblingSpan {
@@ -165,11 +186,12 @@ func (t *Tree) keyLinked(list, child *Node) {
 		return
 	}
 	start := list.lkeyN
-	if !list.lkeyOK || list.lkeyFrozen != nil || list.lkeyDirty {
+	run := list.keyRun()
+	if restartKeyHash(list, run, false) {
 		start = 0
 		list.lkeyPrefix = schemaHashWork(list.schema, &t.work)
 	}
-	list.lkeyN, list.lkeyFrozen, list.lkeyOK, list.lkeyDirty = list.keyN, nil, true, false
+	list.lkeyN, list.lkeyFrozen, list.lkeyOK, list.lkeyDirty = run, nil, true, false
 	for i, key := range snapshotKeys(list).Slice(start, snapshotKeys(list).Len()).All() {
 		t.work.Add(1)
 		if err := key.touch(); err != nil {
@@ -227,7 +249,7 @@ func resetListKey(work *workCounter, list *Node) {
 		return
 	}
 	list.keyN = 0
-	for _, key := range list.kids.docSpan().Slice(0, list.kids.SchemaLen()).All() {
+	for _, key := range keyPrefix(list).All() {
 		if work != nil {
 			work.Add(1)
 		}
@@ -272,7 +294,8 @@ func exposeListKeys(work *workCounter, list *Node) {
 		return
 	}
 	// a removal reserves the walk: prepareUnlink, or a batch's charge per sibling set
-	for _, key := range list.kids.docSpan().Slice(list.keyN, list.kids.SchemaLen()).All() {
+	prefix := keyPrefix(list)
+	for _, key := range prefix.Slice(list.keyRun(), prefix.Len()).All() {
 		if work != nil {
 			work.Add(1)
 		}

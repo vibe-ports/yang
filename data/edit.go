@@ -938,7 +938,7 @@ func (t *Tree) changeNodeValue(n *Node, v types.Value, hashAmount uint64) {
 		}
 		var slots []slot
 		if n.isKey() {
-			for _, key := range target.kids.docSpan().Slice(0, target.kids.SchemaLen()).All() {
+			for _, key := range keyPrefix(target).All() {
 				t.work.Add(1)
 				if err := t.work.chargeHash(1); err != nil {
 					return

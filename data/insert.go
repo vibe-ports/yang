@@ -185,8 +185,7 @@ func rbSortClb(work *workCounter, v1, v2 types.Value) (int, bool) {
 //	while (k1 && k1->schema && KEY(k1) && k2 && k2->schema && KEY(k2)) { compare; next }
 //	return cmp;
 //
-// Opaque children follow the schema children here, as libyang appends them, so a node's first
-// child is its first schema child, else its first opaque one. libyang reads both first children
+// libyang reads both physical first children
 // as struct lyd_node_term: a missing, opaque or inner first child is no term (a NULL dereference
 // or a reinterpreted node), refused like an indeterminate value pair. The loop stops at an
 // opaque next sibling (no schema) or at the end, as the C does.
@@ -202,10 +201,11 @@ func rbCompareLists(work *workCounter, n1, n2 *Node) (int, bool) {
 	if !ok || cmp != 0 {
 		return cmp, ok
 	}
-	c1, c2 := n1.kids.schemaSpan().cursor(), n2.kids.schemaSpan().cursor()
+	p1, p2 := keyPrefix(n1), keyPrefix(n2)
+	c1, c2 := p1.cursor(), p2.cursor()
 	c1.next()
 	c2.next()
-	for i := 1; i < n1.kids.SchemaLen() && i < n2.kids.SchemaLen(); i++ {
+	for i := 1; i < p1.Len() && i < p2.Len(); i++ {
 		k1, k2 = c1.next(), c2.next()
 		if !k1.isKey() || !k2.isKey() {
 			break
@@ -223,13 +223,14 @@ func rbCompareLists(work *workCounter, n1, n2 *Node) (int, bool) {
 // invokes no value callback: a key that is never compared is never sorted.
 func listKeyProfile(work *workCounter, n1, n2 *Node) bool {
 	keys := n1.schema.Keys
-	if len(keys) == 0 || len(keys) != len(n2.schema.Keys) || n1.kids.SchemaLen() < len(keys) || n2.kids.SchemaLen() < len(keys) {
+	p1, p2 := keyPrefix(n1), keyPrefix(n2)
+	if len(keys) == 0 || len(keys) != len(n2.schema.Keys) || p1.Len() < len(keys) || p2.Len() < len(keys) {
 		return false
 	}
 	if !sortKeyProfile(work, n1.schema, n2.schema) {
 		return false
 	}
-	c1, c2 := n1.kids.schemaSpan().cursor(), n2.kids.schemaSpan().cursor()
+	c1, c2 := p1.cursor(), p2.cursor()
 	for i, key := range keys {
 		a, b := c1.next(), c2.next()
 		if a.schema != key || b.schema != n2.schema.Keys[i] || a.value.Type() == nil || b.value.Type() == nil {
@@ -280,16 +281,8 @@ func sortKeyProfile(w *workCounter, a, b *schema.Node) bool {
 	return result
 }
 
-// firstChild is lyd_node_inner.child: the first schema child, else the first opaque one.
-func firstChild(n *Node) *Node {
-	switch {
-	case n.kids.SchemaLen() != 0:
-		return n.kids.At(0)
-	case n.kids.OpaqueLen() != 0:
-		return n.kids.opaqueAt(0)
-	}
-	return nil
-}
+// firstChild is lyd_node_inner.child: the first child in document order.
+func firstChild(n *Node) *Node { return n.kids.docFirst() }
 
 func isTermNode(n *Node) bool {
 	return n != nil && n.schema != nil && (n.schema.Kind == schema.Leaf || n.schema.Kind == schema.LeafList)
@@ -743,8 +736,9 @@ func rbCompareCost(a, b *Node) uint64 {
 		return 1 + types.CompareCost(a.value, b.value)
 	}
 	cost := uint64(1)
-	ca, cb := a.kids.schemaSpan().cursor(), b.kids.schemaSpan().cursor()
-	for i := range min(a.kids.SchemaLen(), b.kids.SchemaLen()) {
+	pa, pb := keyPrefix(a), keyPrefix(b)
+	ca, cb := pa.cursor(), pb.cursor()
+	for i := range min(pa.Len(), pb.Len()) {
 		ka, kb := ca.next(), cb.next()
 		if i > 0 && (!ka.isKey() || !kb.isKey()) {
 			break
@@ -763,8 +757,9 @@ func chargeCompareCost(w *workCounter, a, b *Node) error {
 	if err := w.chargeHash(1); err != nil {
 		return err
 	}
-	ca, cb := a.kids.schemaSpan().cursor(), b.kids.schemaSpan().cursor()
-	for i := range min(a.kids.SchemaLen(), b.kids.SchemaLen()) {
+	pa, pb := keyPrefix(a), keyPrefix(b)
+	ca, cb := pa.cursor(), pb.cursor()
+	for i := range min(pa.Len(), pb.Len()) {
 		ka, kb := ca.next(), cb.next()
 		if i > 0 && (!ka.isKey() || !kb.isKey()) {
 			break
@@ -3034,7 +3029,9 @@ func detach(n *Node) *Node {
 		if !wasKey {
 			exposeListKeys(parent.kids.work, parent)
 		}
-		if wasKey || oldKeyN < len(parent.schema.Keys) || parent.keyN != oldKeyN {
+		// Removing a non-key after a complete declared prefix leaves every
+		// compared position unchanged, even when it exposes extra repeated keys.
+		if wasKey || oldKeyN < len(parent.schema.Keys) {
 			reindexList(parent)
 		}
 	}
@@ -3289,7 +3286,9 @@ func (t *Tree) unlinkAllDefaults(ns, defaults []*Node) (result error) {
 		for parent := range affectedLists {
 			oldKeyN := parent.keyN
 			exposeListKeys(parent.kids.work, parent)
-			if oldKeyN < len(parent.schema.Keys) || parent.keyN != oldKeyN {
+			// No keys are removed by this batch. A complete compared prefix
+			// is unchanged when a later separator exposes extra keys.
+			if oldKeyN < len(parent.schema.Keys) {
 				reindexList(parent)
 			}
 		}
