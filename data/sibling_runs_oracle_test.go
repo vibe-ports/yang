@@ -50,6 +50,12 @@ func TestRunNativeReplay(t *testing.T) {
 		name         string
 		input, steps []string
 	}{
+		{"joined-null-successor-queues", []string{"ll=1", "ll=2", "zz", "ll=3", "ll=4"}, []string{"add=0", "add=5", "del=3", "dup", "del=0", "del=0", "del=0"}},
+		{"selected-retained-64", runSelectedInput(64), []string{"add=65", "add=66"}},
+		{"selected-retained-4096", runSelectedInput(4096), []string{"add=4097", "add=4098"}},
+		{"first-interleaving-64", runSelectedInput(64)[:64], []string{"opaq=1"}},
+		{"first-interleaving-4096", runSelectedInput(4096)[:4096], []string{"opaq=1"}},
+		{"ordinary-opaque-nonleader", []string{"ll=1", "zz"}, []string{"add=2", "del=1"}},
 		{"opaque-neighbours", []string{"ll=1", "ll=2", "zz", "zz", "b=x", "yy"}, []string{"add=3", "del=5", "add=4"}},
 		{"cold-singleton-piece-64", runAuditInput(64), []string{"add=60"}},
 		{"cold-singleton-piece-4096", runAuditInput(4096), []string{"add=60"}},

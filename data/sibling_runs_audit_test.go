@@ -154,9 +154,9 @@ func TestRunColdCreationAccounting(t *testing.T) {
 			if _, err := tr.NewTerm(c, "ll", "60", NewOptions{}); err != nil {
 				t.Fatal(err)
 			}
-			wantWork, wantCharge := int64(245), uint64(124)
+			wantWork, wantCharge := int64(245), uint64(127)
 			if count == 4096 {
-				wantWork, wantCharge = 473, 178
+				wantWork, wantCharge = 473, 181
 			}
 			if tr.work.Load() != wantWork || tr.work.hashUsed != wantCharge {
 				t.Fatalf("n=%d cold creation work/charge=%d/%d, want %d/%d", count, tr.work.Load(), tr.work.hashUsed, wantWork, wantCharge)

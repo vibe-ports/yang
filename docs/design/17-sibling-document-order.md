@@ -104,3 +104,21 @@ probe compares descending duplicate-heavy insertion and both unlink forms agains
 Still excluded: Ordered parsing/producers, lookup kernel and consumers, key-prefix
 hash reservations, merge/dup/move/diff routing, validation/defaults, codecs, ambient
 placement and dead-node/live-view machinery.
+
+Interleaved retained insertion asks only for its selected leader; full boundary consumers still
+walk the selected piece and debit each inspected member. The first physical
+interleaving consumes its materialization credit before changing lookup mode.
+Physical index builds consume their handle-assembly and summary passes separately
+from occurrence hooks. Physical table assembly charges at its allocation site;
+hash-table creation pays only its two remaining registration passes, avoiding a
+double debit. A read-only mixed-leader probe walks document storage directly.
+
+Single and batch unlink share branch-based removal accounting: alone leaders keep
+their topology, only removed leaders transfer metadata, and only empty topology
+compacts metadata. A transferred item is excluded from the removed node's remaining
+queue work. Interior separator-owner collections use the unused cached-tail slot for optional
+plan storage, keeping
+the ordinary plan at 88 bytes on amd64 (the original 96-byte allocation class).
+Selected-piece scaling, actual prepaid-credit consumption, trailing opaque work
+comparisons and allocation-byte probes supplement the existing rollback and native
+replays. Error propagation at boundary consumers preserves budget refusals.

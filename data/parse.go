@@ -863,6 +863,9 @@ func (lc *lydCtx) appendSorted(parent, n *Node) (bool, error) {
 		run = sib.schemaSpan().Slice(lo, at)
 	} else {
 		lo, hi := lc.tree.runBounds(sib, n)
+		if lc.tree.work.hashErr != nil {
+			return false, lc.tree.work.hashErr
+		}
 		if lo == hi {
 			return false, nil
 		}
@@ -1172,6 +1175,9 @@ func (lc *lydCtx) flushDirtyRun(k dirtyRun, lo int) {
 		}
 		if lo >= 0 {
 			hi := lc.tree.runEnd(k.sib, lo)
+			if lc.tree.work.hashErr != nil {
+				return
+			}
 			count = hi - lo
 		}
 	}
@@ -1184,7 +1190,11 @@ func (lc *lydCtx) flushDirtyRun(k dirtyRun, lo int) {
 		// Another insertion path linked a node beside this deferred run without
 		// joining its RB tree. Keep that node in its physical slot, as logical()
 		// does for hash-table construction, when publishing the run too.
-		ordered = k.sib.logical().Slice(lo, lo+count)
+		all := k.sib.logical()
+		if lc.tree.work.hashErr != nil {
+			return
+		}
+		ordered = all.Slice(lo, lo+count)
 	}
 	if checkPublish {
 		checkPublishedRun(k.sn, run, ordered)

@@ -437,7 +437,7 @@ func (t *Tree) insertPosition(sib *siblings, n *Node, order insertOrder, placed 
 	}
 	afterN := func(a *Node) bool { return t.after(a, n) }
 	if order == insertDefault && sortedSupported(n) {
-		lo, hi := t.runBounds(sib, n)
+		lo, hi := t.insertionRunBounds(sib, n)
 		if lo == hi {
 			if n.schema.DataParent() != nil && !sib.schemaUnordered && !sameSet(ctxOf(l.At(0)), ctxOf(n)) {
 				// no leader, lyd_insert_node_ordby_schema: the linear anchor walk stops at the
@@ -474,6 +474,11 @@ func (t *Tree) insertPosition(sib *siblings, n *Node, order insertOrder, placed 
 		case at > 0 && l.At(at-1).schema == n.schema && l.At(at-1).inRB:
 			leader = l.At(at - 1)
 			for _, c := range l.Slice(sib.runPieceStart(at-1), at-1).Reverse() {
+				if sib.st.interleaved() {
+					if err := t.work.chargeHash(1); err != nil {
+						return 0
+					}
+				}
 				if c.schema != n.schema {
 					break
 				}
@@ -662,6 +667,9 @@ func (t *Tree) crossContextSortedPos(sib *siblings, n *Node, lo int, placed *sib
 	hi := lo + 1
 	if !sib.rbTree[leader] {
 		for _, c := range l.Slice(hi, max(hi, sib.runPiece(lo, l.Len()))).All() {
+			if err := t.work.chargeHash(1); err != nil {
+				return lo, false
+			}
 			if c.schema != leader.schema {
 				break
 			}
@@ -834,6 +842,9 @@ func (t *Tree) rbPos(sib *siblings, n *Node, lo, hi int, compare func(*Node, *No
 				// Reordering several schema identities can change their gap summaries.
 				if d := sib.order.entries[leader.schema]; d == nil || d.gaps != 0 {
 					rebuildCost = orderBuildBound(sib.Len())
+					if sib.st.interleaved() {
+						rebuildCost = addHashBound(rebuildCost, 2*uint64(sib.Len())) //nolint:gosec // a length is nonnegative
+					}
 				}
 			}
 			if _, ok := t.rbAdd(order, a, compare); !ok {
@@ -933,12 +944,14 @@ func (t *Tree) rbPos(sib *siblings, n *Node, lo, hi int, compare func(*Node, *No
 		}
 		if rebuildCost != 0 {
 			// Reserved before publication. The build's temporary hooks draw their actual
-			// work from this credit; its data-side summary pass consumes one unit per node.
+			// work from this credit, including the physical build's assembly and summaries.
 			nested, err := t.work.prepay(rebuildCost, false)
 			if err != nil {
 				return lo, false
 			}
-			err = t.work.chargeHash(uint64(sib.Len())) //nolint:gosec // a sibling count is nonnegative
+			if !sib.st.interleaved() {
+				err = t.work.chargeHash(uint64(sib.Len())) //nolint:gosec // a length is nonnegative
+			}
 			if err == nil {
 				err = sib.opBuild(t)
 			}
@@ -1021,6 +1034,12 @@ func (t *Tree) indexAddPlacedBound(parent *Node, sib *siblings, n *Node, p sibli
 		// the labels of every handle after n's insertion, the header's image, and the build
 		bound = addHashBound(bound, uint64(sib.Len()+1)+slotUnits(journaled)/2) //nolint:gosec // a length is nonnegative
 		bound = addHashBound(bound, orderBuildBound(sib.Len()+1))
+		if sib.st.interleaved() || sib.linkMixes(n, p) {
+			bound = addHashBound(bound, 2*uint64(sib.Len()+1)) //nolint:gosec // a length is nonnegative
+		}
+	}
+	if !sib.schemaUnordered && sib.linkMixes(n, p) && sib.ht != nil {
+		bound = addHashBound(bound, uint64(sib.SchemaLen())) //nolint:gosec // a length is nonnegative
 	}
 	return bound
 }
@@ -1063,6 +1082,17 @@ func (s *siblings) opRebuild() {
 // split by the kept input ([before, v1, v2, in, v3]) keeps its anchor order
 // (TestParseOpDupKeepsOrder, ops/parse-json-reply-keep-order-split).
 func (t *Tree) runBounds(sib *siblings, n *Node) (lo, hi int) {
+	return t.runBoundsMode(sib, n, false)
+}
+
+// insertionRunBounds needs only the leader of an interleaved retained tree.
+// Ordinary layouts keep main's boundary reads and accounting.
+// Other callers (parser publication) still request the complete physical piece.
+func (t *Tree) insertionRunBounds(sib *siblings, n *Node) (lo, hi int) {
+	return t.runBoundsMode(sib, n, true)
+}
+
+func (t *Tree) runBoundsMode(sib *siblings, n *Node, inserting bool) (lo, hi int) {
 	l := sib.schemaSpan()
 	if !opChild(n.schema) && l.Len() > 0 && (len(sib.contexts) > 1 || !sameSet(ctxOf(l.At(0)), ctxOf(n))) {
 		// lyd_find_sibling_schema can match a system-ordered run from another
@@ -1070,8 +1100,14 @@ func (t *Tree) runBounds(sib *siblings, n *Node) (lo, hi int) {
 		// still take part in lyds_insert. With a children table the leader is the bucket's
 		// first registered record (leaderFirstMixed).
 		if lo = t.sortedLeaderIndex(sib, n); lo >= 0 {
+			if inserting && sib.st.interleaved() && sib.rbTree[sib.At(lo)] {
+				return lo, lo + 1
+			}
 			hi = lo
 			for _, c := range l.Slice(lo, sib.runPiece(lo, l.Len())).All() {
+				if err := t.work.chargeHash(1); err != nil {
+					return 0, 0
+				}
 				if !schemaLookupMatch(c.schema, n.schema, sib.ht != nil) {
 					break
 				}
@@ -1094,6 +1130,13 @@ func (t *Tree) runBounds(sib *siblings, n *Node) (lo, hi int) {
 			}
 			return at, at
 		}
+		if inserting && sib.st.interleaved() && sib.rbTree[leader] {
+			lo = sib.orderPosition(leader)
+			if lo < 0 {
+				return 0, 0
+			}
+			return lo, lo + 1
+		}
 		// Position locates the insertion run; the nearer endpoint scan is bounded by
 		// the insertion shift plus the run walked/sorted here.
 		if lo, hi, ok := sib.contiguousBounds(leader); ok {
@@ -1106,6 +1149,9 @@ func (t *Tree) runBounds(sib *siblings, n *Node) (lo, hi int) {
 		}
 		hi = lo
 		for _, c := range l.Slice(lo, sib.runPiece(lo, l.Len())).All() {
+			if err := t.work.chargeHash(1); err != nil {
+				return 0, 0
+			}
 			sib.visit()
 			if c.schema != leader.schema {
 				break
@@ -1231,6 +1277,11 @@ func (t *Tree) runEnd(sib *siblings, lo int) int {
 	}
 	hi := lo
 	for _, c := range sib.schemaSpan().Slice(lo, sib.runPiece(lo, sib.SchemaLen())).All() {
+		if sib.st.interleaved() {
+			if err := t.work.chargeHash(1); err != nil {
+				return lo
+			}
+		}
 		t.work.Add(1)
 		if c.schema != sn {
 			break
@@ -1253,6 +1304,11 @@ func (t *Tree) retainedRunEnd(sib *siblings, lo int) int {
 	}
 	hi := lo
 	for _, n := range sib.schemaSpan().Slice(lo, sib.runPiece(lo, sib.SchemaLen())).All() {
+		if sib.st.interleaved() {
+			if err := t.work.chargeHash(1); err != nil {
+				return lo
+			}
+		}
 		if n.schema != leader.schema && (group == nil || !n.inRB || n.rbGroup != group) {
 			break
 		}
@@ -2114,7 +2170,15 @@ func (t *Tree) linkPlaced(parent *Node, sib *siblings, n *Node, p siblingPlaceme
 		return t.work.hashErr
 	}
 	if !sib.schemaUnordered && sib.linkMixes(n, p) {
+		if sib.ht != nil {
+			if err := t.work.chargeHash(uint64(sib.SchemaLen())); err != nil { //nolint:gosec // a length is nonnegative
+				return err
+			}
+		}
 		t.markUnordered(sib)
+		if t.work.hashErr != nil {
+			return t.work.hashErr
+		}
 	}
 	switch n.schema {
 	case nil:
@@ -3014,6 +3078,10 @@ func freeTree(n *Node) error {
 // and the parent list's reindex after its compared prefix changes (preflightUnlink's check).
 func unlinkSuffixBound(sib *siblings, n *Node) uint64 {
 	amount := sib.orderRemoveBound(n, sib.indexJournaled(sib.work))
+	// Joined-owner marking consumes this suffix credit only if unlink reaches it.
+	if p := sib.work.unlinkPlan; p != nil && p.node == n && p.sib == sib && p.gen == sib.gen && p.moreLeft != nil {
+		amount = addHashBound(amount, uint64(len(p.moreLeft.nodes)))
+	}
 	parent := n.parent
 	if parent == nil || parent.schema == nil || parent.schema.Kind != schema.List ||
 		!n.isKey() && parent.keyN >= len(parent.schema.Keys) {

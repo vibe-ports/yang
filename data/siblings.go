@@ -469,13 +469,7 @@ func (s *siblings) removeRBNode(n, prev, next, tail *Node, around func(*Node) (*
 			return err
 		}
 		if order != nil && s.work != nil {
-			cost := s.transferCost(leader, next)
-			if order.nodes[n] != nil {
-				cost = addHashBound(cost, order.removalBound())
-			}
-			if leader != n {
-				cost = addHashBound(cost, 4*(uint64(len(s.rbMore[leader]))+1)) // compactMeta(leader)
-			}
+			cost := s.removalWorkCost(n, leader, prev, next, tail, order)
 			if err := s.work.chargeHash(cost); err != nil {
 				return err
 			}
@@ -487,11 +481,7 @@ func (s *siblings) removeRBNode(n, prev, next, tail *Node, around func(*Node) (*
 	if err := s.touch(); err != nil {
 		return err
 	}
-	before := prev
-	if before == nil {
-		before = tail
-	}
-	alone := before == n || (before == nil || before.schema != n.schema) && (next == nil || next.schema != n.schema)
+	alone := unlinkAlone(n, prev, next, tail)
 	if leader == n && alone && len(order.nodes) == 1 {
 		if err := n.touch(); err != nil {
 			return err
@@ -874,25 +864,27 @@ func (s *siblings) hashAdd(parent, n *Node) {
 	if s.SchemaLen()-len(s.unattached) < htMinItems {
 		return
 	}
-	// Interleaved record construction walks the physical set once to assemble it, then
-	// walks its visible members twice for exact and first-instance registrations. Pay all
-	// three passes, including opaque separators, before allocating the table.
-	if s.st.interleaved() && s.work != nil {
-		visible := uint64(max(0, s.Len()-len(s.unattached)))
-		amount := addHashBound(uint64(s.Len()), mulHashBound(2, visible)) //nolint:gosec // a length is nonnegative
-		if err := s.work.chargeHash(amount); err != nil {
-			return
-		}
-	}
 	if err := s.touchWhole(); err != nil { // the table is built from every sibling
 		return
 	}
-	s.ht = map[idxKey]*recordChain{}
-	s.exactByNode = map[*Node]*record{}
 	// lyd_insert_hash builds the table from the children in sibling order (tree_data_hash.c:
 	// 181-197), which for a run the parser still defers is its tree order: libyang has linked
 	// each instance at its sorted place.
 	order := s.logical()
+	if s.work != nil && s.work.hashErr != nil {
+		return
+	}
+	// logical paid for physical assembly. Consume the two registration passes only
+	// after assembly succeeds, before allocating the table and replaying its members.
+	if s.st.interleaved() && s.work != nil {
+		visible := uint64(max(0, s.Len()-len(s.unattached)))
+		amount := mulHashBound(2, visible)
+		if err := s.work.chargeHash(amount); err != nil {
+			return
+		}
+	}
+	s.ht = map[idxKey]*recordChain{}
+	s.exactByNode = map[*Node]*record{}
 	for _, c := range order.All() {
 		s.hashPut(c)
 	}
@@ -2469,8 +2461,17 @@ func (s *siblings) mixedLeaderProbe(sn *schema.Node, w *workCounter) *Node {
 	if err := w.chargeHash(uint64(s.SchemaLen()+s.OpaqueLen()) + 1); err != nil { //nolint:gosec // sibling counts are nonnegative
 		return nil
 	}
+	var order siblingSpan
+	if s.st.interleaved() {
+		order = s.docSpan()
+	} else {
+		order = s.logical()
+	}
 	var prev *schema.Node
-	for _, n := range s.logical().All() {
+	for _, n := range order.All() {
+		if s.st.interleaved() && s.unattached[n] {
+			continue
+		}
 		s.visit()
 		if n.schema != nil && n.schema != prev && !opChild(n.schema) &&
 			(n.schema.Kind == schema.List || n.schema.Kind == schema.LeafList) &&
@@ -2490,6 +2491,11 @@ func (s *siblings) docNeighbours(n *Node) (prev, next *Node) {
 
 // logicalInterleaved constructs table records in document order, keeping opaque separators.
 func (s *siblings) logicalInterleaved() siblingSpan {
+	if s.work != nil {
+		if err := s.work.chargeHash(uint64(s.Len())); err != nil { //nolint:gosec // a length is nonnegative
+			return siblingSpan{}
+		}
+	}
 	out := make([]*Node, 0, s.Len())
 	for _, n := range s.docSpan().All() {
 		if s.work != nil {

@@ -42,15 +42,26 @@ func (t *Tree) preflightChangedReinsert(term, target *Node, value types.Value) e
 		if lo < 0 {
 			return t.work.hashErr
 		}
-		// the run scan and its rbAdd slots, charged before the scan
-		if err := t.work.chargeHash(uint64(sib.SchemaLen()-lo) + 1); err != nil { //nolint:gosec // bounded slice length
-			return err
+		// Ordinary layouts keep their original bound. Physical pieces pay their actual
+		// scan in retainedRunEnd, and topology slots only for the members constructed.
+		if !sib.st.interleaved() {
+			if err := t.work.chargeHash(uint64(sib.SchemaLen()-lo) + 1); err != nil { //nolint:gosec // bounded slice length
+				return err
+			}
 		}
 		hi := t.retainedRunEnd(sib, lo)
+		if t.work.hashErr != nil {
+			return t.work.hashErr
+		}
 		d = &dirtyOrder{}
 		for _, member := range sib.schemaSpan().Slice(lo, hi).All() {
 			if member == target {
 				continue
+			}
+			if sib.st.interleaved() {
+				if err := t.work.chargeHash(1); err != nil {
+					return err
+				}
 			}
 			if _, ok := t.rbAdd(d, member, t.compareSortedCompatible); !ok {
 				if t.work.hashErr != nil {

@@ -305,6 +305,7 @@ func TestRunOpaqueTransitionReservations(t *testing.T) {
 				if journaled {
 					j = beginHashTransaction(tr)
 				}
+				tr.work.visits = true
 				for _, at := range []int{1, 3} {
 					n := newOpaque(opaque{Name: "zz"})
 					p := s.physicalPlacement(n, s.docSpan().At(at))
@@ -312,8 +313,13 @@ func TestRunOpaqueTransitionReservations(t *testing.T) {
 					if err != nil {
 						t.Fatal(err)
 					}
+					wasIndexed := s.order != nil
+					used, work := tr.work.hashUsed, tr.work.Load()
 					mustLink(t, tr.reserveHash(bound))
 					mustLink(t, tr.linkPlaced(c, s, n, p))
+					if !wasIndexed && tr.work.hashUsed-used+64 < uint64(tr.work.Load()-work) { //nolint:gosec // counted work only increases
+						t.Fatal("transition refunded materialization or summary work")
+					}
 					opidxAssertTreeInvariant(t, tr)
 				}
 				if s.order.entries[sn].gaps != 2 {

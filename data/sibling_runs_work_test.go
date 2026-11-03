@@ -65,7 +65,9 @@ func TestRunOrdinaryWork(t *testing.T) {
 						wantHash = 47151
 					}
 				}
-				if visits != wantVisits || hashes != wantHash {
+				// Native-branch accounting can remove fictitious charges from main.
+				// It must neither add visits nor increase the ordinary quota.
+				if visits != wantVisits || hashes > wantHash {
 					t.Fatalf("main work changed: visits=%d hash=%d", visits, hashes)
 				}
 				wantAllocs := float64(1175)

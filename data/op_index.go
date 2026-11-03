@@ -288,6 +288,13 @@ func (s *siblings) orderBuild(t *Tree) error {
 	if err := s.touchSticky(); err != nil {
 		return err
 	}
+	// The physical build's handle assembly and summary passes are data-side work,
+	// separate from occurrence hooks. Consume their reservation before publishing.
+	if s.st.interleaved() && t.work.prepaid {
+		if err := t.work.chargeHash(2 * uint64(s.Len())); err != nil { //nolint:gosec // a length is nonnegative
+			return err
+		}
+	}
 	st := s.store()
 	// the occurrence classes compare the storage's labels: label it first, paid (inside link's
 	// scope link's bound has it: indexAddBound)

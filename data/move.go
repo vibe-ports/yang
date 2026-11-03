@@ -509,11 +509,11 @@ func (t *Tree) linkOrigin(n *Node) (restore func(), arm func(dst *siblings) (dis
 			if left = plan.left; left != nil {
 				leftUns, leftHad = sib.unsorted[left]
 			}
-			if len(plan.moreLeft) > 0 {
-				if err := t.work.chargeHash(uint64(len(plan.moreLeft))); err != nil {
+			if plan.moreLeft != nil {
+				if err := t.work.chargeHash(uint64(len(plan.moreLeft.nodes))); err != nil {
 					return err
 				}
-				for _, owner := range plan.moreLeft {
+				for _, owner := range plan.moreLeft.nodes {
 					t.work.Add(1)
 					unsorted, had := sib.unsorted[owner]
 					moreLeft = append(moreLeft, struct {
@@ -548,6 +548,7 @@ func (t *Tree) linkOrigin(n *Node) (restore func(), arm func(dst *siblings) (dis
 			cost = addHashBound(cost, binding)
 			recovery = addHashBound(4*cost+64, sib.transferCost(next, n))
 			recovery = addHashBound(recovery, recordRecovery)
+			recovery = addHashBound(recovery, uint64(len(moreLeft)))
 			if err := t.work.chargeHash(recovery); err != nil {
 				return err
 			}
@@ -1054,6 +1055,9 @@ func (t *Tree) merge(parent *Node, dst *siblings, run []*Node, state movedRunSta
 			group = &rbGroup{}
 		}
 		hi := t.retainedRunEnd(dst, lo)
+		if t.work.hashErr != nil {
+			return t.work.hashErr
+		}
 		dstRun := dst.schemaSpan().Slice(lo, hi).Collect()
 		if err := t.rbReplay(srcOrder, dstRun); err != nil {
 			return err
@@ -1088,6 +1092,9 @@ func (t *Tree) merge(parent *Node, dst *siblings, run []*Node, state movedRunSta
 	case srcRB && !dst.unsorted[leader]:
 		// lyds_merge_nodes3 into a run without LAST instances: replay on a copy, publish once
 		hi := t.retainedRunEnd(dst, lo)
+		if t.work.hashErr != nil {
+			return t.work.hashErr
+		}
 		group := dst.rbGroups[leader]
 		current := dst.rbOrders[group]
 		if current == nil {

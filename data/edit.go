@@ -2002,6 +2002,9 @@ func (t *Tree) flushMerge(lv *mergeLevel) error {
 		return &opError{"LY_EINT", "Missing retained red-black topology for a system-ordered run."}
 	}
 	hi := t.retainedRunEnd(sib, lo)
+	if t.work.hashErr != nil {
+		return t.work.hashErr
+	}
 	group := sib.rbGroups[sib.At(lo)]
 	current := sib.rbOrders[group]
 	if current == nil {

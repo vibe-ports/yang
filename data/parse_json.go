@@ -624,6 +624,9 @@ func (p *jsonParser) metaAttr(node *Node, idx int) (rc error) {
 						}
 					}
 					_, hi := lc.tree.runBounds(sib, prev)
+					if lc.tree.work.hashErr != nil {
+						return nil
+					}
 					return sibAt(sib, hi)
 				}
 				return nil
@@ -681,6 +684,9 @@ func (p *jsonParser) metaAttr(node *Node, idx int) (rc error) {
 	reprErr := func() error {
 		if node == nil && pastRun != nil {
 			node = pastRun() // parser_json.c:791,915 name node->next
+			if lc.tree.work.hashErr != nil {
+				return lc.tree.work.hashErr
+			}
 		}
 		name := prev.Name()
 		if node != nil {

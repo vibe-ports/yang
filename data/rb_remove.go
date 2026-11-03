@@ -252,3 +252,37 @@ func (s *siblings) nativeTail() *Node {
 	}
 	return nil
 }
+
+// removalWorkCost follows removeRBNode's branches: an alone leader keeps its metadata,
+// a removed leader transfers it, and only removing the last topology member compacts it.
+func (s *siblings) removalWorkCost(n, leader, prev, next, tail *Node, order *dirtyOrder) uint64 {
+	if leader == n && unlinkAlone(n, prev, next, tail) {
+		return 0
+	}
+	var cost uint64
+	if order.nodes[n] != nil {
+		cost = order.removalBound()
+	}
+	owner := leader
+	if leader == n && next != nil {
+		cost = addHashBound(cost, s.transferCost(n, next))
+		owner = next
+	}
+	if len(order.nodes) == 0 || len(order.nodes) == 1 && order.nodes[n] != nil {
+		slots := uint64(len(s.rbMore[owner])) + 1
+		// A transfer appends to an already-owned queue before compactMeta walks it.
+		if owner != leader && s.rbGroups[owner] != nil {
+			slots++
+		}
+		cost = addHashBound(cost, 4*slots)
+	}
+	return cost
+}
+
+// unlinkAlone is LYD_NODE_IS_ALONE with the native cyclic previous sibling supplied.
+func unlinkAlone(n, prev, next, tail *Node) bool {
+	if prev == nil {
+		prev = tail
+	}
+	return prev == n || (prev == nil || prev.schema != n.schema) && (next == nil || next.schema != n.schema)
+}

@@ -8,17 +8,22 @@ import "github.com/vibe-ports/yang/internal/schema"
 // avoids locating the node again after native lookup and recovery preparation. Bulk unlink uses
 // its own virtual links and one charged compaction instead.
 type unlinkPlan struct {
-	node                     *Node
-	sib                      *siblings
-	gen                      uint64
-	at, docAt                int
-	prev, next, tail, leader *Node
-	// left is the physical leader of the piece extended by separator removal; moreLeft
-	// holds its interior retained owners from earlier joins. The charged backward walk
-	// collects them before mutation, preserving topology and registration order.
+	node               *Node
+	sib                *siblings
+	gen                uint64
+	at, docAt          int
+	prev, next, leader *Node
+	// left is the extended piece's first member; additional retained owners are cold.
+	// The unused cached-tail slot holds their optional pointer, keeping the ordinary
+	// plan and schema-separator allocation paths unchanged.
 	left     *Node
-	moreLeft []*Node
+	moreLeft *unlinkOwners
 	order    *dirtyOrder
+}
+
+// unlinkOwners is allocated only when a join has interior retained owners.
+type unlinkOwners struct {
+	nodes []*Node
 }
 
 func prepareUnlink(n *Node) (*unlinkPlan, error) {
@@ -112,25 +117,27 @@ func prepareUnlink(n *Node) (*unlinkPlan, error) {
 	if err != nil {
 		return nil, err
 	}
-	amount := addHashBound(1, uint64(len(moreLeft)))
+	amount := uint64(1)
 	if sib.rbGroups[n] != nil {
 		// Metadata surviving unlink travels on n. Pay its queue copies before any
 		// physical/hash mutation, including a NULL-root item made by duplication.
-		amount = addHashBound(amount, 4*(uint64(len(sib.rbMore[n]))+1))
+		groups := uint64(len(sib.rbMore[n])) + 1
+		// The selected item leaves n before runGone when the native branch transfers it.
+		if order != nil && leader == n && next != nil && !unlinkAlone(n, prev, next, tail) {
+			groups--
+		}
+		amount = addHashBound(amount, 4*groups)
 	}
 	if order != nil {
-		if order.nodes[n] != nil {
-			amount = addHashBound(amount, order.removalBound())
-		}
-		amount = addHashBound(amount, sib.transferCost(leader, next))
-		if leader != n {
-			amount = addHashBound(amount, 4*(uint64(len(sib.rbMore[leader]))+1)) // compactMeta(leader)
-		}
+		amount = addHashBound(amount, sib.removalWorkCost(n, leader, prev, next, tail, order))
 	}
 	if err := w.chargeHash(amount); err != nil {
 		return nil, err
 	}
-	p := &unlinkPlan{node: n, sib: sib, gen: sib.gen, at: at, docAt: docAt, prev: prev, next: next, tail: tail, left: left, moreLeft: moreLeft, order: order, leader: leader}
+	p := &unlinkPlan{node: n, sib: sib, gen: sib.gen, at: at, docAt: docAt, prev: prev, next: next, left: left, order: order, leader: leader}
+	if len(moreLeft) != 0 {
+		p.moreLeft = &unlinkOwners{nodes: moreLeft}
+	}
 	w.unlinkPlan = p
 	return p, nil
 }
@@ -141,7 +148,13 @@ func (p *unlinkPlan) markJoinedRun() {
 	if p.left != nil && p.sib.rbTree[p.left] {
 		markUnsorted(p.sib, p.left)
 	}
-	for _, owner := range p.moreLeft {
+	if p.moreLeft == nil {
+		return
+	}
+	for _, owner := range p.moreLeft.nodes {
+		if err := p.sib.work.chargeHash(1); err != nil {
+			return
+		}
 		p.sib.visit()
 		markUnsorted(p.sib, owner)
 	}
