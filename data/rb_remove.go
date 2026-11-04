@@ -201,7 +201,7 @@ func (s *siblings) removalOrder(n, prev, next, tail *Node, around func(*Node) (*
 					if p := s.st.seq.Prev(h); p != nil {
 						before = p.Value
 					}
-					if q := s.st.seq.Next(h); q != nil {
+					if q := s.st.seq.Next(h); q != nil && (s.st.interleaved() || q.Value.schema != nil) {
 						after = q.Value
 					}
 				}
@@ -259,10 +259,6 @@ func (s *siblings) removalWorkCost(n, leader, prev, next, tail *Node, order *dir
 	if !s.st.interleaved() {
 		// Ordinary layouts retain main's quota, including its conservative transfer
 		// and queue allowances. Exact physical-branch accounting is cold.
-		// Main's ordinary schema scan stopped before the opaque partition.
-		if next != nil && next.schema == nil {
-			next = nil
-		}
 		cost := s.transferCost(leader, next)
 		if order.nodes[n] != nil {
 			cost = addHashBound(cost, order.removalBound())

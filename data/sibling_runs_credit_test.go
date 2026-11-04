@@ -131,12 +131,12 @@ func TestRunOrdinaryOpaqueUnlinkWork(t *testing.T) {
 				mustLink(t, n.Unlink())
 			}
 			t.Logf("visits=%d charge=%d", tr.work.Load(), tr.work.hashUsed)
-			// Filled with origin/main's measured ceilings, not the implementation's cost formula.
+			// Measured on 46af50e6 with this unchanged probe.
 			want := uint64(85)
 			if batch {
 				want = 103
 			}
-			if tr.work.hashUsed > want {
+			if tr.work.hashUsed != want {
 				t.Fatalf("ordinary unlink charge=%d", tr.work.hashUsed)
 			}
 			checkTreeRetainedRB(t, tr)
@@ -173,7 +173,7 @@ func TestRunOrdinaryUnlinkBytes(t *testing.T) {
 	if unsafe.Sizeof(uintptr(0)) == 4 {
 		wantPerNode = 88
 	}
-	if bytes > count*wantPerNode {
+	if bytes != count*wantPerNode {
 		t.Fatalf("ordinary unlink allocation bytes=%d, main=%d", bytes, count*wantPerNode)
 	}
 }

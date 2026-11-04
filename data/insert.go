@@ -3084,7 +3084,7 @@ func freeTree(n *Node) error {
 func unlinkSuffixBound(sib *siblings, n *Node) uint64 {
 	amount := sib.orderRemoveBound(n, sib.indexJournaled(sib.work))
 	// Joined-owner marking consumes this suffix credit only if unlink reaches it.
-	if p := sib.work.unlinkPlan; p != nil && p.node == n && p.sib == sib && p.gen == sib.gen && p.moreLeft != nil {
+	if p := sib.work.unlinkPlan; sib.st.interleaved() && p != nil && p.node == n && p.sib == sib && p.gen == sib.gen && p.moreLeft != nil {
 		amount = addHashBound(amount, uint64(len(p.moreLeft.nodes)))
 	}
 	parent := n.parent

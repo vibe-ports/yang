@@ -139,12 +139,15 @@ func TestRunOrdinaryMoveBytes(t *testing.T) {
 					if journaled {
 						journals[i] = beginHashTransaction(tr)
 					}
+					tr.work.hashUsed = 0
 				}
 				var before, after runtime.MemStats
 				runtime.ReadMemStats(&before)
 				for i, tr := range trees {
 					if public {
-						mustLink(t, tr.Insert(nodes[i].parent, nodes[i]))
+						if err := tr.Insert(nodes[i].parent, nodes[i]); err != nil {
+							t.Fatal(err)
+						}
 					} else {
 						restore, arm, err := tr.linkOrigin(nodes[i])
 						if err != nil {
@@ -155,6 +158,26 @@ func TestRunOrdinaryMoveBytes(t *testing.T) {
 				}
 				runtime.ReadMemStats(&after)
 				bytes := after.TotalAlloc - before.TotalAlloc
+				credit := trees[0].work.hashUsed
+				// Measured with this probe on 46af50e6, alongside the byte baselines.
+				wantCredit := uint64(1)
+				if public {
+					wantCredit = 143
+				}
+				if journaled {
+					wantCredit = 7
+					if public {
+						wantCredit = 37
+					}
+				}
+				if credit != wantCredit {
+					t.Errorf("move credit=%d, main=%d", credit, wantCredit)
+				}
+				for _, tr := range trees {
+					if tr.work.hashUsed != credit {
+						t.Fatal("inconsistent move credit")
+					}
+				}
 				runtime.KeepAlive(keep)
 				for _, j := range journals {
 					var err error
@@ -190,12 +213,12 @@ func TestRunOrdinaryMoveBytes(t *testing.T) {
 						want += 8
 					}
 				}
-				// TotalAlloc includes small runtime bookkeeping fluctuations. The 2-byte
-				// per-call tolerance is well below the old 40-byte recovery regression.
-				if bytes < count*want || bytes > count*want+1024 {
+				// Integer bytes/op uses the same metric as testing.Benchmark. Baselines
+				// above were measured by this unchanged probe on 46af50e6.
+				if bytes/count != want {
 					t.Errorf("main bytes/move=%d, got total=%d (%d moves)", want, bytes, count)
 				}
-				t.Logf("bytes=%d per-move=%d", bytes, bytes/count)
+				t.Logf("credit=%d bytes=%d per-move=%d", credit, bytes, bytes/count)
 			})
 		}
 	}

@@ -510,7 +510,7 @@ func (t *Tree) linkOrigin(n *Node) (restore func(), arm func(dst *siblings) (dis
 		if err != nil {
 			return err
 		}
-		if plan != nil && plan.moreLeft != nil {
+		if sib.st.interleaved() && plan != nil && plan.moreLeft != nil {
 			// Keep the snapshot and its closure environment entirely on the cold path.
 			// Wrapping recordUndo leaves ordinary arm/restore captures identical to main.
 			if err := t.work.chargeHash(uint64(len(plan.moreLeft.nodes))); err != nil {

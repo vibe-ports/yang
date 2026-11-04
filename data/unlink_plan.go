@@ -21,7 +21,7 @@ type unlinkPlan struct {
 	order    *dirtyOrder
 }
 
-// unlinkOwners is allocated only when a join has interior retained owners.
+// unlinkOwners is allocated only for interleaved joins with interior retained owners.
 type unlinkOwners struct {
 	nodes []*Node
 }
@@ -56,10 +56,25 @@ func prepareUnlink(n *Node) (*unlinkPlan, error) {
 	if at < 0 {
 		return nil, &opError{"LY_EINT", "Unlinked node in sibling storage."}
 	}
-	// n's node->prev and node->next: the document neighbours, whatever their kind.
-	// lyds_move_meta also accepts an opaque successor (tree_data_sorted.c:1344).
 	h := sib.handle(n)
-	prev, next := handleValue(sib.st.seq.Prev(h)), handleValue(sib.st.seq.Next(h))
+	var prev, next *Node
+	if sib.st.interleaved() {
+		// Physical neighbours can have either kind (lyds_move_meta).
+		prev, next = sib.docNeighbours(n)
+	} else {
+		// Keep main's partition neighbours for every ordinary consumer, including
+		// recovery snapshots and transfer reservations, not just removal accounting.
+		nodes := sib.schemaSpan()
+		if n.schema == nil {
+			nodes = sib.opaqueSpan()
+		}
+		if at > 0 {
+			prev = sib.st.seq.Prev(h).Value
+		}
+		if at+1 < nodes.Len() {
+			next = sib.st.seq.Next(h).Value
+		}
+	}
 	var left *Node
 	var moreLeft []*Node
 	separates := n.schema != nil && prev != nil && prev.schema != nil && next != nil && n.schema != prev.schema &&
@@ -82,7 +97,7 @@ func prepareUnlink(n *Node) (*unlinkPlan, error) {
 				left = l.Value
 				break
 			}
-			if sib.rbTree[l.Value] {
+			if sib.st.interleaved() && sib.rbTree[l.Value] {
 				moreLeft = append(moreLeft, l.Value)
 			}
 			l = p
@@ -148,7 +163,7 @@ func (p *unlinkPlan) markJoinedRun() {
 	if p.left != nil && p.sib.rbTree[p.left] {
 		markUnsorted(p.sib, p.left)
 	}
-	if p.moreLeft == nil {
+	if !p.sib.st.interleaved() || p.moreLeft == nil {
 		return
 	}
 	for _, owner := range p.moreLeft.nodes {

@@ -352,32 +352,43 @@ func TestRunAuditRollback(t *testing.T) {
 
 func TestRunSeparatorOriginRecovery(t *testing.T) {
 	set := reviewDiffSet(t, runSchema)
-	tr, c := runTree(t, set, "ll=4", "ll=2", "b=x", "ll=9", "ll=10", "z=y", "ll=20", "ll=21")
-	for _, value := range []string{"3", "11"} {
-		if _, err := tr.NewTerm(c, "ll", value, NewOptions{}); err != nil {
-			t.Fatal(err)
-		}
+	for _, separator := range []string{"b=x", "zz"} {
+		t.Run(separator, func(t *testing.T) {
+			tr, c := runTree(t, set, "ll=4", "ll=2", separator, "ll=9", "ll=10", "z=y", "ll=20", "ll=21")
+			for _, value := range []string{"3", "11"} {
+				if _, err := tr.NewTerm(c, "ll", value, NewOptions{}); err != nil {
+					t.Fatal(err)
+				}
+			}
+			mustLink(t, c.kids.docSpan().At(3).Unlink())
+			before := snapshotHashBudgetTree(tr)
+			defer tr.work.beginHashWork()()
+			sep := c.kids.docSpan().At(6)
+			plan, err := prepareUnlink(sep)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if (plan.moreLeft != nil) != c.kids.st.interleaved() {
+				t.Fatal("interior-owner recovery must be confined to interleaved layouts")
+			}
+			restore, arm, err := tr.linkOrigin(sep)
+			if err != nil {
+				t.Fatal(err)
+			}
+			disarm, err := arm(&c.kids)
+			if err != nil {
+				t.Fatal(err)
+			}
+			mustLink(t, sep.Unlink())
+			restore()
+			disarm()
+			if !reflect.DeepEqual(before, snapshotHashBudgetTree(tr)) {
+				t.Fatal("origin recovery lost interior owner state")
+			}
+			checkTreeRetainedRB(t, tr)
+			opidxAssertTreeInvariant(t, tr)
+		})
 	}
-	mustLink(t, c.kids.docSpan().At(3).Unlink())
-	before := snapshotHashBudgetTree(tr)
-	defer tr.work.beginHashWork()()
-	sep := c.kids.docSpan().At(6)
-	restore, arm, err := tr.linkOrigin(sep)
-	if err != nil {
-		t.Fatal(err)
-	}
-	disarm, err := arm(&c.kids)
-	if err != nil {
-		t.Fatal(err)
-	}
-	mustLink(t, sep.Unlink())
-	restore()
-	disarm()
-	if !reflect.DeepEqual(before, snapshotHashBudgetTree(tr)) {
-		t.Fatal("origin recovery lost interior owner state")
-	}
-	checkTreeRetainedRB(t, tr)
-	opidxAssertTreeInvariant(t, tr)
 }
 
 // Child insertion uses the destination's existing children table; root insertion above also

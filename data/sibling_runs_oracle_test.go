@@ -52,6 +52,9 @@ func TestRunNativeReplay(t *testing.T) {
 	}{
 		{"ordinary-linked-leaf", []string{"a=x"}, []string{"move=0", "move=0", "move=0"}},
 		{"ordinary-linked-leaf-journaled", []string{"a=x"}, []string{"move=0", "move=0", "move=0"}},
+		{"ordinary-retained-singleton-tail", []string{"ll=1", "zz"}, []string{"add=2", "del=1", "move=0", "move=0"}},
+		{"ordinary-retained-singleton-tail-journaled", []string{"ll=1", "zz"}, []string{"add=2", "del=1", "move=0", "move=0"}},
+		{"ordinary-successive-schema-joins", []string{"ll=4", "ll=2", "b=x", "ll=9", "ll=10", "z=y", "ll=20", "ll=21"}, []string{"add=3", "add=11", "del=3", "del=6", "add=22"}},
 		{"joined-null-successor-queues", []string{"ll=1", "ll=2", "zz", "ll=3", "ll=4"}, []string{"add=0", "add=5", "del=3", "dup", "del=0", "del=0", "del=0"}},
 		{"selected-retained-64", runSelectedInput(64), []string{"add=65", "add=66"}},
 		{"selected-retained-4096", runSelectedInput(4096), []string{"add=4097", "add=4098"}},
@@ -96,7 +99,7 @@ func TestRunNativeReplay(t *testing.T) {
 			}
 			tr, c := runTree(t, set, tc.input...)
 			var journal *hashTransaction
-			if tc.name == "ordinary-linked-leaf-journaled" {
+			if strings.HasSuffix(tc.name, "-journaled") {
 				journal = beginHashTransaction(tr)
 			}
 			var got strings.Builder
