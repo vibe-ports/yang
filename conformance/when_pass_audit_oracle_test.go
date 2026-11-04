@@ -6,6 +6,7 @@ package conformance
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -108,5 +109,146 @@ func TestWhenPassAuditLiveOracle(t *testing.T) {
 				}
 			})
 		}
+	}
+}
+
+// Reproduce data/TestWhenDeadRootHidesNoForeignRoot with two independently compiled
+// contexts. Dumps and typed nodes prove retention; full response comparison
+// includes ordered diagnostics and the validation deletion diff.
+func TestWhenMixedContextRootLiveOracle(t *testing.T) {
+	oracle := nativeRequestRunner(t)
+	for _, module := range []bool{false, true} {
+		t.Run(fmt.Sprint("module=", module), func(t *testing.T) {
+			base := t.TempDir()
+			for _, dir := range []string{"dead", "live"} {
+				path := filepath.Join(base, dir)
+				if err := os.Mkdir(path, 0o700); err != nil {
+					t.Fatal(err)
+				}
+				when := ""
+				if dir == "dead" {
+					when = `when "false()";`
+				}
+				source := `module m { yang-version 1.1; namespace "urn:m"; prefix m;
+     leaf guard { type string; when "/m:x"; } leaf x { type string; ` + when + ` } }`
+				if err := os.WriteFile(filepath.Join(path, "m.yang"), []byte(source), 0o600); err != nil {
+					t.Fatal(err)
+				}
+			}
+			validate := map[string]any{"do": "validate", "data_type": "data", "validate_options": []any{"not_final"}}
+			if module {
+				validate["module"] = "m"
+			} else {
+				validate["validate_options"] = []any{"not_final", "present"}
+			}
+			p := map[string]any{"op": "sequence", "searchdirs": []any{"live"}, "context_options": []any{"no_yanglibrary"},
+				"modules": []any{map[string]any{"name": "m"}}, "steps": []any{
+					map[string]any{"do": "parse", "format": "json", "data_type": "data", "parse_only": true, "data": `{"m:x":"live"}`},
+					map[string]any{"do": "insert", "format": "json", "data_type": "data", "parse_only": true,
+						"parse_options": []any{"when_true"}, "data": `{"m:guard":"g","m:x":"dead"}`,
+						"target": map[string]any{"searchdirs": []any{"dead"}, "context_options": []any{"no_yanglibrary"}, "modules": []any{map[string]any{"name": "m"}}}},
+					map[string]any{"do": "dump"}, validate, map[string]any{"do": "dump"},
+				}}
+			want, err := oracle(base, p)
+			if err != nil {
+				t.Fatal(err)
+			}
+			steps, ok := want["steps"].([]any)
+			if !ok || len(steps) != 5 {
+				t.Fatalf("native setup failed: %#v", want)
+			}
+			validated := steps[3].(map[string]any)
+			if code, ok := validated["rc"].(map[string]any); !ok || code["name"] != "LY_SUCCESS" || validated["implicit_diff"] == nil {
+				t.Fatalf("native deletion did not run: %#v", want)
+			}
+			if typed := validated["typed"].([]any); len(typed) != 2 {
+				t.Fatalf("native retained %d nodes, want 2: %#v", len(typed), want)
+			}
+			got, err := (Yang{}).Run(Request{BaseDir: base, Params: p})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if diff := diffResponses(want, got); diff != "" {
+				t.Fatalf("oracle mismatch: %s\noracle: %#v\nengine: %#v", diff, want, got)
+			}
+		})
+	}
+}
+
+// Successful native counterpart of the large retained-type and retained-link
+// preflights: gone is one leafref, and all other queued values and links stay.
+func TestWhenRetainedQueuesLiveOracle(t *testing.T) {
+	oracle := nativeRequestRunner(t)
+	for _, subtree := range []bool{false, true} {
+		t.Run(fmt.Sprint("subtree=", subtree), func(t *testing.T) {
+			base := t.TempDir()
+			source := `module m { yang-version 1.1; namespace "urn:m"; prefix m;
+    leaf gate { type string; }
+    leaf gone { type leafref { path "/m:target"; } when "../gate='on'"; }
+    leaf-list target { type string; }
+    leaf-list r { type leafref { path "/m:target"; } }
+   }`
+			var values []string
+			for i := 64; i > 0; i-- {
+				values = append(values, strconv.Quote(strconv.Itoa(i)))
+			}
+			array := `[` + strings.Join(values, ",") + `]`
+			data := `{"m:gate":"on","m:gone":"1","m:target":` + array + `,"m:r":` + array + `}`
+			expected := 129
+			if subtree {
+				source = `module m { yang-version 1.1; namespace "urn:m"; prefix m;
+     leaf gate { type string; }
+     container gone { presence p; when "../gate='on'";
+      leaf a { type leafref { path "/m:target"; } }
+      leaf b { type leafref { path "/m:target"; } }
+     }
+     leaf target { type string; }
+     leaf-list r { config false; type leafref { path "/m:target"; } }
+    }`
+				data = `{"m:gate":"on","m:gone":{"a":"v","b":"v"},"m:target":"v","m:r":[` + strings.TrimSuffix(strings.Repeat(`"v",`, 64), ",") + `]}`
+				expected = 66
+			}
+			if err := os.WriteFile(filepath.Join(base, "m.yang"), []byte(source), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			for _, linking := range []bool{false, true} {
+				t.Run(fmt.Sprint("linking=", linking), func(t *testing.T) {
+					options := []any{"no_yanglibrary"}
+					if linking {
+						options = append(options, "leafref_linking")
+					}
+					validate := map[string]any{"do": "validate", "module": "m", "data_type": "data", "validate_options": []any{"not_final"}}
+					steps := []any{
+						map[string]any{"do": "parse", "format": "json", "data_type": "data", "parse_only": true, "parse_options": []any{"when_true"}, "data": data},
+						validate,
+						map[string]any{"do": "edit", "set": map[string]any{"path": "/m:gate", "value": "off", "update": true}},
+						validate, map[string]any{"do": "dump"},
+					}
+					if linking {
+						steps = append(steps, map[string]any{"do": "links"})
+					}
+					p := map[string]any{"op": "sequence", "searchdirs": []any{"."}, "context_options": options, "modules": []any{map[string]any{"name": "m"}}, "steps": steps}
+					want, err := oracle(base, p)
+					if err != nil {
+						t.Fatal(err)
+					}
+					nativeSteps, ok := want["steps"].([]any)
+					if !ok || len(nativeSteps) != len(steps) {
+						t.Fatalf("native setup: %#v", want)
+					}
+					validated := nativeSteps[3].(map[string]any)
+					if code, ok := validated["rc"].(map[string]any); !ok || code["name"] != "LY_SUCCESS" || validated["implicit_diff"] == nil || len(validated["typed"].([]any)) != expected {
+						t.Fatalf("native deletion/retention did not run: %#v", want)
+					}
+					got, err := (Yang{}).Run(Request{BaseDir: base, Params: p})
+					if err != nil {
+						t.Fatal(err)
+					}
+					if diff := diffResponses(want, got); diff != "" {
+						t.Fatalf("oracle mismatch: %s\noracle: %#v\nengine: %#v", diff, want, got)
+					}
+				})
+			}
+		})
 	}
 }

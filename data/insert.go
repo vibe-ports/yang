@@ -2766,6 +2766,19 @@ func (s *siblings) afterRemove(sn *schema.Node, survives bool) {
 // (lyd_unlink_ignore_lyds). An error leaves n linked, or (a sticky budget error after the
 // removal) fails the operation for its journal to restore; callers must not proceed with n.
 func unlink(n *Node) error {
+	return unlinkWithCleaner(n, nil)
+}
+
+// unlinkWithCleaner keeps prebuilt link positions current during a when-pass
+// deletion. Other unlink callers retain freeLinks' single-removal path.
+func unlinkWithCleaner(n *Node, cleaner *bulkLinkCleaner) error {
+	cleanup := freeLinks
+	if cleaner != nil {
+		cleanup = func(n *Node) error {
+			cleaner.free(n)
+			return cleaner.work.hashErr
+		}
+	}
 	sib := n.siblingsOf()
 	if sib == nil {
 		return nil
@@ -2788,7 +2801,7 @@ func unlink(n *Node) error {
 		return err
 	}
 	if n.schema == nil {
-		if err := freeLinks(n); err != nil {
+		if err := cleanup(n); err != nil {
 			sib.work.hashErr = err
 			return err
 		}
@@ -2805,7 +2818,7 @@ func unlink(n *Node) error {
 			sib.work.hashErr = err
 			return err
 		}
-		if err := freeLinks(n); err != nil {
+		if err := cleanup(n); err != nil {
 			sib.work.hashErr = err
 			return err
 		}

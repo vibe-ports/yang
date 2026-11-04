@@ -138,8 +138,8 @@ func freeLinks(n *Node) error {
 }
 
 // bulkLinkCleaner is freeLinks with lazy indexes for the large counterpart arrays a batch may
-// repeatedly shrink. It is used only by TrimXPath; single-node callers keep freeLinks' smaller
-// linear scans. remove still swaps in the last item, exactly like removeValue.
+// repeatedly shrink. When-pass deletion prepares these indexes before its diff;
+// other callers build them lazily. remove swaps in the last item, like removeValue.
 type bulkLinkCleaner struct {
 	indexes map[*leafrefLinks]*bulkLinkIndexes
 	work    *workCounter
@@ -156,6 +156,89 @@ type bulkLinkIndex struct {
 }
 
 const bulkLinkIndexMin = 8
+
+// prepare builds every counterpart-side index before the when-pass diff. The
+// ownership plan and reciprocal-link work have already been reserved. Pay the
+// additional index slots and poll each entry read. An isolated removal keeps
+// its early-terminating scan and a sparse position map; repeated removals build
+// a full index, as the lazy cleaner does. The cleaner also handles the root's unlink,
+// so no unindexed freeLinks removal can invalidate these positions.
+func (c *bulkLinkCleaner) prepare(nodes []*Node, check func() error) error {
+	if err := c.work.chargeHash(uint64(len(nodes))); err != nil {
+		return err
+	}
+	for _, n := range nodes {
+		if err := check(); err != nil {
+			return err
+		}
+		if n.links == nil {
+			continue
+		}
+		for side, counterparts := range [2][]*Node{n.links.leafrefs, n.links.targets} {
+			for _, other := range counterparts {
+				if err := c.work.chargeHash(1); err != nil {
+					return err
+				}
+				if err := check(); err != nil {
+					return err
+				}
+				rec := other.links
+				if rec == nil {
+					continue
+				}
+				x := c.indexes[rec]
+				if x == nil {
+					if err := c.work.chargeHash(1); err != nil {
+						return err
+					}
+					if c.indexes == nil {
+						c.indexes = make(map[*leafrefLinks]*bulkLinkIndexes)
+					}
+					x = &bulkLinkIndexes{}
+					c.indexes[rec] = x
+				}
+				index, items := &x.targets, rec.targets
+				if side == 1 {
+					index, items = &x.leafrefs, rec.leafrefs
+				}
+				if index.hits == 2 {
+					continue
+				}
+				if index.hits == 0 && len(items) > bulkLinkIndexMin {
+					if err := c.work.chargeHash(2); err != nil { // removed position and swapped-in tail
+						return err
+					}
+					pos := make(map[*Node]int, 2)
+					for i, item := range items {
+						if err := check(); err != nil {
+							return err
+						}
+						c.visit()
+						if item == n {
+							pos[n] = i
+							break
+						}
+					}
+					index.positions, index.hits = pos, 1
+				} else {
+					if err := c.work.chargeHash(uint64(len(items)) + 1); err != nil {
+						return err
+					}
+					pos := make(map[*Node]int, len(items))
+					for i, item := range items {
+						if err := check(); err != nil {
+							return err
+						}
+						c.visit()
+						pos[item] = i
+					}
+					index.positions, index.hits = pos, 2
+				}
+			}
+		}
+	}
+	return nil
+}
 
 func (c *bulkLinkCleaner) visit() {
 	if c.work != nil && c.work.visits { // tests only

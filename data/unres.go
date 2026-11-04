@@ -345,13 +345,32 @@ func truthy(r xpath.Result) bool {
 // deletedEntries): a drop is O(1) and the first live index amortized O(1), however often a node
 // is queued.
 type whenPass struct {
-	vc      *valCtx
-	live    int
-	pos     map[*Node][]int
-	metaPos map[*meta][]int // built once; indices stay valid until finish compacts tombstones
-	dead    []*Node         // WhenTrue nodes deleted (and unlinked) by this pass, flagged until its end
-	builds  int             // pos maps built (one per pass at most; work tests)
-	reads   int             // pos entries read, tombstones passed included (work tests)
+	vc          *valCtx
+	live        int
+	pos         map[*Node][]int
+	metaPos     map[*meta][]int // built once; indices stay valid until finish compacts tombstones
+	dead        []*Node         // WhenTrue nodes deleted (and unlinked) by this pass, flagged until its end
+	builds      int             // pos maps built (one per pass at most; work tests)
+	reads       int             // pos entries read, tombstones passed included (work tests)
+	finishReady bool            // queue compaction reserved and polled before any tombstone
+}
+
+// prepareFinish pays and polls the queue scan that finish must complete without
+// cancellation, including when an earlier evaluation stops the pass.
+func (p *whenPass) prepareFinish() error {
+	if p.finishReady {
+		return nil
+	}
+	if err := p.vc.t.work.chargeHash(2 * uint64(len(p.vc.nodeWhen.items))); err != nil {
+		return err
+	}
+	for range p.vc.nodeWhen.items {
+		if err := p.vc.checkContext(); err != nil {
+			return err
+		}
+	}
+	p.finishReady = true
+	return nil
 }
 
 // drop is ly_set_rm_index_ordered of entry i (a tombstone).
@@ -383,6 +402,9 @@ func (p *whenPass) livePos(n *Node) []int {
 func (p *whenPass) positions() error {
 	if p.pos != nil {
 		return nil
+	}
+	if err := p.prepareFinish(); err != nil {
+		return err
 	}
 	vc := p.vc
 	if err := vc.t.work.chargeHash(uint64(len(vc.nodeWhen.items))); err != nil {
@@ -466,6 +488,10 @@ func (p *whenPass) del(n *Node) error {
 	if err != nil {
 		return err
 	}
+	cleaner := bulkLinkCleaner{work: &vc.t.work}
+	if err := cleaner.prepare(owned, vc.checkContext); err != nil {
+		return err
+	}
 	nested, metas, err := p.deletedEntries(owned)
 	if err != nil {
 		return err
@@ -507,7 +533,7 @@ func (p *whenPass) del(n *Node) error {
 		}
 	}
 	fresh := vc.top != nil && vc.topGen == vc.t.top.gen && n.parent == nil
-	if err := unlink(n); err != nil {
+	if err := unlinkWithCleaner(n, &cleaner); err != nil {
 		if j := vc.t.work.journal; j != nil && vc.diff != nil {
 			j.rollback = true // the diff holds n's delete: the tree and the diff go back together
 		}
@@ -516,7 +542,6 @@ func (p *whenPass) del(n *Node) error {
 	if fresh {
 		vc.dropTop(n)
 	}
-	cleaner := bulkLinkCleaner{work: &vc.t.work}
 	for _, d := range owned {
 		cleaner.free(d) // lyd_free_tree: plan and captures reserved before the diff
 	}
@@ -657,6 +682,11 @@ func (p *whenPass) deletedEntries(nodes []*Node) (whens, metas []int, err error)
 		if err := vc.checkContext(); err != nil {
 			return nil, nil, err
 		}
+		if d.isTerm() {
+			if err := vc.indexTypes(); err != nil {
+				return nil, nil, err
+			}
+		}
 		l := p.pos[d]
 		if err := vc.t.work.chargeHash(uint64(len(l))); err != nil {
 			return nil, nil, err
@@ -701,6 +731,9 @@ func (p *whenPass) deletedEntries(nodes []*Node) (whens, metas []int, err error)
 // operational data, else is an error (the node kept as WhenFalse under multi-error).
 func (vc *valCtx) unresWhen() (rc error) {
 	p := &whenPass{vc: vc, live: vc.nodeWhen.len()}
+	if err := p.prepareFinish(); err != nil {
+		return err
+	}
 	defer p.finish()
 	for i := vc.nodeWhen.len() - 1; i >= 0; i-- {
 		if err := vc.checkContext(); err != nil {
@@ -764,14 +797,16 @@ func (p *whenPass) finish() {
 		p.vc.topLinks, p.vc.topPos, p.vc.topHead = nil, nil, 0
 	}
 	q := p.vc.nodeWhen
-	live := q.items[:0]
-	for _, n := range q.items {
-		if n != nil {
-			live = append(live, n)
+	if p.live != len(q.items) {
+		live := q.items[:0]
+		for _, n := range q.items {
+			if n != nil {
+				live = append(live, n)
+			}
 		}
+		clear(q.items[len(live):])
+		q.items, q.pos = live, nil
 	}
-	clear(q.items[len(live):])
-	q.items, q.pos = live, nil
 	if p.metaPos != nil && len(p.dead) != 0 {
 		q := *p.vc.metaTypes
 		live := q[:0]

@@ -186,7 +186,7 @@ descendants and of the node itself dropped (all duplicate positions as tombstone
 terminals out of node_types, its metadata entries out of meta_types, the node unlinked
 from storage and indexes together, and its links freed. Every later evaluation of the pass therefore reads the
 tree libyang has, and storage never holds a deleted node. libyang asserts that no descendant of an
-autodeleted node is still queued (its NDEBUG builds keep it queued, pointing to freed memory); the
+autodeleted node is still queued (D-0125; its NDEBUG builds keep it queued, pointing to freed memory); the
 port drops those entries with the node, so a nested queued node is neither evaluated nor deleted
 twice (Go test TestWhenNestedQueuedDescendant). Ordering inside a deletion: the part that polls
 cancellation (the ownership plan and `deletedEntries`) runs before the diff, and nothing after
@@ -204,7 +204,13 @@ traversal-stack expansion, reciprocal-link cleanup and captures are reserved aga
 with cancellation checks throughout the preflight. Queue removal and cleanup reuse that
 single plan, including ordinary descendants;
 neither expands a `Node.All` stack after planning. Metadata positions are indexed once
-per pass with reserved compaction, and all positions of deleted nodes leave before
+per pass with reserved compaction. The node_types position index is reserved, built and
+polled before the diff, published only once complete, and reused by every removal;
+refusal leaves the type queue intact (#343). The node_when finish scan is also
+reserved and polled before the pass can drop an entry. Leafref cleanup prebuilds
+its counterpart positions before the diff, retaining early termination for an
+isolated removal and indexing repeated removals; unlink uses the same cleaner so
+its swap removals cannot invalidate those positions. All positions of deleted nodes leave before
 `finish` clears dead marks, including entries skipped by a multi-error ancestor rewind.
 Must checks have no queue: the final traversal reads only the retained tree. Cleanup
 neither traverses ownership again nor polls after recording the diff. A guard refusal stays

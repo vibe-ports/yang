@@ -39,17 +39,31 @@ func (s *nodeSet) rmIndex(i int) {
 	s.items = s.items[:last]
 }
 
-// contains is ly_set_contains: the index of n, or -1.
-func (s *nodeSet) contains(n *Node) int {
-	if s.pos == nil {
-		s.pos = make(map[*Node]int, len(s.items))
-		s.scans += len(s.items)
-		for i, m := range s.items {
-			if _, dup := s.pos[m]; !dup {
-				s.pos[m] = i
-			}
+// index reserves and builds the type queue's positions before any deletion diff.
+// Publish only a complete index: cancellation leaves the queue and its index intact.
+func (s *nodeSet) index(work *workCounter, check func() error) error {
+	if s.pos != nil || len(s.items) == 0 {
+		return nil
+	}
+	if err := work.chargeHash(uint64(len(s.items))); err != nil {
+		return err
+	}
+	pos := make(map[*Node]int, len(s.items))
+	for i, m := range s.items {
+		if err := check(); err != nil {
+			return err
+		}
+		s.scans++
+		if _, dup := pos[m]; !dup {
+			pos[m] = i
 		}
 	}
+	s.pos = pos
+	return nil
+}
+
+// contains is ly_set_contains: the index of n, or -1. index must precede it.
+func (s *nodeSet) contains(n *Node) int {
 	if i, ok := s.pos[n]; ok {
 		return i
 	}

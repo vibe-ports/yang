@@ -21,7 +21,7 @@ const whenRewindSchema = `module m { yang-version 1.1; namespace "urn:m"; prefix
  leaf n { type string; when "false()"; }
 }`
 
-// D-0150: duplicate entries for freed native nodes have undefined behaviour.
+// D-0125: duplicate entries for freed native nodes have undefined behaviour.
 // The rewind skips n's earlier entry; it must not survive into the next pass.
 func TestWhenDuplicateAncestorRewindTwoPasses(t *testing.T) {
 	set := reviewDiffSet(t, whenRewindSchema)

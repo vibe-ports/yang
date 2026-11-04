@@ -327,6 +327,11 @@ func (vc *valCtx) autodel(del []*Node, npContDiff bool) error {
 		vc.t.work.hashErr = err
 		return err
 	}
+	for _, n := range del {
+		if err := vc.preflightTypeIndex(n); err != nil {
+			return err
+		}
+	}
 	// Diff entries describe the unlink below. Once emission begins, complete
 	// the queue updates, unlink and link cleanup before returning cancellation.
 	for _, n := range del {
@@ -379,11 +384,45 @@ func (vc *valCtx) dropTypes(n *Node, cancellable bool) error {
 		if !d.isTerm() {
 			continue
 		}
+		if err := vc.indexTypes(); err != nil {
+			return err
+		}
 		if i := vc.nodeTypes.contains(d); i >= 0 {
 			vc.nodeTypes.rmIndex(i)
 		}
 	}
 	return nil
+}
+
+// Only a terminal needs the type index. In particular, deleting an empty
+// container must not start scanning an unrelated retained type queue. The
+// ordinary DFS yields before expanding its stack, so reserve those slots first.
+func (vc *valCtx) preflightTypeIndex(n *Node) error {
+	if vc.nodeTypes == nil || vc.nodeTypes.len() == 0 || vc.nodeTypes.pos != nil {
+		return nil
+	}
+	if err := vc.t.work.chargeHash(1); err != nil {
+		return err
+	}
+	for d := range n.All() {
+		if err := vc.t.work.chargeHash(1 + uint64(d.kids.len())); err != nil { //nolint:gosec // sibling counts are nonnegative
+			return err
+		}
+		if err := vc.checkContext(); err != nil {
+			return err
+		}
+		if d.isTerm() {
+			return vc.indexTypes()
+		}
+	}
+	return nil
+}
+
+func (vc *valCtx) indexTypes() error {
+	if vc.nodeTypes == nil {
+		return nil
+	}
+	return vc.nodeTypes.index(&vc.t.work, vc.checkContext)
 }
 
 // dupIndex finds equal siblings for the duplicate check: the parent's children table when it has
