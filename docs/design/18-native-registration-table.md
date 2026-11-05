@@ -151,17 +151,9 @@ node's own storage (`src/tree_data.c:1251–1262`; `data/rb_remove.go:125–220`
 Existing D-0121 applies at its actual RB/profile/refusal boundary, never merely
 because a selected node moved (`conformance/deviations.md:55`).
 
-**Remote write boundary.** Valid current-storage reads do not prove that a native
-write produces a valid forest. In `lyds_link_data_node`, a remote RB predecessor
-is passed with the **querying** first-sibling variable to insert-after
-(`src/tree_data_sorted.c:1021–1039`). If predecessor is last in Q and the supplied
-first is in P, insert-after changes P.first.prev, links into Q and inherits Q's
-parent, but leaves Q's cyclic tail stale (`src/tree_data.c:596–621`). With singleton
-Q, first-sibling rewind can cycle. A valid insertion into Q's Go sequence would
-invent a different outcome.
+**Remote write boundary.** Valid current-storage reads do not prove that a native write preserves consistent sibling lists. The 6a0 public replay reaches `lyds_link_data_node` with remote predecessor v3, last in Q, and the querying first-sibling variable from P (`src/tree_data_sorted.c:1020–1039`). `lyd_insert_after_node` sets P.first.prev to v4, links v4 after v3 with Q as its parent, and leaves Q.first.prev at v3 (`src/tree_data.c:595–627`). The forward chains remain P=[a,a2,v2] and Q=[v3,v4], but their tail/back-link invariants are inconsistent. `lyd_first_sibling(v3)` terminates by returning Q.child through its parent fast path (`src/tree_data_common.c:770–791`); this replay does not establish a rewind cycle. Specific subsequent reads remain defined. Refusal is therefore an intentional restriction of native-success behavior with observable results, justified by preserving the port's forest representation, rather than by claiming the whole continuation is undefined.
 
-**Public reachability must be established before this adapter is implemented.**
-Source-derived candidate (not yet executed): one context with
+**Public reachability is established by 6a0.** The executed sequence uses one context with
 `rpc r { input { leaf a {type string;} leaf a2 {type string;} leaf-list v {type uint32;} } output { leaf o {type string;} } }`
 and three `r` roots P, Q, R. In P create `a`, `a2`, `v=1`, `v=2` and output `o`;
 in R create seed3 with `v=3`. Let v3 be the new copy returned by `Dup(seed3→P, NoSort+NoMeta)`; every subsequent v3 denotes this copy, not seed3. The anchor search only looks at
@@ -173,13 +165,9 @@ Unlink `o`; insert v3 into empty Q (P's U removes only v3's instance occurrence,
 then `NewTerm(P, v=4)`. Schema selection returns remote v3, and insert-after
 receives P's first variable (`src/tree_data_sorted.c:1027–1038`). Go equivalents:
 `Tree.NewInner`, `Tree.NewTerm` (`Output` for o), `Tree.Dup(seed3, P, DupOptions{NoSort: true, NoMeta: true})`,
-`Unlink`, `Tree.Insert`, `Tree.NewTerm`. T-remote must first replay exactly this
-public sequence through 6a0, recording all intermediate registrations, RB
-membership and links. Do not seed private table state to establish public
-reachability. If 6a0 finds an earlier supported-route refusal, record it and
-narrow the scope before building remote-write machinery.
+`Unlink`, `Tree.Insert`, `Tree.NewTerm`. T-remote retains this exact public replay and its intermediate registrations, RB membership and links. It establishes the boundary without seeded private table state or an earlier D-0121 refusal. The remote-nonlast control completes with consistent links and matching native JSON. The maintainer's refusal decision remains separate from this reachability evidence.
 
-Proposed safety policy, requiring the decision in §9: use a **bounded plan for the
+Safety policy (maintainer decision 2026-11-06, §9.1: refuse): use a **bounded plan for the
 affected native link primitives**, recording their first-variable, parent-child,
 predecessor and successor writes. Check explicit before/after/nonlast/last and
 root-update cases; no general arbitrary-graph representation or whole-forest
@@ -194,16 +182,9 @@ LY_EINVAL before its RB/link/registration writes or source detachment. Do not
 silently repair links, drop the winner, or use a local leader. Earlier completed
 units follow §5; a containing relocation/whole-move savepoint restores its unit.
 Planning budget/guard failure retains its normal precedence over this refusal.
-This is a **new narrow safety deviation**, not implicitly D-0117/D-0121. Its unit
-cannot pass until the policy and evidence are accepted; other units can proceed.
+This is a **new narrow M5 deviation** with its own entry and the 6a0 replay as its fixture, not implicitly D-0117/D-0121. D-0121 keeps its closed boundary; D-0117's deletion cleanup does not apply to a live move and must not purge P's occurrence. P's residual v3 occurrence is preserved, so later schema lookups still select v3 in Q, and a repeated attempt refuses again. Registry rationale: an API representation-safety restriction, not an RFC validity verdict. RFC 7950 §7.7.7.1 permits implementation-chosen system ordering but does not prescribe sibling links or require LY_EINVAL here; the port deliberately rejects a native-success insertion whose primitive would leave inconsistent sibling lists.
 
-T-remote must show representable remote reads and writes, then **remote-last**
-insertion with both forests' first/tail/prev/next/parent and RB ownership dumps.
-Native observer stops immediately after the corrupting primitive; a separate
-watchdog proves the rewind boundary. No final native dump/lookup/free traversal
-is safe there. Go control refuses with valid forests and expected prefix/rollback.
-Before-remote-first/root-variable variants get the same write-set check; there
-is no blanket claim that insert-before is always representable.
+T-remote retains the representable remote-read/write controls and the exact remote-last replay, recording both forests' first/tail/prev/next/parent links and RB ownership. Keep the observer stop immediately after the inconsistent link primitive. The separate bounded `lyd_first_sibling(v3)` control must assert termination and Q.child, not nontermination. In isolated continuations that complete the public insertion, record JSON for P/Q, the public schema lookup through P, and whole-root release in a separately checked cleanup control; do not infer safety for arbitrary unlink/free routes. The Go refusal control must preserve the pre-insertion links, RB metadata and registrations, including P's residual v3 winner, with §5's prefix/rollback behavior and budget precedence. Before-remote-first/root-variable variants use the same bounded primitive plan; insert-before is not presumed universally representable.
 
 ## 3. Production state, ownership and lifetime
 
@@ -795,7 +776,7 @@ each emitting a replayable public-call script and labeled event evidence before
 any dependent semantic adapter merges:
 1. **Public remote-last reachability** (§2.3's sequence) plus a remote nonlast
    control. Verify no earlier D-0121 boundary is crossed; stop observation at the
-   first corrupting primitive; use a separate watchdog for the rewind. This
+   inconsistent link primitive; use a separate bounded first-sibling control that expects termination and Q.child. This
    decides the remote-write scope and deviation.
 2. **Collision-aborted history through later removal, checked shrink and
    validation.** Run the binary collision build and the events after it.
@@ -1032,9 +1013,10 @@ primitive sweep from missing ordering, producer or budget obligations.
 **Maintainer decisions, 2026-11-05.** Ownership allowance (§7): **approved** as
 written. D-0117 cleanup refinement (§3): **approved**. Failed cost gate: **stop and
 return** with the measured failing cases; no widened tolerance or cross-scenario
-trade. Remote-write safety refusal (§2.3): **deferred**; the maintainer decides
-after 6a0 replays the public sequence. The remote-write portion of 6b1s stays
-blocked until then. The table below records the questions as reviewed.
+trade. Remote-write safety refusal (§2.3): 6a0 confirmed public reachability
+(no rewind cycle; defined later results). **Decided 2026-11-06: refuse** the
+inconsistent remote-last insertion with LY_EINVAL before any write, as a new
+narrow M5 deviation. The remote-write portion of 6b1s is unblocked. The table below records the questions as reviewed.
 
 | Question | Recommendation and dependency |
 |---|---|
