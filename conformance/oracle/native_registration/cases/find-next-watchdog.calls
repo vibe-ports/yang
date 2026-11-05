@@ -1,0 +1,5 @@
+# Low-level control: no public reachability claim.
+new 8 1
+insert 1 123 0
+insert 1 123 0
+find-next-loop 1 123 128

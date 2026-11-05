@@ -1,0 +1,13 @@
+# SPDX-License-Identifier: BSD-3-Clause
+# Low-level disabled table: preserve the inert size link, stop before dereference.
+new 8 0
+insert 1 7 0
+insert 1 7 0
+insert 1 7 0
+insert 1 7 0
+insert 1 7 0
+insert 1 7 0
+insert 1 7 0
+insert 1 7 0
+dump
+insert 1 7 0

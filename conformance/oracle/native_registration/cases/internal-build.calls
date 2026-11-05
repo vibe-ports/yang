@@ -1,0 +1,5 @@
+# Parser-created children have (operation, ordinal), including the failed build child.
+parse 1 {"m:c":{"p":"P","q":"Q","ll":["KpfzBg==","QQ=="]}}
+print 1
+term 70 1 v invalid
+free 1
