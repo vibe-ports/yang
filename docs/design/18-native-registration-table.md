@@ -60,7 +60,7 @@ includes its resulting resize **before** the next sub-operation.
 | Build stop | First failed add stops traversal. Retain allocated partial table and successful prefix, including the failing child's instance occurrence. Later insert uses this table; never fill the missing suffix or rebuild from current children. | `src/tree_data_hash.c:135–160,192–200` |
 | Existing-table I | Unchecked instance insertion; if run start, remove same-schema successor at schema hash when present, then checked-insert n at schema hash. Stop on first failure. Either removal may consume an instance-origin collision. | `src/tree_data_hash.c:135–160` |
 | U while linked | Remove n at its **current** hash; stop if absent. If run start, remove n at schema hash; stop if absent. Checked-insert identical-schema successor if present. Only then may physical unlink occur. | `src/tree_data_hash.c:207–246`; `src/tree_data.c:1188–1239` |
-| Parent key completion | After child link/I, if the saved parent argument has its leading keys, recompute parent hash and I(parent), **without U(parent)**. Repeated completion can create repeated occurrences. | `src/tree_data.c:835–842`; Go `data/lyd_hash.go:172–209`, `data/insert.go:2844–2859` |
+| Parent key completion | After child L/I, execute H(saved parent) then I(saved parent), **without U(parent), only if the inserted node is schema-bound, has `LYS_KEY`, the saved parent and its schema are non-null, and `lyd_insert_has_keys(saved parent)` succeeds**. A non-key or opaque insertion does not refresh or re-register its parent, even if the parent's leading keys are complete. Repeated key insertions satisfying this guard can create repeated parent occurrences. The I(child) helper stopping does not itself prevent this later guard in the void caller. | `src/tree_data.c:835–842`; Go `data/lyd_hash.go:172–205`, `data/insert.go:2844–2859` |
 | Recursive dup initialization | Before children, create present-empty destination table at **source capacity, mode 1**; copy children with LAST insertion. Do not copy occurrences/mode or infer capacity from child count. Nonrecursive inner copy does not inherit the table, but keyed lists copy leading keys. Any payload copying has separate recursion (§4). | `src/tree_data.c:2296–2329`; Go `data/dup.go:198–359,441–446` |
 
 Native void callers may continue after an I/U helper stops
@@ -297,21 +297,21 @@ maps each native direct consumer; no such decision may wait for PR 7.
 
 | Family | Native event contract → current Go site | Stage / trace |
 |---|---|---|
-| Builders/NewPath | Place L; I; possible H(parent); I(parent). Existing-path/key lookup uses §2. Late creation failure cleans first created subtree with U/X/F. Native `src/tree_data_new.c:1568–1862`, `src/tree_data.c:801–842`; Go `data/new.go:183–424,539–684`, `data/edit.go:491–650,2063–2069`. | 6b1i / T-build, T-new, T-key |
+| Builders/NewPath | Place L(n); call I(n); **only under the complete key-insertion guard in §1.2**, H(saved parent); I(saved parent), with no U(parent). Neither an ordinary child nor an opaque child causes parent H/I. Existing-path/key lookup uses §2. Late creation failure cleans first created subtree with U/X/F. Native `src/tree_data_new.c:1568–1862`, `src/tree_data.c:801–842`; Go `data/new.go:183–424,539–684`, `data/edit.go:491–650,2063–2069`. | 6b1i / T-build, T-new, T-key |
 | Single/bulk unlink/free | Select actual RB owner; U while linked; X; logical deletion policy/F as appropriate. Batch uses each step's then-current neighbours and intervening shrink, not original/final batch neighbours. Native `src/tree_data.c:1188–1290`, `src/tree_data_free.c:214–262`; Go `data/insert.go:2920–3079,3154–3379`, `data/unlink_plan.go:29`, `data/rb_remove.go:125`. | 6b1u / T-remove, T-D0117 |
 | Cold sorted insertion | Walk original run, relocate every non-running maximum: U; X; L at RB position; I. Running maxima have no registration event. Then incoming L; I. Existing retained root does **not** replay old members. Native `src/tree_data_sorted.c:1052–1104,1212–1253`; Go `data/insert.go:330,814,1178,2640–2790,2881`. Remote links use §2.3. | 6b1s / T-sort, T-remote |
 | Immediate parse | `nodeInsert` preserves ordered/opaque/default placement and native key-completion events. Existing-parent enrollment precedes Reader callback. Native `src/tree_data.c:801`; Go `data/parse.go:227–363,788–827`. Envelopes reuse this route (`data/envelope_json.go:45`, `data/envelope_xml.go:152`). | 6b1pi / T-parse |
 | Deferred parse | Native has already sorted n when I runs. `appendSorted` must use **sorted virtual neighbours even with an existing table**, not its Go appended neighbours. `applyLeaders` publishes metadata only; `publishDirty`/`flushDirtyRun`/`flushDirtyAll` generate **zero I/U**, including repeated/reader/error flush. Native `src/tree_data.c:820–842`; Go `data/parse.go:829–965,1068–1220`. | 6b1pd / T-deferred |
 | JSON metadata/physical publication | Annotation matching is a native document scan; placeholders change frontier, not registration. Split shared `schemaIndex` calls into **physical helpers** at `data/parse_json.go:449,969` and `data/parse.go:1174`; a partial/remote table winner must not locate a dirty run. Native `src/parser_json.c:582–730,1146–1219`; Go `metadataFinish`/`parseAttribute` at `data/parse_json.go:397,937`. | 6b1pm / T-physical |
 | Parse failure | Publish funded dirty native order, then reverse parsed-set cleanup, retaining refused keys. This is forward U/X/F, not journal undo; ordinary error/cancel versus hash/guard recovery differs (§5). Native cleanup `src/tree_data.c:482–489`; Go `data/parse.go:298–361,1245`. | 6b1pc / T-completion |
-| Value/key changes | Leaf-list target=n; key target=parent list. Non-relocation: U(old); V; H(target); I. Sorted relocation: U/X; V/H; cold/retained placement; L/I. Ordinary leaf only V. Equal/flag-only changes no registration. Detached target's I/U guard naturally no-ops. Native `src/tree_data_new.c:1130–1263`; Go `data/edit.go:827–1077`, `data/value_reinsert.go:11`. | 6b1v / T-value |
-| Dup inner/keys/parents | Recursive inherited table before first child (§1); LAST child events, final hash, outer L/I. Nonrecursive leading keys can **naturally build** a fresh table at threshold, but never inherit source capacity. Existing-key reuse uses schema lookup and no new key event. WithParents copies ancestors/keys; preserve D-0065 cleanup of only new copies. Native `src/tree_data.c:2169–2507`; Go `data/dup.go:198–359,376–612`; deviation `conformance/deviations.md:47`. | 6b2d / T-dup |
+| Value/key changes | Leaf-list target=n; a key with a data parent targets its parent list. Non-relocation: U(target at old hash); V; H(target); I(target). Sorted relocation: U/X; V/H; cold/retained placement; L/I. Other terms, including a detached key, change only V, with no H/U/I. Equal/flag-only changes have no registration event. A detached leaf-list or list target's I/U guards naturally no-op. This value-change path is distinct from §1.2's key-insertion completion. Native `src/tree_data_new.c:1130–1263`; Go `data/edit.go:827–1077`, `data/value_reinsert.go:11`. | 6b1v / T-value |
+| Dup inner/keys/parents | Recursive inherited table before first child (§1); each LAST child insertion obeys §1.2's key-insertion guard. After copying its children, `lyd_dup_r` explicitly computes H(dup) for an inner node, then performs the outer L/I; this final hash is distinct from insertion-triggered parent H/I. Nonrecursive leading keys can **naturally build** a fresh table at threshold, but never inherit source capacity. Existing-key reuse uses schema lookup and no new key insertion event. WithParents copies ancestors/keys; preserve D-0065 cleanup of only new copies. Native `src/tree_data.c:2169–2507`; Go `data/dup.go:198–359,376–612`; deviation `conformance/deviations.md:47`. | 6b2d / T-dup |
 | Dup any payload | Even nonrecursive outer dup calls any-copy, which recursively copies payload siblings, retaining descendant table capacities and payload contexts. Native `src/tree_data.c:2321–2325`, `src/tree_data_new.c:352–359`; Go `data/dup.go:233–291`. | 6b2d / T-dup-any |
 | Any adoption/clear/copy | Fresh parsed payload adoption transfers bindings without re-registering descendants; its any parent has no children table. Clear old value first; empty source returns; otherwise parse/adopt or recursive copy, then hints. Dispose outgoing tables without destroying externally referenced state (§3). Native `src/tree_data_new.c:320–369`; Go `data/any.go:238–309,346–500`, `data/siblings_access.go:568`. Partial-forest route needs explicit native-equivalent U/X history before adoption, never invented whole-move replay. | 6b2a / T-any |
 | Prefix producers | Capture/copy/rebind immutable prefix state; opaque merge atomically replaces value/format/P. No registration merely for P. Native `src/tree_data.c:2270–2278,2672–2690`; Go `data/parse_xml.go:147–215,312–317,576–583`, `data/any.go:502–511`, `data/edit.go:1873–1888`, `data/dup.go:376–454`. | 6b2p / T-prefix |
 | Ordinary/whole move | Per native branch, U/X source then L/I destination; descendant tables persist. Empty destination, by-schema and sorted-merge orders differ. Native `src/tree_data.c:891–1044`; Go `data/move.go:755–997,1016`. Main's upfront top-level detach (`:903–934`) is storage scheduling, not authority to reorder native events/metadata visibility; a top-level U has no children-table write. | 6b3m / T-move |
 | Sorted merge 1 | Cold-build destination if absent, then source physical order, each U/X/L/I; retain passed metadata. Native `src/tree_data_sorted.c:1444–1469,1693–1728`; Go `data/move.go:1000–1178`, `data/insert.go:814,2675`. | 6b3s1 / T-merge1 |
-| Sorted merge 2 | Front → metadata transfer → among/back → nonmember tail, with **D-0062 alternative specified below**. Never promise completed exact-native evidence for its UB inputs. Native `src/tree_data_sorted.c:1488–1642`; Go `data/move.go:1005–1099`. | 6b3s2 / T-merge2 |
+| Sorted merge 2 | Native front → metadata → among/back → nonmember tail is distinct from the **D-0062 Go alternative in §4.1**: replay destination nodes into source RB topology, permute the destination without its U/I, then register source members against explicit filtered frontiers and process the nonmember tail. Do not combine native source-only link steps with a globally sorted Go result or claim completed native evidence for UB inputs. Native `src/tree_data_sorted.c:1488–1642`; Go `data/move.go:1060–1099`, `data/insert.go:2675–2785`. | 6b3s2 / T-merge2 |
 | Sorted merge 3 | First clear/free source metadata root, retain RB nodes for traversal; source RB postorder U/X/L/I, then nonmember tail via variant 1. Native `src/tree_data_sorted.c:1661–1690`; Go `data/move.go:1031–1041,1100–1178`. | 6b3s3 / T-merge3 |
 | Relocation rollback | Paired savepoint restores old storage **and table**, no compensating I/U. Successful forward restore is different. Go `data/move.go:373–702`; native positional restore `src/validation.c:2501–2512`. | 6b3m / T-undo |
 | ValidateOp | Native match determines temporary attachment; U/X/L/I, validation events, then U/X and positional L/I at saved before/after, else normal parent insertion; detached root stays detached. Forward restoration creates new history, including on ordinary failure/cancel. Native `src/validation.c:2353–2520`; Go `data/validate_op.go:96–246,298–318`, `data/insert.go:2395`. | 6b3o / T-op, T-completion |
@@ -329,31 +329,79 @@ maps each native direct consumer; no such decision may wait for PR 7.
 
 ### 4.1 Sorted merge 2 and D-0062
 
-Keep the existing deviation (`conformance/deviations.md:38`). Native `_among`
-tests the current schema instead of its successor (`src/tree_data_sorted.c:1542`);
-`_back` can return without setting continuation (`:1583–1584`), subsequently read
-at `:1634`. These cannot supply an exact completed oracle trace.
+Keep the existing deviation (`conformance/deviations.md:38`). Native nodes2
+inserts the destination leader into the source RB tree, moves its source
+predecessors backwards before it, transfers source metadata after that front
+phase, then inserts remaining destination members into the RB tree while moving
+source successors among/after them (`src/tree_data_sorted.c:1488–1642`). It does
+not relocate existing destination data nodes. `_among` tests the current schema
+instead of its successor (`:1542`), and `_back` can leave continuation unset
+(`:1583–1584`, read at `:1634`). An unsorted destination can also make `_among`'s
+forward iterator unable to reach the newly inserted destination RB node. These
+undefined paths cannot supply a completed exact-native trace.
 
-For the supported Go alternative, keep source RB topology and insert destination
-members into it in destination data order; equal values retain source instances
-first and the final run is that tree's in-order (`data/move.go:1005–1014,1060–1099`).
-The event schedule is explicit: insert destination leader into RB (no I/U), move
-source predecessors backwards, each U/X/L/I at its then-current neighbours;
-**transfer source metadata after front**; insert remaining destination members
-in data order (no I/U), move intervening source successors forwards with U/X/L/I;
-move remaining source successors forwards; initialize continuation explicitly
-to the first unprocessed source nonmember (nil if none), then variant-1 tail.
-Error cleanup retains the current root binding as native RBT_SET does
-(`src/tree_data_sorted.c:1495–1513,1543–1561,1585–1640`). Deferred `rbPublish`
-replays that schedule against a frontier, never final-order neighbours.
+An unsorted destination without an RB tree is publicly reachable: two separate
+NoSort/NoMeta duplications of values 4 then 1 into the same parent retain [D4,D1]
+without sorting. Moving a parentless source sibling forest [S2,S3] with an RB
+tree into that parent selects nodes2. T-merge2 must construct this state through
+public APIs and verify both RB-presence preconditions, not seed a private flag.
 
-T-merge2 has two labeled sets: terminating/native-defined controls compare every
-metadata/table event; D-0062 controls assert the above Go alternative and record
-only native's safe prefix plus failure/watchdog classification. Existing
-`TestMergeSorted` remains a required control (`data/move_test.go:164`). This
-redesign neither removes D-0062 nor broadens its claim to other malformed links.
-Destructive-merge **pooled** RB reuse is excluded (Appendix A); it relocates old
-non-running maxima and is not retained-root reuse.
+The existing **Go D-0062 alternative** additionally permutes destination nodes.
+Its deterministic registration frontier is defined by the main implementation
+(`data/move.go:1060–1099`; `data/insert.go:2675–2785`):
+
+1. Save the destination run D in its original data order and its original first
+   node d0. Keep source RB topology and insert all D members into it in that
+   order. This RB replay emits no data-table I/U. Let F be the resulting in-order
+   run; source instances precede destination instances on equal values.
+2. Form A from source RB members only: those before d0 in F, visited backwards,
+   followed by those after d0 in F, visited forwards. Destination nodes are
+   excluded from A. Source nonmembers remain for the variant-1 tail.
+3. Republish the affected destination range in F order, including **reordering
+   existing destination nodes**. This is one Go-policy permutation, not a series
+   of native destination U/X/L/I relocations: it emits no U/H/I for existing
+   destination members and leaves their registrations unchanged. Preserve opaque
+   slots using the existing physical-extent rule
+   (`data/siblings_access.go:654–682,717–735`). Install the retained topology and
+   transfer its metadata group to the final run's first member before the
+   attachment replay, preserving the order of additional/empty metadata items
+   (`data/insert.go:2730–2758`). Do not claim native “metadata after front” timing
+   for this Go-policy publication.
+4. Replay A one member at a time. Its registration frontier is the republished
+   physical sequence with all later members of A hidden; existing destination
+   members are already in their permuted positions. Publish the arriving
+   member's attachment, then execute I against that frontier. An absent table
+   reaching four schema children builds in this frontier's physical order; an
+   existing table performs the arriving member's normal I sub-operations using
+   its then-visible predecessor/successor. Keep opaque separators and native
+   helper-stop/resize behavior. Do not pre-register future arrivals, rebuild an
+   existing table, or synthesize events for the destination permutation.
+5. Process source RB nonmembers in original source data order through variant 1
+   using the retained root. The source of this public whole-forest route is
+   parentless, so its U calls have no children-table effect. Main physically
+   detaches that source batch before `merge` (`data/move.go:895–934`); this storage
+   scheduling does not add destination registrations. Preserve the paired
+   whole-move rollback boundary for refusal/resource failure (§5).
+
+Thus [D4,D1] + [S2,S3] has F=[D1,S2,S3,D4], A=[S3,S2], and visible frontiers
+[D1,D4] → [D1,S3,D4] → [D1,S2,S3,D4]. Existing destination registrations can
+therefore retain a winner that is no longer physically first. B preserves this
+specified alternative and applies §1's occurrence-table primitives to its
+frontiers; it must not mix native source-only links with the Go sorted result.
+Document this frontier/metadata refinement with the existing D-0062 entry when
+implementing it, rather than claiming those permutation steps are native.
+
+T-merge2 keeps native-defined controls and D-0062 policy controls separately
+labeled. The native observer records native front/metadata/among/back events;
+the Go alternative records the explicit permutation and attachment frontiers
+above. Exact native event equality is asserted only where the policies agree;
+a completed native-defined public result still needs oracle agreement or an
+explicitly applicable documented deviation. This clarification does not waive
+new mismatches outside D-0062. Undefined controls record only a safe native
+prefix plus the failure/watchdog classification, never an accidental completed
+result. Keep `TestMergeSorted` (`data/move_test.go:164`) and the ordered
+empty-metadata control (`data/retained_rb_stage3_test.go:476`). Destructive-merge
+pooled RB reuse remains excluded (Appendix A).
 
 ### 4.2 ApplyDiff create boundary
 
@@ -757,7 +805,7 @@ any dependent semantic adapter merges:
    scripts separate until each prefix is established.
 3. **Sorted-merge-2's defined/UB boundary and metadata timing:** one defined
    control, one successor-schema case, and the all-source-before-destination
-   boundary. Verify the front → metadata → among/back → tail prefix; classify the
+   boundary. Record native front → metadata → among/back → tail where defined; separately verify §4.1's Go-policy permutation, metadata publication and attachment frontiers. Include the publicly constructed unsorted destination and both table-presence controls; classify the
    uninitialized-continuation path as UB without using its accidental result as
    a golden.
 A contradictory result reopens the affected contract. Source citations alone are
@@ -808,6 +856,18 @@ requires `./dev make ci`, and oracle-touching units use canonical
 `DEV_PLATFORM=linux/amd64 ./dev make test-oracle oracle-check` (root `AGENTS.md:12–24`).
 Add provenance/port-map entries with each implementation. This document authorizes
 neither code changes nor a claim that these future gates have passed.
+
+**T-key addition.** **Non-key insertion control:** create a fully keyed list L beneath P with P's children table already present. Record L's stored hash and all of P's occurrence/bucket/free-list/size/used/mode state. Insert an ordinary non-key child into L through NewTerm and a separate NewPath control. Only the child's L/I occurs: L's stored hash and P's table remain identical, and duplicate validation does not acquire a second occurrence of L. Repeat while L's own children cross the first-build threshold, and with an opaque child; changes to L's child table must not be mistaken for re-registration of L in P. Pair with a real key insertion satisfying §1.2's full guard, which does emit H(L)/I(L), and an incomplete-key-prefix control, which does not. Recursive Dup's final H(dup) is tested separately from these insertion-triggered events.
+
+**T-merge2 additions.**
+
+**Unsorted destination:** publicly construct D=[D4,D1] with NoSort/NoMeta dup and no RB tree, and parentless source S=[S2,S3] with an RB tree. Require final physical order [D1,S2,S3,D4], A=[S3,S2], zero U/H/I for D's permutation, and the three frontiers in §4.1. Dump destination registrations before/after permutation, each arrival's predecessor/successor, metadata owner/order, and RB shape. Native evidence stops before `_among` dereferences the exhausted forward iterator; record its earlier source-only link prefix separately.
+
+**Threshold build:** start with exactly D4,D1 under P and no children table. I(S3) sees three children and creates no table. I(S2) sees four and builds in [D1,S2,S3,D4] order, completing each child's instance/schema add before advancing. For noncolliding hashes, schema lookup selects D1. Never use the native UB-prefix order [S2,S3,D4,D1] for this Go-policy build.
+
+**Existing table:** put two distinct non-v schema children before D4,D1, so P already has its children table and v's schema occurrence names D4. The Go permutation alone changes no occurrence or table size/used/mode/free-list state. I(S3) sees neighbours (D1,D4); I(S2) sees (D1,S3); each is a non-run-start, so neither replaces D4's schema occurrence. With noncolliding hashes this setup starts size8/mode2/used5: I(S3) grows normally to size16/used6, then I(S2) reaches used7. Include that growth/reinsertion in the trace; it does not invent a D1 schema occurrence, so schema lookup still selects D4 although physical-first v is D1. Verify the future lookup and duplicate/consumer behavior, not only sorted printed values. Add an opaque-separator control using the physical-extent rule and preserving the separator in every frontier.
+
+**Recovery:** refuse/exhaust preparation or publication funding at the governing whole-move unit and assert both forests, table roots/history and metadata are restored. Retain the source nonmember-tail and existing empty/additional-metadata controls. The metadata publication difference is labeled Go policy, not an exact-native claim.
 
 ### 8.3 Prior-review closure index
 
@@ -1013,7 +1073,7 @@ alternative, rationale and safe evidence (`conformance/AGENTS.md:9–16`).
    expansion, null-start rules, both callback operands, validation's forced-read
    re-find, and Equal/public-print entries. Trace T-val-dup through NEW/autodelete.
 2. **Producer order:** ApplyDiff's parent callback before non-key actions; deferred
-   parse frontiers; all-unlinks-before-reinsert reversal; D-0062 metadata timing;
+   parse frontiers; all-unlinks-before-reinsert reversal; D-0062's explicit destination permutation, attachment frontiers and Go-policy metadata timing, distinguished from native front/among/back;
    remote-last writes to both forests, with the explicit safety decision.
 3. **Recovery and lifetime:** two committed child frames before the parent's first
    write; finite completion after cancellation; D-0117 shrink; moved winners'
