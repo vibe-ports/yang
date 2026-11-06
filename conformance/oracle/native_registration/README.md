@@ -56,7 +56,13 @@ instrumented/unmodified ABI markers, and compares terminating public JSON,
 validation statuses/diagnostics, and schema-lookup statuses plus normalized
 winner/current-parent identities. Allocation generations are normalized through
 script handles before comparison; generations from different processes are
-never compared directly. The Go evidence test passes its selected executable
+never compared directly. Every comparison checks the exact completed command
+sequence, statuses and diagnostic code/path/app-tag, plus the independently
+expected terminal command or stop boundary on both sides. LOGINT source paths
+and line numbers differ between builds; full validation diagnostics are still
+compared. An empty result set cannot satisfy a control. Constructor-rejection
+controls instead compare their explicit rejection snapshot and nonempty log.
+The Go evidence test passes its selected executable
 and uses `YANG_NATIVE_REGISTRATION_COMPARISON_DRIVER` when provided, otherwise
 `driver-unmodified` beside that selected executable. Safe-prefix boundary
 cases are never run to an accidental completed result or used as goldens.
@@ -239,7 +245,12 @@ allocation-identity controls apply to instrumented traces.
   insertion and compares P/Q JSON and schema lookup through P (winner v3,
   current parent Q) with the unmodified library. `remote-last-release.calls`
   separately checks whole-root release of P/Q/R, leaving already detached v1
-  and o as independent live allocations. These concrete controls do not establish
+  and o as independent live allocations, then prints both. Both drivers must
+  complete all three releases; the Go regression checks each release's exact
+  liveness transition. The untouched driver's observer follows the native
+  child/next release walk and retires disposed tables' occurrences. It also
+  reconciles removed/reused slots and generic-table replacement, while preserving
+  retained generic/foreign tombstones. These concrete controls do not establish
   arbitrary unlink/free or traversal safety.
 * **remote-nonlast.calls:** adding v5 in Q before creating v4 in P selects the
   remote nonlast predecessor and completes with valid links. Public JSON for
@@ -418,6 +429,35 @@ also passed the complete `TestNative` suite with the auxiliary driver enabled
 and the requested lint command. No golden or policy file was modified.
 
 There are no new manifest fixture IDs. Compatibility requests are the independent live scripts under `cases/`, plus the fixed-seed primitive replays.
+
+## Replay-completion regression controls
+
+The merge-gate sweep found empty comparisons in `remote-last-release`,
+`resize-disabled`, `free-slot-cap`, `schema-pointer`, and
+`schema-pointer-reverse`. Each now has an explicit public print probe. The
+remote parented-rewind continuation also has an untouched-library comparison.
+`invalid-capacity` and `invalid-mode` now use the same completion checker with
+their expected rejection boundary and nonempty native log as evidence.
+All 30 scripts, including intentionally stopped prefixes and lifetime-only
+controls, require independently expected completed commands and terminal events.
+The Go driver's shared helper enforces command/read completion for every Go
+differential caller too. This closes the opaque-parent loop's empty-replay
+acceptance and the list/schema-pointer checks' selected-prefix acceptance;
+intentional tombstone stops require their explicit final event and operation.
+`TestNativeDriverReplayCompletion` covers these helper rejection paths directly.
+
+`TestNativeControlReplayRejections` runs nine focused comparator tests, including
+equal truncations with nonempty results and a fully completed replay with empty
+results. Against the pre-fix checker it fails eleven assertions; its valid
+nonempty control passes. Every live comparison additionally rejects truncation,
+an unexpected early stop, a missing command and empty results on either side
+and both sides together. Direct empty-result validation has a separate mutant
+so command validation cannot mask the empty-set assertion.
+`TestNativeReleaseControlCompletion` fails against the pre-fix untouched driver
+at operation 16. `TestNativeReleaseRetirementPaths` separately covers generic
+replacement, single-child free, retained generic occurrences, and retained
+foreign occurrences; the first two fail against that driver. These live
+requests complement the fixed case scripts without introducing goldens.
 
 
 ## Audit closure controls

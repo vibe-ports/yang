@@ -10,3 +10,4 @@ unlink 4
 frontier 1 2 3 4 5
 I 5
 U 4
+print 1

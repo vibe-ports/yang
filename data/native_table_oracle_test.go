@@ -23,15 +23,17 @@ import (
 )
 
 type nativeDriverResult struct {
-	Event string       `json:"event"`
-	RC    nativeStatus `json:"rc"`
-	Table struct {
+	Event     string       `json:"event"`
+	Operation int          `json:"operation"`
+	RC        nativeStatus `json:"rc"`
+	Table     struct {
 		Present bool `json:"present"`
 		nativeImage
 		Slots []struct{ Next uint32 } `json:"slots"`
 	} `json:"table"`
 	Nodes []struct {
-		ID    int `json:"id"`
+		ID    int  `json:"id"`
+		Alive bool `json:"alive"`
 		Table struct {
 			Present bool `json:"present"`
 			nativeImage
@@ -40,7 +42,139 @@ type nativeDriverResult struct {
 	} `json:"nodes"`
 }
 
+// Both processes must finish P, Q, R release and still print the two detached
+// allocations. A zero exit status or equal empty result sets proves neither.
+func TestNativeReleaseControlCompletion(t *testing.T) {
+	driver := os.Getenv("YANG_NATIVE_REGISTRATION_DRIVER")
+	if driver == "" {
+		t.Skip("set YANG_NATIVE_REGISTRATION_DRIVER after the isolated static build")
+	}
+	comparison := os.Getenv("YANG_NATIVE_REGISTRATION_COMPARISON_DRIVER")
+	if comparison == "" {
+		comparison = filepath.Join(filepath.Dir(driver), "driver-unmodified")
+	}
+	script, err := os.ReadFile(filepath.Join("..", "conformance", "oracle", "native_registration", "cases", "remote-last-release.calls"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for label, path := range map[string]string{"instrumented": driver, "unmodified": comparison} {
+		t.Run(label, func(t *testing.T) {
+			t.Setenv("YANG_NATIVE_REGISTRATION_DRIVER", path)
+			rows := nativeDriver(t, string(script))
+			var completed []string
+			var released, prints int
+			dead := make(map[int]bool)
+			groups := [][]int{{1, 11, 12, 14}, {2, 16, 17}, {3, 31}}
+			for _, row := range rows {
+				if strings.HasPrefix(row.Event, "boundary.") {
+					t.Fatalf("early stop at operation %d: %s", row.Operation, row.Event)
+				}
+				if row.Event == "public.result" {
+					prints++
+					continue
+				}
+				completed = append(completed, row.Event)
+				if row.Event != "free-root" {
+					continue
+				}
+				if released == len(groups) {
+					t.Fatal("extra release")
+				}
+				for _, id := range groups[released] {
+					dead[id] = true
+				}
+				released++
+				seen := make(map[int]bool)
+				for _, node := range row.Nodes {
+					if node.ID == 0 {
+						continue
+					}
+					seen[node.ID] = true
+					if node.Alive == dead[node.ID] {
+						t.Errorf("release %d: handle %d alive=%t", released, node.ID, node.Alive)
+					}
+				}
+				if len(seen) != 11 {
+					t.Errorf("release %d: got %d retained handles, want 11", released, len(seen))
+				}
+			}
+			var expected []string
+			for _, line := range strings.Split(string(script), "\n") {
+				fields := strings.Fields(line)
+				if len(fields) != 0 && !strings.HasPrefix(fields[0], "#") {
+					expected = append(expected, fields[0])
+				}
+			}
+			if !slices.Equal(completed, expected) || released != 3 || prints != 2 {
+				t.Fatalf("incomplete release control: commands=%v want=%v releases=%d prints=%d", completed, expected, released, prints)
+			}
+		})
+	}
+}
+
+func TestNativeControlReplayRejections(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+	cmd := exec.CommandContext(ctx, "python3", filepath.Join("..", "conformance", "oracle", "native_registration", "check_test.py"))
+	if out, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("control comparison regressions: %v\n%s", err, out)
+	}
+}
+
+func TestNativeReleaseRetirementPaths(t *testing.T) {
+	driver := os.Getenv("YANG_NATIVE_REGISTRATION_DRIVER")
+	if driver == "" {
+		t.Skip("set YANG_NATIVE_REGISTRATION_DRIVER after the isolated static build")
+	}
+	comparison := os.Getenv("YANG_NATIVE_REGISTRATION_COMPARISON_DRIVER")
+	if comparison == "" {
+		comparison = filepath.Join(filepath.Dir(driver), "driver-unmodified")
+	}
+	remote, err := os.ReadFile(filepath.Join("..", "conformance", "oracle", "native_registration", "cases", "remote-last-release.calls"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	remotePrefix, _, ok := strings.Cut(string(remote), "free-root 1")
+	if !ok {
+		t.Fatal("missing remote release frontier")
+	}
+	for label, path := range map[string]string{"instrumented": driver, "unmodified": comparison} {
+		t.Run(label, func(t *testing.T) {
+			t.Setenv("YANG_NATIVE_REGISTRATION_DRIVER", path)
+			for _, tc := range []struct {
+				name, script, terminal string
+				operation              int
+			}{
+				{"replaced-generic", "root 1 c\nnew 8 0\ninsert 7 7 0\nnew 8 0\nfree 7\nprint 1\n", "print", 6},
+				{"removed-child", "root 1 c\nterm 11 1 p P\nterm 12 1 q Q\nterm 13 1 v 1\nterm 14 1 v 2\nfree 14\nprint 1\n", "print", 7},
+				{"retained-generic", "new 8 0\ninsert 1 7 0\ninsert 1 7 0\nfree 1\nfind-next-loop 1 7 1\n", "boundary.tombstoned-semantic-probe", 5},
+				{"retained-foreign", remotePrefix + "free-root 2\nprint 13\n", "boundary.tombstoned-semantic-probe", 16},
+			} {
+				t.Run(tc.name, func(t *testing.T) {
+					terminal := ""
+					if strings.HasPrefix(tc.terminal, "boundary.") {
+						terminal = tc.terminal
+					}
+					rows := nativeDriverUntil(t, tc.script, terminal)
+					if len(rows) == 0 || rows[len(rows)-1].Event != tc.terminal {
+						t.Fatalf("unexpected terminal: %v, want %s", rows, tc.terminal)
+					}
+					last := rows[len(rows)-1]
+					if last.Operation != tc.operation {
+						t.Fatalf("stopped at operation %d, want %d", last.Operation, tc.operation)
+					}
+				})
+			}
+		})
+	}
+}
+
 func nativeDriver(t *testing.T, script string) []nativeDriverResult {
+	t.Helper()
+	return nativeDriverUntil(t, script, "")
+}
+
+func nativeDriverUntil(t *testing.T, script, terminal string) []nativeDriverResult {
 	t.Helper()
 	path := os.Getenv("YANG_NATIVE_REGISTRATION_DRIVER")
 	if path == "" {
@@ -89,7 +223,84 @@ func nativeDriver(t *testing.T, script string) []nativeDriverResult {
 	if err := scan.Err(); err != nil {
 		t.Fatal(err)
 	}
+	if err := nativeCompletedReplay(script, results, terminal); err != nil {
+		t.Fatal(err)
+	}
 	return results
+}
+
+// Shared by every Go differential caller, including loops that could otherwise
+// accept zero snapshots or compare only a selected prefix of the request.
+func nativeCompletedReplay(script string, results []nativeDriverResult, terminal string) error {
+	type event struct {
+		operation int
+		name      string
+	}
+	var expected, expectedReads []event
+	commandNames := make(map[string]bool)
+	reads := map[string]string{"print": "public.result", "schema": "read.schema", "rewind": "read.first-sibling"}
+	for _, line := range strings.Split(script, "\n") {
+		fields := strings.Fields(line)
+		if len(fields) == 0 || strings.HasPrefix(fields[0], "#") {
+			continue
+		}
+		commandNames[fields[0]] = true
+		expected = append(expected, event{len(expected) + 1, fields[0]})
+	}
+	if len(expected) == 0 || len(results) == 0 {
+		return fmt.Errorf("empty native replay")
+	}
+	wantTerminal := expected[len(expected)-1]
+	if terminal != "" {
+		wantTerminal.name = terminal
+		expected = expected[:len(expected)-1]
+	}
+	for _, command := range expected {
+		if result := reads[command.name]; result != "" {
+			expectedReads = append(expectedReads, event{command.operation, result})
+		}
+	}
+	var actual, actualReads []event
+	for _, row := range results {
+		if commandNames[row.Event] {
+			actual = append(actual, event{row.Operation, row.Event})
+		}
+		if row.Event == "public.result" || row.Event == "read.schema" || row.Event == "read.first-sibling" {
+			actualReads = append(actualReads, event{row.Operation, row.Event})
+		}
+	}
+	last := results[len(results)-1]
+	if !slices.Equal(actual, expected) || !slices.Equal(actualReads, expectedReads) || (event{last.Operation, last.Event}) != wantTerminal {
+		return fmt.Errorf("incomplete native replay: commands=%v want=%v reads=%v want=%v terminal=%d/%s want=%v",
+			actual, expected, actualReads, expectedReads, last.Operation, last.Event, wantTerminal)
+	}
+	return nil
+}
+
+func TestNativeDriverReplayCompletion(t *testing.T) {
+	row := func(operation int, name string) nativeDriverResult {
+		return nativeDriverResult{Event: name, Operation: operation}
+	}
+	for _, tc := range []struct {
+		name, script, terminal string
+		rows                   []nativeDriverResult
+		valid                  bool
+	}{
+		{"complete", "dump\nprint 1\n", "", []nativeDriverResult{row(1, "dump"), row(2, "public.result"), row(2, "print")}, true},
+		{"empty", "dump\n", "", nil, false},
+		{"truncated", "dump\nprint 1\n", "", []nativeDriverResult{row(1, "dump")}, false},
+		{"missing-command", "dump\nprint 1\n", "", []nativeDriverResult{row(2, "public.result"), row(2, "print")}, false},
+		{"missing-result", "print 1\n", "", []nativeDriverResult{row(1, "print")}, false},
+		{"early-stop", "dump\nprint 1\n", "", []nativeDriverResult{row(1, "dump"), row(2, "boundary.tombstoned-semantic-probe")}, false},
+		{"expected-stop", "dump\nprint 1\n", "boundary.tombstoned-semantic-probe", []nativeDriverResult{row(1, "dump"), row(2, "boundary.tombstoned-semantic-probe")}, true},
+		{"wrong-stop-operation", "dump\nprint 1\n", "boundary.tombstoned-semantic-probe", []nativeDriverResult{row(1, "dump"), row(1, "boundary.tombstoned-semantic-probe")}, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if err := nativeCompletedReplay(tc.script, tc.rows, tc.terminal); (err == nil) != tc.valid {
+				t.Fatalf("valid=%t: %v", tc.valid, err)
+			}
+		})
+	}
 }
 
 func TestNativeObserverEvidence(t *testing.T) {
@@ -159,12 +370,24 @@ func TestNativeObserverEvidence(t *testing.T) {
 	for _, path := range cases {
 		name := strings.TrimSuffix(filepath.Base(path), ".calls")
 		require(name, "removed-bootstrap-records", "removed-retained-identity", "removed-snapshot-nodes",
-			"removed-snapshot-diagnostics", "removed-snapshot-node_generation", "removed-snapshot-source_generation")
+			"removed-snapshot-diagnostics", "removed-snapshot-node_generation", "removed-snapshot-source_generation",
+			"truncated-replay", "unexpected-terminal")
 		for _, field := range []string{"hash", "flags", "metadata", "schema", "prev", "next", "parent", "first", "tail", "table"} {
 			require(name, "removed-current-"+field)
 		}
 		for _, field := range []string{"generation", "id", "creation_operation", "creation_ordinal", "source", "alive"} {
 			require(name, "removed-identity-"+field)
+		}
+	}
+	for _, name := range []string{"remote-last", "remote-nonlast", "collision-build", "collision-resize", "repeated-pointer",
+		"merge2-defined", "internal-build", "collision-history-retained", "collision-history-shrunk", "free-slot-cap",
+		"remote-last-results", "remote-last-release", "opaque-threshold", "opaque-separated", "opaque-eligibility",
+		"resize-disabled", "list-events", "schema-pointer", "schema-pointer-reverse", "invalid-capacity", "invalid-mode"} {
+		require(name, "empty-compared-results")
+		for _, side := range []string{"instrumented", "unmodified", "both"} {
+			for _, mutant := range []string{"truncated-control", "early-stop-control", "missing-command-control", "empty-results-control"} {
+				require(name, mutant+"-"+side)
+			}
 		}
 	}
 	require("internal-build", "removed-parser-child-records", "removed-failed-constructor-records",

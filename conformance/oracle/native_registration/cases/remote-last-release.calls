@@ -16,3 +16,5 @@ term 17 1 v 4
 free-root 1
 free-root 2
 free-root 3
+print 13
+print 15

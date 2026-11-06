@@ -45,11 +45,112 @@ def lookup_results(rows):
             for r in commands(rows, "read.schema")]
 
 
-def control_equal(name, rc, rows):
+# Expected stops are request facts, never inferred from the observed final row.
+STOPS = {
+    "remote-last": (14, "boundary.remote-last-corrupting-primitive"),
+    "merge2-before": (11, "boundary.merge2-before-uninitialized-continuation"),
+    "merge2-successor": (13, "boundary.merge2-successor-schema-precondition"),
+    "merge2-unsorted": (12, "boundary.merge2-exhausted-forward-iterator"),
+    "handle-tombstone": (15, "boundary.tombstoned-handle"),
+    "handle-tombstone-probe": (15, "boundary.tombstoned-handle"),
+    "dead-occurrence": (5, "boundary.tombstoned-semantic-probe"),
+    "find-next-watchdog": (4, "boundary.watchdog.find-next-cycle"),
+    "free-slot-cap": (13, "boundary.primitive-free-slot-cap"),
+    "invalid-capacity": (1, "boundary.new-null"),
+    "invalid-mode": (1, "boundary.new-null"),
+}
+
+
+def request_commands(name):
+    return [line.split()[0] for line in (root / "cases" / (name + ".calls")).read_text().splitlines()
+            if line.strip() and not line.lstrip().startswith("#")]
+
+
+def completed_replay(name, rows, stopped=True):
+    script = request_commands(name)
+    stop = STOPS.get(name) if stopped else None
+    end = stop[0] if stop else len(script) + 1
+    expected = list(enumerate(script[:end - 1], 1))
+    script_commands = set(script)
+    actual = [(r["operation"], r["event"]) for r in rows if r["event"] in script_commands]
+    assert actual == expected, (name, "incomplete/out-of-order completed commands", actual, expected)
+    terminal = stop or (len(script), script[-1])
+    assert rows and (rows[-1].get("operation"), rows[-1]["event"]) == terminal, (name, "unexpected terminal", terminal)
+    # An observational remote-link boundary may occur mid-replay, but an early
+    # stop must never be interpreted as permission to omit subsequent commands.
+    reads = {"schema": "read.schema", "rewind": "read.first-sibling", "print": "public.result"}
+    expected_results = [(operation, reads[command]) for operation, command in expected if command in reads]
+    actual_results = [(r["operation"], r["event"]) for r in rows if r["event"] in reads.values()]
+    assert actual_results == expected_results, (name, "missing/extra/out-of-order read/public result")
+    # LOGINT text embeds build-specific C paths/line numbers. Compare command
+    # status and diagnostic identity here; validation retains full diagnostics.
+    return [(r["operation"], r["event"], r["rc"],
+             [(d["code"], d.get("path"), d.get("apptag")) for d in r["diagnostics"]])
+            for r in rows if r["event"] in script_commands]
+
+
+def compared_results(name, rows):
+    results = final_public(rows) + commands(rows, "validate") + commands(rows, "read.schema") + commands(rows, "read.first-sibling")
+    if name in ("invalid-capacity", "invalid-mode"):
+        # Rejected constructors have no completed command or public read. Their
+        # explicit native rejection and nonempty log are the comparison result.
+        terminal = rows[-1]
+        assert terminal["rc"] == 0 and terminal.get("logs"), (name, "missing rejection log")
+        return [(terminal["event"], terminal["rc"], terminal["diagnostics"], terminal["logs"])]
+    assert results, (name, "empty compared results")
+    return (final_public(rows),
+            [(r["operation"], r["rc"], r["diagnostics"]) for r in commands(rows, "validate")],
+            lookup_results(rows),
+            [(r["operation"], handle_for_generation(rows, r["winner"])) for r in commands(rows, "read.first-sibling")])
+
+
+def handle_for_generation(rows, generation):
+    return next(n["id"] for r in reversed(rows) for n in r.get("nodes", []) if n["generation"] == generation)
+
+
+def compare_control(name, rc, rows, plain_rc, plain_rows, stopped=True):
+    expected_rc = 5 if name in ("invalid-capacity", "invalid-mode") else 0
+    assert rc == plain_rc == expected_rc, (name, "control exit status")
+    assert completed_replay(name, rows, stopped) == completed_replay(name, plain_rows, stopped), (name, "completed command results changed")
+    assert compared_results(name, rows) == compared_results(name, plain_rows), (name, "control results changed")
+
+
+def control_equal(name, rc, rows, stopped=True):
     plain_rc, plain_rows = run(name, unmodified=True)
-    assert plain_rc == rc and final_public(rows) == final_public(plain_rows), name
-    assert [(r["rc"], r["diagnostics"]) for r in commands(rows, "validate")] == [(r["rc"], r["diagnostics"]) for r in commands(plain_rows, "validate")], name
-    assert lookup_results(rows) == lookup_results(plain_rows), (name, "lookup result or current parent changed")
+    compare_control(name, rc, rows, plain_rc, plain_rows, stopped)
+    # Mutate each side independently AND both together: equal truncations and
+    # equal empty sets were the original false-positive class.
+    def rejected(label, left, right):
+        try:
+            compare_control(name, rc, left, plain_rc, right, stopped)
+        except (AssertionError, KeyError, IndexError):
+            print(json.dumps({"negative_evidence": label, "case": name, "rejected": True}))
+        else:
+            raise AssertionError((name, "control accepted mutant", label))
+    for side in ("instrumented", "unmodified", "both"):
+        def mutate(label, transform):
+            rejected(label + "-" + side, transform(rows) if side != "unmodified" else rows,
+                     transform(plain_rows) if side != "instrumented" else plain_rows)
+        mutate("truncated-control", lambda trace: trace[:-1])
+        mutate("early-stop-control", lambda trace: trace[:-1] + [dict(trace[-1], event="boundary.tombstoned-semantic-probe")])
+        script = set(request_commands(name))
+        def missing_command(trace):
+            first = next((i for i, r in enumerate(trace) if r["event"] in script), len(trace) - 1)
+            return trace[:first] + trace[first + 1:]
+        mutate("missing-command-control", missing_command)
+        # Exercise result validation independently of command completeness.
+        empty = lambda trace: [r for r in trace if r["event"] not in ("public.result", "validate", "read.schema", "read.first-sibling")]
+        if name in ("invalid-capacity", "invalid-mode"):
+            empty = lambda trace: [dict(r, logs=[]) for r in trace]
+        mutate("empty-results-control", empty)
+    try:
+        compared_results(name, empty(rows))
+    except AssertionError:
+        print(json.dumps({"negative_evidence": "empty-compared-results", "case": name, "rejected": True}))
+    else:
+        raise AssertionError((name, "accepted empty compared results"))
+    print(json.dumps({"case": name, "control_completed": True, "terminal": rows[-1]["event"],
+                      "commands": len(completed_replay(name, rows, stopped))}))
 
 
 def by_handle(row):
@@ -284,7 +385,8 @@ def records(row):
                     yield label, record
 
 
-def invariants(rows, name):
+def invariants(rows, name, stopped=True):
+    completed_replay(name, rows, stopped)
     counts = Counter(r["event"] for r in rows)
     assert counts["driver.ready.actual-children-callback"] == 1, (name, "missing ready")
     assert rows[0]["event"] == "driver.ready.actual-children-callback", (name, "late ready")
@@ -302,18 +404,8 @@ def invariants(rows, name):
     for event in ("lyht_resize.before", "lyht_resize.after"):
         assert counts[event] == RESIZES.get(name, 0), (name, "missing/extra resize boundary", event)
     assert counts["dup.table.initialized"] == DUP_INITS.get(name, 0), (name, "missing/extra dup initialization")
-    # A stopped request has no enclosing command result. All earlier commands
-    # still require exactly one snapshot at their independently known operation.
-    script = [line.split()[0] for line in (root / "cases" / (name + ".calls")).read_text().splitlines()
-              if line.strip() and not line.lstrip().startswith("#")]
+    script = request_commands(name)
     script_commands = set(script)
-    stop = rows[-1].get("operation", len(script) + 1) if "boundary" in rows[-1]["event"] else len(script) + 1
-    for operation, command in enumerate(script, 1):
-        if operation < stop:
-            assert len([r for r in rows if r["event"] == command and r.get("operation") == operation]) == 1, (name, operation, command)
-            result = {"schema": "read.schema", "rewind": "read.first-sibling", "print": "public.result"}.get(command)
-            if result:
-                assert len([r for r in rows if r["event"] == result and r.get("operation") == operation]) == 1, (name, "missing read/public result", operation)
 
     resizing, identities, creations, next_ordinal = [], {}, {}, Counter()
     dead, occurrences, generic = set(), {}, False
@@ -458,11 +550,14 @@ def invariants(rows, name):
         internal_build_allocations(rows, creations)
 
 
-def negative_evidence(name, rows):
+def negative_evidence(name, rows, stopped=True):
     """Run every applicable deletion/reference control on each accepted replay."""
     def rejected(label, mutant, check=invariants):
         try:
-            check(mutant, name)
+            if check is invariants:
+                check(mutant, name, stopped)
+            else:
+                check(mutant, name)
         except (AssertionError, KeyError, IndexError):
             print(json.dumps({"negative_evidence": label, "case": name, "rejected": True}))
         else:
@@ -476,6 +571,8 @@ def negative_evidence(name, rows):
     script = [line.split()[0] for line in (root / "cases" / (name + ".calls")).read_text().splitlines()
               if line.strip() and not line.lstrip().startswith("#")]
     script_commands = set(script)
+    rejected("truncated-replay", rows[:-1])
+    rejected("unexpected-terminal", rows[:-1] + [dict(rows[-1], event="boundary.unexpected")])
     allocations = {n["generation"]: n for r in rows for n in r.get("nodes", [])}
     internal = {g for g, n in allocations.items() if n["creation_operation"] and not n["id"]}
     parser_children = {g for g in internal if script[allocations[g]["creation_operation"] - 1] == "parse"}
@@ -734,8 +831,9 @@ def main():
     rc, rows = run("remote-last", "--remote-watchdog")
     assert rc == 0 and rows[-1]["event"] == "rewind"
     assert commands(rows, "read.first-sibling")[-1]["winner"] == by_handle(rows[-1])[2]["first"]
-    invariants(rows, "remote-last")
-    negative_evidence("remote-last", rows)
+    invariants(rows, "remote-last", stopped=False)
+    negative_evidence("remote-last", rows, stopped=False)
+    control_equal("remote-last", rc, rows, stopped=False)
     summary("remote-last-parented-rewind-terminates", rc, rows)
     for name in ["remote-nonlast", "collision-build", "collision-resize", "repeated-pointer", "merge2-defined", "driver-lifetime", "internal-build", "collision-history-retained", "collision-history-shrunk", "handle-tombstone", "handle-tombstone-probe", "dead-occurrence", "free-slot-cap", "remote-last-results", "remote-last-release", "opaque-threshold", "opaque-separated", "opaque-eligibility", "resize-disabled", "retained-address-reuse", "list-events", "schema-pointer", "schema-pointer-reverse"]:
         rc, rows = run(name, "--remote-watchdog" if name == "remote-nonlast" else "--events")
@@ -873,8 +971,7 @@ def main():
         invariants(rows, name)
         negative_evidence(name, rows)
         assert not commands(rows, "table.allocate"), (name, "allocation before rejection")
-        plain_rc, plain_rows = run(name, "--events", unmodified=True)
-        assert plain_rc == rc and plain_rows[-1]["event"] == "boundary.new-null", name
+        control_equal(name, rc, rows)
         summary(name, rc, rows)
     rc, rows = run("find-next-watchdog")
     assert rc == 0 and rows[-1]["event"] == "boundary.watchdog.find-next-cycle"
