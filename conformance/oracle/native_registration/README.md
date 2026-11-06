@@ -247,9 +247,9 @@ allocation-identity controls apply to instrumented traces.
   separately checks whole-root release of P/Q/R, leaving already detached v1
   and o as independent live allocations, then prints both. Both drivers must
   complete all three releases; the Go regression checks each release's exact
-  liveness transition. The untouched driver's observer follows the native
-  child/next release walk and retires disposed tables' occurrences. It also
-  reconciles removed/reused slots and generic-table replacement, while preserving
+  liveness transition. The untouched driver observes actual frees through linker interposition and
+  retires disposed tables' occurrences. It also reconciles removed/reused slots,
+  rehashed records and generic-table replacement, while preserving
   retained generic/foreign tombstones. These concrete controls do not establish
   arbitrary unlink/free or traversal safety.
 * **remote-nonlast.calls:** adding v5 in Q before creating v4 in P selects the
@@ -484,3 +484,68 @@ exists only in a temporary test directory and leaves tracked production files
 unchanged. `TestNativeMerge2PolicyFrontiers` separately applies these frontiers
 to lifecycle A, including opaque separators, and asserts first-build versus
 existing-table occurrence history and the retained D4 winner.
+
+
+## Comparison-driver lifetime closure (second merge-gate round)
+
+The untouched static library still executes its original algorithms. Its driver
+now links with `--wrap=free` to observe actual frees of known data nodes and
+tables, including frees inside constructors and validation. This replaces the
+explicit-release simulation. A bounded, visited live-storage walk registers
+returned allocations, their descendants and siblings, and allocations added to
+previously known live forests before any output-handle or snapshot binding.
+The same allocation helper serves instrumented constructor hooks and untouched
+boundary discovery: address reuse appends a generation and retains the old
+identity, stale handles and occurrence references.
+
+The identity/lifetime sweep covers these differences between builds:
+
+| Instrumented observation | Untouched comparison observation | Evidence |
+|---|---|---|
+| Constructor hooks before linking | Live-boundary discovery before handle/snapshot binding, including bootstrap and implicit generic dup | `recreate-print`, `recreate-lookup`, `retained-same-hash` |
+| Recursive dup, parser and list-key allocation hooks | Discovery of all surviving descendants, including schema keys | `dup-descendant`, `parse-descendant`, `list-key` |
+| Implicit creation and node-retirement/free hooks | Discovery after validation and actual-free interposition, including default replacement | `validation-delete`; existing release retirement controls |
+| Table allocation/retirement hooks | Known-table free observation and fresh table identity on address reuse | `table-reuse`; existing generic replacement control |
+| Occurrence hooks carrying generations through resize | Preserve FIFO pointer/hash identities across layout changes; retire the exact earliest removed generic occurrence before shrink | `retained-resize`, `retained-remove` |
+| Generation-bound script handles and retained records | Keep earlier handles and tombstones after replacement; never discover allocations through occurrence pointers | `stale-handle`, `retained-same-hash`, existing retained-foreign control |
+| Constructor hooks register identities before primitive snapshots | Finish live-boundary discovery before emitting snapshots; table registration itself emits no partial-forest snapshot | All lifetime cases compare quiet and verbose untouched runs |
+
+All eleven new independent live request cases are in `cases/lifetime/` and run
+through `TestNativeComparisonLifetimes` and the complete observer checker. Both
+processes must emit actual address-reuse evidence with resolved old and new
+generations. Descendant cases additionally require reuse between allocations
+created internally by dup, parse or list-key construction. Each public comparison requires the full independently expected
+command/result sequence and terminal event, equal statuses, diagnostics and
+nonempty public results. Every case also compares verbose untouched observation
+against the quiet instrumented replay. Negative controls delete reuse evidence,
+zero replacement generations and independently
+truncate, stop early, omit commands or empty the results on either side and on
+both sides together. Intended tombstone boundaries have explicit operation and
+boundary assertions; they cannot excuse an earlier stop.
+
+The three requested controls fail against the original `2f3cdb13` drivers:
+`recreate-print` stops at operation 6, `recreate-lookup` at operation 39, and
+`dup-descendant` at operation 40. The fixed controls complete and require actual
+reuse in each process. Independent sensitivity builds omitting descendant
+discovery, resize-generation carry or exact removed-occurrence retirement fail
+`dup-descendant`, `retained-resize` and `retained-remove`, respectively. In
+particular, the resize mutant incorrectly completes a probe of a retained dead
+allocation, while the removal mutant incorrectly stops a valid later print.
+A further sensitivity build emits a table-allocation snapshot inside unfinished
+discovery: quiet replay succeeds, but verbose `dup-descendant` stops at operation
+10. The fixed driver completes both modes with equivalent public outcomes.
+A control that observes frees only during explicit release requests fails
+`validation-delete` with the same schema and requests, establishing the need
+to observe internally triggered retirement too.
+
+Constructor-hook provenance, allocations created and freed wholly inside one
+public call without escaping, primitive-event schedules, dup source ordinals,
+and trace-only occurrence serials remain instrumented evidence, not cross-process
+comparison keys. The untouched driver observes surviving data allocations and
+actual frees without inferring allocation identities from freed pointers.
+Anydata payloads, foreign contexts and representations that the request protocol
+does not construct are excluded. No production path, journal, public API, native
+algorithm or golden changes. The observer keeps its existing identity/occurrence
+limits, traversal cap and process watchdog. The ordinary Go work baseline was
+rerun on actual `origin/main` (`18373297`) and head: all twelve
+visit/charge/allocation/byte tuples above remain identical.

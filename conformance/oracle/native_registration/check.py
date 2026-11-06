@@ -12,11 +12,13 @@ root = pathlib.Path(__file__).resolve().parent
 
 def run(name, option="--quiet", unmodified=False):
     script = (root / "cases" / (name + ".calls")).read_bytes()
-    options = [option] + (["--event-schema"] if name in ("list-events", "schema-pointer", "schema-pointer-reverse") else [])
+    options = [option] + (["--event-schema"] if name in ("list-events", "schema-pointer", "schema-pointer-reverse", "lifetime/list-key", "lifetime/validation-delete") else [])
     result = subprocess.run([str(plain if unmodified else binary), *options], input=script,
                             stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=25, check=False)
-    suffix = ".unmodified" if unmodified else (".first-sibling-control" if option == "--remote-watchdog" and name == "remote-last" else "")
-    (root / ".build" / (name + suffix + ".jsonl")).write_bytes(result.stdout)
+    suffix = (".events.unmodified" if option == "--events" else ".unmodified") if unmodified else (".first-sibling-control" if option == "--remote-watchdog" and name == "remote-last" else "")
+    output = root / ".build" / (name + suffix + ".jsonl")
+    output.parent.mkdir(parents=True, exist_ok=True)
+    output.write_bytes(result.stdout)
     rows = [json.loads(line) for line in result.stdout.splitlines()]
     return result.returncode, rows
 
@@ -58,6 +60,9 @@ STOPS = {
     "free-slot-cap": (13, "boundary.primitive-free-slot-cap"),
     "invalid-capacity": (1, "boundary.new-null"),
     "invalid-mode": (1, "boundary.new-null"),
+    "lifetime/stale-handle": (16, "boundary.tombstoned-handle"),
+    "lifetime/retained-same-hash": (8, "boundary.tombstoned-semantic-probe"),
+    "lifetime/retained-resize": (56, "boundary.tombstoned-semantic-probe"),
 }
 
 
@@ -132,7 +137,7 @@ def control_equal(name, rc, rows, stopped=True):
             rejected(label + "-" + side, transform(rows) if side != "unmodified" else rows,
                      transform(plain_rows) if side != "instrumented" else plain_rows)
         mutate("truncated-control", lambda trace: trace[:-1])
-        mutate("early-stop-control", lambda trace: trace[:-1] + [dict(trace[-1], event="boundary.tombstoned-semantic-probe")])
+        mutate("early-stop-control", lambda trace: trace[:-1] + [dict(trace[-1], event="boundary.tombstoned-semantic-probe", operation=trace[-1]["operation"] - 1)])
         script = set(request_commands(name))
         def missing_command(trace):
             first = next((i for i, r in enumerate(trace) if r["event"] in script), len(trace) - 1)
@@ -151,6 +156,92 @@ def control_equal(name, rc, rows, stopped=True):
         raise AssertionError((name, "accepted empty compared results"))
     print(json.dumps({"case": name, "control_completed": True, "terminal": rows[-1]["event"],
                       "commands": len(completed_replay(name, rows, stopped))}))
+
+
+LIFETIME_CONTROLS = ("recreate-print", "recreate-lookup", "dup-descendant", "parse-descendant",
+                     "list-key", "table-reuse", "validation-delete", "retained-same-hash", "stale-handle", "retained-resize", "retained-remove")
+
+
+def lifetime_evidence(name, rows):
+    # Check actual allocator reuse in BOTH processes. Merely running a sequence
+    # that could reuse storage, or comparing equal stopped prefixes, is no proof.
+    completed_replay(name, rows)
+    script = request_commands(name)
+    seen, pairs = {}, []
+    for row in rows:
+        if "nodes" in row:
+            generations = [n["generation"] for n in row["nodes"]]
+            assert len(set(generations)) == len(generations) and set(seen) <= set(generations), (name, "lost retained identity")
+        for node in row.get("nodes", []):
+            generation = node["generation"]
+            if generation in seen:
+                assert seen[generation]["alive"] or not node["alive"], (name, "resurrected tombstone")
+            seen[generation] = node
+        if row["event"] == "allocation.address-reuse":
+            old, new = row["old_generation"], row["new_generation"]
+            assert new > old > 0 and new not in seen and old in seen and not seen[old]["alive"], (name, "invalid reuse")
+            pairs.append((old, new))
+    assert pairs, (name, "no actual address reuse")
+    descendants = 0
+    for old, new in pairs:
+        assert new in seen, (name, "unresolved replacement generation")
+        def internal(generation):
+            node = seen[generation]
+            origin = node["creation_operation"]
+            return not node["id"] and origin and script[origin - 1] in ("dup", "parse", "list")
+        if internal(old) and internal(new):
+            descendants += 1
+    if name.endswith(("dup-descendant", "parse-descendant", "list-key")):
+        assert descendants, (name, "no internally created descendant address reuse")
+    assert all(r["rc"] == 0 for r in rows if r["event"] in set(script) | {"public.result", "read.schema"}), (name, "unsuccessful control")
+    if name.endswith("table-reuse"):
+        tables = [n["table"] for r in commands(rows, "print") for n in r["nodes"] if n["alive"] and n["id"] == 1]
+        assert len(tables) == 17 and all(t["present"] and not t.get("retired") and t["used"] == 5 for t in tables[:-1]) and not tables[-1]["present"], (name, "retired replacement table")
+    if name.endswith("validation-delete"):
+        validation = commands(rows, "validate")[0]
+        assert any(n["schema"] == "def" for n in validation["nodes"] if n["alive"]), (name, "validation did not create default")
+        assert any(not n["id"] and not n["alive"] and n["creation_operation"] == 2 for n in rows[-1]["nodes"]), (name, "internal deletion did not retire default")
+    if name.endswith("retained-same-hash"):
+        chains = rows[-1]["table"]["chains"]
+        assert len(chains) == 2 and len({x["generation"] for x in chains}) == 2, (name, "collapsed generations")
+        assert sorted(x["alive"] for x in chains) == [False, True], (name, "lost retained tombstone")
+    if name.endswith("retained-resize"):
+        original = commands(rows, "insert")[0]["table"]["chains"][0]
+        chains = rows[-1]["table"]["chains"]
+        assert len(chains) == 1 and not chains[0]["alive"] and chains[0]["generation"] == original["generation"], (name, "resize lost retained generation")
+    if name.endswith("retained-remove"):
+        chains = rows[-1]["table"]["chains"]
+        assert rows[-1]["table"]["size"] == 8 and len(chains) == 1 and chains[0]["alive"], (name, "removal retained wrong generation")
+    if name.endswith("stale-handle"):
+        boundary = rows[-1]
+        assert boundary["handle"] == 14 and seen[boundary["generation"]]["id"] == 14, (name, "wrong stale handle")
+        assert any(r["old_generation"] == boundary["generation"] for r in commands(rows, "allocation.address-reuse")), (name, "stale handle address was not reused")
+    print(json.dumps({"case": name, "reuse_events": len(pairs), "descendant_reuses": descendants}))
+
+
+def lifetime_control(case):
+    name = "lifetime/" + case
+    rc, rows = run(name)
+    plain_rc, plain_rows = run(name, unmodified=True)
+    compare_control(name, rc, rows, plain_rc, plain_rows)
+    lifetime_evidence(name, rows)
+    lifetime_evidence(name, plain_rows)
+    # Verbose observation must not snapshot a partially discovered live forest
+    # or turn its reused descendants into retained tombstone occurrences.
+    event_rc, event_rows = run(name, "--events", unmodified=True)
+    compare_control(name, rc, rows, event_rc, event_rows)
+    lifetime_evidence(name, event_rows)
+    for label, trace in (("instrumented", rows), ("unmodified", plain_rows)):
+        for mutant, mutated in (
+                ("missing-reuse", [r for r in trace if r["event"] != "allocation.address-reuse"]),
+                ("invalid-reuse-generation", [dict(r, new_generation=0) if r["event"] == "allocation.address-reuse" else r for r in trace])):
+            try:
+                lifetime_evidence(name, mutated)
+            except AssertionError:
+                print(json.dumps({"case": name, "negative_evidence": mutant + "-" + label, "rejected": True}))
+            else:
+                raise AssertionError((name, "accepted invalid reuse evidence", mutant, label))
+    control_equal(name, rc, rows)
 
 
 def by_handle(row):
@@ -805,6 +896,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--driver", required=True, type=pathlib.Path)
     parser.add_argument("--comparison-driver", required=True, type=pathlib.Path)
+    parser.add_argument("--lifetime-case", choices=LIFETIME_CONTROLS)
     args = parser.parse_args()
     binary, plain = args.driver.resolve(), args.comparison_driver.resolve()
     assert binary != plain, "comparison must be an identified unmodified executable"
@@ -814,6 +906,11 @@ def main():
                        "pointer_record_bytes": 16, "rb_node_bytes": 40, "ndebug": 1,
                        "instrumented": instrumented}, (str(executable), abi)
 
+
+    for case in ([args.lifetime_case] if args.lifetime_case else LIFETIME_CONTROLS):
+        lifetime_control(case)
+    if args.lifetime_case:
+        return
 
     rc, rows = run("remote-last", "--remote-stop")
     assert rc == 0 and any(r["event"] == "boundary.remote-last-corrupting-primitive" for r in rows)

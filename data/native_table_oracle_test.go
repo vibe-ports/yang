@@ -121,6 +121,37 @@ func TestNativeControlReplayRejections(t *testing.T) {
 	}
 }
 
+// Each live request requires actual address reuse in both builds, complete
+// command/result sequences, persistent tombstones and equal public outcomes.
+func TestNativeComparisonLifetimes(t *testing.T) {
+	driver := os.Getenv("YANG_NATIVE_REGISTRATION_DRIVER")
+	if driver == "" {
+		t.Skip("set YANG_NATIVE_REGISTRATION_DRIVER after the isolated static build")
+	}
+	comparison := os.Getenv("YANG_NATIVE_REGISTRATION_COMPARISON_DRIVER")
+	if comparison == "" {
+		comparison = filepath.Join(filepath.Dir(driver), "driver-unmodified")
+	}
+	for _, name := range []string{"recreate-print", "recreate-lookup", "dup-descendant", "parse-descendant", "list-key", "table-reuse", "validation-delete", "retained-same-hash", "stale-handle", "retained-resize", "retained-remove"} {
+		t.Run(name, func(t *testing.T) {
+			ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+			defer cancel()
+			cmd := exec.CommandContext(ctx, "python3", filepath.Join("..", "conformance", "oracle", "native_registration", "check.py"),
+				"--driver", driver, "--comparison-driver", comparison, "--lifetime-case", name)
+			out, err := cmd.CombinedOutput()
+			if err != nil {
+				t.Fatalf("lifetime comparison: %v\n%s", err, out)
+			}
+			for _, label := range []string{"truncated-control-both", "early-stop-control-both", "missing-command-control-both", "empty-results-control-both", "empty-compared-results", "missing-reuse-instrumented", "missing-reuse-unmodified", "invalid-reuse-generation-instrumented", "invalid-reuse-generation-unmodified"} {
+				if !bytes.Contains(out, []byte(`"negative_evidence": "`+label+`"`)) {
+					t.Fatalf("missing replay rejection %s\n%s", label, out)
+				}
+			}
+			t.Logf("%s", out)
+		})
+	}
+}
+
 func TestNativeReleaseRetirementPaths(t *testing.T) {
 	driver := os.Getenv("YANG_NATIVE_REGISTRATION_DRIVER")
 	if driver == "" {

@@ -1,0 +1,116 @@
+# SPDX-License-Identifier: BSD-3-Clause
+# Live comparison control; both processes must reach actual address reuse.
+root 1 c
+term 11 1 p P
+term 12 1 q Q
+term 13 1 ll QQ==
+term 14 1 ll Qg==
+print 1
+free 1
+root 1 c
+term 11 1 p P
+term 12 1 q Q
+term 13 1 ll QQ==
+term 14 1 ll Qg==
+print 1
+free 1
+root 1 c
+term 11 1 p P
+term 12 1 q Q
+term 13 1 ll QQ==
+term 14 1 ll Qg==
+print 1
+free 1
+root 1 c
+term 11 1 p P
+term 12 1 q Q
+term 13 1 ll QQ==
+term 14 1 ll Qg==
+print 1
+free 1
+root 1 c
+term 11 1 p P
+term 12 1 q Q
+term 13 1 ll QQ==
+term 14 1 ll Qg==
+print 1
+free 1
+root 1 c
+term 11 1 p P
+term 12 1 q Q
+term 13 1 ll QQ==
+term 14 1 ll Qg==
+print 1
+free 1
+root 1 c
+term 11 1 p P
+term 12 1 q Q
+term 13 1 ll QQ==
+term 14 1 ll Qg==
+print 1
+free 1
+root 1 c
+term 11 1 p P
+term 12 1 q Q
+term 13 1 ll QQ==
+term 14 1 ll Qg==
+print 1
+free 1
+root 1 c
+term 11 1 p P
+term 12 1 q Q
+term 13 1 ll QQ==
+term 14 1 ll Qg==
+print 1
+free 1
+root 1 c
+term 11 1 p P
+term 12 1 q Q
+term 13 1 ll QQ==
+term 14 1 ll Qg==
+print 1
+free 1
+root 1 c
+term 11 1 p P
+term 12 1 q Q
+term 13 1 ll QQ==
+term 14 1 ll Qg==
+print 1
+free 1
+root 1 c
+term 11 1 p P
+term 12 1 q Q
+term 13 1 ll QQ==
+term 14 1 ll Qg==
+print 1
+free 1
+root 1 c
+term 11 1 p P
+term 12 1 q Q
+term 13 1 ll QQ==
+term 14 1 ll Qg==
+print 1
+free 1
+root 1 c
+term 11 1 p P
+term 12 1 q Q
+term 13 1 ll QQ==
+term 14 1 ll Qg==
+print 1
+free 1
+root 1 c
+term 11 1 p P
+term 12 1 q Q
+term 13 1 ll QQ==
+term 14 1 ll Qg==
+print 1
+free 1
+root 1 c
+term 11 1 p P
+term 12 1 q Q
+term 13 1 ll QQ==
+term 14 1 ll Qg==
+print 1
+free 1
+root 1 c
+print 1

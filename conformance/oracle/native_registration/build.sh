@@ -29,7 +29,7 @@ gcc -DNDEBUG -O3 -Wall -Wextra -Wpedantic -std=c11 -I"$build_root/instrumented/s
 mv "$build_root/driver.new" "$build_root/driver"
 # The untouched oracle image's Release objects provide the interference control.
 find "$build_root/config/CMakeFiles/yangobj.dir" -name '*.o' -print0 | xargs -0 ar rcs "$build_root/libyang-unmodified.a"
-gcc -DNR_UNMODIFIED -DNDEBUG -O3 -Wall -Wextra -Wpedantic -std=c11 -I"$build_root/source/src" \
+gcc -DNR_UNMODIFIED -DNDEBUG -O3 -Wall -Wextra -Wpedantic -std=c11 -Wl,--wrap=free -I"$build_root/source/src" \
     -I"$build_root/config/libyang" -I"$build_root/config/compat" -I"$build_root/source/src/plugins_exts" \
     -o "$build_root/driver-unmodified.new" driver.c ../cjson/cJSON.c "$build_root/libyang-unmodified.a" -lpcre2-8 -lm -lpthread -ldl
 mv "$build_root/driver-unmodified.new" "$build_root/driver-unmodified"

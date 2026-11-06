@@ -1,0 +1,56 @@
+# SPDX-License-Identifier: BSD-3-Clause
+# Live comparison control; both processes must reach actual address reuse.
+root 1 c
+term 11 1 p P
+term 12 1 q Q
+term 13 1 ll QQ==
+term 14 1 ll Qg==
+parse 2 {"m:c":{"p":"P","q":"Q","ll":["QQ==","Qg=="]}}
+print 2
+free 2
+parse 2 {"m:c":{"p":"P","q":"Q","ll":["QQ==","Qg=="]}}
+print 2
+free 2
+parse 2 {"m:c":{"p":"P","q":"Q","ll":["QQ==","Qg=="]}}
+print 2
+free 2
+parse 2 {"m:c":{"p":"P","q":"Q","ll":["QQ==","Qg=="]}}
+print 2
+free 2
+parse 2 {"m:c":{"p":"P","q":"Q","ll":["QQ==","Qg=="]}}
+print 2
+free 2
+parse 2 {"m:c":{"p":"P","q":"Q","ll":["QQ==","Qg=="]}}
+print 2
+free 2
+parse 2 {"m:c":{"p":"P","q":"Q","ll":["QQ==","Qg=="]}}
+print 2
+free 2
+parse 2 {"m:c":{"p":"P","q":"Q","ll":["QQ==","Qg=="]}}
+print 2
+free 2
+parse 2 {"m:c":{"p":"P","q":"Q","ll":["QQ==","Qg=="]}}
+print 2
+free 2
+parse 2 {"m:c":{"p":"P","q":"Q","ll":["QQ==","Qg=="]}}
+print 2
+free 2
+parse 2 {"m:c":{"p":"P","q":"Q","ll":["QQ==","Qg=="]}}
+print 2
+free 2
+parse 2 {"m:c":{"p":"P","q":"Q","ll":["QQ==","Qg=="]}}
+print 2
+free 2
+parse 2 {"m:c":{"p":"P","q":"Q","ll":["QQ==","Qg=="]}}
+print 2
+free 2
+parse 2 {"m:c":{"p":"P","q":"Q","ll":["QQ==","Qg=="]}}
+print 2
+free 2
+parse 2 {"m:c":{"p":"P","q":"Q","ll":["QQ==","Qg=="]}}
+print 2
+free 2
+parse 2 {"m:c":{"p":"P","q":"Q","ll":["QQ==","Qg=="]}}
+print 2
+free 2
+print 1

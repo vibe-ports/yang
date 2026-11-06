@@ -1,0 +1,10 @@
+# SPDX-License-Identifier: BSD-3-Clause
+# Live comparison control; both processes must reach actual address reuse.
+root 2 c
+print 2
+new 8 0
+insert 1 7 0
+free 1
+insert 1 7 0
+dump
+find-next-loop 1 7 1

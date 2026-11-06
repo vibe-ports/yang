@@ -1,0 +1,100 @@
+# SPDX-License-Identifier: BSD-3-Clause
+# Live comparison control; both processes must reach actual address reuse.
+root 1 c
+list 11 1 l K
+print 11
+free 11
+list 11 1 l K
+print 11
+free 11
+list 11 1 l K
+print 11
+free 11
+list 11 1 l K
+print 11
+free 11
+list 11 1 l K
+print 11
+free 11
+list 11 1 l K
+print 11
+free 11
+list 11 1 l K
+print 11
+free 11
+list 11 1 l K
+print 11
+free 11
+list 11 1 l K
+print 11
+free 11
+list 11 1 l K
+print 11
+free 11
+list 11 1 l K
+print 11
+free 11
+list 11 1 l K
+print 11
+free 11
+list 11 1 l K
+print 11
+free 11
+list 11 1 l K
+print 11
+free 11
+list 11 1 l K
+print 11
+free 11
+list 11 1 l K
+print 11
+free 11
+list 11 1 l K
+print 11
+free 11
+list 11 1 l K
+print 11
+free 11
+list 11 1 l K
+print 11
+free 11
+list 11 1 l K
+print 11
+free 11
+list 11 1 l K
+print 11
+free 11
+list 11 1 l K
+print 11
+free 11
+list 11 1 l K
+print 11
+free 11
+list 11 1 l K
+print 11
+free 11
+list 11 1 l K
+print 11
+free 11
+list 11 1 l K
+print 11
+free 11
+list 11 1 l K
+print 11
+free 11
+list 11 1 l K
+print 11
+free 11
+list 11 1 l K
+print 11
+free 11
+list 11 1 l K
+print 11
+free 11
+list 11 1 l K
+print 11
+free 11
+list 11 1 l K
+print 11
+free 11
+print 1
