@@ -65,7 +65,7 @@ cases are never run to an accidental completed result or used as goldens.
 
 Input is a bounded line-oriented public-call script. `cases/*.calls` are the
 independent live-oracle request cases. IDs are script handles, never addresses.
-`root`, `term`, `opaque`, `dup`, `unlink`, `detach-siblings`, `attach`, `before`, `change`, `parse`,
+`root`, `term`, `list`, `opaque`, `dup`, `unlink`, `detach-siblings`, `attach`, `before`, `change`, `parse`,
 `schema`, `validate`, `print`, `free`, `free-root`, and `rewind` call their corresponding
 libyang APIs. `opaque ID PARENT NAME VALUE` uses the JSON opaque constructor;
 `before ANCHOR NODE` moves a node using public `lyd_insert_before`;
@@ -74,6 +74,14 @@ libyang APIs. `opaque ID PARENT NAME VALUE` uses the JSON opaque constructor;
 `find-next-loop` and `check-handle` are explicitly **low-level controls**, not evidence of
 public reachability. Modification-callback controls hold distinct, equal-valued
 real native nodes alive. `dump` observes state only.
+`list ID PARENT NAME KEY` calls `lyd_new_list` with one string key.
+The new list/schema-pointer requests select `--event-schema`, which adds a
+keyed list and a presence container with a second equal-named leaf-list.
+Other requests retain the original schema and snapshot fields, including their
+allocator address-reuse setup. `frontier PARENT A B C D` is a **synthetic low-level**
+four-child frontier with real native allocations and untouched schema pointers;
+it provides no evidence of public mixed-schema reachability. Only this schema
+mode emits module names and stable schema-pointer identities.
 
 Stdout is JSONL. `--quiet` emits command snapshots; the default emits primitive
 events as well. `--remote-stop` exits immediately after the remote-last
@@ -128,6 +136,27 @@ through a children table, as well as explicit read commands.
 
 `check.py` writes complete labeled JSONL to `.build` and emits compact summaries.
 It checks the following outcomes; these are runtime results, not predictions:
+
+Every replay requires its ready event and each completed request's command
+snapshot at the expected operation. Creation identities must first appear in
+their creation operation, remain stable per generation, and have unique,
+contiguous positive ordinals within each operation (including bootstrap zero).
+Duplication sources must be earlier allocations and match the requested source
+handle; recursive children must match their corresponding source children.
+The recursive duplication boundary requires a distinct table at source capacity,
+mode 1, used 0, an entirely free chain, and no children. Each relevant case
+requires its fixed count of resize before/after records, paired by operation
+and table identity, before occurrence continuity is checked.
+
+Automated in-memory negative controls zero all creation/source fields, substitute
+the completed duplication snapshot for its initialization, and remove all resize
+records. Additional controls zero each duplicate identity field independently,
+substitute a wrong existing duplication source, change each duplication initial
+capacity/mode/used/child field independently, drift an identity, remove duplication
+initialization, remove either resize boundary, and move an after record before
+its before record. `TestNativeObserverEvidence` requires these
+controls to execute and reject their mutants; missing evidence cannot pass by
+making the assertions vacuous.
 
 * **remote-last.calls:** the exact public sequence from design §2.3 reaches the
   remote-last insert-after with every earlier public call returning success.
@@ -204,6 +233,35 @@ It checks the following outcomes; these are runtime results, not predictions:
 * **resize-disabled.calls:** removing the only occurrence below 25% in size16
   mode0 and still-mode1 retains capacity and mode; Go/native primitive snapshots
   compare these controls exactly.
+* **list-events.calls:** public list creation builds the first-instance schema
+  registration, unlink promotes the successor, insertion before that successor
+  replaces its registration, and a second unlink promotes it again. Four exact
+  table snapshots and four lookup winners are checked independently.
+* **schema-pointer.calls / schema-pointer-reverse.calls:** synthetic low-level
+  frontiers `[p,q,ll(A),ll(B)]` with equal module/name but distinct native schema
+  pointers build six occurrences in either pointer order. U of A leaves four
+  occurrences without promoting B. Go controls also distinguish all three
+  comparison sites: run start, existing I successor replacement and U promotion.
+* **invalid-capacity.calls / invalid-mode.calls:** independent native constructor
+  requests reject size 9 and mode 3 before a table allocation event. Separately,
+  `TestNativeInvalidCapacityAndMode` uses a fresh bounded Go scope for each invalid
+  capacity and all modes 3..255: only the scalar journal touch may be charged,
+  with no initialized state or paid page allocation. The Go arithmetic domain
+  also rejects sizes outside the design's resource limits; native rounds small
+  powers of two up to eight. Go initialization accepts internal resize mode 2;
+  native's public constructor accepts only modes 0/1. Sticky read-error
+  continuation remains a separate `TestNativePageAddressDomain` control.
+
+Arithmetic sensitivity controls independently remove the minimum-capacity,
+maximum-capacity, power-of-two and mode guards. Each fails
+`TestNativeInvalidCapacityAndMode`; size 9 cannot reuse an earlier refusal.
+Removing list eligibility fails `TestNativeListRegistrationAndPromotion` with
+four rather than five occurrences. Replacing each schema-pointer comparison
+site independently with nil-safe module/name comparison fails
+`TestNativeSchemaPointerFrontiers`: run start gives five rather than six,
+existing I removes the distinct-schema successor, and U attempts an already
+registered successor and returns EINT. Restoring the old `invariants` assertions
+makes the automated evidence controls fail because removed resize records pass.
 
 `retained-address-reuse.calls` leaves a generic occurrence alive across node
 release and immediate allocator address reuse. Its old generation stays dead

@@ -1,0 +1,3 @@
+# SPDX-License-Identifier: BSD-3-Clause
+# Native rejects a non-power-of-two before lyht_new allocation.
+new 9 1

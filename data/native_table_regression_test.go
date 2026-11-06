@@ -253,7 +253,7 @@ func TestNativeResizeIdentityAndBoundaries(t *testing.T) {
 const nativeBuildModule = `module m { yang-version 1.1; namespace urn:m; prefix m;
  container c { leaf p {type string;} leaf q {type string;}
  leaf-list ll {type binary; ordered-by user;} leaf-list v {type uint32;}
- leaf z {type string;} } }`
+ leaf z {type string;} list l {key k; ordered-by user; leaf k {type string;}} } }`
 
 func nativeModel(t *testing.T) (*nativeHarness, *nativeTable, *nativeChild, []*schema.Node) {
 	t.Helper()
@@ -287,6 +287,19 @@ func nativeModelNode(t *testing.T, h *nativeHarness, sn *schema.Node, text strin
 				n.hash = types.FinishHash32(hash)
 			}
 		}
+		if sn.Kind == schema.List {
+			// Low-level event input: supply a stored keyed-list instance hash.
+			// Key construction/production hashing belongs to later adapters.
+			v, diag := types.Store(sn.Children[0].Type, text, types.FormatJSON, types.HintString, nil, sn.Children[0])
+			if diag != nil {
+				t.Fatal(diag)
+			}
+			hash, ok := types.HashLYB(schemaHash(sn), v)
+			if !ok {
+				t.Fatal("unsupported test list key hash")
+			}
+			n.hash = types.FinishHash32(hash)
+		}
 	}
 	return &nativeChild{owner: h, node: n}
 }
@@ -300,6 +313,94 @@ func nativeModelLink(parent *nativeChild, children ...*nativeChild) {
 		if i+1 < len(children) {
 			c.next = children[i+1]
 		}
+	}
+}
+
+func TestNativeListRegistrationAndPromotion(t *testing.T) {
+	h, table, p, sn := nativeModel(t)
+	a, b := nativeModelNode(t, h, sn[0], "p"), nativeModelNode(t, h, sn[1], "q")
+	x, y := nativeModelNode(t, h, sn[5], "x"), nativeModelNode(t, h, sn[5], "y")
+	nativeModelLink(p, a, b, x, y)
+	rc, err := h.event(table, y, false)
+	nativeRequire(t, rc, err, nativeOK)
+	hash := types.FinishHash32(schemaHash(sn[5]))
+	requirePair := func(c *nativeChild, present bool) {
+		t.Helper()
+		i, _, err := h.pair(table, c.node, hash)
+		if err != nil || (i != nativeNoRecord) != present {
+			t.Fatalf("list schema registration present=%t want=%t error=%v", i != nativeNoRecord, present, err)
+		}
+	}
+	if table.used != 5 {
+		t.Fatalf("list first build used=%d want=5", table.used)
+	}
+	requirePair(x, true)
+	requirePair(y, false)
+	// Existing I replaces the successor's first-instance registration.
+	z := nativeModelNode(t, h, sn[5], "z")
+	nativeModelLink(p, a, b, z, x, y)
+	rc, err = h.event(table, z, false)
+	nativeRequire(t, rc, err, nativeOK)
+	requirePair(z, true)
+	requirePair(x, false)
+	// U observes the original frontier and promotes its same-pointer schema
+	// successor before a producer would change the physical links.
+	rc, err = h.event(table, z, true)
+	nativeRequire(t, rc, err, nativeOK)
+	requirePair(z, false)
+	requirePair(x, true)
+	if table.used != 5 {
+		t.Fatalf("list promotion used=%d want=5", table.used)
+	}
+}
+
+func TestNativeSchemaPointerFrontiers(t *testing.T) {
+	// Synthetic low-level frontiers: equal names at distinct schema pointers.
+	// Exercise every comparison site in runStart, existing I and U in both
+	// operand orders. This is not a claim of public mixed-schema reachability.
+	for _, reverse := range []bool{false, true} {
+		t.Run(fmt.Sprint(reverse), func(t *testing.T) {
+			h, table, p, sn := nativeModel(t)
+			copySchema := *sn[2]
+			left, right := sn[2], &copySchema
+			if reverse {
+				left, right = right, left
+			}
+			a, b := nativeModelNode(t, h, sn[0], "p"), nativeModelNode(t, h, sn[1], "q")
+			x, y := nativeModelNode(t, h, left, "QQ=="), nativeModelNode(t, h, right, "Qg==")
+			nativeModelLink(p, a, b, x, y)
+			rc, err := h.event(table, y, false)
+			nativeRequire(t, rc, err, nativeOK)
+			if table.used != 6 {
+				t.Fatalf("distinct schema pointers merged runs: used=%d want=6", table.used)
+			}
+			hash := types.FinishHash32(schemaHash(left))
+			// Inserting a left-schema run before the right-schema successor
+			// must retain that successor's schema occurrence.
+			z := nativeModelNode(t, h, left, "Qw==")
+			nativeModelLink(p, a, b, x, z, y)
+			rc, err = h.event(table, z, false)
+			nativeRequire(t, rc, err, nativeOK)
+			if table.used != 7 {
+				t.Fatalf("same-schema continuation used=%d want=7", table.used)
+			}
+			// Make z a run start via q. This synthetic frontier has no existing
+			// z registration, so remove its instance before testing I anew.
+			nativeRequire(t, nativeRemove(t, h, table, z.node, z.node.hash), nil, nativeOK)
+			nativeModelLink(p, a, x, b, z, y)
+			rc, err = h.event(table, z, false)
+			nativeRequire(t, rc, err, nativeOK)
+			for _, c := range []*nativeChild{x, z, y} {
+				if i, _, err := h.pair(table, c.node, hash); err != nil || i == nativeNoRecord {
+					t.Fatalf("I removed a distinct-schema successor: %v", err)
+				}
+			}
+			rc, err = h.event(table, z, true)
+			nativeRequire(t, rc, err, nativeOK) // name-based promotion returns EINT (EEXIST).
+			if table.used != 6 {
+				t.Fatalf("U promoted distinct-schema successor: used=%d want=6", table.used)
+			}
+		})
 	}
 }
 
@@ -812,12 +913,46 @@ func TestNativePageAddressDomain(t *testing.T) {
 	if !errors.Is(err, yang.ErrBudget) {
 		t.Fatalf("out-of-domain read: %v", err)
 	}
-	for _, size := range []uint32{0, 1, 7, 9, nativeMaxSize + 1, 1 << 26, 1 << 31, nativeNoRecord} {
+	// Continuation is a separate control: this must preserve the read refusal,
+	// rather than pretending to exercise initialize's arithmetic checks.
+	before, charges := *table, h.work.hashUsed
+	_, continued := h.create(table, 8, 1)
+	if !errors.Is(continued, err) || *table != before || h.work.hashUsed != charges {
+		t.Fatalf("sticky read refusal changed: %v -> %v", err, continued)
+	}
+}
+
+func TestNativeInvalidCapacityAndMode(t *testing.T) {
+	reject := func(t *testing.T, size uint32, mode uint8) {
+		t.Helper()
+		// A fresh, bounded scope for every input. If a guard is removed, even a
+		// huge capacity stops promptly, but the wrong refusal/work fails below.
+		h := newNativeHarness(&workCounter{visits: true, hashLimit: 4096})
+		table := &nativeTable{owner: h}
 		before := *table
-		_, err := h.create(table, size, 1)
-		if !errors.Is(err, yang.ErrBudget) || *table != before {
-			t.Fatalf("invalid size=%d error=%v changed=%t", size, err, *table != before)
+		_, err := h.create(table, size, mode)
+		if !errors.Is(err, yang.ErrBudget) || !strings.Contains(err.Error(), "capacity/mode") {
+			t.Fatalf("size=%d mode=%d: arithmetic refusal=%v", size, mode, err)
 		}
+		// Only the scalar journal touch may execute. Initialization/page
+		// allocation is paid before it runs, so rollback cannot hide that work.
+		if *table != before || h.epoch != 1 || h.active || h.work.hashUsed != 1 || h.work.Load() != 1 {
+			t.Fatalf("rejection did initialization/allocation work: size=%d mode=%d charges=%d visits=%d", size, mode, h.work.hashUsed, h.work.Load())
+		}
+	}
+	for _, size := range []uint32{0, 1, 7, 9, nativeMaxSize + 1, 1 << 26, 1 << 31, nativeNoRecord} {
+		t.Run(fmt.Sprintf("capacity%d", size), func(t *testing.T) { reject(t, size, 1) })
+	}
+	for mode := 3; mode <= 255; mode++ {
+		t.Run(fmt.Sprintf("mode%d", mode), func(t *testing.T) { reject(t, 8, uint8(mode)) }) //nolint:gosec // bounded uint8 domain
+	}
+	for _, mode := range []uint8{0, 1, 2} {
+		t.Run(fmt.Sprintf("valid-mode%d", mode), func(t *testing.T) {
+			_, table := nativeFresh(t, 8, mode)
+			if table.mode != mode || table.used != 0 || !table.present {
+				t.Fatal("valid capacity/mode rejected")
+			}
+		})
 	}
 }
 

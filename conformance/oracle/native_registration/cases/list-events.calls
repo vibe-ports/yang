@@ -1,0 +1,18 @@
+# SPDX-License-Identifier: BSD-3-Clause
+# Public list first-instance registration, replacement, and successor promotion.
+root 1 c
+term 2 1 p p
+term 3 1 q q
+list 4 1 l x
+list 5 1 l y
+schema 1 4
+unlink 4
+schema 1 5
+root 10 c
+list 6 10 l z
+unlink 6
+before 5 6
+schema 1 6
+unlink 6
+schema 1 5
+print 1

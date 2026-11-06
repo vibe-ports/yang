@@ -30,6 +30,9 @@ static unsigned identity_count, occurrence_count, serial, op, ordinal, resize_co
 static struct table_identity table_identities[LIMIT];
 static unsigned table_identity_count;
 static unsigned pending_script;
+static const struct lysc_node *schemas[256];
+static unsigned schema_count;
+static int event_schema_enabled;
 static const struct ly_ht *retired_tables[LIMIT];
 static unsigned retired_count;
 static struct lyd_node *nodes[4096];
@@ -61,6 +64,12 @@ static unsigned table_identity(const struct ly_ht *ht)
 }
 
 static void number(cJSON *j, const char *key, double value) { cJSON_AddNumberToObject(j, key, value); }
+static unsigned schema_identity(const struct lysc_node *schema)
+{
+    for(unsigned i=1;i<=schema_count;++i)if(schemas[i]==schema)return i;
+    if(schema_count+1==256)exit(98);
+    schemas[++schema_count]=schema;return schema_count;
+}
 static void emit(cJSON *j)
 {
     char *s = cJSON_PrintUnformatted(j);
@@ -175,7 +184,7 @@ static cJSON *node_json(unsigned i)
     const struct lyd_node *n=id->ptr;
     number(j,"context",LYD_CTX(n)==ctx?1:0);
     number(j,"hash",n->hash); number(j,"flags",n->flags); number(j,"prev",identity(n->prev)); number(j,"next",identity(n->next)); number(j,"parent",identity(n->parent));
-    if(n->schema) {cJSON_AddStringToObject(j,"schema",n->schema->name);if(n->schema->nodetype&LYD_NODE_TERM)cJSON_AddStringToObject(j,"value",lyd_get_value(n));}
+    if(n->schema) {cJSON_AddStringToObject(j,"schema",n->schema->name);if(event_schema_enabled){cJSON_AddStringToObject(j,"module",n->schema->module->name);number(j,"schema_identity",schema_identity(n->schema));}if(n->schema->nodetype&LYD_NODE_TERM)cJSON_AddStringToObject(j,"value",lyd_get_value(n));}
     else {const struct lyd_node_opaq *o=(const void*)n;number(j,"prefix_format",o->format);cJSON_AddBoolToObject(j,"prefix_bound",o->val_prefix_data!=NULL);}
     if(n->schema && (n->schema->nodetype & LYD_NODE_INNER)) { const struct lyd_node_inner *in=(const void*)n; number(j,"first",identity(in->child)); number(j,"tail",identity(in->child ? in->child->prev : NULL)); cJSON_AddItemToObject(j,"table",table_json(in->children_ht)); }
     cJSON *metas=cJSON_AddArrayToObject(j,"metadata"); for(const struct lyd_meta *m=n->meta;m;m=m->next) {
@@ -267,6 +276,7 @@ void nr_remote(const void *first, const void *sibling, const void *node)
 }
 
 static const char *schema="module m {yang-version 1.1; namespace urn:m; prefix m; container c {leaf p {type string;} leaf q {type string;} leaf-list ll {type binary; ordered-by user;} leaf-list v {type uint32;} leaf z {type string;}} rpc r {input {leaf a {type string;} leaf a2 {type string;} leaf-list v {type uint32;}} output {leaf o {type string;}}}}";
+static const char *event_schema="module m {yang-version 1.1; namespace urn:m; prefix m; container c {leaf p {type string;} leaf q {type string;} leaf-list ll {type binary; ordered-by user;} leaf-list v {type uint32;} leaf z {type string;} list l {key k; ordered-by user; leaf k {type string;}}} container d {presence synthetic; leaf-list ll {type binary; ordered-by user;}} rpc r {input {leaf a {type string;} leaf a2 {type string;} leaf-list v {type uint32;}} output {leaf o {type string;}}}}";
 static void watchdog(int signal_number) { (void)signal_number; const char msg[]="{\"event\":\"boundary.watchdog\",\"classification\":\"nontermination-or-unsafe-traversal\"}\n"; ssize_t written=write(STDOUT_FILENO,msg,sizeof msg-1); (void)written; _Exit(124); }
 
 static int tombstoned_occurrence(void)
@@ -326,7 +336,8 @@ int main(int argc, char **argv)
     ly_set_log_clb(logger);
     struct lys_module *mod=NULL;
     LY_ERR rc=ly_ctx_new(ly_yang_module_dir(),LY_CTX_NO_YANGLIBRARY,&ctx);
-    if(!rc) rc=lys_parse_mem(ctx,schema,LYS_IN_YANG,&mod);
+    for(int i=2;i<argc;++i)if(!strcmp(argv[i],"--event-schema"))event_schema_enabled=1;
+    if(!rc) rc=lys_parse_mem(ctx,event_schema_enabled?event_schema:schema,LYS_IN_YANG,&mod);
     if(rc) return 2;
     enabled=1;
     /* A real children table supplies the hidden native callback. */
@@ -344,10 +355,28 @@ int main(int argc, char **argv)
         if(line[0]=='#' || sscanf(line,"%31s",cmd)!=1) continue;
         ++op; ordinal=0;pending_script=0; ly_err_clean(ctx,NULL);cJSON_Delete(log_messages);log_messages=NULL;
         rc=LY_SUCCESS;
-        if(tombstoned_occurrence() && (!strcmp(cmd,"schema") || !strcmp(cmd,"validate") || !strcmp(cmd,"rewind") || !strcmp(cmd,"print") || !strcmp(cmd,"attach") || !strcmp(cmd,"before") || !strcmp(cmd,"change") || !strcmp(cmd,"find-next-loop") || !strcmp(cmd,"root") || !strcmp(cmd,"term") || !strcmp(cmd,"dup") || !strcmp(cmd,"unlink") || !strcmp(cmd,"detach-siblings") || !strcmp(cmd,"free") || !strcmp(cmd,"free-root") || !strcmp(cmd,"opaque") || !strcmp(cmd,"parse"))) {snapshot("boundary.tombstoned-semantic-probe",NULL,generic,0,NULL);return 0;}
-        if(!strcmp(cmd,"new")) {if(sscanf(line,"%*s %u %u",&a,&b)!=2 || a>32768 || (b>1))return 4; if(generic)lyht_free(generic,NULL); generic=lyht_new(a,sizeof(struct lyd_node*),child_callback,child_data,b);if(!generic)return 5;}
+        if(tombstoned_occurrence() && (!strcmp(cmd,"schema") || !strcmp(cmd,"validate") || !strcmp(cmd,"rewind") || !strcmp(cmd,"print") || !strcmp(cmd,"attach") || !strcmp(cmd,"before") || !strcmp(cmd,"change") || !strcmp(cmd,"find-next-loop") || !strcmp(cmd,"root") || !strcmp(cmd,"term") || !strcmp(cmd,"dup") || !strcmp(cmd,"unlink") || !strcmp(cmd,"detach-siblings") || !strcmp(cmd,"free") || !strcmp(cmd,"free-root") || !strcmp(cmd,"opaque") || !strcmp(cmd,"parse") || !strcmp(cmd,"list") || !strcmp(cmd,"frontier"))) {snapshot("boundary.tombstoned-semantic-probe",NULL,generic,0,NULL);return 0;}
+        if(!strcmp(cmd,"new")) {if(sscanf(line,"%*s %u %u",&a,&b)!=2 || a>32768 || b>65535)return 4; if(generic)lyht_free(generic,NULL); generic=lyht_new(a,sizeof(struct lyd_node*),child_callback,child_data,b);if(!generic){snapshot("boundary.new-null",NULL,NULL,0,NULL);return 5;}}
         else if(!strcmp(cmd,"root")) {if(sscanf(line,"%*s %u %79s",&a,name)!=2 || !a||a>=4096)return 4;if(!prepare_output(a))return 4;creating=1;pending_script=a;rc=lyd_new_inner(NULL,mod,name,0,&nodes[a]);}
         else if(!strcmp(cmd,"term")) {int fields=sscanf(line,"%*s %u %u %79s %255s %u",&a,&b,name,value,&c);if(fields<4 || !a || a>=4096 || b>=4096)return 4;if(b&&!require_handle(b))return 4;if(!prepare_output(a))return 4;creating=1;pending_script=a;rc=lyd_new_term(nodes[b],mod,name,value,c,&nodes[a]);}
+        else if(!strcmp(cmd,"list")) {if(sscanf(line,"%*s %u %u %79s %255s",&a,&b,name,value)!=4 || !a || a>=4096 || b>=4096)return 4;if(b&&!require_handle(b))return 4;if(!prepare_output(a))return 4;creating=1;pending_script=a;rc=lyd_new_list(nodes[b],mod,name,0,&nodes[a],value);}
+        else if(!strcmp(cmd,"frontier")) {
+            /* Synthetic low-level evidence only. The four real allocations
+             * retain their schema pointers; no public compatibility claim. */
+            unsigned ids[4];
+            if(sscanf(line,"%*s %u %u %u %u %u",&a,&ids[0],&ids[1],&ids[2],&ids[3])!=5 || a>=4096 || !require_handle(a))return 4;
+            if(!nodes[a]->schema || nodes[a]->schema->nodetype!=LYS_CONTAINER || ((struct lyd_node_inner*)nodes[a])->children_ht)return 4;
+            for(unsigned i=0;i<4;++i) {
+                if(ids[i]>=4096 || !require_handle(ids[i]) || !nodes[ids[i]]->schema || (nodes[ids[i]]->parent && nodes[ids[i]]->parent!=nodes[a]))return 4;
+                for(unsigned j=0;j<i;++j)if(ids[i]==ids[j])return 4;
+            }
+            ((struct lyd_node_inner*)nodes[a])->child=nodes[ids[0]];
+            for(unsigned i=0;i<4;++i) {
+                nodes[ids[i]]->parent=nodes[a];
+                nodes[ids[i]]->prev=nodes[ids[(i+3)%4]];
+                nodes[ids[i]]->next=i<3?nodes[ids[i+1]]:NULL;
+            }
+        }
         else if(!strcmp(cmd,"opaque")) {if(sscanf(line,"%*s %u %u %79s %255s",&a,&b,name,value)!=4||!a||a>=4096||b>=4096)return 4;if(b&&!require_handle(b))return 4;if(!prepare_output(a))return 4;creating=1;pending_script=a;rc=lyd_new_opaq(nodes[b],ctx,name,value,NULL,"m",&nodes[a]);}
         else if(!strcmp(cmd,"dup")) {if(sscanf(line,"%*s %u %u %u %u",&a,&b,&c,&d)!=4 || !a||a>=4096||b>=4096||c>=4096)return 4;if(!require_handle(b)||(c&&!require_handle(c)))return 4;if(!prepare_output(a))return 4;creating=1;pending_script=a;rc=lyd_dup_single(nodes[b],nodes[c],d,&nodes[a]);}
         else if(!strcmp(cmd,"unlink")) {if(sscanf(line,"%*s %u",&a)!=1||a>=4096||!require_handle(a))return 4;rc=lyd_unlink_tree(nodes[a]);}

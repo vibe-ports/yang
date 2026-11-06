@@ -1,0 +1,12 @@
+# SPDX-License-Identifier: BSD-3-Clause
+# Low-level synthetic frontier: equal module/name, distinct native schema pointers.
+root 1 c
+root 10 d
+term 2 1 p p
+term 3 1 q q
+term 4 1 ll QQ==
+term 5 10 ll Qg==
+unlink 5
+frontier 1 2 3 4 5
+I 5
+U 4

@@ -48,8 +48,16 @@ func nativeDriver(t *testing.T, script string) []nativeDriverResult {
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
-	//nolint:gosec // Explicit opt-in path to the isolated test-only static native driver.
-	cmd := exec.CommandContext(ctx, path, "--quiet")
+	options := []string{"--quiet"}
+	for _, line := range strings.Split(script, "\n") {
+		fields := strings.Fields(line)
+		if len(fields) > 0 && (fields[0] == "list" || fields[0] == "frontier") {
+			options = append(options, "--event-schema")
+			break
+		}
+	}
+	//nolint:gosec // Explicit opt-in path and bounded test-only arguments.
+	cmd := exec.CommandContext(ctx, path, options...)
 	cmd.Stdin = strings.NewReader(script)
 	out, err := cmd.CombinedOutput()
 	if err != nil {
@@ -99,8 +107,19 @@ func TestNativeObserverEvidence(t *testing.T) {
 	// context diagnostics, public controls and the labeled native stop boundaries.
 	cmd := exec.CommandContext(ctx, "python3", filepath.Join("..", "conformance", "oracle", "native_registration", "check.py"),
 		"--driver", driver, "--comparison-driver", comparison)
-	if out, err := cmd.CombinedOutput(); err != nil {
+	out, err := cmd.CombinedOutput()
+	if err != nil {
 		t.Fatalf("native observer evidence: %v\n%s", err, out)
+	}
+	// The checker must actually exercise the audit's evidence mutants. The
+	// earlier checker accepted all three and emitted no negative controls.
+	for _, mutant := range []string{"zeroed-creation-and-source", "completed-dup-swapped-for-initialization", "removed-resize-pairs",
+		"zeroed-dup-creation_operation", "zeroed-dup-creation_ordinal", "zeroed-dup-source", "wrong-existing-dup-source", "removed-dup-initialization",
+		"incorrect-dup-initial-size", "incorrect-dup-initial-mode", "incorrect-dup-initial-used", "incorrect-dup-initial-first", "drifting-creation-identity",
+		"removed-lyht_resize.before", "removed-lyht_resize.after", "resize-after-before-its-before"} {
+		if !bytes.Contains(out, []byte(`"negative_evidence": "`+mutant+`"`)) {
+			t.Fatalf("checker omitted negative evidence control %s\n%s", mutant, out)
+		}
 	}
 }
 
@@ -307,6 +326,76 @@ func TestNativeOpaqueLiveOracle(t *testing.T) {
 				t.Fatal("opaque parent/child became table eligible")
 			}
 		}
+	}
+}
+
+func TestNativeListAndSchemaPointerLiveOracle(t *testing.T) {
+	for _, name := range []string{"list-events", "schema-pointer", "schema-pointer-reverse"} {
+		t.Run(name, func(t *testing.T) {
+			h, table, p, sn := nativeModel(t)
+			a, b := nativeModelNode(t, h, sn[0], "p"), nativeModelNode(t, h, sn[1], "q")
+			left, right, xv, yv := sn[5], sn[5], "x", "y"
+			if name != "list-events" {
+				// Low-level frontier, corresponding to c/ll and d/ll in the
+				// native request. G1 does not permit this through public Go APIs.
+				copySchema := *sn[2]
+				left, right, xv, yv = sn[2], &copySchema, "QQ==", "Qg=="
+				if name == "schema-pointer-reverse" {
+					left, right = right, left
+				}
+			}
+			x, y := nativeModelNode(t, h, left, xv), nativeModelNode(t, h, right, yv)
+			nodes := []*Node{p.node, a.node, b.node, x.node, y.node}
+			nativeModelLink(p, a, b, x, y)
+			rc, err := h.event(table, y, false)
+			nativeRequire(t, rc, err, nativeOK)
+			expected := []nativeImage{nativeObserve(t, table, nodes, nativeOK)}
+			rc, err = h.event(table, x, true)
+			nativeRequire(t, rc, err, nativeOK)
+			expected = append(expected, nativeObserve(t, table, nodes, nativeOK))
+			indices := []int{8, 9}
+			if name == "list-events" {
+				nativeModelLink(p, a, b, y)
+				z := nativeModelNode(t, h, sn[5], "z")
+				nodes = append(nodes, z.node)
+				nativeModelLink(p, a, b, z, y)
+				rc, err = h.event(table, z, false)
+				nativeRequire(t, rc, err, nativeOK)
+				expected = append(expected, nativeObserve(t, table, nodes, nativeOK))
+				rc, err = h.event(table, z, true)
+				nativeRequire(t, rc, err, nativeOK)
+				expected = append(expected, nativeObserve(t, table, nodes, nativeOK))
+				indices = []int{4, 6, 11, 13}
+			}
+			text, err := os.ReadFile(filepath.Join("..", "conformance", "oracle", "native_registration", "cases", name+".calls"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			results := nativeDriver(t, string(text))
+			results = slices.DeleteFunc(results, func(r nativeDriverResult) bool {
+				return r.Event == "read.schema" || r.Event == "public.result"
+			})
+			for i, index := range indices {
+				if len(results) <= index {
+					t.Fatalf("missing native command %d: %d snapshots", index, len(results))
+				}
+				parent := false
+				for _, n := range results[index].Nodes {
+					if n.ID == 1 {
+						parent = true
+						got := n.Table.nativeImage
+						got.RC = results[index].RC
+						if !n.Table.Present || !reflect.DeepEqual(got, expected[i]) {
+							t.Fatalf("command %d native=%+v Go=%+v", index, got, expected[i])
+						}
+					}
+				}
+				if !parent {
+					t.Fatal("missing native parent")
+				}
+			}
+			t.Logf("%s: %d exact event snapshots", name, len(expected))
+		})
 	}
 }
 
