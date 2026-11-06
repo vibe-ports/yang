@@ -1,0 +1,7 @@
+# SPDX-License-Identifier: BSD-3-Clause
+new 16 0
+insert 1 7 0
+remove 1 7
+new 16 1
+insert 1 7 0
+remove 1 7

@@ -14,6 +14,8 @@ import (
 // harness must add no ordinary work or allocations, even on adverse insertion
 // order and duplicate-heavy data. Allocation assertions use the minimum of five
 // independent samples. There is no production ownership allowance in G1.
+// Rechecked against origin/main 18373297ea975722f056b42837562b02e0ffe539:
+// all twelve visit/charge/allocation/byte tuples below are identical.
 func TestNativeOrdinaryWorkBaseline(t *testing.T) {
 	baselines := map[int][2][4]uint64{
 		0:   {{1, 0, 16, 2248}, {1, 11, 36, 12384}},

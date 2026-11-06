@@ -35,6 +35,7 @@ static unsigned retired_count;
 static struct lyd_node *nodes[4096];
 static unsigned handle_generations[4096];
 static struct ly_ht *generic;
+static const struct nr_rb *working_rb;
 static lyht_value_equal_cb child_callback;
 static void *child_data;
 static struct ly_ctx *ctx;
@@ -157,6 +158,15 @@ static cJSON *table_json(const struct ly_ht *ht)
     return j;
 }
 
+void nr_working_rb(const void *root) { working_rb=root; }
+
+static struct nr_rb *rb_root(struct nr_rb *r)
+{
+    unsigned visits=0;
+    while(r && r->parent) {if(++visits>4096)exit(97);r=r->parent;}
+    return r;
+}
+
 static cJSON *node_json(unsigned i)
 {
     cJSON *j=cJSON_CreateObject(); struct identity *id=&identities[i];
@@ -165,7 +175,7 @@ static cJSON *node_json(unsigned i)
     const struct lyd_node *n=id->ptr;
     number(j,"context",LYD_CTX(n)==ctx?1:0);
     number(j,"hash",n->hash); number(j,"flags",n->flags); number(j,"prev",identity(n->prev)); number(j,"next",identity(n->next)); number(j,"parent",identity(n->parent));
-    if(n->schema) cJSON_AddStringToObject(j,"schema",n->schema->name);
+    if(n->schema) {cJSON_AddStringToObject(j,"schema",n->schema->name);if(n->schema->nodetype&LYD_NODE_TERM)cJSON_AddStringToObject(j,"value",lyd_get_value(n));}
     else {const struct lyd_node_opaq *o=(const void*)n;number(j,"prefix_format",o->format);cJSON_AddBoolToObject(j,"prefix_bound",o->val_prefix_data!=NULL);}
     if(n->schema && (n->schema->nodetype & LYD_NODE_INNER)) { const struct lyd_node_inner *in=(const void*)n; number(j,"first",identity(in->child)); number(j,"tail",identity(in->child ? in->child->prev : NULL)); cJSON_AddItemToObject(j,"table",table_json(in->children_ht)); }
     cJSON *metas=cJSON_AddArrayToObject(j,"metadata"); for(const struct lyd_meta *m=n->meta;m;m=m->next) {
@@ -174,7 +184,10 @@ static cJSON *node_json(unsigned i)
             struct lyd_value_lyds_tree *lt; LYD_VALUE_GET(&m->value,lt);
             cJSON *rb=cJSON_AddArrayToObject(j,"rb");
             struct nr_rb *stack[4096];unsigned count=0,visits=0;
-            if(lt && lt->rbt)stack[count++]=(void*)lt->rbt;
+            struct nr_rb *stored=lt?(void*)lt->rbt:NULL, *root=rb_root(stored);
+            number(j,"rb_stored_root",identity(stored?stored->dnode:NULL));
+            number(j,"rb_root",identity(root?root->dnode:NULL));
+            if(root)stack[count++]=root;
             while(count) {if(++visits>4096)exit(97);struct nr_rb *r=stack[--count];cJSON *rj=cJSON_CreateObject();number(rj,"owner",i);number(rj,"node",identity(r->dnode));number(rj,"parent",identity(r->parent?r->parent->dnode:NULL));number(rj,"left",identity(r->left?r->left->dnode:NULL));number(rj,"right",identity(r->right?r->right->dnode:NULL));number(rj,"color",r->color);cJSON_AddItemToArray(rb,rj);if(count+2>4096)exit(97);if(r->right)stack[count++]=r->right;if(r->left)stack[count++]=r->left;}
         }
     }
@@ -184,6 +197,7 @@ static cJSON *node_json(unsigned i)
 static void snapshot(const char *event, const void *node, const struct ly_ht *ht, int rc, const void *source)
 {
     cJSON *j=cJSON_CreateObject(); cJSON_AddStringToObject(j,"event",event); number(j,"operation",op); number(j,"rc",rc); number(j,"node_generation",identity(node)); number(j,"source_generation",identity(source));
+    if(working_rb)number(j,"working_rb_root",identity(working_rb->dnode));
     if(ht) cJSON_AddItemToObject(j,"table",table_json(ht));
     cJSON *a=cJSON_AddArrayToObject(j,"nodes"); for(unsigned i=1;i<=identity_count;++i) cJSON_AddItemToArray(a,node_json(i));
     cJSON *errs=cJSON_AddArrayToObject(j,"diagnostics"); for(const struct ly_err_item *e=ctx?ly_err_first(ctx):NULL;e;e=e->next) { cJSON *ej=cJSON_CreateObject(); number(ej,"code",e->err); if(e->msg)cJSON_AddStringToObject(ej,"msg",e->msg); if(e->data_path)cJSON_AddStringToObject(ej,"path",e->data_path); if(e->apptag)cJSON_AddStringToObject(ej,"apptag",e->apptag); cJSON_AddItemToArray(errs,ej); }
@@ -239,6 +253,7 @@ void nr_event(const char *event, const void *node, const void *table, int rc, co
         if(remote_stop) _Exit(0);
     }
     if(ub_stop && !strcmp(event,"merge2.back.no-successor")) { snapshot("boundary.merge2-before-uninitialized-continuation",node,NULL,0,source); _Exit(0); }
+    if(ub_stop && !strcmp(event,"merge2.among.exhausted-forward")) { snapshot("boundary.merge2-exhausted-forward-iterator",node,NULL,0,source); _Exit(0); }
     if(ub_stop && !strcmp(event,"merge2.among.successor-schema")) { snapshot("boundary.merge2-successor-schema-precondition",node,NULL,0,source); _Exit(0); }
 }
 
@@ -291,11 +306,14 @@ static void free_slot_boundary(void)
 int main(int argc, char **argv)
 {
     if(argc>1 && !strcmp(argv[1],"--abi")) {
-        int ndebug=0;
+        int ndebug=0, instrumented=1;
+#ifdef NR_UNMODIFIED
+        instrumented=0;
+#endif
 #ifdef NDEBUG
         ndebug=1;
 #endif
-        int written=printf("{\"pointer_bytes\":%zu,\"long_double_bytes\":%zu,\"long_double_mantissa_bits\":%d,\"pointer_record_bytes\":%zu,\"rb_node_bytes\":%zu,\"ndebug\":%d}\n",sizeof(void*),sizeof(long double),LDBL_MANT_DIG,(size_t)SIZEOF_LY_HT_REC+sizeof(struct lyd_node*),sizeof(struct nr_rb),ndebug);
+        int written=printf("{\"pointer_bytes\":%zu,\"long_double_bytes\":%zu,\"long_double_mantissa_bits\":%d,\"pointer_record_bytes\":%zu,\"rb_node_bytes\":%zu,\"ndebug\":%d,\"instrumented\":%d}\n",sizeof(void*),sizeof(long double),LDBL_MANT_DIG,(size_t)SIZEOF_LY_HT_REC+sizeof(struct lyd_node*),sizeof(struct nr_rb),ndebug,instrumented);
         return written<0 || fflush(stdout)?91:0;
     }
     if(signal(SIGALRM,watchdog)==SIG_ERR)return 99;
@@ -326,13 +344,15 @@ int main(int argc, char **argv)
         if(line[0]=='#' || sscanf(line,"%31s",cmd)!=1) continue;
         ++op; ordinal=0;pending_script=0; ly_err_clean(ctx,NULL);cJSON_Delete(log_messages);log_messages=NULL;
         rc=LY_SUCCESS;
-        if(tombstoned_occurrence() && (!strcmp(cmd,"schema") || !strcmp(cmd,"validate") || !strcmp(cmd,"rewind") || !strcmp(cmd,"print") || !strcmp(cmd,"attach") || !strcmp(cmd,"change") || !strcmp(cmd,"find-next-loop") || !strcmp(cmd,"root") || !strcmp(cmd,"term") || !strcmp(cmd,"dup") || !strcmp(cmd,"unlink") || !strcmp(cmd,"detach-siblings") || !strcmp(cmd,"free") || !strcmp(cmd,"parse"))) {snapshot("boundary.tombstoned-semantic-probe",NULL,generic,0,NULL);return 0;}
+        if(tombstoned_occurrence() && (!strcmp(cmd,"schema") || !strcmp(cmd,"validate") || !strcmp(cmd,"rewind") || !strcmp(cmd,"print") || !strcmp(cmd,"attach") || !strcmp(cmd,"before") || !strcmp(cmd,"change") || !strcmp(cmd,"find-next-loop") || !strcmp(cmd,"root") || !strcmp(cmd,"term") || !strcmp(cmd,"dup") || !strcmp(cmd,"unlink") || !strcmp(cmd,"detach-siblings") || !strcmp(cmd,"free") || !strcmp(cmd,"free-root") || !strcmp(cmd,"opaque") || !strcmp(cmd,"parse"))) {snapshot("boundary.tombstoned-semantic-probe",NULL,generic,0,NULL);return 0;}
         if(!strcmp(cmd,"new")) {if(sscanf(line,"%*s %u %u",&a,&b)!=2 || a>32768 || (b>1))return 4; if(generic)lyht_free(generic,NULL); generic=lyht_new(a,sizeof(struct lyd_node*),child_callback,child_data,b);if(!generic)return 5;}
         else if(!strcmp(cmd,"root")) {if(sscanf(line,"%*s %u %79s",&a,name)!=2 || !a||a>=4096)return 4;if(!prepare_output(a))return 4;creating=1;pending_script=a;rc=lyd_new_inner(NULL,mod,name,0,&nodes[a]);}
         else if(!strcmp(cmd,"term")) {int fields=sscanf(line,"%*s %u %u %79s %255s %u",&a,&b,name,value,&c);if(fields<4 || !a || a>=4096 || b>=4096)return 4;if(b&&!require_handle(b))return 4;if(!prepare_output(a))return 4;creating=1;pending_script=a;rc=lyd_new_term(nodes[b],mod,name,value,c,&nodes[a]);}
+        else if(!strcmp(cmd,"opaque")) {if(sscanf(line,"%*s %u %u %79s %255s",&a,&b,name,value)!=4||!a||a>=4096||b>=4096)return 4;if(b&&!require_handle(b))return 4;if(!prepare_output(a))return 4;creating=1;pending_script=a;rc=lyd_new_opaq(nodes[b],ctx,name,value,NULL,"m",&nodes[a]);}
         else if(!strcmp(cmd,"dup")) {if(sscanf(line,"%*s %u %u %u %u",&a,&b,&c,&d)!=4 || !a||a>=4096||b>=4096||c>=4096)return 4;if(!require_handle(b)||(c&&!require_handle(c)))return 4;if(!prepare_output(a))return 4;creating=1;pending_script=a;rc=lyd_dup_single(nodes[b],nodes[c],d,&nodes[a]);}
         else if(!strcmp(cmd,"unlink")) {if(sscanf(line,"%*s %u",&a)!=1||a>=4096||!require_handle(a))return 4;rc=lyd_unlink_tree(nodes[a]);}
         else if(!strcmp(cmd,"attach")) {if(sscanf(line,"%*s %u %u",&a,&b)!=2||a>=4096||b>=4096||!require_handle(a)||!require_handle(b))return 4;rc=lyd_insert_child(nodes[a],nodes[b]);}
+        else if(!strcmp(cmd,"before")) {if(sscanf(line,"%*s %u %u",&a,&b)!=2||a>=4096||b>=4096||!require_handle(a)||!require_handle(b))return 4;rc=lyd_insert_before(nodes[a],nodes[b]);}
         else if(!strcmp(cmd,"detach-siblings")) {if(sscanf(line,"%*s %u",&a)!=1||a>=4096||!require_handle(a))return 4;rc=lyd_unlink_siblings(nodes[a]);}
         else if(!strcmp(cmd,"change")) {if(sscanf(line,"%*s %u %255s",&a,value)!=2||a>=4096||!require_handle(a))return 4;rc=lyd_change_term(nodes[a],value);}
         else if(!strcmp(cmd,"parse")) {int offset=0;if(sscanf(line,"%*s %u %n",&a,&offset)<1||!a||a>=4096)return 4;if(!prepare_output(a))return 4;creating=1;pending_script=a;rc=lyd_parse_data_mem(ctx,line+offset,LYD_JSON,LYD_PARSE_ONLY|LYD_PARSE_ORDERED,0,&nodes[a]);}
@@ -348,18 +368,33 @@ int main(int argc, char **argv)
             cJSON_AddItemToObject(j,"before",before);cJSON_AddItemToObject(j,"after",table_json(queried));emit(j);
         }
         else if(!strcmp(cmd,"find-next-loop")) {if(sscanf(line,"%*s %u %u %u",&a,&b,&c)!=3||a>=4096||c>1024||!generic||!require_handle(a))return 4;struct lyd_node *iter=nodes[a];unsigned steps=0;for(;steps<c;++steps){void *match=NULL;rc=lyht_find_next(generic,&iter,b,&match);if(rc)break;memcpy(&iter,match,sizeof iter);}if(steps==c){snapshot("boundary.watchdog.find-next-cycle",iter,generic,0,NULL);return 0;}}
-        else if(!strcmp(cmd,"insert") || !strcmp(cmd,"remove")) {if(sscanf(line,"%*s %u %u %u",&a,&b,&c)<2||!a||a>=4096||!generic)return 4; if(!nodes[a]) {pending_script=a;rc=lyd_dup_single(child,NULL,LYD_DUP_NO_META,&nodes[a]);if(rc)return 7;identities[identity(nodes[a])].script=a;handle_generations[a]=identity(nodes[a]);} if(!require_handle(a))return 4;if(strcmp(cmd,"remove") && generic->first_free_rec>=generic->size)free_slot_boundary();if(!strcmp(cmd,"remove"))rc=lyht_remove(generic,&nodes[a],b);else if(c)rc=lyht_insert(generic,&nodes[a],b,NULL);else rc=lyht_insert_no_check(generic,&nodes[a],b,NULL);}
+        else if(!strcmp(cmd,"insert") || !strcmp(cmd,"remove")) {if(sscanf(line,"%*s %u %u %u",&a,&b,&c)<2||!a||a>=4096||!generic)return 4; if(!nodes[a]) {pending_script=a;rc=lyd_dup_single(child,NULL,LYD_DUP_NO_META,&nodes[a]);if(rc)return 7;identities[identity(nodes[a])].script=a;handle_generations[a]=identity(nodes[a]);} if(!require_handle(a))return 4;if(strcmp(cmd,"remove") && generic->first_free_rec>=generic->size) {
+            int existing=0;
+            if(c)for(uint32_t slot=generic->hlists[b&(generic->size-1)].first, steps=0;slot!=LYHT_NO_RECORD;) {
+                if(slot>=generic->size || ++steps>generic->size)return 94;
+                struct ly_ht_rec *rec=lyht_get_rec(generic->recs,generic->rec_size,slot);
+                if(rec->hash==b && child_callback(&nodes[a],rec->val,1,child_data)){existing=1;break;}
+                slot=rec->next;
+            }
+            if(!existing)free_slot_boundary();
+        }if(!strcmp(cmd,"remove"))rc=lyht_remove(generic,&nodes[a],b);else if(c)rc=lyht_insert(generic,&nodes[a],b,NULL);else rc=lyht_insert_no_check(generic,&nodes[a],b,NULL);}
         else if(!strcmp(cmd,"I") || !strcmp(cmd,"U")) {if(sscanf(line,"%*s %u",&a)!=1||a>=4096||!require_handle(a))return 4;if(cmd[0]=='I')rc=lyd_insert_hash(nodes[a]);else lyd_unlink_hash(nodes[a]);}
-        else if(!strcmp(cmd,"free")) {
+        else if(!strcmp(cmd,"free") || !strcmp(cmd,"free-root")) {
             if(sscanf(line,"%*s %u",&a)!=1||a>=4096||!require_handle(a))return 4;
 #ifdef NR_UNMODIFIED
             /* The control has no allocation hooks. Retire observer metadata
              * conservatively before freeing; only public outputs are compared. */
-            for(unsigned i=1;i<=identity_count;++i)identities[i].alive=0;
+            const struct lyd_node *root=nodes[a];
+            if(!strcmp(cmd,"free-root"))while(root->parent)root=(const void*)root->parent;
+            for(unsigned i=1;i<=identity_count;++i)if(identities[i].alive) {
+                const struct lyd_node *n=identities[i].ptr;unsigned visits=0;
+                while(n && n!=root){if(++visits>4096)return 97;n=(const void*)n->parent;}
+                if(n==root)identities[i].alive=0;
+            }
 #endif
-            lyd_free_tree(nodes[a]);if(!identities[handle_generations[a]].alive)nodes[a]=NULL;
+            if(!strcmp(cmd,"free-root"))lyd_free_all(nodes[a]);else lyd_free_tree(nodes[a]);if(!identities[handle_generations[a]].alive)nodes[a]=NULL;
         }
-        else if(!strcmp(cmd,"rewind")) {if(sscanf(line,"%*s %u",&a)!=1||a>=4096||!require_handle(a))return 4;refresh=1;nodes[a]=lyd_first_sibling(nodes[a]);}
+        else if(!strcmp(cmd,"rewind")) {if(sscanf(line,"%*s %u",&a)!=1||a>=4096||!require_handle(a))return 4;refresh=1;nodes[a]=lyd_first_sibling(nodes[a]);cJSON *j=cJSON_CreateObject();cJSON_AddStringToObject(j,"event","read.first-sibling");number(j,"operation",op);number(j,"winner",identity(nodes[a]));emit(j);}
         else if(!strcmp(cmd,"validate")) {if(sscanf(line,"%*s %u",&a)!=1||a>=4096||!require_handle(a))return 4;refresh=1;rc=lyd_validate_all(&nodes[a],ctx,LYD_VALIDATE_PRESENT,NULL);}
         else if(!strcmp(cmd,"check-handle")) {if(sscanf(line,"%*s %u",&a)!=1||!require_handle(a))return 4;}
         else if(!strcmp(cmd,"print")) {if(sscanf(line,"%*s %u",&a)!=1||a>=4096||!require_handle(a))return 4;char *json=NULL;rc=lyd_print_mem(&json,nodes[a],LYD_JSON,LYD_PRINT_SHRINK);cJSON *j=cJSON_CreateObject();cJSON_AddStringToObject(j,"event","public.result");number(j,"operation",op);number(j,"rc",rc);if(json)cJSON_AddStringToObject(j,"json",json);emit(j);free(json);}

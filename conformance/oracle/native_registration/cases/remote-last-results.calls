@@ -1,0 +1,19 @@
+# SPDX-License-Identifier: BSD-3-Clause
+root 1 r
+root 2 r
+root 3 r
+term 11 1 a A
+term 12 1 a2 A2
+term 13 1 v 1
+term 14 1 v 2
+term 15 1 o O 1
+term 31 3 v 3
+dup 16 31 1 66
+unlink 15
+attach 2 16
+unlink 13
+term 17 1 v 4
+print 1
+print 2
+schema 1 14
+rewind 16

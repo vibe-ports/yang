@@ -94,3 +94,9 @@ path.write_text('#include "native_observer.h"\n' + path.read_text())
 path = root / "src/tree_data_sorted.c"
 replace(path, "    begin = rb_next(dst_iter);\n    LY_CHECK_RET(!begin,; );", '    begin = rb_next(dst_iter);\n    if (!begin) nr_event("merge2.back.no-successor", RBN_DNODE(dst_iter), NULL, 0, NULL);\n    LY_CHECK_RET(!begin,; );')
 replace(path, "        ret = rb_insert(node->next, rbt_src, &rbn);", '        if (node->next->schema != schema) nr_event("merge2.among.successor-schema", node->next, NULL, 0, node);\n        ret = rb_insert(node->next, rbt_src, &rbn);')
+
+# Observe the evolving local RB root separately from the metadata pointer.
+replace(path, "    ret = rb_insert(*leader_dst, rbt_src, dst_iter);", "    ret = rb_insert(*leader_dst, rbt_src, dst_iter);\n    nr_working_rb(*rbt_src);")
+replace(path, "        ret = rb_insert(node->next, rbt_src, &rbn);", "        ret = rb_insert(node->next, rbt_src, &rbn);\n        nr_working_rb(*rbt_src);")
+replace(path, "        for (iter = rb_next(rbn_prev); iter != rbn; iter = rb_next(iter)) {", "        for (iter = rb_next(rbn_prev); iter != rbn; iter = rb_next(iter)) {\n            if (!iter) nr_event(\"merge2.among.exhausted-forward\", node, NULL, 0, RBN_DNODE(rbn));")
+replace(path, "cleanup:\n    RBT_SET(root_meta_src, rbt_src);", "cleanup:\n    RBT_SET(root_meta_src, rbt_src);\n    nr_working_rb(NULL);")

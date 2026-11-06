@@ -40,7 +40,9 @@ done
 docker rm yang-native-copy
 chmod -R a+rwX conformance/oracle/native_registration/.build
 DEV_PLATFORM=linux/amd64 ./dev bash conformance/oracle/native_registration/build.sh </dev/null
-DEV_PLATFORM=linux/amd64 ./dev python3 conformance/oracle/native_registration/check.py </dev/null
+DEV_PLATFORM=linux/amd64 ./dev python3 conformance/oracle/native_registration/check.py \
+  --driver conformance/oracle/native_registration/.build/driver \
+  --comparison-driver conformance/oracle/native_registration/.build/driver-unmodified </dev/null
 ```
 
 The normal dev user performs compilation and execution. The preparation
@@ -49,17 +51,25 @@ the ordinary unmodified oracle lane; this build does not replace it.
 
 `build.sh` also archives the **untouched Release objects** from the pinned
 Dockerfile's oracle stage into a second library and links `driver-unmodified`.
-The replay check compares terminating public JSON results and validation
-statuses/diagnostics against that uninstrumented control. Safe-prefix boundary
+The replay check requires both executable paths explicitly, verifies their
+instrumented/unmodified ABI markers, and compares terminating public JSON,
+validation statuses/diagnostics, and schema-lookup statuses plus normalized
+winner/current-parent identities. Allocation generations are normalized through
+script handles before comparison; generations from different processes are
+never compared directly. The Go evidence test passes its selected executable
+and uses `YANG_NATIVE_REGISTRATION_COMPARISON_DRIVER` when provided, otherwise
+`driver-unmodified` beside that selected executable. Safe-prefix boundary
 cases are never run to an accidental completed result or used as goldens.
 
 ## Replay protocol and evidence
 
 Input is a bounded line-oriented public-call script. `cases/*.calls` are the
 independent live-oracle request cases. IDs are script handles, never addresses.
-`root`, `term`, `dup`, `unlink`, `detach-siblings`, `attach`, `change`, `parse`,
-`schema`, `validate`, `print`, `free`, and `rewind` call their corresponding
-libyang APIs. `dup` takes native option bits (66 means NO_META|NO_LYDS).
+`root`, `term`, `opaque`, `dup`, `unlink`, `detach-siblings`, `attach`, `before`, `change`, `parse`,
+`schema`, `validate`, `print`, `free`, `free-root`, and `rewind` call their corresponding
+libyang APIs. `opaque ID PARENT NAME VALUE` uses the JSON opaque constructor;
+`before ANCHOR NODE` moves a node using public `lyd_insert_before`;
+`free-root` invokes whole-root `lyd_free_all`. `dup` takes native option bits (66 means NO_META|NO_LYDS).
 `new SIZE MODE`, `insert ID HASH CHECK`, `remove ID HASH`, `I ID`, `U ID`,
 `find-next-loop` and `check-handle` are explicitly **low-level controls**, not evidence of
 public reachability. Modification-callback controls hold distinct, equal-valued
@@ -68,13 +78,16 @@ real native nodes alive. `dump` observes state only.
 Stdout is JSONL. `--quiet` emits command snapshots; the default emits primitive
 events as well. `--remote-stop` exits immediately after the remote-last
 insert-after primitive. `--remote-watchdog` runs the separate bounded rewind
-control. `--merge2-ub-stop` exits before the first unsafe continuation or
+first-sibling control (which terminates for the parented remote-last replay).
+`--merge2-ub-stop` exits before an exhausted forward iterator, unsafe continuation, or
 heterogeneous-schema RB insertion. A 15-second process alarm and bounded table,
 RB and find-next traversals label watchdog boundaries; they never invent a
 completed match/miss.
 `free-slot-cap.calls` fills a disabled eight-slot table and records its inert
-terminal link. The driver stops before any insert at exhausted capacity;
-this is an observer resource boundary, not a native insertion verdict.
+terminal link. A checked insertion of an existing pointer/hash at exhausted capacity executes
+and returns native EEXIST without a table change. The driver stops before an
+insertion needing a nonexistent free slot; this is an observer resource
+boundary, not a native insertion verdict.
 
 Snapshots contain stable table identities, presence/capacity/used/mode, bucket endpoints, slots,
 free-list order and its inert terminal `size` link, and ordered chains with
@@ -82,7 +95,12 @@ recorded hash, allocation generation and trace-only occurrence serial. Resizes
 carry occurrence serials forward; checked duplicate elimination retires the
 eliminated occurrence. Nodes carry `(operation, creation ordinal)`, script ID
 where supplied, dup source ID, hash/flags/schema, raw link identities,
-parent/first/tail, context identity, metadata ownership and bounded RB topology. `logs` captures
+parent/first/tail, context identity, metadata ownership and bounded RB topology.
+`rb_stored_root` records the metadata pointer separately from `rb_root`, obtained
+by following the RB parent links before walking the complete component. Merge-2
+also records its explicit local `working_rb_root` after each destination RB
+insertion. Stable boundary assertions require complete membership, one root,
+reciprocal parent/child edges and complete reachability. `logs` captures
 the native logging callback separately from context `diagnostics`, including
 LOGINT with a null context. Helper and enclosing return codes remain separate.
 
@@ -120,13 +138,18 @@ It checks the following outcomes; these are runtime results, not predictions:
   `TestNativePublicRemotePrefix` independently runs the preceding public Go
   calls and confirms there is no earlier D-0121 refusal. It excludes the final
   insertion because G1 adds no production routing.
-* **Contradiction to the rewind prediction:** the separate, alarm-protected
+* **First-sibling termination control:** the separate, alarm-protected
   `lyd_first_sibling(v3)` public call **terminates** for this exact sequence.
   `lyd_first_sibling` immediately returns `parent->child` for these parented
   nodes (`tree_data_common.c:780`); it does not enter its predecessor loop.
-  The corrupting write is established, but this sequence does not prove a
-  public rewind nontermination boundary. The design's corresponding claim
-  needs narrowing. No pointer mutation is used to manufacture a cycle.
+  The corrupting write is established; the parentless predecessor-loop branch
+  would require separate public reachability evidence. No pointer mutation is
+  used to manufacture a cycle. `remote-last-results.calls` separately completes
+  insertion and compares P/Q JSON and schema lookup through P (winner v3,
+  current parent Q) with the unmodified library. `remote-last-release.calls`
+  separately checks whole-root release of P/Q/R, leaving already detached v1
+  and o as independent live allocations. These concrete controls do not establish
+  arbitrary unlink/free or traversal safety.
 * **remote-nonlast.calls:** adding v5 in Q before creating v4 in P selects the
   remote nonlast predecessor and completes with valid links. Public JSON for
   both P and Q matches the untouched native control.
@@ -163,7 +186,28 @@ It checks the following outcomes; these are runtime results, not predictions:
   reach front → metadata → among → back's no-successor return; observation stops
   before the subsequent uninitialized continuation read. Neither is a completed
   golden or a claim of exact native behavior beyond the safe prefix.
+* **merge2-unsorted.calls:** public NoSort/NoMeta copies create D=[D4,D1]
+  without RB metadata and detached S=[S2,S3] with RB metadata. The trace records
+  native's source-only prefix and stops before the exhausted `_among` forward
+  iterator is dereferenced. At the stop, complete RB topology contains
+  D4,D1,S2,S3, separately from the metadata's older stored pointer. This is the
+  native UB-prefix control. The Go regression controls for §4.1 separately
+  verify D-0062's [D1,S2,S3,D4] permutation, metadata-before-replay publication,
+  A=[S3,S2], absent-table threshold frontiers and existing-table growth without
+  inventing destination registration events.
+* **opaque-threshold.calls:** three schema children plus one opaque remain
+  table-absent; the fourth schema child creates the table. **opaque-separated.calls**
+  uses public placement of an opaque separator between same-schema children
+  before first build and observes both run-start registrations.
+  **opaque-eligibility.calls** covers top-level, opaque-node and opaque-parent
+  I/U no-ops. Go assertions and live requests cover these independently.
+* **resize-disabled.calls:** removing the only occurrence below 25% in size16
+  mode0 and still-mode1 retains capacity and mode; Go/native primitive snapshots
+  compare these controls exactly.
 
+`retained-address-reuse.calls` leaves a generic occurrence alive across node
+release and immediate allocator address reuse. Its old generation stays dead
+and its occurrence serial remains distinct from the new live allocation.
 `driver-lifetime.calls` observes recursive dup's present-empty table before any
 child, table retirement, tombstones and actual allocator address reuse.
 `internal-build.calls` exercises parser-created IDs through an aborted binary
@@ -171,8 +215,9 @@ build and a failed value constructor. `find-next-watchdog.calls` is a separate
 low-level control: 128 real native find-next calls repeatedly return the same
 pointer, and the driver labels the bounded nonprogress boundary.
 
-The observer does not enable any production adapter or resolve the maintainer's
-remote-write safety policy. Opaque-prefix copy/replacement hooks are installed;
+The observer does not enable any production adapter. Main has selected a narrow
+pre-write safety refusal for remote-last insertion; implementing that decision
+belongs to the later producer adapter. Opaque-prefix copy/replacement hooks are installed;
 producer-specific prefix controls belong to the later adapter evidence.
 
 ## Private Go kernel (6a1 / 6a2)
@@ -224,8 +269,8 @@ precheck (cancellation wins and polls once); the fixed path preserves ErrBudget
 without polling. These cancellation/quota controls are Go policy, while the
 successful table transitions have the independent native replay evidence above.
 
-`TestNativeOrdinaryWorkBaseline` runs unchanged against `ecb6fd1` (the design's
-main baseline; this task checkout has no `origin/main` ref). All twelve scenarios
+`TestNativeOrdinaryWorkBaseline` runs against the actual `origin/main` during
+the audit closure. The original G1 record used `ecb6fd1`, the design baseline. All twelve scenarios
 match head exactly in visits, cumulative charges, allocated bytes and
 allocations. Each allocation result takes the minimum of five samples. The
 64/256 duplicate-heavy descending scenarios are:
@@ -240,9 +285,10 @@ allocations. Each allocation result takes the minimum of five samples. The
 Empty-container and 1/2/3-child cases also match exactly. This proves ordinary
 paths remain unaffected by A; it is not the later real-B cost gate.
 
-## Check results
+## Original G1 check record
 
-All requested commands exited zero in one serialized run under the shared
+The original G1 run recorded the following checks; current revision results
+are reported separately in the review request. All requested commands exited zero in one serialized run under the shared
 heavy-check lock, through the canonical linux/amd64 dev container as its normal
 user: `go test ./...`, `go test -race ./data`, `go vet ./...`,
 `golangci-lint run ./data/... ./internal/...`, `bash -c scripts/check-registries`,
@@ -251,5 +297,30 @@ security, registry and ordinary-oracle checks passed. Final private guard work
 also passed the complete `TestNative` suite with the auxiliary driver enabled
 and the requested lint command. No golden or policy file was modified.
 
-There are no new manifest fixture IDs. Compatibility requests are the seventeen
-independent live scripts under `cases/`, plus the fixed-seed primitive replays.
+There are no new manifest fixture IDs. Compatibility requests are the independent live scripts under `cases/`, plus the fixed-seed primitive replays.
+
+
+## Audit closure controls
+
+`TestNativeResourceRefusalsAreSticky` covers free-slot, used-domain and doubling
+refusals, continuation and cancellation precedence. Its original-G1 sensitivity
+run fails all three because `work.hashErr` remains nil.
+`TestNativeFirstBuildChecksEveryFrontier` rejects each child's foreign-owned
+predecessor/successor before initialization; its predecessor control fails on
+original G1 with a successful table write. `TestNativeBuildAndShrinkRollback`
+injects cancellation and panic throughout build (174 polls), shrink (291), and
+a multi-page shrink (4,570 polls, sampled every 71). Frontier accounting at
+64/256 children remains 4,305/17,200 visits and 21,237/58,864 charges, identical
+to original G1. The ordinary-path comparison against actual `origin/main` also
+matches all twelve scenarios, with allocations measured as the minimum of five
+samples. Final command outcomes belong to the review request.
+
+`TestNativeMerge2GoPolicyPermutation` observes the real Go producer through an
+isolated compiler overlay: exact source matches add read-only calls before and
+after each attachment and at initial frontier publication. Both table-presence
+controls require metadata on D1 before any attachment, the frontiers
+[D1,D4] → [D1,S3,D4] → [D1,S2,S3,D4], and arrival order S3,S2. The overlay
+exists only in a temporary test directory and leaves tracked production files
+unchanged. `TestNativeMerge2PolicyFrontiers` separately applies these frontiers
+to lifecycle A, including opaque separators, and asserts first-build versus
+existing-table occurrence history and the retained D4 winner.

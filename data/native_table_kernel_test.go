@@ -75,8 +75,14 @@ func newNativeHarness(w *workCounter) *nativeHarness {
 	return &nativeHarness{work: w, ctx: context.Background(), maxSize: nativeMaxSize, maxUsed: nativeMaxUsed}
 }
 
-func nativeRefusal(what string) error {
-	return fmt.Errorf("%w: native occurrence table %s", yang.ErrBudget, what)
+// refuse latches resource and arithmetic failures in the governing work scope,
+// just like chargeHash. Later continuation and cancellation preserve the first
+// failure until that scope is explicitly ended by its owner.
+func (h *nativeHarness) refuse(what string) error {
+	if h.work.hashErr == nil {
+		h.work.hashErr = fmt.Errorf("%w: native occurrence table %s", yang.ErrBudget, what)
+	}
+	return h.work.hashErr
 }
 
 // pay uses the governing operation's existing cumulative hash allowance. It never
@@ -104,7 +110,7 @@ func (h *nativeHarness) pay(n uint64) error {
 // initialized/copied cell (including inactive cells), before allocation.
 func (h *nativeHarness) alloc(bytes, cells uint64) error {
 	if bytes == 0 || bytes > 1<<20 {
-		return nativeRefusal("page address")
+		return h.refuse("page address")
 	}
 	rounded := uint64(1) << bits.Len64(bytes-1)
 	return h.pay(rounded + cells)
@@ -153,7 +159,7 @@ func (h *nativeHarness) edit(t *nativeTable, fn func() (nativeStatus, error)) (s
 func (a nativeArray[T]) read(h *nativeHarness, index uint32) (T, error) {
 	var zero T
 	if index >= a.size {
-		return zero, nativeRefusal("read address")
+		return zero, h.refuse("read address")
 	}
 	p := a.root
 	for shift := 21; shift >= 6; shift -= 5 {
@@ -161,7 +167,7 @@ func (a nativeArray[T]) read(h *nativeHarness, index uint32) (T, error) {
 			return zero, err
 		}
 		if p == nil {
-			return zero, nativeRefusal("uninitialized directory")
+			return zero, h.refuse("uninitialized directory")
 		}
 		p = p.child[(index>>shift)&31]
 	}
@@ -169,14 +175,14 @@ func (a nativeArray[T]) read(h *nativeHarness, index uint32) (T, error) {
 		return zero, err
 	}
 	if p == nil || int(index&63) >= len(p.cells) {
-		return zero, nativeRefusal("uninitialized page")
+		return zero, h.refuse("uninitialized page")
 	}
 	return p.cells[index&63], nil
 }
 
 func (a *nativeArray[T]) touch(h *nativeHarness, index uint32) (*T, error) {
 	if !h.active || index >= a.size {
-		return nil, nativeRefusal("write address")
+		return nil, h.refuse("write address")
 	}
 	link := &a.root
 	for shift := 21; shift >= 1; shift -= 5 {
@@ -224,7 +230,7 @@ func (a *nativeArray[T]) touch(h *nativeHarness, index uint32) (*T, error) {
 
 func (h *nativeHarness) initialize(t *nativeTable, size uint32, mode uint8) error {
 	if size < 8 || size > min(h.maxSize, nativeMaxSize) || size&(size-1) != 0 || mode > 2 {
-		return nativeRefusal("capacity/mode")
+		return h.refuse("capacity/mode")
 	}
 	// Reset only after edit's scalar touch. The arrays remain private until this
 	// edit succeeds, and allocation failure restores the old roots.
@@ -273,7 +279,7 @@ func (h *nativeHarness) pair(t *nativeTable, n *Node, hash uint32) (uint32, uint
 
 func (h *nativeHarness) insert(t *nativeTable, n *Node, hash uint32, check bool) (nativeStatus, error) {
 	if !t.present || n == nil {
-		return nativeOK, nativeRefusal("insertion precondition")
+		return nativeOK, h.refuse("insertion precondition")
 	}
 	if check {
 		i, _, err := h.pair(t, n, hash)
@@ -285,7 +291,7 @@ func (h *nativeHarness) insert(t *nativeTable, n *Node, hash uint32, check bool)
 		}
 	}
 	if t.used >= min(h.maxUsed, nativeMaxUsed) || t.free >= t.size {
-		return nativeOK, nativeRefusal("used/free slot")
+		return nativeOK, h.refuse("used/free slot")
 	}
 	// uint64 cannot overflow in the supported domain; reject rather than wrap
 	// before each insertion, including every resize reinsertion.
@@ -295,7 +301,7 @@ func (h *nativeHarness) insert(t *nativeTable, n *Node, hash uint32, check bool)
 		mode = 2
 	}
 	if mode == 2 && percent >= 75 && t.size > min(h.maxSize, nativeMaxSize)/2 {
-		return nativeOK, nativeRefusal("doubling")
+		return nativeOK, h.refuse("doubling")
 	}
 	i := t.free
 	r, err := t.records.touch(h, i)
@@ -454,13 +460,25 @@ func (h *nativeHarness) add(t *nativeTable, c *nativeChild, empty bool) (nativeS
 	return nativeOK, nil
 }
 
+// frontierOwned checks every descriptor whose fields add/unlink inspect. It
+// does not recursively traverse neighbours or charge a hidden scan; the build's
+// already paid count pass invokes it once per child before table initialization.
+func (h *nativeHarness) frontierOwned(c *nativeChild) bool {
+	if c == nil || c.owner != h || c.node == nil {
+		return false
+	}
+	for _, neighbour := range [...]*nativeChild{c.parent, c.prev, c.next} {
+		if neighbour != nil && (neighbour.owner != h || neighbour.node == nil) {
+			return false
+		}
+	}
+	return true
+}
+
 // event implements only lyd_insert_hash/lyd_unlink_hash. A semantic stop is a
 // status, not a Go failure: its prefix remains. U observes the linked frontier.
 func (h *nativeHarness) event(t *nativeTable, c *nativeChild, unlink bool) (nativeStatus, error) {
-	if c == nil || c.node == nil || c.owner != h ||
-		(c.parent != nil && (c.parent.owner != h || c.parent.node == nil)) ||
-		(c.prev != nil && (c.prev.owner != h || c.prev.node == nil)) ||
-		(c.next != nil && (c.next.owner != h || c.next.node == nil)) {
+	if !h.frontierOwned(c) {
 		return nativeOK, errInProgress
 	}
 	return h.edit(t, func() (nativeStatus, error) {
@@ -484,12 +502,15 @@ func (h *nativeHarness) event(t *nativeTable, c *nativeChild, unlink bool) (nati
 			if err := h.pay(1); err != nil {
 				return nativeOK, err
 			}
-			if it.owner != h {
+			// add reads both neighbours (including opaque separators) after the
+			// count pass. Validate that entire frontier before initializing any
+			// table; validating just the triggering child's neighbours misses it.
+			if !h.frontierOwned(it) {
 				return nativeOK, errInProgress
 			}
 			if it.node.schema != nil {
 				if count == min(h.maxUsed, nativeMaxUsed) {
-					return nativeOK, nativeRefusal("child count")
+					return nativeOK, h.refuse("child count")
 				}
 				count++
 			}

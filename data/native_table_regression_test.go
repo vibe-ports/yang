@@ -4,11 +4,17 @@ package data
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"os"
+	"os/exec"
+	"path/filepath"
 	"reflect"
 	"strconv"
+	"strings"
 	"testing"
+	"time"
 
 	"github.com/vibe-ports/yang"
 	"github.com/vibe-ports/yang/internal/schema"
@@ -166,9 +172,29 @@ func TestNativePrimitiveFIFOAndFreeReuse(t *testing.T) {
 		t.Fatalf("terminal free=%d", table.free)
 	}
 	before = nativeObserve(t, table, nodes, nativeOK)
+	// Checked insertion must resolve EEXIST before asking for a free slot.
+	nativeRequire(t, nativePut(t, h, table, a, 3, true), nil, nativeExists)
+	if !reflect.DeepEqual(before, nativeObserve(t, table, nodes, nativeOK)) {
+		t.Fatal("checked EEXIST changed an exhausted table")
+	}
 	_, err := h.primitive(table, a, 17, false, false)
 	if !errors.Is(err, yang.ErrBudget) || !reflect.DeepEqual(before, nativeObserve(t, table, nodes, nativeOK)) {
 		t.Fatalf("free exhaustion error=%v changed table", err)
+	}
+}
+
+func TestNativeShrinkDisabledAboveMinimum(t *testing.T) {
+	for _, mode := range []uint8{0, 1} {
+		t.Run(fmt.Sprint(mode), func(t *testing.T) {
+			h, table := nativeFresh(t, 16, mode)
+			a := new(Node)
+			nativeRequire(t, nativePut(t, h, table, a, 7, false), nil, nativeOK)
+			nativeRequire(t, nativeRemove(t, h, table, a, 7), nil, nativeOK)
+			if !table.present || table.size != 16 || table.mode != mode || table.used != 0 {
+				t.Fatalf("disabled shrink mode=%d: %+v", mode, table)
+			}
+			nativeObserve(t, table, []*Node{a}, nativeOK)
+		})
 	}
 }
 
@@ -356,6 +382,338 @@ func TestNativeExistingEventsAndOpaqueSeparators(t *testing.T) {
 	if !errors.Is(err, errInProgress) || *table != before {
 		t.Fatal("cross-owner event wrote state")
 	}
+}
+
+func TestNativeOpaqueThresholdAndEligibility(t *testing.T) {
+	h, table, p, sn := nativeModel(t)
+	a, b := nativeModelNode(t, h, sn[0], "p"), nativeModelNode(t, h, sn[1], "q")
+	x, y := nativeModelNode(t, h, sn[2], "QQ=="), nativeModelNode(t, h, sn[2], "Qg==")
+	opaq := nativeModelNode(t, h, nil, "")
+	nativeModelLink(p, a, b, x, opaq)
+	rc, err := h.event(table, x, false)
+	nativeRequire(t, rc, err, nativeOK)
+	if table.present {
+		t.Fatal("three schema children plus opaque created a table")
+	}
+	nativeModelLink(p, a, b, x, opaq, y)
+	rc, err = h.event(table, y, false)
+	nativeRequire(t, rc, err, nativeOK)
+	if !table.present || table.used != 6 {
+		t.Fatalf("four schema children with opaque separator: present=%t used=%d", table.present, table.used)
+	}
+	sh := types.FinishHash32(schemaHash(sn[2]))
+	for _, c := range []*nativeChild{x, y} {
+		if i, _, err := h.pair(table, c.node, sh); err != nil || i == nativeNoRecord {
+			t.Fatalf("opaque-separated run start missing schema occurrence: %v", err)
+		}
+	}
+	if i, _, err := h.pair(table, opaq.node, 0); err != nil || i != nativeNoRecord {
+		t.Fatalf("opaque child acquired occurrence: %v", err)
+	}
+	for _, unlink := range []bool{false, true} {
+		before := *table
+		rc, err := h.event(table, opaq, unlink)
+		nativeRequire(t, rc, err, nativeOK)
+		if *table != before {
+			t.Fatal("opaque-node event changed table")
+		}
+	}
+	for _, kind := range []string{"opaque-parent", "top-level", "anydata", "anyxml"} {
+		t.Run(kind, func(t *testing.T) {
+			h, table, p, sn := nativeModel(t)
+			children := []*nativeChild{nativeModelNode(t, h, sn[0], "p"), nativeModelNode(t, h, sn[1], "q"), nativeModelNode(t, h, sn[2], "QQ=="), nativeModelNode(t, h, sn[2], "Qg==")}
+			nativeModelLink(p, children...)
+			switch kind {
+			case "opaque-parent":
+				p.node.schema = nil
+			case "top-level":
+				children[3].parent = nil
+			default:
+				parentSchema := *p.node.schema
+				parentSchema.Kind = schema.AnyData
+				if kind == "anyxml" {
+					parentSchema.Kind = schema.AnyXML
+				}
+				p.node.schema = &parentSchema
+			}
+			before := *table
+			rc, err := h.event(table, children[3], false)
+			nativeRequire(t, rc, err, nativeOK)
+			if *table != before {
+				t.Fatalf("ineligible %s created a table", kind)
+			}
+		})
+	}
+}
+
+// D-0062 policy controls: these frontiers deliberately differ from the native
+// undefined prefix. G1 supplies them to its private kernel, without routing the
+// production merge adapter through that kernel.
+func TestNativeMerge2PolicyFrontiers(t *testing.T) {
+	for _, existing := range []bool{false, true} {
+		for _, opaqueSeparator := range []bool{false, true} {
+			t.Run(fmt.Sprintf("existing=%t/opaque=%t", existing, opaqueSeparator), func(t *testing.T) {
+				h, table, parent, sn := nativeModel(t)
+				d4, d1 := nativeModelNode(t, h, sn[3], "4"), nativeModelNode(t, h, sn[3], "1")
+				s2, s3 := nativeModelNode(t, h, sn[3], "2"), nativeModelNode(t, h, sn[3], "3")
+				var prefix []*nativeChild
+				if existing {
+					prefix = []*nativeChild{nativeModelNode(t, h, sn[0], "p"), nativeModelNode(t, h, sn[1], "q")}
+				}
+				opaq := nativeModelNode(t, h, nil, "")
+				frontier := func(run ...*nativeChild) []*nativeChild {
+					children := append([]*nativeChild{}, prefix...)
+					children = append(children, run...)
+					if opaqueSeparator {
+						// The physical-extent rule preserves the opaque slot at
+						// the second position of the affected destination extent.
+						at := len(prefix) + 1
+						children = append(children, nil)
+						copy(children[at+1:], children[at:])
+						children[at] = opaq
+					}
+					return children
+				}
+				nativeModelLink(parent, frontier(d4, d1)...)
+				rc, err := h.event(table, d1, false)
+				nativeRequire(t, rc, err, nativeOK)
+				nodes := []*Node{parent.node, d4.node, d1.node, s2.node, s3.node, opaq.node}
+				for _, c := range prefix {
+					nodes = append(nodes, c.node)
+				}
+				before, charges := nativeObserve(t, table, nodes, nativeOK), h.work.hashUsed
+				initialSize, initialUsed := uint32(8), uint32(5)
+				if opaqueSeparator {
+					initialSize, initialUsed = 16, 6
+				}
+				if table.present != existing || (existing && (table.size != initialSize || table.mode != 2 || table.used != initialUsed)) {
+					t.Fatalf("initial table: %+v", before)
+				}
+				// Permute D without I/U/H: [D4,D1] -> [D1,D4].
+				nativeModelLink(parent, frontier(d1, d4)...)
+				if !reflect.DeepEqual(before, nativeObserve(t, table, nodes, nativeOK)) || h.work.hashUsed != charges {
+					t.Fatal("destination permutation changed registrations or charged native events")
+				}
+				for i, step := range []struct {
+					arrival *nativeChild
+					run     []*nativeChild
+				}{{s3, []*nativeChild{d1, s3, d4}}, {s2, []*nativeChild{d1, s2, s3, d4}}} {
+					nativeModelLink(parent, frontier(step.run...)...)
+					if !opaqueSeparator && (step.arrival.prev != d1 || step.arrival.next != []*nativeChild{d4, s3}[i]) {
+						t.Fatal("arrival does not see the filtered attachment frontier")
+					}
+					rc, err := h.event(table, step.arrival, false)
+					nativeRequire(t, rc, err, nativeOK)
+					if !existing && i == 0 {
+						if table.present {
+							t.Fatal("future S2 was visible at S3's threshold check")
+						}
+						continue
+					}
+					wantUsed, wantSize := uint32(5), uint32(8)
+					if existing {
+						wantUsed, wantSize = uint32(6+i), 16
+					}
+					if opaqueSeparator {
+						// An opaque predecessor makes each arrival a run start;
+						// the existing-table I removes the successor schema pair.
+						wantUsed++
+						wantSize = 16
+					}
+					if table.used != wantUsed || table.size != wantSize {
+						t.Fatalf("step=%d table size/used=%d/%d want=%d/%d", i, table.size, table.used, wantSize, wantUsed)
+					}
+				}
+				sh := types.FinishHash32(schemaHash(sn[3]))
+				var winner *Node
+				for _, slot := range nativeObserve(t, table, nodes, nativeOK).Chains {
+					if slot.Hash == sh {
+						winner = nodes[slot.Node-1]
+						break
+					}
+				}
+				wantWinner := d1.node
+				if existing && !opaqueSeparator {
+					wantWinner = d4.node
+				}
+				if winner != wantWinner {
+					t.Fatal("schema occurrence no longer selects the historical winner")
+				}
+				if existing && !opaqueSeparator {
+					if i, _, err := h.pair(table, d1.node, sh); err != nil || i != nativeNoRecord {
+						t.Fatalf("permutation invented D1 schema occurrence: %v", err)
+					}
+				}
+			})
+		}
+	}
+}
+
+func TestNativeMerge2GoPolicyPermutation(t *testing.T) {
+	if os.Getenv("YANG_NATIVE_POLICY_OVERLAY") == "" {
+		nativePolicyOverlay(t)
+		return
+	}
+	for _, existing := range []bool{false, true} {
+		t.Run(fmt.Sprint(existing), func(t *testing.T) {
+			set := reviewDiffSet(t, nativeBuildModule)
+			dst, prototype, src := newTree(set), newTree(set), newTree(set)
+			parent, err := dst.NewInner(nil, "m:c", NewOptions{})
+			if err != nil {
+				t.Fatal(err)
+			}
+			seedParent, err := prototype.NewInner(nil, "m:c", NewOptions{})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if existing {
+				for _, name := range []string{"p", "q"} {
+					if _, err := dst.NewTerm(parent, name, name, NewOptions{}); err != nil {
+						t.Fatal(err)
+					}
+				}
+			}
+			var dest []*Node
+			for _, value := range []string{"4", "1"} {
+				seed, err := prototype.NewTerm(seedParent, "v", value, NewOptions{})
+				if err != nil {
+					t.Fatal(err)
+				}
+				n, _, err := dst.Dup(seed, parent, DupOptions{NoSort: true, NoMeta: true})
+				if err != nil {
+					t.Fatal(err)
+				}
+				dest = append(dest, n)
+			}
+			if parent.kids.rbTree[dest[0]] || dest[0].inRB || dest[1].inRB || (parent.kids.ht != nil) != existing {
+				t.Fatal("public NoSort/NoMeta duplications did not establish nodes2 preconditions")
+			}
+			var source []*Node
+			// Go exposes no free sibling-list API. As in TestMergeSorted,
+			// prepare its parentless source forest through the private linker;
+			// the native public request independently proves reachability.
+			for _, value := range []string{"2", "3"} {
+				n := nativeModelNode(t, newNativeHarness(&workCounter{}), dest[0].schema, value).node
+				if err := src.insert(nil, n, insertDefault); err != nil {
+					t.Fatal(err)
+				}
+				source = append(source, n)
+			}
+			group := src.top.rbGroups[source[0]]
+			if group == nil || !src.top.hasRB(source[0].schema) {
+				t.Fatal("source has no retained RB topology")
+			}
+			if source[0].parent != nil || source[1].parent != nil {
+				t.Fatal("source is not a parentless sibling forest")
+			}
+			observations := 0
+			// Only the temporary compiler overlay calls this existing test
+			// hook at rbPublish attachment boundaries. The callback reads the
+			// real intermediate state; it neither charges nor edits it.
+			overdraftHook = func(w *workCounter) {
+				if w != &dst.work {
+					t.Fatal("policy observer reached a different work scope")
+				}
+				if !parent.kids.ownsGroup(dest[1], group) || len(parent.kids.metaGroups(dest[0])) != 0 {
+					t.Fatal("attachment boundary preceded metadata transfer to D1")
+				}
+				wantS3, wantS2 := observations >= 2, observations >= 4
+				if (source[1].parent == parent) != wantS3 || (source[0].parent == parent) != wantS2 {
+					t.Fatalf("boundary %d: attachment replay is not S3 then S2", observations)
+				}
+				var frontier []*Node
+				for _, n := range parent.kids.docSpan().All() {
+					if n.schema == dest[0].schema && !parent.kids.unattached[n] {
+						frontier = append(frontier, n)
+					}
+				}
+				want := []*Node{dest[1], dest[0]}
+				if observations >= 1 {
+					want = []*Node{dest[1], source[1], dest[0]}
+				}
+				if observations >= 3 {
+					want = []*Node{dest[1], source[0], source[1], dest[0]}
+				}
+				if !reflect.DeepEqual(frontier, want) {
+					t.Fatalf("boundary %d: incorrect visible attachment frontier", observations)
+				}
+				observations++
+			}
+			defer func() { overdraftHook = nil }()
+			if err := dst.Insert(parent, source[0]); err != nil {
+				t.Fatal(err)
+			}
+			overdraftHook = nil
+			if observations != 5 {
+				t.Fatalf("policy observer boundaries=%d want=5", observations)
+			}
+			t.Log("observed metadata on D1 before arrival; frontiers [D1,D4], [D1,S3,D4], [D1,S2,S3,D4]; attachment order S3,S2")
+			var got []*Node
+			for n := range parent.Children() {
+				if n.schema == dest[0].schema {
+					got = append(got, n)
+				}
+			}
+			if !reflect.DeepEqual(got, []*Node{dest[1], source[0], source[1], dest[0]}) {
+				t.Fatal("Go-policy merge did not publish [D1,S2,S3,D4]")
+			}
+			if !parent.kids.ownsGroup(dest[1], group) || len(parent.kids.metaGroups(dest[1])) != 1 || len(parent.kids.metaGroups(dest[0])) != 0 {
+				t.Fatal("retained source metadata did not transfer to final run's first member")
+			}
+			checkTreeRetainedRB(t, dst)
+		})
+	}
+}
+
+func nativePolicyOverlay(t *testing.T) {
+	t.Helper()
+	path, err := filepath.Abs("insert.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	source, err := os.ReadFile(path) //nolint:gosec // Fixed repository source used only for the test compiler overlay.
+	if err != nil {
+		t.Fatal(err)
+	}
+	needle := "\t\tdelete(pending, n)\n\t\tt.attach(parent, sib, n)\n"
+	if strings.Count(string(source), needle) != 1 {
+		t.Fatal("rbPublish observer boundary no longer matches exactly")
+	}
+	replacement := "\t\tdelete(pending, n)\n\t\tif overdraftHook != nil { overdraftHook(&t.work) }\n\t\tt.attach(parent, sib, n)\n\t\tif overdraftHook != nil { overdraftHook(&t.work) }\n"
+	initial := "\tsib.unattached = pending\n"
+	if strings.Count(string(source), initial) != 1 {
+		t.Fatal("rbPublish initial observer boundary no longer matches exactly")
+	}
+	instrumentation := strings.Replace(string(source), needle, replacement, 1)
+	instrumentation = strings.Replace(instrumentation, initial, initial+"\tif overdraftHook != nil { overdraftHook(&t.work) }\n", 1)
+	dir := t.TempDir()
+	instrumented := filepath.Join(dir, "insert.go")
+	if err := os.WriteFile(instrumented, []byte(instrumentation), 0o600); err != nil { //nolint:gosec // Private test directory and fixed overlay filename.
+		t.Fatal(err)
+	}
+	manifest, err := json.Marshal(struct{ Replace map[string]string }{map[string]string{path: instrumented}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	overlay := filepath.Join(dir, "overlay.json")
+	if err := os.WriteFile(overlay, manifest, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	// The child compiler sees observational calls only in its temporary overlay;
+	// tracked production sources, routing, layout and public API stay unchanged.
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	defer cancel()
+	args := []string{"test", "-overlay", overlay, "-run", "^TestNativeMerge2GoPolicyPermutation$", "-count=1", "-v"}
+	if raceEnabled {
+		args = append(args, "-race")
+	}
+	cmd := exec.CommandContext(ctx, "go", append(args, ".")...) //nolint:gosec // Fixed Go test command; the overlay is generated from this repository in a private test directory.
+	cmd.Env = append(os.Environ(), "YANG_NATIVE_POLICY_OVERLAY=1")
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("Go policy observer: %v\n%s", err, out)
+	}
+	t.Logf("Go policy observer:\n%s", out)
 }
 
 func TestNativeRefusalAndTouchRestore(t *testing.T) {
