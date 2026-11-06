@@ -138,15 +138,53 @@ through a children table, as well as explicit read commands.
 It checks the following outcomes; these are runtime results, not predictions:
 
 Every replay requires its ready event and each completed request's command
-snapshot at the expected operation. Creation identities must first appear in
+snapshot at the expected operation. Completed `print`, `schema` and `rewind`
+requests also require their separate public/read result at that operation.
+Fixed per-script counts require both boundaries of I/U, insertion/removal,
+validation, physical link/unlink and metadata/merge primitives, and allocation,
+retirement and free events. Deliberately stopped merge prefixes require only
+the boundaries actually reached. Address-reuse controls require at least one
+reuse event; their exact count is allocator-dependent.
+
+Every nonzero generation in event fields, physical links (including first/tail),
+duplication sources, RB topology and table occurrences must resolve to an
+allocation record. Snapshot references resolve in that snapshot; standalone
+read/handle events and address-reuse notices resolve in the retained registry
+(the reuse notice precedes the new allocation's first snapshot). Snapshot node
+arrays retain all previously seen identities, including tombstones, without
+duplicate generations. Every identity requires its generation, script ID, creation
+operation/ordinal, source and liveness fields. Standalone reuse, read, public-result
+and stale-handle events require their own complete field sets; successful public
+results require JSON, and reuse requires two nonzero allocation generations.
+Five bootstrap allocations are required independently.
+Creation identities must first appear in
 their creation operation, remain stable per generation, and have unique,
 contiguous positive ordinals within each operation (including bootstrap zero).
 Duplication sources must be earlier allocations and match the requested source
-handle; recursive children must match their corresponding source children.
+handle; recursive children must match all corresponding source children,
+including the source suffix. `internal-build` independently requires the four
+parser children at `(operation, ordinal)` `(1,2)` through `(1,5)`, their schemas
+and parent, plus the failed term allocation `(3,1)`, its tombstone, EVALID result
+and free event. These expectations do not use raw generation numbers or surviving
+references to infer the required allocations.
 The recursive duplication boundary requires a distinct table at source capacity,
 mode 1, used 0, an entirely free chain, and no children. Each relevant case
 requires its fixed count of resize before/after records, paired by operation
-and table identity, before occurrence continuity is checked.
+and table identity, before occurrence continuity is checked. All present live
+tables require their snapshot fields and exactly `used` occurrences; serials
+cannot change table/generation/hash identity. Occurrence liveness agrees with
+the snapshot registry, and tombstoned generations cannot become live again.
+Occurrence, bucket, slot and RB records require all fields emitted by the driver;
+bucket/slot counts equal capacity and free-chain length equals capacity minus
+used. Diagnostic codes and log level/line fields are required when those records
+exist; optional native message/path/app-tag fields remain optional.
+After successful generic-table creation, every subsequent command snapshot and
+snapshot stop boundary requires its table dump (a failed replacement constructor
+has no table). Each such dump has an independent deletion control.
+Live nodes require current metadata and links; inner nodes require child/table
+snapshots. `lyds_tree` metadata requires its RB roots and complete topology.
+Retired tables and tombstoned current metadata are deliberately unavailable.
+Unobserved native `table.allocate` events have no table dump by driver design.
 
 Automated in-memory negative controls zero all creation/source fields, substitute
 the completed duplication snapshot for its initialization, and remove all resize
@@ -157,6 +195,30 @@ initialization, remove either resize boundary, and move an after record before
 its before record. `TestNativeObserverEvidence` requires these
 controls to execute and reject their mutants; missing evidence cannot pass by
 making the assertions vacuous.
+
+On every instrumented replay (including rewind, invalid-constructor and watchdog
+controls), additional negative controls delete all parser-child, internal,
+failed-constructor, tombstone and bootstrap records wherever those categories
+apply. Internal and failed allocations are also deleted individually, including
+each operation's final ordinal. Independent `internal-build` controls remove
+the expected creation keys directly, so reference validation cannot mask those
+assertions. Every nonzero reference-field category receives an unresolved
+generation mutant. Other controls delete required snapshot fields, one retained
+identity, each required bootstrap container field, RB topology, table occurrences,
+either lookup dump, separate public/read
+results, each required event class and both boundaries of each reached primitive.
+Each identity field and each required standalone-event field is also deleted
+independently; reuse-generation zeroing has separate controls.
+Record-field controls delete every occurrence, bucket, slot, RB, diagnostic and
+log field independently; array controls remove all buckets, slots or free entries.
+Fixed per-request counts independently require context diagnostics and callback
+logs at completed-command/terminal snapshots, including logged errors with no
+context diagnostic. Each nonempty channel has a whole-channel deletion control.
+The recursive-dup control omits its entire child suffix. The Go regression
+requires the general controls for all case scripts and the applicable allocation
+controls for parser, recursive-dup and list-key creation. Unmodified comparison
+traces lack constructor-hook provenance and are compared for public outcomes;
+allocation-identity controls apply to instrumented traces.
 
 * **remote-last.calls:** the exact public sequence from design §2.3 reaches the
   remote-last insert-after with every earlier public call returning success.

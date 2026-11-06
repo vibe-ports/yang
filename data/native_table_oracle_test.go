@@ -101,7 +101,7 @@ func TestNativeObserverEvidence(t *testing.T) {
 	if comparison == "" {
 		comparison = filepath.Join(filepath.Dir(driver), "driver-unmodified")
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Minute)
 	defer cancel()
 	// This independently checks occurrence identities, retirement, logging versus
 	// context diagnostics, public controls and the labeled native stop boundaries.
@@ -121,6 +121,72 @@ func TestNativeObserverEvidence(t *testing.T) {
 			t.Fatalf("checker omitted negative evidence control %s\n%s", mutant, out)
 		}
 	}
+	// Require the third audit's deletion controls per applicable replay, rather
+	// than allowing one case to stand in for the entire retained evidence set.
+	controls := make(map[string]map[string]bool)
+	scan := bufio.NewScanner(bytes.NewReader(out))
+	for scan.Scan() {
+		var record struct {
+			Case     string `json:"case"`
+			Negative string `json:"negative_evidence"`
+			Rejected bool   `json:"rejected"`
+		}
+		if err := json.Unmarshal(scan.Bytes(), &record); err != nil {
+			t.Fatal(err)
+		}
+		if record.Negative != "" && record.Rejected {
+			if controls[record.Case] == nil {
+				controls[record.Case] = make(map[string]bool)
+			}
+			controls[record.Case][record.Negative] = true
+		}
+	}
+	if err := scan.Err(); err != nil {
+		t.Fatal(err)
+	}
+	require := func(name string, labels ...string) {
+		t.Helper()
+		for _, label := range labels {
+			if !controls[name][label] {
+				t.Errorf("%s: checker omitted rejection of %s", name, label)
+			}
+		}
+	}
+	cases, err := filepath.Glob(filepath.Join("..", "conformance", "oracle", "native_registration", "cases", "*.calls"))
+	if err != nil || len(cases) == 0 {
+		t.Fatalf("native cases: %v (%d scripts)", err, len(cases))
+	}
+	for _, path := range cases {
+		name := strings.TrimSuffix(filepath.Base(path), ".calls")
+		require(name, "removed-bootstrap-records", "removed-retained-identity", "removed-snapshot-nodes",
+			"removed-snapshot-diagnostics", "removed-snapshot-node_generation", "removed-snapshot-source_generation")
+		for _, field := range []string{"hash", "flags", "metadata", "schema", "prev", "next", "parent", "first", "tail", "table"} {
+			require(name, "removed-current-"+field)
+		}
+		for _, field := range []string{"generation", "id", "creation_operation", "creation_ordinal", "source", "alive"} {
+			require(name, "removed-identity-"+field)
+		}
+	}
+	require("internal-build", "removed-parser-child-records", "removed-failed-constructor-records",
+		"removed-allocation-1-2", "removed-allocation-1-3", "removed-allocation-1-4", "removed-allocation-1-5", "removed-allocation-3-1",
+		"missing-expected-parser-allocations", "missing-expected-failed-allocation")
+	for _, name := range []string{"internal-build", "driver-lifetime", "list-events"} {
+		require(name, "removed-internal-allocation-records")
+	}
+	require("driver-lifetime", "removed-rb-topology", "removed-tombstone-records", "removed-table-occurrences", "missing-duplicate-child-suffix", "zero-free-generation")
+	require("remote-last-results", "removed-event-public.result", "removed-event-read.schema", "removed-lookup-before", "removed-lookup-after")
+	require("remote-last", "removed-event-read.first-sibling")
+	require("resize-disabled", "removed-generic-table-new", "removed-generic-table-insert", "removed-generic-table-remove")
+	require("find-next-watchdog", "removed-generic-table-insert", "removed-generic-table-boundary.watchdog.find-next-cycle")
+	require("driver-lifetime", "removed-event-field-allocation.address-reuse-old_generation", "removed-event-field-allocation.address-reuse-new_generation",
+		"zero-reuse-old_generation", "zero-reuse-new_generation")
+	require("remote-last-results", "removed-event-field-public.result-rc", "removed-event-field-public.result-json",
+		"removed-event-field-read.schema-queried_parent", "removed-event-field-read.schema-winner", "removed-event-field-read.schema-current_parent")
+	require("remote-last", "removed-event-field-read.first-sibling-winner")
+	require("internal-build", "removed-record-field-occurrence-bucket", "removed-record-field-occurrence-ordinal", "removed-record-field-rb-color",
+		"removed-record-field-diagnostic-code", "removed-record-field-log-level", "removed-table-buckets", "removed-table-slots", "removed-table-free_chain",
+		"removed-command-diagnostics", "removed-command-logs")
+	require("collision-build", "removed-command-diagnostics", "removed-command-logs")
 }
 
 // Confirm the existing Go API has no earlier D-0121 refusal on the exact public

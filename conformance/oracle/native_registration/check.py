@@ -63,8 +63,16 @@ def rb_members(row):
 
 def complete_rb_topology(row):
     for node in row.get("nodes", []):
-        if not node.get("rb"):
+        if not node["alive"]:
             continue
+        if "lyds_tree" not in node["metadata"]:
+            assert not any(k in node for k in ("rb", "rb_root", "rb_stored_root")), "RB without metadata"
+            continue
+        assert "rb" in node and "rb_root" in node and "rb_stored_root" in node, "missing RB topology"
+        if not node["rb_root"]:
+            assert node["rb_stored_root"] == 0 and node["rb"] == [], "missing RB root"
+            continue
+        assert all(RECORD_FIELDS["rb"] <= r.keys() for r in node["rb"]), "incomplete RB record"
         members = {r["node"]: r for r in node["rb"]}
         assert len(members) == len(node["rb"]), "duplicate RB member"
         roots = [r["node"] for r in members.values() if not r["parent"]]
@@ -87,6 +95,55 @@ def complete_rb_topology(row):
         assert reached == members.keys(), "unreachable RB members"
 
 
+def generation_reference_sites(row):
+    """Enumerate generation fields by representation; script handles are not IDs."""
+    for key in ("node_generation", "source_generation", "working_rb_root", "old_generation",
+                "new_generation", "generation", "queried_parent", "winner", "current_parent"):
+        if key in row:
+            yield "event." + key, row, key
+    for node in row.get("nodes", []):
+        yield "node.source", node, "source"
+        for key in ("prev", "next", "parent", "first", "tail", "rb_root", "rb_stored_root"):
+            if key in node:
+                yield "node." + key, node, key
+        for member in node.get("rb", []):
+            for key in ("owner", "node", "parent", "left", "right"):
+                yield "rb." + key, member, key
+    for label, table in tables(row):
+        if table["present"] and not table.get("retired", False):
+            for occurrence in table["chains"]:
+                yield label + ".generation", occurrence, "generation"
+
+
+def tables(row):
+    for key in ("table", "before", "after"):
+        if key in row:
+            yield key, row[key]
+    for node in row.get("nodes", []):
+        if "table" in node:
+            yield "node.table", node["table"]
+
+
+def internal_build_allocations(rows, creations):
+    # Independent request expectations: do not derive the required identities
+    # from the surviving event/link/occurrence references, or from raw generations.
+    parsed = next(r for r in rows if r["event"] == "parse" and r["operation"] == 1)
+    nodes = {n["generation"]: n for n in parsed["nodes"]}
+    assert {(op, ordinal) for op, ordinal in creations if op == 1} == {(1, i) for i in range(1, 6)}, "missing parser allocations"
+    for ordinal, schema in enumerate(("p", "q", "ll", "ll"), 2):
+        child = nodes[creations[1, ordinal]]
+        assert child["id"] == 0 and child["schema"] == schema and child["source"] == 0
+        assert child["parent"] == creations[1, 1]
+    assert (3, 1) in creations, "missing failed constructor allocation"
+    failed = creations[3, 1]
+    result = next(r for r in rows if r["event"] == "term" and r["operation"] == 3)
+    assert result["rc"] == 7
+    node = next(n for n in result["nodes"] if n["generation"] == failed)
+    assert node["id"] == 70 and not node["alive"] and node["source"] == 0
+    assert any(r["event"] == "node.free" and r["operation"] == 3 and
+               r["node_generation"] == failed and r["rc"] == 7 for r in rows), "missing failed constructor free"
+
+
 # Fixed request expectations, independent of which observer records survive.
 # Zero counts are intentional: disabled resizing must remain disabled.
 RESIZES = {
@@ -99,10 +156,149 @@ RESIZES = {
 }
 DUP_INITS = {"driver-lifetime": 1}
 
+# Required native boundaries for these fixed scripts, in PRIMITIVES order.
+# Counts describe calls, not allocation generations or serialized snapshots.
+# A pair is (before, after) only for the deliberately stopped merge prefixes.
+PRIMITIVES = (
+    'lyd_insert_hash',
+    'lyd_unlink_hash',
+    'lyd_insert_hash_add',
+    '_lyht_insert_with_resize_cb',
+    'lyht_remove_with_resize_cb',
+    'lyht_find_next_with_collision_cb',
+    'lyd_validate_duplicates',
+    'lyd_insert_node_last',
+    'lyd_insert_only_child',
+    'lyd_insert_after_node',
+    'lyd_insert_before_node',
+    'lyd_unlink_ignore_lyds',
+    'lyds_move_meta',
+    'lyds_merge_nodes2_front',
+    'lyds_merge_nodes2_among',
+    'lyds_merge_nodes2_back',
+)
+PRIMITIVE_COUNTS = {
+    'collision-build': (22, 19, 21, 66, 37, 3, 4, 4, 1, 18, 2, 18, 15, 0, 0, 0),
+    'collision-history-retained': (6, 2, 6, 19, 5, 0, 0, 3, 1, 2, 1, 1, 0, 0, 0, 0),
+    'collision-history-shrunk': (22, 18, 22, 68, 37, 0, 0, 4, 1, 18, 1, 17, 15, 0, 0, 0),
+    'collision-resize': (21, 17, 21, 63, 33, 4, 5, 4, 1, 18, 1, 16, 15, 0, 0, 0),
+    'dead-occurrence': (1, 1, 0, 2, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0),
+    'driver-lifetime': (33, 25, 32, 40, 24, 0, 0, 9, 2, 6, 24, 25, 0, 0, 0, 0),
+    'find-next-watchdog': (0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0),
+    'free-slot-cap': (1, 0, 0, 9, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0),
+    'handle-tombstone-probe': (8, 4, 4, 5, 0, 0, 0, 8, 5, 3, 0, 4, 0, 0, 0, 0),
+    'handle-tombstone': (8, 4, 4, 5, 0, 0, 0, 8, 5, 3, 0, 4, 0, 0, 0, 0),
+    'internal-build': (5, 1, 3, 4, 0, 0, 0, 5, 1, 3, 0, 1, 0, 0, 0, 0),
+    'invalid-capacity': (0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0),
+    'invalid-mode': (0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0),
+    'list-events': (12, 4, 5, 9, 5, 0, 0, 8, 5, 3, 1, 4, 0, 0, 0, 0),
+    'merge2-before': (9, 4, 4, 5, 0, 0, 0, 4, 3, 4, 2, 4, 1, 1, 1, (1, 0)),
+    'merge2-defined': (12, 6, 5, 12, 0, 0, 0, 4, 3, 8, 1, 6, 1, 1, 1, 1),
+    'merge2-successor': (12, 5, 5, 12, 0, 0, 0, 5, 3, 8, 1, 5, 1, 1, (1, 0), 0),
+    'merge2-unsorted': (9, 4, 4, 5, 0, 0, 0, 4, 3, 3, 3, 4, 2, 1, (1, 0), 0),
+    'opaque-eligibility': (5, 4, 0, 0, 0, 0, 0, 1, 1, 0, 1, 1, 0, 0, 0, 0),
+    'opaque-separated': (9, 2, 4, 12, 0, 0, 0, 4, 2, 2, 4, 1, 0, 0, 0, 0),
+    'opaque-threshold': (6, 1, 4, 5, 0, 0, 0, 4, 1, 3, 1, 0, 0, 0, 0, 0),
+    'remote-last-release': (9, 3, 6, 15, 4, 0, 0, 7, 3, 6, 0, 3, 1, 0, 0, 0),
+    'remote-last-results': (9, 3, 6, 15, 4, 0, 0, 7, 3, 6, 0, 3, 1, 0, 0, 0),
+    'remote-last': (8, 3, 6, 15, 4, 0, 0, 7, 3, 6, 0, 3, 1, 0, 0, 0),
+    'remote-nonlast': (10, 3, 6, 15, 4, 0, 0, 7, 3, 7, 0, 3, 1, 0, 0, 0),
+    'repeated-pointer': (21, 19, 21, 66, 36, 4, 5, 3, 1, 17, 2, 19, 15, 0, 0, 0),
+    'resize-disabled': (1, 0, 0, 2, 2, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0),
+    'retained-address-reuse': (2, 1, 0, 2, 0, 0, 0, 2, 0, 0, 0, 1, 0, 0, 0, 0),
+    'schema-pointer-reverse': (5, 2, 4, 12, 2, 0, 0, 4, 2, 2, 0, 1, 0, 0, 0, 0),
+    'schema-pointer': (5, 2, 4, 12, 2, 0, 0, 4, 2, 2, 0, 1, 0, 0, 0, 0),
+}
+# Allocation/free events are separate from physical unlink and table resize.
+# Address reuse depends on the allocator: require its presence in the controls,
+# without prescribing the number of reused addresses.
+LIFETIME_COUNTS = {
+    'collision-build': (3, 0, 0, 0),
+    'collision-history-retained': (1, 0, 0, 0),
+    'collision-history-shrunk': (1, 0, 0, 0),
+    'collision-resize': (2, 0, 0, 0),
+    'dead-occurrence': (1, 0, 1, 1),
+    'driver-lifetime': (2, 1, 29, 29),
+    'free-slot-cap': (1, 0, 0, 0),
+    'handle-tombstone-probe': (1, 1, 8, 8),
+    'handle-tombstone': (1, 1, 8, 8),
+    'internal-build': (1, 1, 5, 6),
+    'list-events': (1, 0, 0, 0),
+    'merge2-before': (1, 0, 0, 0),
+    'merge2-defined': (1, 0, 0, 0),
+    'merge2-successor': (1, 0, 0, 0),
+    'merge2-unsorted': (1, 0, 0, 0),
+    'opaque-separated': (1, 0, 0, 0),
+    'opaque-threshold': (1, 0, 0, 0),
+    'remote-last-release': (1, 1, 9, 9),
+    'remote-last-results': (1, 0, 0, 0),
+    'remote-last': (1, 0, 0, 0),
+    'remote-nonlast': (1, 0, 0, 0),
+    'repeated-pointer': (3, 0, 0, 0),
+    'resize-disabled': (2, 1, 0, 0),
+    'retained-address-reuse': (1, 0, 1, 1),
+    'schema-pointer-reverse': (1, 0, 0, 0),
+    'schema-pointer': (1, 0, 0, 0),
+}
+REUSE_CASES = {"driver-lifetime", "handle-tombstone", "handle-tombstone-probe", "retained-address-reuse"}
+IDENTITY_FIELDS = {"generation", "id", "creation_operation", "creation_ordinal", "source", "alive"}
+EVENT_FIELDS = {
+    "allocation.address-reuse": {"old_generation", "new_generation"},
+    "read.schema": {"operation", "rc", "queried_parent", "winner", "current_parent", "before", "after"},
+    "read.first-sibling": {"operation", "winner"},
+    "public.result": {"operation", "rc"},
+    "boundary.tombstoned-handle": {"operation", "handle", "generation", "current"},
+}
+# Completed-command/terminal snapshots with native errors, measured separately
+# for context diagnostics and the logging callback. All other requests have zero.
+ERROR_COUNTS = {
+    "collision-build": {5: (1, 1), 9: (0, 1), 42: (2, 4)},
+    "collision-history-retained": {7: (1, 1)},
+    "collision-history-shrunk": {39: (1, 1), 40: (2, 4)},
+    "internal-build": {1: (1, 1), 3: (1, 1)},
+    "invalid-capacity": {1: (0, 1)},
+    "invalid-mode": {1: (0, 1)},
+    "repeated-pointer": {6: (1, 2), 7: (1, 1)},
+}
+RECORD_FIELDS = {
+    "occurrence": {"bucket", "slot", "ordinal", "node", "generation", "occurrence", "hash", "alive"},
+    "bucket": {"first", "last"},
+    "slot": {"next", "node", "hash"},
+    "rb": {"owner", "node", "parent", "left", "right", "color"},
+    "diagnostic": {"code"},
+    "log": {"level", "line"},
+}
+
+
+def records(row):
+    for label, key in (("diagnostic", "diagnostics"), ("log", "logs")):
+        for record in row.get(key, []):
+            yield label, record
+    for node in row.get("nodes", []):
+        for record in node.get("rb", []):
+            yield "rb", record
+    for _, table in tables(row):
+        if table["present"] and not table.get("retired", False):
+            for label, key in (("occurrence", "chains"), ("bucket", "buckets"), ("slot", "slots")):
+                for record in table[key]:
+                    yield label, record
+
 
 def invariants(rows, name):
     counts = Counter(r["event"] for r in rows)
     assert counts["driver.ready.actual-children-callback"] == 1, (name, "missing ready")
+    assert rows[0]["event"] == "driver.ready.actual-children-callback", (name, "late ready")
+    for primitive, expected in zip(PRIMITIVES, PRIMITIVE_COUNTS[name], strict=True):
+        # The rewind control completes the insertion that the remote-last
+        # corrupting-primitive control deliberately stops before registration.
+        if name == "remote-last" and "boundary" not in rows[-1]["event"] and primitive == "lyd_insert_hash":
+            expected = 9
+        before, after = expected if isinstance(expected, tuple) else (expected, expected)
+        assert (counts[primitive + ".before"], counts[primitive + ".after"]) == (before, after), (name, "missing/extra primitive boundary", primitive)
+    for event, expected in zip(("table.allocate", "table.retire", "node.retiring", "node.free"), LIFETIME_COUNTS.get(name, (0, 0, 0, 0)), strict=True):
+        assert counts[event] == expected, (name, "missing/extra lifetime event", event)
+    if name in REUSE_CASES:
+        assert counts["allocation.address-reuse"] > 0, (name, "missing address reuse")
     for event in ("lyht_resize.before", "lyht_resize.after"):
         assert counts[event] == RESIZES.get(name, 0), (name, "missing/extra resize boundary", event)
     assert counts["dup.table.initialized"] == DUP_INITS.get(name, 0), (name, "missing/extra dup initialization")
@@ -110,15 +306,74 @@ def invariants(rows, name):
     # still require exactly one snapshot at their independently known operation.
     script = [line.split()[0] for line in (root / "cases" / (name + ".calls")).read_text().splitlines()
               if line.strip() and not line.lstrip().startswith("#")]
+    script_commands = set(script)
     stop = rows[-1].get("operation", len(script) + 1) if "boundary" in rows[-1]["event"] else len(script) + 1
     for operation, command in enumerate(script, 1):
         if operation < stop:
             assert len([r for r in rows if r["event"] == command and r.get("operation") == operation]) == 1, (name, operation, command)
+            result = {"schema": "read.schema", "rewind": "read.first-sibling", "print": "public.result"}.get(command)
+            if result:
+                assert len([r for r in rows if r["event"] == result and r.get("operation") == operation]) == 1, (name, "missing read/public result", operation)
 
     resizing, identities, creations, next_ordinal = [], {}, {}, Counter()
+    dead, occurrences, generic = set(), {}, False
+    # Address-reuse notices precede the new identity's first snapshot. All other
+    # snapshot references must resolve in that snapshot, including tombstones.
+    recorded = {n["generation"] for r in rows for n in r.get("nodes", [])}
     for row in rows:
+        if row["event"] == "new" and row["rc"] == 0:
+            generic = True
+        if generic and (row["event"] in script_commands or ("nodes" in row and row["event"].startswith("boundary.") and row["event"] != "boundary.new-null")):
+            assert "table" in row and row["table"]["present"], (name, "missing generic command/stop table", row["event"])
+        if row["event"] in EVENT_FIELDS:
+            assert EVENT_FIELDS[row["event"]] <= row.keys(), (name, "missing event fields", row["event"])
+            if row["event"] == "public.result" and row["rc"] == 0:
+                assert "json" in row, (name, "missing public JSON")
+            if row["event"] == "allocation.address-reuse":
+                assert row["old_generation"] > 0 and row["new_generation"] > 0, (name, "reuse without allocation identities")
+        else:
+            assert {"nodes", "operation", "rc", "diagnostics", "node_generation", "source_generation"} <= row.keys(), (name, "missing snapshot fields", row["event"])
+        if "nodes" in row and (row["event"] in script_commands or row is rows[-1]):
+            expected = ERROR_COUNTS.get(name, {}).get(row["operation"], (0, 0))
+            assert (len(row["diagnostics"]), len(row.get("logs", []))) == expected, (name, "missing/extra command diagnostics/logs", row["operation"])
+        if row["event"] in ("node.free", "node.retiring"):
+            assert row["node_generation"] > 0, (name, "free without allocation identity")
+        for label, record in records(row):
+            assert RECORD_FIELDS[label] <= record.keys(), (name, "incomplete snapshot record", label)
         nodes = {n["generation"]: n for n in row.get("nodes", [])}
+        if "nodes" in row:
+            assert len(nodes) == len(row["nodes"]), (name, "duplicate allocation record")
+            assert identities.keys() <= nodes.keys(), (name, "lost retained identity", row["event"])
+        for label, container, key in generation_reference_sites(row):
+            generation = container[key]
+            available = nodes if "nodes" in row else identities
+            if label == "event.new_generation" and row["event"] == "allocation.address-reuse":
+                available = recorded
+            if label.endswith(".generation"):
+                assert generation > 0, (name, "occurrence without generation")
+            assert generation == 0 or generation in available, (name, "unrecorded generation", row["event"], label, generation)
+        # table.allocate also reports unrelated, unobserved native tables; the
+        # driver intentionally omits their storage. Retirement is filtered.
+        if row["event"].startswith(("lyht_", "_lyht_")) or row["event"] in ("table.retire", "dup.table.initialized"):
+            assert "table" in row, (name, "missing event table", row["event"])
+        for label, table in tables(row):
+            if not table["present"] or table.get("retired", False):
+                continue
+            assert {"identity", "size", "used", "mode", "free", "buckets", "slots", "chains", "free_chain", "free_terminal"} <= table.keys(), (name, "incomplete table snapshot", label)
+            assert len(table["chains"]) == table["used"], (name, "missing occurrences", label)
+            assert len(table["buckets"]) == len(table["slots"]) == table["size"], (name, "missing bucket/slot snapshots", label)
+            assert len(table["free_chain"]) == table["size"] - table["used"], (name, "missing free-chain entries", label)
+            serials = [x["occurrence"] for x in table["chains"]]
+            assert len(set(serials)) == len(serials), (name, "duplicate occurrence")
+            for x in table["chains"]:
+                identity = table["identity"], x["generation"], x["hash"]
+                assert x["occurrence"] > 0 and occurrences.setdefault(x["occurrence"], identity) == identity, (name, "unstable occurrence")
+                if nodes:
+                    assert x["alive"] == nodes[x["generation"]]["alive"], (name, "occurrence liveness")
+        complete_rb_topology(row)
         for generation, node in nodes.items():
+            assert IDENTITY_FIELDS <= node.keys(), (name, "incomplete allocation identity")
+            assert generation > 0, (name, "invalid generation")
             creation = node["creation_operation"], node["creation_ordinal"]
             assert 0 <= creation[0] <= row.get("operation", 0) and creation[1] > 0, (name, "invalid creation", node)
             if generation not in identities:
@@ -139,9 +394,16 @@ def invariants(rows, name):
             elif creation[0]:
                 assert script[creation[0] - 1] != "dup", (name, "missing duplication source")
             if not node["alive"]:
+                dead.add(generation)
                 assert node.get("current") == "unavailable" and "hash" not in node
             else:
+                assert generation not in dead, (name, "revived tombstone")
                 assert node["context"] == 1
+                assert {"hash", "flags", "metadata", "prev", "next", "parent"} <= node.keys(), (name, "missing current metadata")
+                assert "schema" in node or {"prefix_format", "prefix_bound"} <= node.keys(), (name, "missing schema/opaque metadata")
+                # These are all inner schemas in the driver's two fixed modules.
+                if node.get("schema") in ("c", "d", "r", "l"):
+                    assert {"first", "tail", "table"} <= node.keys(), (name, "missing child/table snapshot")
         if row["event"] == "dup":
             fields = [line.split() for line in (root / "cases" / (name + ".calls")).read_text().splitlines()
                       if line.strip() and not line.lstrip().startswith("#")][row["operation"] - 1]
@@ -161,6 +423,7 @@ def invariants(rows, name):
                         assert s, (name, "extra duplicate child")
                         pending.append((nodes[d], nodes[s]))
                         d, s = nodes[d]["next"], nodes[s]["next"]
+                    assert not s, (name, "missing duplicate child suffix")
         if row["event"] == "dup.table.initialized":
             duplicate, source = nodes[row["node_generation"]], nodes[row["source_generation"]]
             table = row["table"]
@@ -190,19 +453,188 @@ def invariants(rows, name):
     for operation in {c[0] for c in creations}:
         ordinals = sorted(c[1] for c in creations if c[0] == operation)
         assert ordinals == list(range(1, len(ordinals) + 1)), (name, "allocation ordinal gap")
+    assert {(op, ordinal) for op, ordinal in creations if op == 0} == {(0, i) for i in range(1, 6)}, (name, "missing bootstrap allocations")
+    if name == "internal-build":
+        internal_build_allocations(rows, creations)
 
 
 def negative_evidence(name, rows):
-    """The audit's three in-memory mutants must fail the same acceptance check."""
-    def rejected(label, mutant):
+    """Run every applicable deletion/reference control on each accepted replay."""
+    def rejected(label, mutant, check=invariants):
         try:
-            invariants(mutant, name)
+            check(mutant, name)
         except (AssertionError, KeyError, IndexError):
             print(json.dumps({"negative_evidence": label, "case": name, "rejected": True}))
         else:
             raise AssertionError((name, "checker accepted mutant", label))
 
+    def without_identities(label, generations):
+        if generations:
+            rejected(label, [dict(r, nodes=[n for n in r["nodes"] if n["generation"] not in generations])
+                             if "nodes" in r else r for r in rows])
+
+    script = [line.split()[0] for line in (root / "cases" / (name + ".calls")).read_text().splitlines()
+              if line.strip() and not line.lstrip().startswith("#")]
+    script_commands = set(script)
+    allocations = {n["generation"]: n for r in rows for n in r.get("nodes", [])}
+    internal = {g for g, n in allocations.items() if n["creation_operation"] and not n["id"]}
+    parser_children = {g for g in internal if script[allocations[g]["creation_operation"] - 1] == "parse"}
+    failed = {r["node_generation"] for r in rows if r["event"] == "node.free" and r["rc"] != 0}
+    without_identities("removed-parser-child-records", parser_children)
+    without_identities("removed-failed-constructor-records", failed)
+    without_identities("removed-internal-allocation-records", internal)
+    without_identities("removed-tombstone-records", {g for g, n in allocations.items() if not n["alive"]})
+    without_identities("removed-bootstrap-records", {g for g, n in allocations.items() if not n["creation_operation"]})
+    free = next((i for i, r in enumerate(rows) if r["event"] == "node.free"), None)
+    if free is not None:
+        mutant = rows[:]
+        mutant[free] = dict(rows[free], node_generation=0)
+        rejected("zero-free-generation", mutant)
+    # Delete each internal/failed allocation independently, including the final
+    # ordinal: earlier gaps must not be the only reason a deletion is rejected.
+    for generation in sorted(internal | failed):
+        node = allocations[generation]
+        without_identities("removed-allocation-%d-%d" % (node["creation_operation"], node["creation_ordinal"]), {generation})
+    if name == "internal-build":
+        creations = {(n["creation_operation"], n["creation_ordinal"]): g for g, n in allocations.items()}
+        # Exercise the independent request assertions without dangling references
+        # being able to reject the input first.
+        for label, missing in (("missing-expected-parser-allocations", {(1, i) for i in range(2, 6)}),
+                               ("missing-expected-failed-allocation", {(3, 1)})):
+            retained = {c: g for c, g in creations.items() if c not in missing}
+            rejected(label, rows, lambda evidence, _: internal_build_allocations(evidence, retained))
+
+    # Every kind of reference is tested separately. Copy only its row so that
+    # these checks stay linear in the retained evidence size per control.
+    sites = {}
+    for i, row in enumerate(rows):
+        for label, container, key in generation_reference_sites(row):
+            if container[key]:
+                sites.setdefault(label, i)
+    for label, i in sites.items():
+        mutant = rows[:]
+        mutant[i] = copy.deepcopy(rows[i])
+        _, container, key = next(s for s in generation_reference_sites(mutant[i]) if s[0] == label and s[1][s[2]])
+        container[key] = max(allocations) + 1
+        rejected("unresolved-" + label, mutant)
+
+    snapshot = next(i for i, r in enumerate(rows) if i and "nodes" in r)
+    for field in ("nodes", "diagnostics", "node_generation", "source_generation"):
+        mutant = rows[:]
+        mutant[snapshot] = dict(rows[snapshot])
+        del mutant[snapshot][field]
+        rejected("removed-snapshot-" + field, mutant)
+    mutant = rows[:]
+    # Remove an identity already seen in ready, rather than a new allocation
+    # whose delayed first appearance could fail the creation-operation check.
+    mutant[snapshot] = dict(rows[snapshot], nodes=rows[snapshot]["nodes"][1:])
+    rejected("removed-retained-identity", mutant)
+    for field in sorted(IDENTITY_FIELDS):
+        mutant = rows[:]
+        mutant[0] = copy.deepcopy(rows[0])
+        del mutant[0]["nodes"][0][field]
+        rejected("removed-identity-" + field, mutant)
+    for field in ("hash", "flags", "metadata", "schema", "prev", "next", "parent", "first", "tail", "table"):
+        mutant = rows[:]
+        mutant[0] = copy.deepcopy(rows[0])
+        del mutant[0]["nodes"][0][field]  # the independently required bootstrap container
+        rejected("removed-current-" + field, mutant)
+
+    events = {r["event"] for r in rows}
+    for i, row in enumerate(rows):
+        if "nodes" not in row or (row["event"] not in script_commands and i != len(rows) - 1):
+            continue
+        for field in ("diagnostics", "logs"):
+            if row.get(field):
+                mutant = rows[:]
+                mutant[i] = dict(row, **{field: []})
+                rejected("removed-command-" + field, mutant)
+    record_rows = {}
+    for i, row in enumerate(rows):
+        for label, _ in records(row):
+            record_rows.setdefault(label, i)
+    for label, i in record_rows.items():
+        for field in sorted(RECORD_FIELDS[label]):
+            mutant = rows[:]
+            mutant[i] = copy.deepcopy(rows[i])
+            record = next(r for kind, r in records(mutant[i]) if kind == label)
+            del record[field]
+            rejected("removed-record-field-" + label + "-" + field, mutant)
+    for event, fields in EVENT_FIELDS.items():
+        i = next((i for i, r in enumerate(rows) if r["event"] == event), None)
+        if i is None:
+            continue
+        required = fields | ({"json"} if event == "public.result" and rows[i]["rc"] == 0 else set())
+        for field in sorted(required):
+            mutant = rows[:]
+            mutant[i] = dict(rows[i])
+            del mutant[i][field]
+            rejected("removed-event-field-" + event + "-" + field, mutant)
+        if event == "allocation.address-reuse":
+            for field in ("old_generation", "new_generation"):
+                mutant = rows[:]
+                mutant[i] = dict(rows[i], **{field: 0})
+                rejected("zero-reuse-" + field, mutant)
+    # Fixed primitive/lifetime counts also reject deleting *both* boundaries,
+    # which a pairing-only validator would accept vacuously.
+    required = {p + suffix for p in PRIMITIVES for suffix in (".before", ".after")}
+    required.update(("table.allocate", "table.retire", "node.retiring", "node.free", "allocation.address-reuse",
+                     "driver.ready.actual-children-callback", "public.result", "read.schema", "read.first-sibling"))
+    for event in sorted(events & required):
+        rejected("removed-event-" + event, [r for r in rows if r["event"] != event])
+    for primitive in PRIMITIVES:
+        if primitive + ".before" in events:
+            rejected("removed-pair-" + primitive, [r for r in rows if r["event"] not in (primitive + ".before", primitive + ".after")])
+
+    rb = next((i for i, r in enumerate(rows) if any(n.get("rb") for n in r.get("nodes", []))), None)
+    if rb is not None:
+        mutant = rows[:]
+        mutant[rb] = copy.deepcopy(rows[rb])
+        node = next(n for n in mutant[rb]["nodes"] if n.get("rb"))
+        del node["rb"]
+        rejected("removed-rb-topology", mutant)
+    present = next(((i, label) for i, r in enumerate(rows) for label, t in tables(r)
+                    if t["present"] and not t.get("retired", False) and t["used"]), None)
+    if present is not None:
+        i, label = present
+        mutant = rows[:]
+        mutant[i] = copy.deepcopy(rows[i])
+        table = next(t for l, t in tables(mutant[i]) if l == label and t.get("used"))
+        table["chains"] = []
+        rejected("removed-table-occurrences", mutant)
+        for field in ("buckets", "slots", "free_chain"):
+            mutant = rows[:]
+            mutant[i] = copy.deepcopy(rows[i])
+            table = next(t for l, t in tables(mutant[i]) if l == label and t.get("used"))
+            assert table[field], (name, "empty bootstrap table evidence", field)
+            table[field] = []
+            rejected("removed-table-" + field, mutant)
+    generic = next((i for i, r in enumerate(rows) if r["event"] == "new" and r["rc"] == 0), None)
+    if generic is not None:
+        for i in range(generic, len(rows)):
+            row = rows[i]
+            if "table" not in row or (row["event"] not in script_commands and not row["event"].startswith("boundary.")):
+                continue
+            mutant = rows[:]
+            mutant[i] = dict(row)
+            del mutant[i]["table"]
+            rejected("removed-generic-table-" + row["event"], mutant)
+    reads = commands(rows, "read.schema")
+    if reads:
+        for field in ("before", "after"):
+            mutant = rows[:]
+            i = rows.index(reads[0])
+            mutant[i] = dict(rows[i])
+            del mutant[i][field]
+            rejected("removed-lookup-" + field, mutant)
+
     if name == "driver-lifetime":
+        mutant = rows[:]
+        i = next(i for i, r in enumerate(rows) if r["event"] == "dup")
+        mutant[i] = copy.deepcopy(rows[i])
+        duplicate = by_handle(mutant[i])[2]
+        duplicate["first"] = duplicate["tail"] = 0
+        rejected("missing-duplicate-child-suffix", mutant)
         mutant = copy.deepcopy(rows)
         for row in mutant:
             for node in row.get("nodes", []):
@@ -303,6 +735,7 @@ def main():
     assert rc == 0 and rows[-1]["event"] == "rewind"
     assert commands(rows, "read.first-sibling")[-1]["winner"] == by_handle(rows[-1])[2]["first"]
     invariants(rows, "remote-last")
+    negative_evidence("remote-last", rows)
     summary("remote-last-parented-rewind-terminates", rc, rows)
     for name in ["remote-nonlast", "collision-build", "collision-resize", "repeated-pointer", "merge2-defined", "driver-lifetime", "internal-build", "collision-history-retained", "collision-history-shrunk", "handle-tombstone", "handle-tombstone-probe", "dead-occurrence", "free-slot-cap", "remote-last-results", "remote-last-release", "opaque-threshold", "opaque-separated", "opaque-eligibility", "resize-disabled", "retained-address-reuse", "list-events", "schema-pointer", "schema-pointer-reverse"]:
         rc, rows = run(name, "--remote-watchdog" if name == "remote-nonlast" else "--events")
@@ -438,6 +871,7 @@ def main():
         rc, rows = run(name, "--events")
         assert rc == 5 and rows[-1]["event"] == "boundary.new-null", name
         invariants(rows, name)
+        negative_evidence(name, rows)
         assert not commands(rows, "table.allocate"), (name, "allocation before rejection")
         plain_rc, plain_rows = run(name, "--events", unmodified=True)
         assert plain_rc == rc and plain_rows[-1]["event"] == "boundary.new-null", name
@@ -445,6 +879,7 @@ def main():
     rc, rows = run("find-next-watchdog")
     assert rc == 0 and rows[-1]["event"] == "boundary.watchdog.find-next-cycle"
     invariants(rows, "find-next-watchdog")
+    negative_evidence("find-next-watchdog", rows)
     summary("find-next-watchdog-low-level", rc, rows)
 
 
