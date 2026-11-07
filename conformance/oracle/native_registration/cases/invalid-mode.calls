@@ -1,0 +1,3 @@
+# SPDX-License-Identifier: BSD-3-Clause
+# Native lyht_new accepts constructor modes 0/1 only (Go initialize also serves resize mode 2).
+new 8 3

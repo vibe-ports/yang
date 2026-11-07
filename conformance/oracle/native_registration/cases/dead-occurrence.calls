@@ -1,0 +1,7 @@
+# SPDX-License-Identifier: BSD-3-Clause
+# Low-level retained references must not enter the native read callback after free.
+new 8 0
+insert 1 7 0
+insert 1 7 0
+free 1
+find-next-loop 1 7 1

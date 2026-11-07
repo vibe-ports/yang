@@ -1,0 +1,18 @@
+# SPDX-License-Identifier: BSD-3-Clause
+# A script-visible descendant remains a tombstoned handle after recursive free.
+root 1 c
+root 2 c
+term 11 2 p P
+term 12 2 q Q
+term 13 2 ll QQ==
+term 14 2 ll Qg==
+free 2
+term 101 1 p P
+free 101
+term 102 1 p P
+free 102
+term 103 1 p P
+free 103
+term 104 1 p P
+# Handle 14 has been freed with its parent and its raw address now names 104.
+check-handle 14

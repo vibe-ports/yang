@@ -1,0 +1,19 @@
+# SPDX-License-Identifier: BSD-3-Clause
+# Earliest pointer/hash removal retires the old generation before shrink.
+root 100 c
+print 100
+new 8 1
+insert 1 7 0
+free 1
+insert 1 7 0
+insert 2 16 0
+insert 3 24 0
+insert 4 32 0
+insert 5 40 0
+remove 2 16
+remove 3 24
+remove 1 7
+remove 4 32
+remove 5 40
+print 100
+dump

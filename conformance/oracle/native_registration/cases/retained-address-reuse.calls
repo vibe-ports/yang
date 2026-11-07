@@ -1,0 +1,7 @@
+# SPDX-License-Identifier: BSD-3-Clause
+# Generic retained occurrence remains tied to the freed generation at reuse.
+new 8 0
+insert 1 7 0
+free 1
+insert 1 8 0
+dump

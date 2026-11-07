@@ -1,0 +1,58 @@
+# SPDX-License-Identifier: BSD-3-Clause
+# Retained generations survive grow/shrink and checked duplicate elimination.
+root 100 c
+print 100
+new 8 1
+insert 1 7 0
+free 1
+insert 1 7 0
+insert 2 16 0
+insert 3 24 0
+insert 4 32 0
+insert 5 40 0
+insert 6 48 0
+insert 7 56 0
+insert 8 64 0
+insert 9 72 0
+insert 10 80 0
+insert 11 88 0
+insert 12 96 0
+insert 13 104 0
+insert 14 112 0
+insert 15 120 0
+insert 16 128 0
+insert 17 136 0
+insert 18 144 0
+insert 19 152 0
+insert 20 160 0
+insert 21 168 0
+insert 22 176 0
+insert 23 184 0
+insert 24 192 0
+insert 25 200 0
+remove 2 16
+remove 3 24
+remove 4 32
+remove 5 40
+remove 6 48
+remove 7 56
+remove 8 64
+remove 9 72
+remove 10 80
+remove 11 88
+remove 12 96
+remove 13 104
+remove 14 112
+remove 15 120
+remove 16 128
+remove 17 136
+remove 18 144
+remove 19 152
+remove 20 160
+remove 21 168
+remove 22 176
+remove 23 184
+remove 24 192
+remove 25 200
+dump
+find-next-loop 1 7 1

@@ -1,0 +1,45 @@
+# Public construction followed by explicitly low-level repeated-I controls.
+root 1 c
+term 11 1 ll Qg==
+term 12 1 p P
+term 13 1 q Q
+term 14 1 ll QQ==
+I 11
+validate 1
+term 100 1 v 0
+term 101 1 v 1
+term 102 1 v 2
+term 103 1 v 3
+term 104 1 v 4
+term 105 1 v 5
+term 106 1 v 6
+term 107 1 v 7
+term 108 1 v 8
+term 109 1 v 9
+term 110 1 v 10
+term 111 1 v 11
+term 112 1 v 12
+term 113 1 v 13
+term 114 1 v 14
+term 115 1 v 15
+unlink 100
+unlink 101
+unlink 102
+unlink 103
+unlink 104
+unlink 105
+unlink 106
+unlink 107
+unlink 108
+unlink 109
+unlink 110
+unlink 111
+unlink 112
+unlink 113
+unlink 114
+unlink 115
+unlink 12
+unlink 13
+unlink 14
+validate 1
+print 1
