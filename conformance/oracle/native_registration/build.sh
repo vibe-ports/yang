@@ -23,7 +23,7 @@ fi
     -DENABLE_TOOLS=OFF -DENABLE_YANGLINT_INTERACTIVE=OFF
 "$cmake_bin" --build "$build_root/static" -j2
 git -C "$build_root/instrumented" diff --no-ext-diff > "$build_root/instrumentation.patch"
-gcc -DNDEBUG -O3 -Wall -Wextra -Wpedantic -std=c11 -I"$build_root/instrumented/src" \
+gcc -DNDEBUG -O3 -Wall -Wextra -Wpedantic -std=c11 -Wl,--wrap=free -I"$build_root/instrumented/src" \
     -I"$build_root/static/libyang" -I"$build_root/static/compat" -I"$build_root/instrumented/src/plugins_exts" \
     -o "$build_root/driver.new" driver.c ../cjson/cJSON.c "$build_root/static/libyang.a" -lpcre2-8 -lm -lpthread -ldl
 mv "$build_root/driver.new" "$build_root/driver"

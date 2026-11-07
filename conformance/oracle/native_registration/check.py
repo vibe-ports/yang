@@ -4,6 +4,7 @@ import argparse
 import copy
 from collections import Counter
 import json
+import os
 import pathlib
 import subprocess
 
@@ -11,13 +12,19 @@ from identity import validate
 
 root = pathlib.Path(__file__).resolve().parent
 LYS_LIST = 0x0010  # libyang v5.8.6 src/tree_schema.h
+ENTRY_CASES = ("retained-null", "retained-opaque", "entry-guard", "entry-order", "entry-opaque",
+               "entry-duplicate", "entry-schema-lineage")
 
 
 def run(name, option="--quiet", unmodified=False):
     script = (root / "cases" / (name + ".calls")).read_bytes()
-    options = [option] + (["--event-schema"] if name in ("list-events", "schema-pointer", "schema-pointer-reverse", "lifetime/list-key", "lifetime/validation-delete") else [])
+    options = [option] + (["--event-schema"] if name.startswith("entry-") or name in ("list-events", "schema-pointer", "schema-pointer-reverse", "lifetime/list-key", "lifetime/validation-delete") else [])
+    env = dict(os.environ)
+    if name in ("handle-tombstone", "handle-tombstone-probe", "retained-address-reuse", "lifetime/stale-handle",
+                "lifetime/retained-same-hash", "lifetime/retained-resize", "lifetime/retained-remove"):
+        env["GLIBC_TUNABLES"] = "glibc.malloc.tcache_count=7"
     result = subprocess.run([str(plain if unmodified else binary), *options], input=script,
-                            stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=25, check=False)
+                            stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=25, check=False, env=env)
     suffix = (".events.unmodified" if option == "--events" else ".unmodified") if unmodified else (".first-sibling-control" if option == "--remote-watchdog" and name == "remote-last" else "")
     output = root / ".build" / (name + suffix + ".jsonl")
     output.parent.mkdir(parents=True, exist_ok=True)
@@ -28,6 +35,21 @@ def run(name, option="--quiet", unmodified=False):
 
 def commands(rows, command):
     return [r for r in rows if r.get("event") == command]
+
+
+def retained_reuse_evidence(rows):
+    name = "retained-address-reuse"
+    normalized_reads(name, rows)
+    completed_replay(name, rows)
+    reuse = commands(rows, "allocation.address-reuse")
+    assert reuse, "missing retained address reuse"
+    chains = rows[-1]["table"]["chains"]
+    assert any(x["generation"] == reuse[-1]["old_generation"] and not x["alive"] for x in chains)
+    assert any(x["generation"] == reuse[-1]["new_generation"] and x["alive"] for x in chains)
+    original = commands(rows, "insert")[0]["table"]["chains"][0]
+    retained = [x for x in chains if x["generation"] == original["generation"]]
+    assert len(retained) == 1 and retained[0]["occurrence"] == original["occurrence"]
+    assert len({x["occurrence"] for x in chains}) == 2
 
 
 def final_public(rows):
@@ -48,7 +70,7 @@ def assert_lookup_handles(rows, expected):
     for read, (winner, parent) in zip(reads, expected, strict=True):
         snapshot = next(r for r in rows if r["event"] == "schema" and r["operation"] == read["operation"])
         handles = by_handle(snapshot)
-        assert (read["winner"], read["current_parent"]) == (handles[winner]["generation"], handles[parent]["generation"])
+        assert (read["winner"], read["current_parent"]) == (handles[winner]["generation"] if winner else 0, handles[parent]["generation"] if parent else 0)
 
 
 # Expected stops are request facts, never inferred from the observed final row.
@@ -88,7 +110,8 @@ def completed_replay(name, rows, stopped=True):
     assert rows and (rows[-1].get("operation"), rows[-1]["event"]) == terminal, (name, "unexpected terminal", terminal)
     # An observational remote-link boundary may occur mid-replay, but an early
     # stop must never be interpreted as permission to omit subsequent commands.
-    reads = {"schema": "read.schema", "rewind": "read.first-sibling", "print": "public.result"}
+    reads = {"schema": "read.schema", "rewind": "read.first-sibling", "print": "public.result",
+             "instance": "read.instance", "opaq-find": "read.opaque", "null-reads": "read.null"}
     expected_results = [(operation, reads[command]) for operation, command in expected if command in reads]
     actual_results = [(r["operation"], r["event"]) for r in rows if r["event"] in reads.values()]
     assert actual_results == expected_results, (name, "missing/extra/out-of-order read/public result")
@@ -100,7 +123,7 @@ def completed_replay(name, rows, stopped=True):
 
 
 def compared_results(name, rows):
-    results = final_public(rows) + commands(rows, "validate") + commands(rows, "read.schema") + commands(rows, "read.first-sibling")
+    results = [r for r in rows if r['event'] in ('public.result', 'validate', 'read.schema', 'read.first-sibling', 'read.instance', 'read.opaque', 'read.null')]
     if name in ("invalid-capacity", "invalid-mode"):
         # Rejected constructors have no completed command or public read. Their
         # explicit native rejection and nonempty log are the comparison result.
@@ -111,7 +134,7 @@ def compared_results(name, rows):
     return (final_public(rows),
             [(r["operation"], r["rc"], r["diagnostics"]) for r in commands(rows, "validate")],
             lookup_results(rows, name),
-            [value for (op, event), value in normalized_reads(name, rows).items() if event == "read.first-sibling"])
+            [value for (op, event), value in normalized_reads(name, rows).items() if event in ("read.first-sibling", "read.instance", "read.opaque", "read.null")])
 
 
 def compare_control(name, rc, rows, plain_rc, plain_rows, stopped=True):
@@ -146,7 +169,7 @@ def control_equal(name, rc, rows, stopped=True):
             return trace[:first] + trace[first + 1:]
         mutate("missing-command-control", missing_command)
         # Exercise result validation independently of command completeness.
-        empty = lambda trace: [r for r in trace if r["event"] not in ("public.result", "validate", "read.schema", "read.first-sibling")]
+        empty = lambda trace: [r for r in trace if r["event"] not in ("public.result", "validate", "read.schema", "read.first-sibling", "read.instance", "read.opaque", "read.null")]
         if name in ("invalid-capacity", "invalid-mode"):
             empty = lambda trace: [dict(r, logs=[]) for r in trace]
         mutate("empty-results-control", empty)
@@ -354,7 +377,8 @@ def complete_rb_topology(row):
 def generation_reference_sites(row):
     """Enumerate generation fields by representation; script handles are not IDs."""
     for key in ("node_generation", "source_generation", "working_rb_root", "old_generation",
-                "new_generation", "generation", "queried_parent", "winner", "current_parent"):
+                "new_generation", "generation", "queried_parent", "winner", "current_parent", "supplied", "left", "right",
+                "schema_winner", "instance_winner", "value_winner"):
         if key in row:
             yield "event." + key, row, key
     for node in row.get("nodes", []):
@@ -406,6 +430,7 @@ def internal_build_allocations(rows, creations):
 # Fixed request expectations, independent of which observer records survive.
 # Zero counts are intentional: disabled resizing must remain disabled.
 RESIZES = {
+    "retained-null": 2, "retained-opaque": 2, "entry-guard": 1,
     "remote-last": 1, "remote-nonlast": 1, "remote-last-results": 1,
     "remote-last-release": 1, "collision-build": 4, "collision-resize": 3,
     "repeated-pointer": 4, "collision-history-retained": 2,
@@ -437,6 +462,13 @@ PRIMITIVES = (
     'lyds_merge_nodes2_back',
 )
 PRIMITIVE_COUNTS = {
+    'retained-null': (5, 4, 5, 16, 6, 0, 0, 4, 1, 3, 0, 4, 0, 0, 0, 0),
+    'retained-opaque': (6, 4, 5, 16, 6, 0, 0, 5, 1, 4, 0, 4, 0, 0, 0, 0),
+    'entry-guard': (5, 1, 4, 12, 0, 0, 0, 2, 2, 0, 2, 1, 0, 0, 0, 0),
+    'entry-order': (8, 0, 8, 10, 0, 0, 0, 4, 2, 2, 4, 0, 0, 0, 0, 0),
+    'entry-opaque': (6, 3, 0, 0, 0, 0, 0, 4, 1, 3, 2, 3, 0, 0, 0, 0),
+    'entry-duplicate': (10, 1, 4, 5, 0, 0, 0, 9, 5, 4, 1, 1, 0, 0, 0, 0),
+    'entry-schema-lineage': (8, 0, 8, 10, 0, 0, 0, 2, 2, 2, 4, 0, 0, 0, 0, 0),
     'collision-build': (22, 19, 21, 66, 37, 3, 4, 4, 1, 18, 2, 18, 15, 0, 0, 0),
     'collision-history-retained': (6, 2, 6, 19, 5, 0, 0, 3, 1, 2, 1, 1, 0, 0, 0, 0),
     'collision-history-shrunk': (22, 18, 22, 68, 37, 0, 0, 4, 1, 18, 1, 17, 15, 0, 0, 0),
@@ -472,6 +504,13 @@ PRIMITIVE_COUNTS = {
 # Address reuse depends on the allocator: require its presence in the controls,
 # without prescribing the number of reused addresses.
 LIFETIME_COUNTS = {
+    'retained-null': (1, 0, 0, 0),
+    'retained-opaque': (1, 0, 0, 0),
+    'entry-guard': (1, 0, 0, 0),
+    'entry-order': (2, 0, 0, 0),
+    'entry-opaque': (0, 0, 0, 0),
+    'entry-duplicate': (1, 0, 0, 0),
+    'entry-schema-lineage': (2, 0, 0, 0),
     'collision-build': (3, 0, 0, 0),
     'collision-history-retained': (1, 0, 0, 0),
     'collision-history-shrunk': (1, 0, 0, 0),
@@ -507,6 +546,11 @@ EVENT_FIELDS = {
     "read.first-sibling": {"operation", "winner"},
     "public.result": {"operation", "rc"},
     "boundary.tombstoned-handle": {"operation", "handle", "generation", "current"},
+    "read.instance": {"operation", "rc", "supplied", "winner", "current_parent", "before", "after"},
+    "read.opaque": {"operation", "rc", "supplied", "winner", "current_parent", "before", "after"},
+    "read.null": {"operation", "queried_parent", "before", "after", "schema_rc", "schema_winner",
+                  "instance_rc", "instance_winner", "value_rc", "value_winner"},
+    "read.compare": {"operation", "left", "right", "options"},
 }
 # Completed-command/terminal snapshots with native errors, measured separately
 # for context diagnostics and the logging callback. All other requests have zero.
@@ -544,6 +588,10 @@ def records(row):
 
 
 def invariants(rows, name, stopped=True):
+    # Validate read/event shape before the model uses operation to index input.
+    for row in rows:
+        if row["event"] in EVENT_FIELDS:
+            assert EVENT_FIELDS[row["event"]] <= row.keys(), (name, "missing event fields", row["event"])
     normalized_reads(name, rows)
     completed_replay(name, rows, stopped)
     counts = Counter(r["event"] for r in rows)
@@ -653,7 +701,7 @@ def invariants(rows, name, stopped=True):
                 assert {"hash", "flags", "metadata", "prev", "next", "parent"} <= node.keys(), (name, "missing current metadata")
                 assert "schema" in node or {"prefix_format", "prefix_bound"} <= node.keys(), (name, "missing schema/opaque metadata")
                 # These are all inner schemas in the driver's two fixed modules.
-                if node.get("schema") in ("c", "d", "r", "l"):
+                if node.get("schema") in ("c", "d", "r", "l", "kl"):
                     assert {"first", "tail", "table"} <= node.keys(), (name, "missing child/table snapshot")
         if row["event"] == "dup" and row["rc"] == 0:
             fields = [line.split() for line in (root / "cases" / (name + ".calls")).read_text().splitlines()
@@ -946,11 +994,14 @@ def summary(name, rc, rows):
 def main():
     global binary, plain
     parser = argparse.ArgumentParser()
-    parser.add_argument("--driver", required=True, type=pathlib.Path)
-    parser.add_argument("--comparison-driver", required=True, type=pathlib.Path)
+    parser.add_argument("--driver", type=pathlib.Path, default=os.environ.get("YANG_NATIVE_REGISTRATION_DRIVER") or None)
+    parser.add_argument("--comparison-driver", type=pathlib.Path, default=os.environ.get("YANG_NATIVE_REGISTRATION_COMPARISON_DRIVER") or None)
     parser.add_argument("--lifetime-case", choices=LIFETIME_CONTROLS)
+    parser.add_argument("--retained-reuse", action="store_true")
     args = parser.parse_args()
-    binary, plain = args.driver.resolve(), args.comparison_driver.resolve()
+    if args.driver is None: parser.error('--driver or YANG_NATIVE_REGISTRATION_DRIVER is required')
+    binary = args.driver.resolve()
+    plain = args.comparison_driver.resolve() if args.comparison_driver else binary.with_name('driver-unmodified')
     assert binary != plain, "comparison must be an identified unmodified executable"
     for executable, instrumented in [(binary, 1), (plain, 0)]:
         abi = json.loads(subprocess.check_output([str(executable), "--abi"], timeout=5))
@@ -958,6 +1009,24 @@ def main():
                        "pointer_record_bytes": 16, "rb_node_bytes": 40, "ndebug": 1,
                        "instrumented": instrumented}, (str(executable), abi)
 
+
+    if args.retained_reuse:
+        for unmodified in (False, True):
+            for option in ("--quiet", "--events"):
+                rc, rows = run("retained-address-reuse", option, unmodified=unmodified)
+                assert rc == 0, ("retained-address-reuse", rc)
+                retained_reuse_evidence(rows)
+                print(json.dumps({"retained_reuse_verified": True, "unmodified": unmodified, "option": option}))
+        return
+
+    if not args.lifetime_case:
+        for name in ENTRY_CASES:
+            rc, rows = run(name, "--events")
+            assert rc == 0, (name, rc)
+            invariants(rows, name)
+            negative_evidence(name, rows)
+            control_equal(name, rc, rows)
+            summary(name, rc, rows)
 
     for case in ([args.lifetime_case] if args.lifetime_case else LIFETIME_CONTROLS):
         lifetime_control(case)
@@ -1026,15 +1095,7 @@ def main():
             removed = commands(rows, "remove")
             assert [(r["table"]["size"], r["table"]["mode"], r["table"]["used"]) for r in removed] == [(16, 0, 0), (16, 1, 0)]
         if name == "retained-address-reuse":
-            reuse = commands(rows, "allocation.address-reuse")
-            assert reuse
-            chains = rows[-1]["table"]["chains"]
-            assert any(x["generation"] == reuse[-1]["old_generation"] and not x["alive"] for x in chains)
-            assert any(x["generation"] == reuse[-1]["new_generation"] and x["alive"] for x in chains)
-            original = commands(rows, "insert")[0]["table"]["chains"][0]
-            retained = [x for x in chains if x["generation"] == original["generation"]]
-            assert len(retained) == 1 and retained[0]["occurrence"] == original["occurrence"]
-            assert len({x["occurrence"] for x in chains}) == 2
+            retained_reuse_evidence(rows)
         if name == "remote-last-results":
             assert_lookup_handles(rows, [(16, 2)])
             assert len(final_public(rows)) == 2

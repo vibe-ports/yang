@@ -10,9 +10,162 @@ import (
 	"encoding/json"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"testing"
 	"time"
 )
+
+// A retained registration supplies no sibling when physical storage is empty.
+// The opaque variant has exactly the same residual winner, but a non-null start.
+func TestNativeRetainedReadEntries(t *testing.T) {
+	driver := os.Getenv("YANG_NATIVE_REGISTRATION_DRIVER")
+	if driver == "" {
+		t.Skip("set YANG_NATIVE_REGISTRATION_DRIVER after the isolated static build")
+	}
+	comparison := os.Getenv("YANG_NATIVE_REGISTRATION_COMPARISON_DRIVER")
+	if comparison == "" {
+		comparison = filepath.Join(filepath.Dir(driver), "driver-unmodified")
+	}
+	for label, path := range map[string]string{"instrumented": driver, "unmodified": comparison} {
+		t.Run(label, func(t *testing.T) {
+			t.Setenv("YANG_NATIVE_REGISTRATION_DRIVER", path)
+			for _, name := range []string{"retained-null", "retained-opaque"} {
+				t.Run(name, func(t *testing.T) {
+					//nolint:gosec // Fixed repository request names.
+					script, err := os.ReadFile(filepath.Join("..", "conformance", "oracle", "native_registration", "cases", name+".calls"))
+					if err != nil {
+						t.Fatal(err)
+					}
+					rows := nativeDriver(t, string(script)) // Includes shared full-evidence validation.
+					var reads, nullReads int
+					for _, row := range rows {
+						if row.Event != "read.schema" && row.Event != "read.null" {
+							continue
+						}
+						var read struct {
+							Winner int `json:"winner"`
+							Before struct {
+								Present bool `json:"present"`
+								Used    int  `json:"used"`
+								Chains  []struct {
+									Node       int `json:"node"`
+									Generation int `json:"generation"`
+								} `json:"chains"`
+							} `json:"before"`
+							SchemaRC       int `json:"schema_rc"`
+							SchemaWinner   int `json:"schema_winner"`
+							InstanceRC     int `json:"instance_rc"`
+							InstanceWinner int `json:"instance_winner"`
+							ValueRC        int `json:"value_rc"`
+							ValueWinner    int `json:"value_winner"`
+						}
+						if err := json.Unmarshal(row.Evidence, &read); err != nil {
+							t.Fatal(err)
+						}
+						if !read.Before.Present || read.Before.Used != 1 || len(read.Before.Chains) != 1 || read.Before.Chains[0].Node != 2 {
+							t.Fatalf("missing retained p registration: %+v", read.Before)
+						}
+						if row.Event == "read.null" {
+							nullReads++
+							if read.SchemaRC != 5 || read.InstanceRC != 5 || read.ValueRC != 5 || read.SchemaWinner != 0 || read.InstanceWinner != 0 || read.ValueWinner != 0 {
+								t.Fatalf("null entry results: %+v", read)
+							}
+							continue
+						}
+						reads++
+						winner, rc := 0, nativeStatus(5)
+						if name == "retained-opaque" {
+							winner, rc = read.Before.Chains[0].Generation, nativeOK
+						}
+						if read.Winner != winner || row.RC != rc {
+							t.Fatalf("winner=%d rc=%d want %d/%d", read.Winner, row.RC, winner, rc)
+						}
+					}
+					wantNull := 0
+					if name == "retained-null" {
+						wantNull = 1
+					}
+					if reads != 1 || nullReads != wantNull {
+						t.Fatalf("schema reads=%d null reads=%d want 1/%d", reads, nullReads, wantNull)
+					}
+				})
+			}
+		})
+	}
+}
+
+// Neither harness may choose an adjacent binary when the configured comparison
+// lives elsewhere. Poison that fallback and the environment in the explicit
+// argument lane; then test the environment-only lane and a missing control.
+func TestNativeSeparateDriverPaths(t *testing.T) {
+	driver := os.Getenv("YANG_NATIVE_REGISTRATION_DRIVER")
+	if driver == "" {
+		t.Skip("set YANG_NATIVE_REGISTRATION_DRIVER after the isolated static build")
+	}
+	comparison := os.Getenv("YANG_NATIVE_REGISTRATION_COMPARISON_DRIVER")
+	if comparison == "" {
+		comparison = filepath.Join(filepath.Dir(driver), "driver-unmodified")
+	}
+	directory := t.TempDir()
+	paths := make([]string, 2)
+	for i, original := range []string{driver, comparison} {
+		//nolint:gosec // Explicitly configured local test executables.
+		binary, err := os.ReadFile(original)
+		if err != nil {
+			t.Fatal(err)
+		}
+		parent := filepath.Join(directory, []string{"instrumented", "comparison"}[i])
+		if err := os.Mkdir(parent, 0o700); err != nil {
+			t.Fatal(err)
+		}
+		paths[i] = filepath.Join(parent, "selected-driver")
+		// Copy rather than symlink: Python resolves CLI paths, so a symlink
+		// would quietly put both drivers back in their original directory.
+		//nolint:gosec // The private copied driver must be executable.
+		if err := os.WriteFile(paths[i], binary, 0o700); err != nil {
+			t.Fatal(err)
+		}
+	}
+	poison := filepath.Join(filepath.Dir(paths[0]), "driver-unmodified")
+	//nolint:gosec // This private test trap must be executable.
+	if err := os.WriteFile(poison, []byte("#!/bin/sh\nexit 86\n"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	for _, harness := range []struct {
+		file string
+		args []string
+	}{
+		{"sweep_test.py", []string{"IdentitySweep.test_retained_null_and_opaque_entries"}},
+		{"check.py", []string{"--lifetime-case", "recreate-lookup"}},
+	} {
+		for _, mode := range []string{"arguments", "environment", "missing-comparison"} {
+			t.Run(harness.file+"/"+mode, func(t *testing.T) {
+				selected := paths[1]
+				if mode == "missing-comparison" {
+					selected = filepath.Join(directory, "missing-driver")
+				}
+				args := []string{filepath.Join("..", "conformance", "oracle", "native_registration", harness.file)}
+				if mode == "arguments" {
+					args = append(args, "--driver", paths[0], "--comparison-driver", selected)
+					t.Setenv("YANG_NATIVE_REGISTRATION_DRIVER", poison)
+					t.Setenv("YANG_NATIVE_REGISTRATION_COMPARISON_DRIVER", poison)
+				} else {
+					t.Setenv("YANG_NATIVE_REGISTRATION_DRIVER", paths[0])
+					t.Setenv("YANG_NATIVE_REGISTRATION_COMPARISON_DRIVER", selected)
+				}
+				args = append(args, harness.args...)
+				ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+				defer cancel()
+				//nolint:gosec // Fixed repository scripts and private test executables.
+				cmd := exec.CommandContext(ctx, "python3", args...)
+				out, err := cmd.CombinedOutput()
+				if (err != nil) != (mode == "missing-comparison") {
+					t.Fatalf("%s: %v\n%s", mode, err, out)
+				}
+			})
+		}
+	}
+}
 
 // Exercise the same full-evidence validator the Go wrapper calls before any
 // nativeImage projection or slot indexing, including equal corrupt traces.
@@ -127,4 +280,23 @@ func TestNativeIdentityEvidenceRejections(t *testing.T) {
 func nativeEvidenceArray(value any) []any {
 	items, _ := value.([]any)
 	return items
+}
+
+func TestNativeSchemaReadLineage(t *testing.T) {
+	script, err := os.ReadFile(filepath.Join("..", "conformance", "oracle", "native_registration", "cases", "entry-schema-lineage.calls"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var reads int
+	for _, row := range nativeDriver(t, string(script)) {
+		if row.Event == "read.schema" {
+			reads++
+			if row.RC != 5 {
+				t.Fatalf("foreign data-parent schema selected: %s", row.Evidence)
+			}
+		}
+	}
+	if reads != 4 {
+		t.Fatalf("schema reads=%d want 4", reads)
+	}
 }

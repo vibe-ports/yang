@@ -76,6 +76,7 @@ replace(path, "    assert(node);\n\n    if (!node->schema)", '    assert(node);\
 replace(path, "    free(node);\n}", '    nr_event("node.free", node, NULL, 0, NULL);\n    free(node);\n}')
 path.write_text('#include "native_observer.h"\n' + path.read_text())
 path = root / "src/tree_data.c"
+replace(path, "lyd_compare_single(const struct lyd_node *node1, const struct lyd_node *node2, uint32_t options)\n{", 'lyd_compare_single(const struct lyd_node *node1, const struct lyd_node *node2, uint32_t options)\n{\n    nr_event("read.compare", node1, NULL, options, node2);')
 replace(path, "    if (sibling->next) {\n        /* sibling had a succeeding node */", "    nr_remote(first_sibling_p ? *first_sibling_p : NULL, sibling, node);\n    if (sibling->next) {\n        /* sibling had a succeeding node */")
 replace(path, "sizeof(struct lyd_node *), lyd_hash_table_val_equal, NULL, 1);\n            }\n\n            /* duplicate all the children */", 'sizeof(struct lyd_node *), lyd_hash_table_val_equal, NULL, 1);\n            }\n            nr_event("dup.table.initialized", dup, ((struct lyd_node_inner *)dup)->children_ht, 0, node);\n\n            /* duplicate all the children */')
 replace(path, "    if (options & LYD_DUP_WITH_FLAGS) {", '    nr_event("node.dup.allocate", dup, NULL, 0, node);\n    if (options & LYD_DUP_WITH_FLAGS) {')

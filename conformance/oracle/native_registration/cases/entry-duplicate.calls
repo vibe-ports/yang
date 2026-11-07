@@ -1,0 +1,17 @@
+# SPDX-License-Identifier: BSD-3-Clause
+# Keyless target needs full recursion and current-next continuation from winner.
+root 1 c
+term 2 1 p P
+term 3 1 q Q
+list 4 1 kl ignored
+term 14 4 x A
+list 5 1 kl ignored
+term 15 5 x B
+root 10 c
+list 11 10 kl ignored
+term 12 11 x B
+instance 2 11
+instance 11 5
+opaque 6 1 separator value
+before 5 6
+instance 2 11

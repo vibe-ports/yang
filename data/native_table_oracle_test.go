@@ -122,6 +122,117 @@ func TestNativeControlReplayRejections(t *testing.T) {
 	}
 }
 
+// The stale handle must name storage actually reused by a live native node,
+// including when verbose observer allocations perturb the allocator bins.
+func TestNativeTombstoneAddressReuse(t *testing.T) {
+	driver := os.Getenv("YANG_NATIVE_REGISTRATION_DRIVER")
+	if driver == "" {
+		t.Skip("set YANG_NATIVE_REGISTRATION_DRIVER after the isolated static build")
+	}
+	comparison := os.Getenv("YANG_NATIVE_REGISTRATION_COMPARISON_DRIVER")
+	if comparison == "" {
+		comparison = filepath.Join(filepath.Dir(driver), "driver-unmodified")
+	}
+	for label, path := range map[string]string{"instrumented": driver, "unmodified": comparison} {
+		for _, name := range []string{"handle-tombstone", "handle-tombstone-probe", "lifetime/stale-handle"} {
+			//nolint:gosec // Fixed repository replay names from the literal case list.
+			script, err := os.ReadFile(filepath.Join("..", "conformance", "oracle", "native_registration", "cases", name+".calls"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			for _, option := range []string{"--quiet", "--events"} {
+				t.Run(label+"/"+name+"/"+option, func(t *testing.T) {
+					ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+					defer cancel()
+					//nolint:gosec // Explicit opt-in path and fixed replay arguments.
+					cmd := exec.CommandContext(ctx, path, option)
+					cmd.Env = append(os.Environ(), "GLIBC_TUNABLES=glibc.malloc.tcache_count=7")
+					cmd.Stdin = bytes.NewReader(script)
+					out, err := cmd.CombinedOutput()
+					if err != nil {
+						t.Fatalf("tombstone replay: %v\n%s", err, out)
+					}
+					var rows []json.RawMessage
+					for _, line := range bytes.Split(bytes.TrimSpace(out), []byte{'\n'}) {
+						rows = append(rows, json.RawMessage(line))
+					}
+					if err := nativeValidateEvidence(string(script), rows); err != nil {
+						t.Fatal(err)
+					}
+					var last struct {
+						Event      string `json:"event"`
+						Handle     int    `json:"handle"`
+						Generation int    `json:"generation"`
+					}
+					if err := json.Unmarshal(rows[len(rows)-1], &last); err != nil {
+						t.Fatal(err)
+					}
+					if last.Event != "boundary.tombstoned-handle" || last.Handle != 14 || last.Generation == 0 {
+						t.Fatalf("wrong stale-handle boundary: %+v", last)
+					}
+					var replacement int
+					var liveReplacement bool
+					var completed []nativeDriverResult
+					for _, row := range rows {
+						var r struct {
+							Event         string `json:"event"`
+							Operation     int    `json:"operation"`
+							OldGeneration int    `json:"old_generation"`
+							NewGeneration int    `json:"new_generation"`
+							Nodes         []struct {
+								ID         int  `json:"id"`
+								Generation int  `json:"generation"`
+								Alive      bool `json:"alive"`
+							} `json:"nodes"`
+						}
+						if err := json.Unmarshal(row, &r); err != nil {
+							t.Fatal(err)
+						}
+						completed = append(completed, nativeDriverResult{Event: r.Event, Operation: r.Operation})
+						if r.Event == "allocation.address-reuse" && (r.OldGeneration == last.Generation || replacement > 0 && r.OldGeneration == replacement) {
+							replacement = r.NewGeneration
+						}
+						for _, n := range r.Nodes {
+							if replacement > last.Generation && n.Generation == replacement && n.ID == 104 && n.Alive {
+								liveReplacement = true
+							}
+						}
+					}
+					if !liveReplacement {
+						t.Fatalf("stale generation %d was not reused by live handle 104 (replacement %d)", last.Generation, replacement)
+					}
+					if err := nativeCompletedReplay(string(script), completed, "boundary.tombstoned-handle"); err != nil {
+						t.Fatal(err)
+					}
+				})
+			}
+		}
+	}
+}
+
+func TestNativeRetainedAddressReuse(t *testing.T) {
+	driver := os.Getenv("YANG_NATIVE_REGISTRATION_DRIVER")
+	if driver == "" {
+		t.Skip("set YANG_NATIVE_REGISTRATION_DRIVER after the isolated static build")
+	}
+	comparison := os.Getenv("YANG_NATIVE_REGISTRATION_COMPARISON_DRIVER")
+	if comparison == "" {
+		comparison = filepath.Join(filepath.Dir(driver), "driver-unmodified")
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+	//nolint:gosec // Fixed checker and explicit opt-in local driver paths.
+	cmd := exec.CommandContext(ctx, "python3", filepath.Join("..", "conformance", "oracle", "native_registration", "check.py"),
+		"--driver", driver, "--comparison-driver", comparison, "--retained-reuse")
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("retained address reuse: %v\n%s", err, out)
+	}
+	if bytes.Count(out, []byte(`"retained_reuse_verified": true`)) != 4 {
+		t.Fatalf("missing quiet/verbose evidence from either build:\n%s", out)
+	}
+}
+
 // Each live request requires actual address reuse in both builds, complete
 // command/result sequences, persistent tombstones and equal public outcomes.
 func TestNativeComparisonLifetimes(t *testing.T) {
@@ -295,10 +406,15 @@ func TestNativeIdentitySweep(t *testing.T) {
 	if driver == "" {
 		t.Skip("set YANG_NATIVE_REGISTRATION_DRIVER after the isolated static build")
 	}
+	comparison := os.Getenv("YANG_NATIVE_REGISTRATION_COMPARISON_DRIVER")
+	if comparison == "" {
+		comparison = filepath.Join(filepath.Dir(driver), "driver-unmodified")
+	}
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 	defer cancel()
 	//nolint:gosec // Fixed test script and explicitly opted-in local driver.
-	cmd := exec.CommandContext(ctx, "python3", filepath.Join("..", "conformance", "oracle", "native_registration", "sweep_test.py"), "--driver", driver)
+	cmd := exec.CommandContext(ctx, "python3", filepath.Join("..", "conformance", "oracle", "native_registration", "sweep_test.py"),
+		"--driver", driver, "--comparison-driver", comparison)
 	if out, err := cmd.CombinedOutput(); err != nil {
 		t.Fatalf("identity/lifetime sweep: %v\n%s", err, out)
 	} else {
@@ -315,7 +431,7 @@ func nativeCompletedReplay(script string, results []nativeDriverResult, terminal
 	}
 	var expected, expectedReads []event
 	commandNames := make(map[string]bool)
-	reads := map[string]string{"print": "public.result", "schema": "read.schema", "rewind": "read.first-sibling"}
+	reads := map[string]string{"print": "public.result", "schema": "read.schema", "rewind": "read.first-sibling", "null-reads": "read.null", "instance": "read.instance", "opaq-find": "read.opaque"}
 	for _, line := range strings.Split(script, "\n") {
 		fields := strings.Fields(line)
 		if len(fields) == 0 || strings.HasPrefix(fields[0], "#") {
@@ -342,7 +458,7 @@ func nativeCompletedReplay(script string, results []nativeDriverResult, terminal
 		if commandNames[row.Event] {
 			actual = append(actual, event{row.Operation, row.Event})
 		}
-		if row.Event == "public.result" || row.Event == "read.schema" || row.Event == "read.first-sibling" {
+		if row.Event == "public.result" || row.Event == "read.schema" || row.Event == "read.first-sibling" || row.Event == "read.null" || row.Event == "read.instance" || row.Event == "read.opaque" {
 			actualReads = append(actualReads, event{row.Operation, row.Event})
 		}
 	}

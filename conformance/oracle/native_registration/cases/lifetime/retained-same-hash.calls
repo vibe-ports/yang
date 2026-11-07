@@ -4,7 +4,7 @@ root 2 c
 print 2
 new 8 0
 insert 1 7 0
-free 1
-insert 1 7 0
+free 1 1
+insert 1 7 0 1
 dump
 find-next-loop 1 7 1

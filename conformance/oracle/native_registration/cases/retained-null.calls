@@ -1,0 +1,14 @@
+# SPDX-License-Identifier: BSD-3-Clause
+# Low-level I retains one extra p registration after all physical unlinks.
+root 1 c
+term 2 1 p P
+term 3 1 q Q
+term 4 1 ll QQ==
+term 5 1 ll Qg==
+I 2
+unlink 2
+unlink 3
+unlink 4
+unlink 5
+schema 1 2
+null-reads 1 4

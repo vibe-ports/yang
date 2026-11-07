@@ -15,7 +15,8 @@ def snapshot(event, operation):
     nodes = [dict(generation=g, id=1 if g == 6 else 0, creation_operation=1 if g == 6 else 0,
                   creation_ordinal=1 if g == 6 else g, source=0, attempt=1 if g == 6 else 0,
                   alive=True, parent=1 if 2 <= g <= 5 else 0, prev=5 if g == 2 else g - 1 if 3 <= g <= 5 else g,
-                  next=g + 1 if 2 <= g < 5 else 0, schema="v" if 2 <= g <= 5 else "c") for g in range(1, 7)]
+                  next=g + 1 if 2 <= g < 5 else 0, schema="v" if 2 <= g <= 5 else "c",
+                  schema_identity=2 if 2 <= g <= 5 else 1) for g in range(1, 7)]
     chains = [dict(generation=g, occurrence=i + 1, node=0, hash=8 * (i + 1), slot=i,
                    bucket=0, ordinal=i, alive=True) for i, g in enumerate((2, 2, 3, 4, 5))]
     nodes[0].update(first=2, tail=5, table=dict(present=True, identity=1, used=5, size=8,

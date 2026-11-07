@@ -3,6 +3,7 @@
 import argparse
 import copy
 import json
+import os
 import pathlib
 import subprocess
 import sys
@@ -14,11 +15,12 @@ from identity import validate, requests
 
 ROOT = pathlib.Path(__file__).resolve().parent
 DRIVER = None
+COMPARISON_DRIVER = None
 
 
-def execute(script, plain=False, verbose=False, terminal=None):
-    path = DRIVER.with_name('driver-unmodified') if plain else DRIVER
-    result = subprocess.run([str(path), '--events' if verbose else '--quiet', '--event-schema'],
+def execute(script, plain=False, verbose=False, terminal=None, event_schema=True):
+    path = COMPARISON_DRIVER if plain else DRIVER
+    result = subprocess.run([str(path), '--events' if verbose else '--quiet', *(['--event-schema'] if event_schema else [])],
                             input=script, text=True, capture_output=True, timeout=25, check=False)
     assert result.returncode == 0, (result.returncode, result.stderr, result.stdout[-1000:])
     rows = [json.loads(line) for line in result.stdout.splitlines()]
@@ -26,6 +28,11 @@ def execute(script, plain=False, verbose=False, terminal=None):
     expected = [(i, f[0]) for i, f in enumerate(requests(script), 1)]
     actual = [(r['operation'], r['event']) for r in rows if r['event'] in {f[0] for f in requests(script)}]
     assert actual == (expected[:-1] if terminal else expected), ('incomplete replay', actual, expected)
+    reads = {'schema': 'read.schema', 'instance': 'read.instance', 'opaq-find': 'read.opaque',
+             'null-reads': 'read.null', 'rewind': 'read.first-sibling', 'print': 'public.result'}
+    expected_reads = [(i, reads[c]) for i, c in (expected[:-1] if terminal else expected) if c in reads]
+    actual_reads = [(r['operation'], r['event']) for r in rows if r['event'] in reads.values()]
+    assert actual_reads == expected_reads, ('incomplete read results', actual_reads, expected_reads)
     if terminal: assert rows[-1]['event'] == terminal
     return rows
 
@@ -35,8 +42,8 @@ def output(rows):
 
 
 class IdentitySweep(unittest.TestCase):
-    def pair(self, script, verbose=False, terminal=None):
-        left, right = execute(script, verbose=verbose, terminal=terminal), execute(script, plain=True, verbose=verbose, terminal=terminal)
+    def pair(self, script, verbose=False, terminal=None, event_schema=True):
+        left, right = execute(script, verbose=verbose, terminal=terminal, event_schema=event_schema), execute(script, plain=True, verbose=verbose, terminal=terminal, event_schema=event_schema)
         self.assertEqual(validate(script, left), validate(script, right))
         self.assertEqual(output(left), output(right))
         req = requests(script)
@@ -53,6 +60,105 @@ class IdentitySweep(unittest.TestCase):
         with self.assertRaises((AssertionError, KeyError, IndexError)):
             validate(script, mutant)
         return mutant
+
+    def test_retained_null_and_opaque_entries(self):
+        for name, expected in (('retained-null', (0, 5)), ('retained-opaque', (2, 0))):
+            script = (ROOT / 'cases' / (name + '.calls')).read_text()
+            for verbose in (False, True):
+                with self.subTest(case=name, verbose=verbose):
+                    for rows in self.pair(script, verbose=verbose):
+                        read = check.commands(rows, 'read.schema')[0]
+                        snapshot = check.commands(rows, 'schema')[0]
+                        nodes = check.by_handle(snapshot)
+                        winner = nodes[expected[0]]['generation'] if expected[0] else 0
+                        self.assertEqual((read['winner'], read['rc']), (winner, expected[1]))
+                        self.assertEqual(bool(nodes[1]['first']), name == 'retained-opaque')
+                        self.assertEqual(read['before'], read['after'])
+                        self.assertEqual(read['before'], nodes[1]['table'])
+                        self.assertEqual(read['before']['used'], 1)
+                        self.assertEqual(read['before']['chains'][0]['generation'], nodes[2]['generation'])
+                        def erase_history(trace):
+                            r = check.commands(trace, 'read.schema')[0]
+                            r['before'] = r['after'] = {'present': False}
+                        self.rejects(script, rows, erase_history)
+                        if name == 'retained-null':
+                            null_read = check.commands(rows, 'read.null')[0]
+                            for kind in ('schema', 'instance', 'value'):
+                                self.assertEqual((null_read[kind + '_winner'], null_read[kind + '_rc']), (0, 5))
+                                for field, value in ((kind + '_winner', nodes[2]['generation']), (kind + '_rc', 0)):
+                                    self.rejects(script, rows, lambda trace: check.commands(trace, 'read.null')[0].update({field: value}))
+                            # In the instrumented build this includes transient
+                            # allocations: invalid binary preparation never ran.
+                            self.assertFalse(any(r['event'] == 'node.allocate' and r['operation'] == null_read['operation'] for r in rows))
+                            self.assertEqual(check.commands(rows, 'schema')[0]['node_count'], check.commands(rows, 'null-reads')[0]['node_count'])
+                        for field, value in (('winner', nodes[2]['generation'] if not winner else 0),
+                                             ('rc', 0 if expected[1] else 5)):
+                            self.rejects(script, rows, lambda trace: check.commands(trace, 'read.schema')[0].update({field: value}))
+
+    def test_entry_dispatch_controls(self):
+        controls = {
+            'entry-guard': [('read.instance', 0), ('read.instance', 0), ('read.schema', 3),
+                            ('read.instance', 0), ('read.instance', 0), ('read.schema', 3)],
+            'entry-order': [('read.instance', 4), ('read.instance', 11), ('read.instance', 4),
+                            ('read.instance', 11), ('read.instance', 11), ('read.instance', 5)],
+            'entry-opaque': [('read.schema', 0), ('read.instance', 4), ('read.instance', 4), ('read.opaque', 0), ('read.opaque', 7),
+                             ('read.opaque', 0), ('read.opaque', 6), ('read.opaque', 0), ('read.opaque', 0)],
+            'entry-duplicate': [('read.instance', 5), ('read.instance', 11), ('read.instance', 0)],
+        }
+        for name, expected in controls.items():
+            script = (ROOT / 'cases' / (name + '.calls')).read_text()
+            for verbose in (False, True):
+                with self.subTest(case=name, verbose=verbose):
+                    for side, rows in enumerate(self.pair(script, verbose=verbose)):
+                        def assert_winners(trace):
+                            reads = [r for r in trace if r['event'] in ('read.schema', 'read.instance', 'read.opaque')]
+                            self.assertEqual(len(reads), len(expected))
+                            for read, (event, handle) in zip(reads, expected, strict=True):
+                                snapshot = next(r for r in trace if 'nodes' in r and r['operation'] == read['operation'])
+                                nodes = check.by_handle(snapshot)
+                                winner = nodes[handle]['generation'] if handle else 0
+                                self.assertEqual((read['event'], read['winner'], read['rc']), (event, winner, 0 if handle else 5))
+                        assert_winners(rows)
+                        mutant = copy.deepcopy(rows)
+                        next(r for r in mutant if r['event'] in ('read.schema', 'read.instance', 'read.opaque'))['rc'] = 7
+                        with self.assertRaises(AssertionError): assert_winners(mutant)
+                        if side == 0:
+                            comparisons = check.commands(rows, 'read.compare')
+                            if name == 'entry-guard': self.assertFalse(comparisons, 'guard must precede rewind/comparison')
+                            if name == 'entry-order':
+                                def assert_order(trace):
+                                    expected_pairs = [(4, 11), (11, 4), (11, 4), (11, 4), (4, 11), (14, 5)]
+                                    observed = check.commands(trace, 'read.compare')
+                                    self.assertEqual(len(observed), len(expected_pairs))
+                                    for row, (left, right) in zip(observed, expected_pairs, strict=True):
+                                        snapshot = next(r for r in trace if 'nodes' in r and r['operation'] == row['operation'])
+                                        nodes = check.by_handle(snapshot)
+                                        self.assertEqual((row['left'], row['right'], row['options']), (nodes[left]['generation'], nodes[right]['generation'], 0))
+                                assert_order(rows)
+                                mutant = copy.deepcopy(rows)
+                                for row in check.commands(mutant, 'read.compare'): row['left'], row['right'] = row['right'], row['left']
+                                with self.assertRaises(AssertionError): assert_order(mutant)
+                            if name == 'entry-duplicate':
+                                self.assertTrue(comparisons)
+                                self.assertTrue(all(r['options'] != 0 for r in comparisons), 'duplicate-instance comparison needs full recursion')
+                        if name == 'entry-duplicate':
+                            def missing_inner_table(trace):
+                                for row in trace:
+                                    for node in row.get('nodes', []):
+                                        if node.get('schema') == 'kl': node.pop('table', None)
+                            self.rejects(script, rows, missing_inner_table)
+
+    def test_schema_lineage_in_both_schema_modes(self):
+        script = (ROOT / 'cases' / 'entry-schema-lineage.calls').read_text()
+        for event_schema in (False, True):
+            for rows in self.pair(script, event_schema=event_schema):
+                reads = check.commands(rows, 'read.schema')
+                self.assertEqual(len(reads), 4)
+                self.assertEqual([r['before']['present'] for r in reads], [False, False, True, True])
+                self.assertTrue(all((r['winner'], r['rc']) == (0, 5) for r in reads))
+                snapshot = check.by_handle(rows[-1])
+                self.assertNotEqual(snapshot[4]['schema_identity'], snapshot[13]['schema_identity'])
+                self.assertEqual(snapshot[4]['schema'], snapshot[13]['schema'])
 
     def test_f1_f7_flag_matrix(self):
         # All five bits, with independent allocation sets and primitive counts.
@@ -348,7 +454,10 @@ class IdentitySweep(unittest.TestCase):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--driver', type=pathlib.Path, required=True)
+    parser.add_argument('--driver', type=pathlib.Path, default=os.environ.get('YANG_NATIVE_REGISTRATION_DRIVER') or None)
+    parser.add_argument('--comparison-driver', type=pathlib.Path, default=os.environ.get('YANG_NATIVE_REGISTRATION_COMPARISON_DRIVER') or None)
     args, rest = parser.parse_known_args()
+    if args.driver is None: parser.error('--driver or YANG_NATIVE_REGISTRATION_DRIVER is required')
     DRIVER = args.driver.resolve()
+    COMPARISON_DRIVER = args.comparison_driver.resolve() if args.comparison_driver else DRIVER.with_name('driver-unmodified')
     unittest.main(argv=[sys.argv[0], *rest])

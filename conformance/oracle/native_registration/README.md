@@ -51,7 +51,11 @@ the ordinary unmodified oracle lane; this build does not replace it.
 
 `build.sh` also archives the **untouched Release objects** from the pinned
 Dockerfile's oracle stage into a second library and links `driver-unmodified`.
-The replay check requires both executable paths explicitly, verifies their
+Both replay entry points accept `--driver` and `--comparison-driver`, with
+`YANG_NATIVE_REGISTRATION_DRIVER` and `YANG_NATIVE_REGISTRATION_COMPARISON_DRIVER`
+as defaults. Only an unset/empty comparison setting falls back to
+`driver-unmodified` beside the selected instrumented executable. Explicit
+arguments take precedence over the environment. The replay check verifies their
 instrumented/unmodified ABI markers, and compares terminating public JSON,
 validation statuses/diagnostics, and schema-lookup statuses plus normalized
 winner/current-parent identities. Allocation generations are normalized injectively from completed-operation
@@ -84,11 +88,19 @@ real native nodes alive. `dump` observes state only.
 `list ID PARENT NAME KEY` calls `lyd_new_list` with one string key.
 The new list/schema-pointer requests select `--event-schema`, which adds a
 keyed list and a presence container with a second equal-named leaf-list.
-Other requests retain the original schema and snapshot fields, including their
+Other requests retain the original schema, including their
 allocator address-reuse setup. `frontier PARENT A B C D` is a **synthetic low-level**
 four-child frontier with real native allocations and untouched schema pointers;
-it provides no evidence of public mixed-schema reachability. Only this schema
-mode emits module names and stable schema-pointer identities.
+it provides no evidence of public mixed-schema reachability. Both schema modes
+emit stable schema-pointer identities; the event schema also emits module names.
+`instance START TARGET` calls `lyd_find_sibling_first` with the supplied start
+(zero means NULL), and `opaq-find START NAME` calls `lyd_find_sibling_opaq_next`.
+`null-reads PARENT TARGET` requires an empty parent and probes the schema,
+instance and value APIs with NULL, retaining snapshots of the parent's table.
+Its invalid binary value checks that value preparation is bypassed. These are
+finite dispatch controls, not a general G2 comparison model. During `instance`
+only, the instrumented build emits read-only `read.compare` operand/option
+observations from `lyd_compare_single`; the comparison build remains untouched.
 
 Stdout is JSONL. `--quiet` emits command snapshots; the default emits primitive
 events as well. `--remote-stop` exits immediately after the remote-last
@@ -756,3 +768,225 @@ lane were rerun successfully as focused tests. A fresh aggregate full-suite resu
 on the final worktree remains for the lead if required by the gate. The comparison
 assurance limits for transient allocations and occurrence continuity are explicit;
 no requested identity/lifetime code fix remains open.
+
+## PR #350 merge-gate corrections (G1)
+
+The null-entry finding came from selecting retained registrations before
+checking whether the caller supplied any sibling. `identity.validate` now
+checks `parent.first` before schema preparation or table selection, requires
+winner/current-parent zero and LY_ENOTFOUND (5), and independently verifies
+that the full before/after table image equals the preceding parent snapshot.
+Non-null schema reads also require a status consistent with their winner.
+`TestNativeRetainedReadEntries` and
+`IdentitySweep.test_retained_null_and_opaque_entries` replay the exact gate
+sequence and its one-opaque-child variant in both builds; the sweep runs quiet
+and verbose. Restoring HEAD's original `identity.py` made the Go null case fail
+in both builds with `wrong schema winner`, while both opaque controls passed.
+Winner/status substitutions and erasing both retained read images are rejected.
+The null control additionally calls all three native read APIs with non-null
+output sentinels, requires each to clear its output and return ENOTFOUND, and
+supplies invalid binary text to the value API. It checks that no target
+allocation occurred and that the complete registration image survived.
+
+The validator inventory found a related same-context error in the default
+schema mode: the fallback to a schema name conflated `c/v` and RPC-input `v`.
+Both modes now emit and require schema-pointer identities. The new
+`entry-schema-lineage` control checks misses in both directions, before and
+after table creation, in both modes/builds. `TestNativeSchemaReadLineage` fails
+with `wrong schema winner` when matching is mutated back to names alone.
+There is one schema selection model, in `identity.py`; `check.py`, the sweep,
+and every Go differential caller use it. The private Go kernel's `find` is a
+modification-callback primitive, not a sibling read/expectation adapter.
+
+The driver-path finding came from deriving the comparison executable inside
+`sweep_test.execute`, discarding the caller's configured path. Both Python
+entry points now accept explicit driver arguments, use the two corresponding
+environment variables as defaults, and use the sibling comparison path only
+when its setting is unset or empty. The Go sweep passes both paths explicitly.
+`TestNativeSeparateDriverPaths` copies the executables into separate temporary
+directories (symlinks would resolve back to the build directory), places an
+exit-86 trap at the unwanted sibling path, and checks explicit arguments over
+a poisoned environment, environment-only selection, and a missing configured
+comparison. Both entry points pass. Restoring only the old sibling-selection
+line makes the sweep's argument and environment subtests fail with exit 86.
+All temporary mutants were restored; none is a checked-in alternative driver.
+
+### Section 2.1 control inventory
+
+| Rule | Live control and independent assertion |
+|---|---|
+| NULL before table selection or value preparation; history retained | `retained-null`: exact p/q/ll/ll + I(p) + four unlinks; schema miss, then schema/instance/value NULL reads; one residual p occurrence unchanged |
+| Non-null opaque sibling permits retained-table selection | `retained-opaque`: identical retained p occurrence, one opaque child; detached p wins with current parent zero |
+| Instance data-parent guard before rewind, only when both nodes are schema-bound; no such guard on schema reads | `entry-guard`: synthetic mixed c/ll and d/ll frontier; both instance directions miss before any comparison, with and without a table; querying d/ll schema from a c/ll start still succeeds. `entry-opaque` supplies an opaque start and still finds the schema-bound instance |
+| Table target-first, linear candidate-first | `entry-order`: both lookup directions in both branches, six exact observed operand pairs `(4,11), (11,4), (11,4), (11,4), (4,11), (14,5)` with options zero; reversing the operand trace fails |
+| Same-context schema pointer/lineage, not module/name alone | `entry-schema-lineage`: c/v versus RPC-input v; four misses spanning both directions and table states; both schema modes |
+| Linear schema stops at first opaque; linear instance scans across opaque | `entry-opaque`: schema misses while instance reaches the linked leaf-list beyond the separator |
+| Opaque supplied start scans forward; schema start uses trailing opaque block or misses on schema tail | `entry-opaque`: six opaque-name probes check start-relative selection, trailing-block selection, and schema-tail miss despite an earlier opaque node |
+| Duplicate-instance continuation uses current next, full recursion, and stops at separator | `entry-duplicate`: unequal keyless-list descendants skip the first schema winner and select the second; reverse linear read succeeds; adding an opaque separator causes a miss; observed comparisons use full recursion |
+
+Exact finite-control winners/statuses are asserted independently on each build,
+in addition to normalized control equality. They are not a general G2 instance
+comparison model. Keyless-list nodes require the same inner-node table evidence;
+deleting their table snapshots is rejected on either build. New read-result kinds participate in replay completeness in
+both Python consumers and the Go wrapper. The instrumented comparison hook
+observes operands only during explicit `instance` commands and never changes a
+comparison result. The unmodified build has no such hook. All commands retain
+the existing tombstone boundary, process watchdog, identity/table caps and
+bounded snapshot traversals.
+
+The native functions exercised are `lyd_find_sibling_schema`,
+`lyd_find_sibling_first`, `lyd_find_sibling_val`,
+`lyd_find_sibling_opaq_next`, and `lyd_compare_single` (observation only).
+The read corrections affect read controls, event emission, and schema identity
+metadata; the continuation below also adds explicit test allocator setup.
+No registration or production mutation path changed; I/U, physical unlink,
+resize, validation, native allocation/free, #257 journaling, and existing work
+budgets retain their library implementations. No Go ported function,
+public API, dependency, policy file, or golden changed. Cross-context schema
+equivalence, non-null typed-value construction, nested comparison selection,
+and production G2 read adapters remain excluded from these finite controls;
+the driver creates only one schema context. Existing remote-winner and lifetime
+controls remain part of the full native suite.
+
+### Main versus head counted work
+
+`TestNativeOrdinaryWorkBaseline` was run unchanged on an archive of
+origin/main `18373297ea975722f056b42837562b02e0ffe539` and on the working head.
+All twelve tuples `(visits, charges, allocations, bytes)` were identical.
+The input uses reverse insertion and duplicate-heavy values, with and without
+the journal. No production hot path is changed by this correction.
+
+| Children | Both revisions, no journal | Both revisions, journal |
+|---:|---|---|
+| 0 | (1, 0, 16, 2248) | (1, 11, 36, 12384) |
+| 1 | (8, 17, 37, 4152) | (8, 42, 58, 18256) |
+| 2 | (38, 155, 65, 6392) | (38, 187, 86, 20496) |
+| 3 | (53, 208, 77, 7504) | (53, 247, 98, 21624) |
+| 64 | (4504, 8099, 1147, 116176) | (4504, 8649, 1186, 345128) |
+| 256 | (26608, 42844, 4207, 444112) | (26608, 44994, 4256, 1425512) |
+
+### Deterministic stale-handle replay (gate-5 continuation)
+
+The first full native rerun exposed allocator dependence in the old
+`handle-tombstone` replays. Adding default-mode schema identities changed the
+cJSON allocation pattern: the instrumented verbose replay recycled generation
+10, then its replacements, while the stale handle still named generation 11.
+Quiet observation and the comparison build recycled generation 11. A native
+counterfactual with allocator setup disabled, changing only schema identities
+back to their old conditional emission, restores generation-11 reuse in the
+verbose build. Duplicate/ancestor discovery is unchanged in that counterfactual.
+The identities and tombstone were correct; the replay assumed allocator order.
+
+All three stale-handle requests now force actual reuse: `handle-tombstone`,
+`handle-tombstone-probe`, and `lifetime/stale-handle`. The optional second operand
+in `free 2 14` arms reservation of handle 14's term chunk. Both drivers interpose
+`free`, call the real allocator first, immediately recover that exact chunk with
+bounded same-size `malloc` probes, and hold it across subsequent trace output.
+Nonmatching probes remain allocated until the forced construction finishes.
+No retired object is dereferenced. An unexpected second native free fails.
+
+The optional last operand in `term 104 1 p P 0 14` requests that reservation.
+The runners set `GLIBC_TUNABLES=glibc.malloc.tcache_count=7` before startup.
+Setup fills and drains the seven-entry bin, then returns the reserved chunk to
+the real allocator immediately before the native `lyd_create_term` calloc.
+The constructor must return the exact reserved address; failure to reserve,
+allocate, or reuse fails the replay. The tested canonical container uses glibc
+2.41, whose calloc consumes tcache. This finite allocator control is specific
+to that environment; an incompatible allocator fails rather than skipping or
+accepting missing evidence. No malloc/calloc implementation is substituted.
+
+The normal identity observer independently emits the real `11 -> 15` address
+reuse, the completed constructor binds live handle 104 to generation 15, and
+the final probe still rejects handle 14's generation 11. The existing checker
+assertion is unchanged. `TestNativeTombstoneAddressReuse` checks every request
+in both builds with quiet and verbose observation, validates complete identity
+evidence and command sequences, and requires a live replacement at handle 104.
+A mutant bypassing reservation and preparation fails precisely the three
+instrumented verbose lanes; the other nine lanes pass. It reproduces the
+reported failure without weakening schema identity validation.
+
+The changed native call paths are the test driver's release wrapper and its
+explicit free/term replay setup, exercising `lyd_free_tree`/`lyd_free_all`,
+`lyd_free_subtree`, `lyd_new_term`, and `lyd_create_term`. The pinned library
+algorithms and the unmodified comparison objects are unchanged. Auxiliary
+storage and recovery probes stay within the existing LIMIT cap and watchdog;
+all allocator failures are checked. This adds no Go tree mutation, journal
+operation, work-budget change, production hot path, public API, dependency,
+policy change, or golden. Only the seven fixed requests listed in this section
+use the controlled allocator configuration. No additional random seed is needed.
+
+The first focused observer rerun then exposed the same assumption in
+`retained-address-reuse`, which the original failure had prevented the checker
+from reaching. The reuse inventory covers every positive assertion in
+`check.py`, `sweep_test.py`, and their Go callers. All four generic retained
+generation controls now use the same setup: `retained-address-reuse`,
+`lifetime/retained-same-hash`, `lifetime/retained-resize`, and
+`lifetime/retained-remove`. They reserve with `free 1 1` and force the lazy
+term duplicate with the extra operand in `insert 1 <hash> 0 1`.
+The actual `lyd_dup_single`/`lyd_dup_r` calloc must return the reserved address.
+Preparation and result checking are shared with the explicit term constructor.
+
+`TestNativeRetainedAddressReuse` requires completed quiet and verbose replays
+in both builds, two distinct occurrences, the dead original generation and
+live replacement generation, and the original occurrence serial unchanged.
+The original checker assertions are shared with this focused entry point.
+Bypassing the allocator setup makes this Go regression fail as well. All eleven
+`TestNativeComparisonLifetimes` controls pass after the family correction.
+
+Explicit exclusions from forced allocation are `driver-lifetime`'s repeated
+subtree-release replay; the other seven lifetime controls (`recreate-print`,
+`recreate-lookup`, `dup-descendant`, `parse-descendant`, `list-key`, `table-reuse`,
+`validation-delete`); and the sweep's 32-cycle ancestor reuse control. These
+require observed reuse across repeated cycles instead of a particular released
+script handle or retained generic pointer. Their existing positive and negative
+reuse assertions remain enabled. The comparison lifetime and identity sweeps
+exercise them in both builds; no assertion is removed or relaxed.
+
+Once the native checker could finish, its Go caller exposed a second integration
+omission: the seven new entry-rule requests were not included in the checker's
+per-request deletion matrix. `TestNativeObserverEvidence` already requires
+these controls for every top-level request and failed with the missing labels.
+All seven now run through native primitive/lifetime/resize counts, identity and
+metadata deletions, unresolved-reference mutants, and two-build comparisons.
+The new read event shapes are checked before indexing the request by operation;
+the empty-result mutant removes instance, opaque, and null reads as well.
+Keyless inner nodes also require their child/table snapshot in this checker.
+The Go requirement is unchanged. The focused seven-request run rejects every
+applicable mutant and completes both-build comparisons successfully.
+
+### Correction check outcomes
+
+**FULL CHECKS PENDING.** `flock -w 1800 -E 75` exhausted the 30-minute wait
+without acquiring the heavy lock (exit 75). No full suite started. The lead must
+run the three full checks below under the lock. All dev invocations used the
+normal dev user and `</dev/null`; no sudo/root container execution was used.
+
+| Dev-container command/check | Outcome |
+|---|---|
+| `bash conformance/oracle/native_registration/build.sh` | Exit 0; both canonical static drivers rebuilt |
+| Driver-enabled `go test -tags oracle ./data -run 'TestNative(RetainedReadEntries\|SeparateDriverPaths\|SchemaReadLineage\|IdentitySweep\|ControlReplayRejections\|ReplayCompletion)' -count=1 -v` | Exit 0; 29.204s; no skips |
+| Final driver-enabled `go test -tags oracle ./data -run '^TestNativeIdentitySweep$' -count=1 -v` | Exit 0; 20.310s; all 11 Python sweep tests passed; no skips |
+| `go test -tags oracle ./data -run '^TestNative(ControlReplayRejections\|DriverReplayCompletion)$' -count=1 -v` | Exit 0; 0.198s |
+| `go test ./data -run '^TestNativeOrdinaryWorkBaseline$' -count=1 -v` on main and head | Exit 0 on each; all twelve tuples identical |
+| `golangci-lint run --build-tags oracle --new-from-rev HEAD ./data/...` | Exit 0; zero issues |
+| `git diff --check` | Exit 0 |
+| `./dev make ci </dev/null` under the lock | NOT RUN: lock wait expired |
+| `DEV_PLATFORM=linux/amd64 ./dev make test-oracle oracle-check </dev/null` under the lock | NOT RUN: lock wait expired |
+| Driver-enabled `go test -tags oracle ./data -run '^TestNative' -count=1 -v` under the lock, requiring no skips | NOT RUN: lock wait expired |
+
+Expected failure runs: original HEAD `identity.py` with
+`TestNativeRetainedReadEntries` exited 1 (both null cases failed, both opaque
+cases passed); sibling-path-selection mutant with `TestNativeSeparateDriverPaths`
+exited 1 (argument and environment lanes hit the exit-86 trap); schema-name-only
+matching mutant with `TestNativeSchemaReadLineage` exited 1 (`wrong schema
+winner`). All were restored before the final passing sweep. Its trace mutants
+also reject wrong winners/statuses, erased retained images, reversed operands,
+and missing keyless-inner table evidence.
+
+No new random seed is needed; these seven request cases are fixed replays.
+Existing primitive seeds remain 247, 0x7be55cae, 0x257. Changes remain
+uncommitted. The full checks are the only remaining verification work.
+
+New manifest fixture ids: none. New live cases: `retained-null`,
+`retained-opaque`, `entry-guard`, `entry-order`, `entry-opaque`,
+`entry-duplicate`, `entry-schema-lineage`.

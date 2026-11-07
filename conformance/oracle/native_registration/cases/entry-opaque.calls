@@ -1,0 +1,20 @@
+# SPDX-License-Identifier: BSD-3-Clause
+# Linear schema stops at opaque; instance scans across it.
+root 1 c
+term 2 1 p P
+term 4 1 ll QQ==
+opaque 6 1 first value
+opaque 7 1 second value
+before 4 6
+schema 1 4
+instance 2 4
+instance 6 4
+# Schema start scans only the trailing opaque block; opaque start scans forward.
+opaq-find 2 first
+opaq-find 2 second
+opaq-find 7 first
+before 2 6
+opaq-find 6 first
+opaq-find 2 first
+unlink 7
+opaq-find 2 first

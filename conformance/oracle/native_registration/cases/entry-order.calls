@@ -1,0 +1,18 @@
+# SPDX-License-Identifier: BSD-3-Clause
+# Both directions, table target-first and linear candidate-first.
+root 1 c
+term 4 1 ll QQ==
+root 10 c
+term 11 10 ll QQ==
+instance 4 11
+instance 11 4
+term 2 1 p P
+term 3 1 q Q
+term 5 1 ll Qg==
+instance 5 11
+instance 11 4
+term 12 10 p P
+term 13 10 q Q
+term 14 10 ll Qg==
+instance 11 4
+instance 5 14

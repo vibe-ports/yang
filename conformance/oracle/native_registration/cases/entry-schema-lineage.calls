@@ -1,0 +1,16 @@
+# SPDX-License-Identifier: BSD-3-Clause
+# Same context and module/name, different parent lineage; both directions.
+root 1 c
+term 4 1 v 1
+root 10 r
+term 13 10 v 1
+schema 1 13
+schema 10 4
+term 2 1 p P
+term 3 1 q Q
+term 5 1 v 2
+term 11 10 a A
+term 12 10 a2 B
+term 14 10 v 2
+schema 1 13
+schema 10 4

@@ -39,6 +39,31 @@ def validate(script, rows):
             assert row is rows[-1] and req[operation - 1][0] in ('free', 'free-root'), 'invalid unsafe boundary'
         command = 0 < operation <= len(req) and event == req[operation - 1][0]
         if 'nodes' not in row:
+            if event in ('read.instance', 'read.opaque'):
+                # These are finite native dispatch controls, not a G2 general
+                # comparison model. Their exact winners/order are pinned by the
+                # sweep independently on each side before control comparison.
+                supplied, winner, parent = row['supplied'], row['winner'], row['current_parent']
+                for g in (supplied, winner, parent):
+                    assert not g or (g in keys and last_nodes[g]['alive']), 'invalid read identity'
+                if not supplied:
+                    assert (winner, row['rc'], parent) == (0, 5, 0), 'null sibling must return ENOTFOUND'
+                assert row['rc'] == (0 if winner else 5), 'wrong read status'
+                assert not winner or last_nodes[winner]['parent'] == parent, 'wrong current parent'
+                assert row['before'] == row['after'], 'lookup mutated storage'
+                owner = last_nodes[supplied]['parent'] if supplied else 0
+                expected_table = last_nodes[owner].get('table', {'present': False}) if owner else {'present': False}
+                assert row['before'] == expected_table, 'wrong queried storage'
+                normalized[operation, event] = (operation, row['rc'], keys.get(supplied, 0), keys.get(winner, 0), keys.get(parent, 0))
+            if event == 'read.compare':
+                assert all(g in keys and last_nodes[g]['alive'] for g in (row['left'], row['right'])), 'invalid comparison operands'
+            if event == 'read.null':
+                parent = row['queried_parent']
+                assert last_nodes[parent]['alive'] and last_nodes[parent]['first'] == 0, 'non-null supplied sibling'
+                assert row['before'] == row['after'] == last_nodes[parent]['table'], 'null read changed retained history'
+                for kind in ('schema', 'instance', 'value'):
+                    assert (row[kind + '_winner'], row[kind + '_rc']) == (0, 5), 'null sibling must return ENOTFOUND'
+                normalized[operation, event] = (operation, keys[parent], 0, 5)
             if event == 'allocation.address-reuse':
                 old, new = row['old_generation'], row['new_generation']
                 assert type(old) is int and type(new) is int and 0 < old < new and old in recorded and new in recorded and not recorded[old]['alive'], 'invalid reuse identities'
@@ -55,15 +80,16 @@ def validate(script, rows):
                     parent = row['queried_parent']
                     live(parent); live(row['current_parent'])
                     assert not winner or last_nodes[winner]['parent'] == row['current_parent'], 'wrong current parent'
+                    # §2.1 preflight precedes table selection and target
+                    # preparation. Storage evidence is still checked below.
+                    first = last_nodes[parent]['first']
+                    if not first:
+                        assert (winner, row['rc'], row['current_parent']) == (0, 5, 0), 'null sibling must return ENOTFOUND'
                     # Independently resolve the schema lookup through the recorded
                     # table run, or physical siblings when no table exists.
-                    target = bindings[int(req[operation - 1][2])]['generation']
-                    schema = last_nodes[target].get('schema_identity', last_nodes[target].get('schema'))
-                    def matches(g):
-                        n = last_nodes[g]
-                        return n.get('schema_identity', n.get('schema')) == schema
                     assert row['before'] == row['after'], 'lookup mutated storage'
                     table = row['before']
+                    assert table == last_nodes[parent]['table'], 'wrong queried storage'
                     for _, t in table_records(row):
                         if not t['present']: continue
                         assert t['identity'] > 0 and t['identity'] in previous_tables and previous_tables[t['identity']]['alive'], 'invalid read table identity'
@@ -73,6 +99,14 @@ def validate(script, rows):
                             assert x['alive'] == last_nodes[x['generation']]['alive'], 'invalid read liveness'
                             assert serials.get(x['occurrence']) == (t['identity'], x['generation'], x['hash']), 'unknown read occurrence'
 
+                    if not first:
+                        normalized[operation, event] = (operation, row['rc'], live(parent), 0, 0)
+                        continue
+                    target = bindings[int(req[operation - 1][2])]['generation']
+                    schema = last_nodes[target]['schema_identity']
+                    def matches(g):
+                        n = last_nodes[g]
+                        return n.get('schema_identity') == schema
                     if table['present']:
                         candidates = [x['generation'] for x in table['chains'] if x['hash'] == row['schema_hash'] and matches(x['generation'])]
                         assert not winner or winner in candidates, 'winner outside queried schema run'
@@ -82,6 +116,7 @@ def validate(script, rows):
                             if matches(g): candidates.append(g)
                             g = last_nodes[g]['next']
                     assert winner == (candidates[0] if candidates else 0), 'wrong schema winner'
+                    assert row['rc'] == (0 if winner else 5), 'wrong schema status'
                     normalized[operation, event] = (operation, row['rc'], live(parent), live(winner), live(row['current_parent']))
                 else:
                     h = int(req[operation - 1][1]); g = bindings[h]['generation']
@@ -131,7 +166,8 @@ def validate(script, rows):
                     assert n['current'] == 'unsafe-native-links', 'missing unsafe availability'
                     continue
                 assert n.get('current') != 'unsafe-native-links', 'unsafe current state outside boundary'
-                if n.get('schema') in ('c', 'd', 'r', 'l'):
+                if n.get('schema'): assert n['schema_identity'] > 0, 'missing schema identity'
+                if n.get('schema') in ('c', 'd', 'r', 'l', 'kl'):
                     assert {'first', 'tail', 'table'} <= n.keys(), 'missing inner-node table evidence'
                 for field in ('parent', 'prev', 'next', 'first', 'tail', 'rb_root', 'rb_stored_root'):
                     ref = n.get(field, 0)
@@ -192,8 +228,8 @@ def validate(script, rows):
         assert bindings.keys() <= bs.keys(), 'lost retained binding'
         if command:
             fields = req[operation - 1]
-            unary = ('unlink', 'detach-siblings', 'change', 'I', 'U', 'free', 'free-root', 'rewind', 'validate', 'check-handle', 'print', 'find-next-loop')
-            inputs = [int(fields[1])] if event in unary else [int(fields[1]), int(fields[2])] if event in ('attach', 'before', 'schema') else [int(fields[2]), int(fields[3])] if event == 'dup' else [int(fields[2])] if event in ('term', 'list', 'opaque') else []
+            unary = ('unlink', 'detach-siblings', 'change', 'I', 'U', 'free', 'free-root', 'rewind', 'validate', 'check-handle', 'print', 'find-next-loop', 'opaq-find')
+            inputs = [int(fields[1])] if event in unary else [int(fields[1]), int(fields[2])] if event in ('attach', 'before', 'schema', 'null-reads', 'instance') else [int(fields[2]), int(fields[3])] if event == 'dup' else [int(fields[2])] if event in ('term', 'list', 'opaque') else []
             for h in inputs:
                 if h:
                     assert h in completed_bindings, 'missing input binding'

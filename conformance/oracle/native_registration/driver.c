@@ -34,9 +34,13 @@ static uint32_t table_sizes[LIMIT];
 #endif
 static unsigned pending_script, output_handle, output_generation;
 static int unsafe_snapshot;
+static const struct lyd_node *reuse_target;
+static void *reuse_reserved, *reuse_held[LIMIT];
+static unsigned reuse_held_count;
 static const struct lysc_node *schemas[256];
 static unsigned schema_count;
 static int event_schema_enabled;
+static int observe_read;
 static const struct ly_ht *retired_tables[LIMIT];
 static unsigned retired_count;
 static struct lyd_node *nodes[4096];
@@ -130,13 +134,16 @@ static void allocate_table(const struct ly_ht *ht)
     for(unsigned i=0;i<retired_count;++i)if(retired_tables[i]==ht)retired_tables[i]=NULL;
 }
 
-#ifdef NR_UNMODIFIED
 /* Linker interposition observes actual frees in the untouched static objects,
  * including validation/autodeletion and failed public calls. Never inspect the
  * freed object, follow parent links, or retire retained foreign occurrences. */
 void __real_free(void *ptr);
 void __wrap_free(void *ptr)
 {
+    if(ptr && ptr==(const void *)reuse_target && reuse_reserved) {
+        fputs("native reuse target freed twice\n",stderr);exit(100);
+    }
+#ifdef NR_UNMODIFIED
     if(enabled && ptr) {
         for(unsigned i=identity_count;i;--i)if(identities[i].ptr==ptr) {identities[i].alive=0;break;}
         for(unsigned i=table_identity_count;i;--i)if(table_identities[i].ptr==ptr) {
@@ -144,9 +151,22 @@ void __wrap_free(void *ptr)
             break;
         }
     }
+#endif
     __real_free(ptr);
+    if(ptr && ptr==(const void *)reuse_target) {
+        /* Reacquire immediately after the real native free, before any trace
+         * allocation can split/coalesce or retain the released chunk. */
+        while(reuse_held_count<LIMIT-8) {
+            void *candidate=malloc(sizeof(struct lyd_node_term));
+            if(!candidate)exit(100);
+            if(candidate==ptr) {reuse_reserved=candidate;return;}
+            reuse_held[reuse_held_count++]=candidate;
+        }
+        fputs("could not recover the freed term chunk\n",stderr);exit(100);
+    }
 }
 
+#ifdef NR_UNMODIFIED
 /* The control has no constructor hooks. Discover all surviving allocations at
  * each public boundary, before handles, table records or node_json use them.
  * A visited set and the existing traversal cap bound shared/corrupt graphs.
@@ -313,7 +333,7 @@ static cJSON *node_json(unsigned i)
     const struct lyd_node *n=id->ptr;
     number(j,"context",LYD_CTX(n)==ctx?1:0);
     number(j,"hash",n->hash); number(j,"flags",n->flags); number(j,"prev",identity(n->prev)); number(j,"next",identity(n->next)); number(j,"parent",identity(n->parent));
-    if(n->schema) {number(j,"nodetype",n->schema->nodetype);cJSON_AddBoolToObject(j,"key",lysc_is_key(n->schema));cJSON_AddStringToObject(j,"schema",n->schema->name);if(event_schema_enabled){cJSON_AddStringToObject(j,"module",n->schema->module->name);number(j,"schema_identity",schema_identity(n->schema));}if(n->schema->nodetype&LYD_NODE_TERM)cJSON_AddStringToObject(j,"value",lyd_get_value(n));}
+    if(n->schema) {number(j,"nodetype",n->schema->nodetype);cJSON_AddBoolToObject(j,"key",lysc_is_key(n->schema));cJSON_AddStringToObject(j,"schema",n->schema->name);number(j,"schema_identity",schema_identity(n->schema));if(event_schema_enabled){cJSON_AddStringToObject(j,"module",n->schema->module->name);}if(n->schema->nodetype&LYD_NODE_TERM)cJSON_AddStringToObject(j,"value",lyd_get_value(n));}
     else {const struct lyd_node_opaq *o=(const void*)n;number(j,"first",identity(o->child));number(j,"tail",identity(o->child?o->child->prev:NULL));number(j,"prefix_format",o->format);cJSON_AddBoolToObject(j,"prefix_bound",o->val_prefix_data!=NULL);}
     if(n->schema && (n->schema->nodetype & LYD_NODE_INNER)) { const struct lyd_node_inner *in=(const void*)n; number(j,"first",identity(in->child)); number(j,"tail",identity(in->child ? in->child->prev : NULL)); cJSON_AddItemToObject(j,"table",table_json(in->children_ht)); }
     cJSON *metas=cJSON_AddArrayToObject(j,"metadata"); for(const struct lyd_meta *m=n->meta;m;m=m->next) {
@@ -365,6 +385,13 @@ void nr_event(const char *event, const void *node, const void *table, int rc, co
 {
     const struct ly_ht *ht=table;
     if(!enabled) return;
+    if(!strcmp(event,"read.compare")) {
+        if(observe_read) {
+            cJSON *j=cJSON_CreateObject();cJSON_AddStringToObject(j,"event",event);
+            number(j,"operation",op);number(j,"left",identity(node));number(j,"right",identity(source));number(j,"options",rc);emit(j);
+        }
+        return;
+    }
     /* lyd_insert_hash's only table allocation is its actual children table.
      * Capture its callback before the first reinsertion/record hook. */
     if(!strcmp(event,"table.allocate") && hash_depth && !child_callback) {child_callback=ht->val_equal;child_data=ht->cb_data;}
@@ -420,8 +447,47 @@ void nr_remote(const void *first, const void *sibling, const void *node)
 }
 
 static const char *schema="module m {yang-version 1.1; namespace urn:m; prefix m; container c {leaf p {type string;} leaf q {type string;} leaf-list ll {type binary; ordered-by user;} leaf-list v {type uint32;} leaf z {type string;}} rpc r {input {leaf a {type string;} leaf a2 {type string;} leaf-list v {type uint32;}} output {leaf o {type string;}}}}";
-static const char *event_schema="module m {yang-version 1.1; namespace urn:m; prefix m; container c {leaf p {type string;} leaf q {type string;} leaf-list ll {type binary; ordered-by user;} leaf-list v {type uint32;} leaf z {type string;} list l {key k; ordered-by user; leaf k {type string;}} leaf def {type string; default D;}} container d {presence synthetic; leaf-list ll {type binary; ordered-by user;}} rpc r {input {leaf a {type string;} leaf a2 {type string;} leaf-list v {type uint32;}} output {leaf o {type string;}}}}";
+static const char *event_schema="module m {yang-version 1.1; namespace urn:m; prefix m; container c {leaf p {type string;} leaf q {type string;} leaf-list ll {type binary; ordered-by user;} leaf-list v {type uint32;} leaf z {type string;} list l {key k; ordered-by user; leaf k {type string;}} list kl {config false; leaf x {type string;}} leaf def {type string; default D;}} container d {presence synthetic; leaf-list ll {type binary; ordered-by user;}} rpc r {input {leaf a {type string;} leaf a2 {type string;} leaf-list v {type uint32;}} output {leaf o {type string;}}}}";
 static void watchdog(int signal_number) { (void)signal_number; const char msg[]="{\"event\":\"boundary.watchdog\",\"classification\":\"nontermination-or-unsafe-traversal\"}\n"; ssize_t written=write(STDOUT_FILENO,msg,sizeof msg-1); (void)written; _Exit(124); }
+
+/* Canonical Linux/glibc 2.41 allocator setup for the stale-handle controls only.
+ * The native free wrapper reserves the actual released term chunk. Fill then
+ * drain the configured seven-entry tcache bin, keeping all returned chunks
+ * allocated. Free the reserved chunk into the now-empty bin immediately before
+ * lyd_create_term's calloc. The caller checks the actual constructor address.
+ * No identities/events are manufactured and no native allocator is replaced.
+ * Recovery and auxiliary storage use the existing LIMIT cap. */
+static const struct lyd_node *prepare_term_reuse(unsigned handle)
+{
+    unsigned generation=handle<4096?handle_generations[handle]:0;
+    if(!generation || identities[generation].alive || !reuse_reserved ||
+            identities[generation].ptr!=reuse_target || reuse_reserved!=(const void *)reuse_target)return NULL;
+    const struct lyd_node *target=reuse_target;
+    void *fill[7];
+    if(reuse_held_count>LIMIT-7)exit(100);
+    for(unsigned i=0;i<7;++i) {
+        fill[i]=malloc(sizeof(struct lyd_node_term));
+        if(!fill[i])exit(100);
+    }
+    for(unsigned i=0;i<7;++i)free(fill[i]);
+    for(unsigned i=0;i<7;++i) {
+        void *ptr=malloc(sizeof(struct lyd_node_term));
+        if(!ptr)exit(100);
+        reuse_held[reuse_held_count++]=ptr;
+    }
+    reuse_target=NULL;
+    __real_free(reuse_reserved);
+    reuse_reserved=NULL;
+    return target;
+}
+
+static void finish_term_reuse(const struct lyd_node *expected, const struct lyd_node *actual, LY_ERR rc)
+{
+    if(!expected)return;
+    if(rc || actual!=expected) {fputs("native constructor did not reuse the prepared term chunk\n",stderr);exit(100);}
+    for(unsigned i=0;i<reuse_held_count;++i)free(reuse_held[i]);
+    reuse_held_count=0;
+}
 
 static int tombstoned_occurrence(void)
 {
@@ -536,7 +602,7 @@ int main(int argc, char **argv)
         if(line[0]=='#' || sscanf(line,"%31s",cmd)!=1) continue;
         ++op; ordinal=0;pending_script=0;output_handle=output_generation=0; ly_err_clean(ctx,NULL);cJSON_Delete(log_messages);log_messages=NULL;
         rc=LY_SUCCESS;
-        if(tombstoned_occurrence() && (!strcmp(cmd,"schema") || !strcmp(cmd,"validate") || !strcmp(cmd,"rewind") || !strcmp(cmd,"print") || !strcmp(cmd,"attach") || !strcmp(cmd,"before") || !strcmp(cmd,"change") || !strcmp(cmd,"find-next-loop") || !strcmp(cmd,"root") || !strcmp(cmd,"term") || !strcmp(cmd,"dup") || !strcmp(cmd,"unlink") || !strcmp(cmd,"detach-siblings") || !strcmp(cmd,"free") || !strcmp(cmd,"free-root") || !strcmp(cmd,"opaque") || !strcmp(cmd,"parse") || !strcmp(cmd,"list") || !strcmp(cmd,"frontier"))) {snapshot("boundary.tombstoned-semantic-probe",NULL,generic,0,NULL);return 0;}
+        if(tombstoned_occurrence() && (!strcmp(cmd,"instance") || !strcmp(cmd,"opaq-find") || !strcmp(cmd,"null-reads") || !strcmp(cmd,"schema") || !strcmp(cmd,"validate") || !strcmp(cmd,"rewind") || !strcmp(cmd,"print") || !strcmp(cmd,"attach") || !strcmp(cmd,"before") || !strcmp(cmd,"change") || !strcmp(cmd,"find-next-loop") || !strcmp(cmd,"root") || !strcmp(cmd,"term") || !strcmp(cmd,"dup") || !strcmp(cmd,"unlink") || !strcmp(cmd,"detach-siblings") || !strcmp(cmd,"free") || !strcmp(cmd,"free-root") || !strcmp(cmd,"opaque") || !strcmp(cmd,"parse") || !strcmp(cmd,"list") || !strcmp(cmd,"frontier"))) {snapshot("boundary.tombstoned-semantic-probe",NULL,generic,0,NULL);return 0;}
         if(!strcmp(cmd,"new")) {
             if(sscanf(line,"%*s %u %u",&a,&b)!=2 || a>32768 || b>65535)return 4;
             if(generic) {
@@ -549,7 +615,17 @@ int main(int argc, char **argv)
 #endif
         }
         else if(!strcmp(cmd,"root")) {if(sscanf(line,"%*s %u %79s",&a,name)!=2 || !a||a>=4096)return 4;if(!prepare_output(a))return 4;creating=1;pending_script=a;rc=lyd_new_inner(NULL,mod,name,0,&nodes[a]);}
-        else if(!strcmp(cmd,"term")) {int fields=sscanf(line,"%*s %u %u %79s %255s %u",&a,&b,name,value,&c);if(fields<4 || !a || a>=4096 || b>=4096)return 4;if(b&&!require_handle(b))return 4;if(!prepare_output(a))return 4;creating=1;pending_script=a;rc=lyd_new_term(nodes[b],mod,name,value,c,&nodes[a]);}
+        else if(!strcmp(cmd,"term")) {
+            int fields=sscanf(line,"%*s %u %u %79s %255s %u %u",&a,&b,name,value,&c,&d);
+            if(fields<4 || !a || a>=4096 || b>=4096)return 4;
+            if(b&&!require_handle(b))return 4;
+            if(!prepare_output(a))return 4;
+            creating=1;pending_script=a;
+            const struct lyd_node *reuse=NULL;
+            if(fields==6 && !(reuse=prepare_term_reuse(d)))return 4;
+            rc=lyd_new_term(nodes[b],mod,name,value,c,&nodes[a]);
+            finish_term_reuse(reuse,nodes[a],rc);
+        }
         else if(!strcmp(cmd,"list")) {if(sscanf(line,"%*s %u %u %79s %255s",&a,&b,name,value)!=4 || !a || a>=4096 || b>=4096)return 4;if(b&&!require_handle(b))return 4;if(!prepare_output(a))return 4;creating=1;pending_script=a;rc=lyd_new_list(nodes[b],mod,name,0,&nodes[a],value);}
         else if(!strcmp(cmd,"frontier")) {
             /* Synthetic low-level evidence only. The four real allocations
@@ -576,6 +652,45 @@ int main(int argc, char **argv)
         else if(!strcmp(cmd,"detach-siblings")) {if(sscanf(line,"%*s %u",&a)!=1||a>=4096||!require_handle(a))return 4;rc=lyd_unlink_siblings(nodes[a]);}
         else if(!strcmp(cmd,"change")) {if(sscanf(line,"%*s %u %255s",&a,value)!=2||a>=4096||!require_handle(a))return 4;rc=lyd_change_term(nodes[a],value);}
         else if(!strcmp(cmd,"parse")) {int offset=0;if(sscanf(line,"%*s %u %n",&a,&offset)<1||!a||a>=4096)return 4;if(!prepare_output(a))return 4;creating=1;pending_script=a;rc=lyd_parse_data_mem(ctx,line+offset,LYD_JSON,LYD_PARSE_ONLY|LYD_PARSE_ORDERED,0,&nodes[a]);}
+        else if(!strcmp(cmd,"instance") || !strcmp(cmd,"opaq-find")) {
+            int instance=!strcmp(cmd,"instance");
+            if(instance) {
+                if(sscanf(line,"%*s %u %u",&a,&b)!=2||a>=4096||b>=4096||(a&&!require_handle(a))||!require_handle(b))return 4;
+            } else if(sscanf(line,"%*s %u %79s",&a,name)!=2||a>=4096||(a&&!require_handle(a)))return 4;
+            const struct lyd_node *start=nodes[a];
+            const struct lyd_node *parent=start?lyd_parent(start):NULL;
+            const struct ly_ht *queried=parent&&parent->schema?((const struct lyd_node_inner*)parent)->children_ht:NULL;
+            cJSON *before=table_json(queried);
+            struct lyd_node *winner=NULL;
+            observe_read=1;
+            if(instance)rc=lyd_find_sibling_first(start,nodes[b],&winner);
+            else rc=lyd_find_sibling_opaq_next(start,name,&winner);
+            observe_read=0;
+            cJSON *j=cJSON_CreateObject();cJSON_AddStringToObject(j,"event",instance?"read.instance":"read.opaque");
+            number(j,"operation",op);number(j,"rc",rc);number(j,"supplied",identity(start));number(j,"winner",identity(winner));number(j,"current_parent",identity(winner?winner->parent:NULL));
+            cJSON_AddItemToObject(j,"before",before);cJSON_AddItemToObject(j,"after",table_json(queried));emit(j);
+        }
+        else if(!strcmp(cmd,"null-reads")) {
+            /* Entry-rule control only, not a G2 read adapter. Keep the parent's
+             * retained table observable while supplying NULL to all three APIs.
+             * An invalid binary value must not be prepared by the value API. */
+            if(sscanf(line,"%*s %u %u",&a,&b)!=2||a>=4096||b>=4096||!require_handle(a)||!require_handle(b)||!nodes[b]->schema||!nodes[a]->schema||!(nodes[a]->schema->nodetype&LYD_NODE_INNER)||lyd_child(nodes[a]))return 4;
+            const struct ly_ht *queried=((const struct lyd_node_inner*)nodes[a])->children_ht;
+            cJSON *j=cJSON_CreateObject();cJSON_AddStringToObject(j,"event","read.null");
+            number(j,"operation",op);number(j,"queried_parent",identity(nodes[a]));
+            cJSON_AddItemToObject(j,"before",table_json(queried));
+            struct lyd_node *winner=nodes[b];
+            LY_ERR schema_rc=lyd_find_sibling_schema(NULL,nodes[b]->schema,&winner);
+            number(j,"schema_rc",schema_rc);number(j,"schema_winner",identity(winner));
+            winner=nodes[b];
+            LY_ERR instance_rc=lyd_find_sibling_first(NULL,nodes[b],&winner);
+            number(j,"instance_rc",instance_rc);number(j,"instance_winner",identity(winner));
+            winner=nodes[b];
+            LY_ERR value_rc=lyd_find_sibling_val(NULL,nodes[b]->schema,"!invalid!",0,&winner);
+            number(j,"value_rc",value_rc);number(j,"value_winner",identity(winner));
+            cJSON_AddItemToObject(j,"after",table_json(queried));emit(j);
+            if(schema_rc!=LY_ENOTFOUND||instance_rc!=LY_ENOTFOUND||value_rc!=LY_ENOTFOUND)return 7;
+        }
         else if(!strcmp(cmd,"schema")) {
             if(sscanf(line,"%*s %u %u",&a,&b)!=2||a>=4096||b>=4096||!require_handle(a)||!require_handle(b)||!nodes[b]->schema||!nodes[a]->schema||!(nodes[a]->schema->nodetype&LYD_NODE_INNER))return 4;
             const struct ly_ht *queried=((const struct lyd_node_inner*)nodes[a])->children_ht;
@@ -592,7 +707,17 @@ int main(int argc, char **argv)
             cJSON_AddItemToObject(j,"before",before);cJSON_AddItemToObject(j,"after",table_json(queried));emit(j);
         }
         else if(!strcmp(cmd,"find-next-loop")) {if(sscanf(line,"%*s %u %u %u",&a,&b,&c)!=3||a>=4096||c>1024||!generic||!require_handle(a))return 4;struct lyd_node *iter=nodes[a];unsigned steps=0;for(;steps<c;++steps){void *match=NULL;rc=lyht_find_next(generic,&iter,b,&match);if(rc)break;memcpy(&iter,match,sizeof iter);}if(steps==c){snapshot("boundary.watchdog.find-next-cycle",iter,generic,0,NULL);return 0;}}
-        else if(!strcmp(cmd,"insert") || !strcmp(cmd,"remove")) {if(sscanf(line,"%*s %u %u %u",&a,&b,&c)<2||!a||a>=4096||!generic)return 4; if(!nodes[a]) {pending_script=a;rc=lyd_dup_single(child,NULL,LYD_DUP_NO_META,&nodes[a]);if(rc)return 7;
+        else if(!strcmp(cmd,"insert") || !strcmp(cmd,"remove")) {
+            int fields=sscanf(line,"%*s %u %u %u %u",&a,&b,&c,&d);
+            if(fields<2||!a||a>=4096||!generic)return 4;
+            if(fields==4 && (strcmp(cmd,"insert") || nodes[a]))return 4;
+            if(!nodes[a]) {
+                pending_script=a;
+                const struct lyd_node *reuse=NULL;
+                if(fields==4 && !(reuse=prepare_term_reuse(d)))return 4;
+                rc=lyd_dup_single(child,NULL,LYD_DUP_NO_META,&nodes[a]);
+                finish_term_reuse(reuse,nodes[a],rc);
+                if(rc)return 7;
 #ifdef NR_UNMODIFIED
             discover_boundary(nodes[a]);
 #endif
@@ -625,8 +750,19 @@ int main(int argc, char **argv)
         }else if(c)rc=lyht_insert(generic,&nodes[a],b,NULL);else rc=lyht_insert_no_check(generic,&nodes[a],b,NULL);}
         else if(!strcmp(cmd,"I") || !strcmp(cmd,"U")) {if(sscanf(line,"%*s %u",&a)!=1||a>=4096||!require_handle(a))return 4;if(cmd[0]=='I')rc=lyd_insert_hash(nodes[a]);else lyd_unlink_hash(nodes[a]);}
         else if(!strcmp(cmd,"free") || !strcmp(cmd,"free-root")) {
-            if(sscanf(line,"%*s %u",&a)!=1||a>=4096||!require_handle(a))return 4;
+            int fields=sscanf(line,"%*s %u %u",&a,&b);
+            if(fields<1||a>=4096||!require_handle(a))return 4;
+            if(fields==2) {
+                const char *tunables=getenv("GLIBC_TUNABLES");
+                if(!tunables || strcmp(tunables,"glibc.malloc.tcache_count=7")) {
+                    fputs("term reuse control requires GLIBC_TUNABLES=glibc.malloc.tcache_count=7\n",stderr);return 100;
+                }
+                if(b>=4096 || !require_handle(b) || !nodes[b]->schema ||
+                        !(nodes[b]->schema->nodetype&LYD_NODE_TERM) || reuse_target || reuse_reserved)return 4;
+                reuse_target=nodes[b];
+            }
             if(!strcmp(cmd,"free-root"))lyd_free_all(nodes[a]);else lyd_free_tree(nodes[a]);if(!identities[handle_generations[a]].alive)nodes[a]=NULL;
+            if(fields==2 && !reuse_reserved) {fputs("native free did not release the reuse target\n",stderr);return 100;}
         }
         else if(!strcmp(cmd,"rewind")) {if(sscanf(line,"%*s %u",&a)!=1||a>=4096||!require_handle(a))return 4;refresh=1;nodes[a]=lyd_first_sibling(nodes[a]);cJSON *j=cJSON_CreateObject();cJSON_AddStringToObject(j,"event","read.first-sibling");number(j,"operation",op);number(j,"winner",identity(nodes[a]));emit(j);}
         else if(!strcmp(cmd,"validate")) {if(sscanf(line,"%*s %u",&a)!=1||a>=4096||!require_handle(a))return 4;refresh=1;rc=lyd_validate_all(&nodes[a],ctx,LYD_VALIDATE_PRESENT,NULL);}
