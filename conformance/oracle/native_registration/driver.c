@@ -19,7 +19,7 @@
 #include "../cjson/cJSON.h"
 
 #define LIMIT 65536
-struct identity { const struct lyd_node *ptr; unsigned generation, script, operation, ordinal, source; int alive; };
+struct identity { const struct lyd_node *ptr; unsigned generation, script, operation, ordinal, source, attempt; int alive; };
 struct occurrence { const struct ly_ht *ht; uint32_t slot, hash; unsigned identity, serial; int live; };
 struct table_identity { const struct ly_ht *ptr; int alive; };
 /* Read-only pinned ABI mirror of src/tree_data_sorted.c:rb_node, no algorithm. */
@@ -32,14 +32,15 @@ static unsigned table_identity_count;
 #ifdef NR_UNMODIFIED
 static uint32_t table_sizes[LIMIT];
 #endif
-static unsigned pending_script;
+static unsigned pending_script, output_handle, output_generation;
+static int unsafe_snapshot;
 static const struct lysc_node *schemas[256];
 static unsigned schema_count;
 static int event_schema_enabled;
 static const struct ly_ht *retired_tables[LIMIT];
 static unsigned retired_count;
 static struct lyd_node *nodes[4096];
-static unsigned handle_generations[4096];
+static unsigned handle_generations[4096], handle_revisions[4096], handle_operations[4096];
 static struct ly_ht *generic;
 static const struct nr_rb *working_rb;
 static lyht_value_equal_cb child_callback;
@@ -52,18 +53,15 @@ static unsigned identity(const void *ptr)
 {
     if (!ptr) return 0;
     for (unsigned i = identity_count; i; --i) if (identities[i].ptr == ptr) return i;
-    if (identity_count + 1 == LIMIT) exit(90);
-    unsigned i = ++identity_count;
-    identities[i] = (struct identity){ptr, i, 0, op, ++ordinal, 0, 1};
-    return i;
+    /* References never manufacture allocations, particularly at reused addresses. */
+    exit(90);
 }
 
 static unsigned table_identity(const struct ly_ht *ht)
 {
     if(!ht)return 0;
     for(unsigned i=table_identity_count;i;--i)if(table_identities[i].ptr==ht)return i;
-    if(table_identity_count+1==LIMIT)exit(98);
-    unsigned i=++table_identity_count;table_identities[i]=(struct table_identity){ht,1};return i;
+    exit(98);
 }
 
 static void number(cJSON *j, const char *key, double value) { cJSON_AddNumberToObject(j, key, value); }
@@ -85,15 +83,17 @@ static void emit(cJSON *j)
  * Ordinary identity lookup must keep resolving freed pointers to tombstones. */
 static unsigned allocation(const struct lyd_node *node, const struct lyd_node *source)
 {
-    unsigned old=identity(node), i=old;
-    if(!identities[old].alive) {
-        if(identity_count+1==LIMIT)exit(90);
-        i=++identity_count;
-        identities[i]=(struct identity){node,i,0,op,++ordinal,0,1};
+    if(!node)exit(90);
+    unsigned old=0, i;
+    for(unsigned n=identity_count;n;--n)if(identities[n].ptr==node){old=n;break;}
+    if(old && identities[old].alive)return old;
+    if(identity_count+1==LIMIT)exit(90);
+    i=++identity_count;
+    identities[i]=(struct identity){node,i,0,op,++ordinal,source?identity(source):0,pending_script,1};
+    if(old) {
         cJSON *j=cJSON_CreateObject();cJSON_AddStringToObject(j,"event","allocation.address-reuse");
         number(j,"old_generation",old);number(j,"new_generation",i);emit(j);
     }
-    if(source)identities[i].source=identity(source);
     return i;
 }
 
@@ -124,6 +124,7 @@ static void retire_table(const struct ly_ht *ht)
 
 static void allocate_table(const struct ly_ht *ht)
 {
+    for(unsigned t=table_identity_count;t;--t)if(table_identities[t].ptr==ht){if(table_identities[t].alive)exit(98);break;}
     if(table_identity_count+1==LIMIT)exit(98);
     table_identities[++table_identity_count]=(struct table_identity){ht,1};
     for(unsigned i=0;i<retired_count;++i)if(retired_tables[i]==ht)retired_tables[i]=NULL;
@@ -160,11 +161,15 @@ static void discover(const struct lyd_node *node, unsigned *visits)
     if(++*visits>4096)exit(97);
     if(node->schema && (node->schema->nodetype&LYD_NODE_INNER)) {
         const struct ly_ht *ht=((const struct lyd_node_inner*)node)->children_ht;
-        if(ht && !table_identities[table_identity(ht)].alive) {
+        unsigned ti=0;
+        for(unsigned t=table_identity_count;t;--t)if(table_identities[t].ptr==ht){ti=t;break;}
+        if(ht && (!ti || !table_identities[ti].alive)) {
             /* Discovery must finish before any snapshot follows live links. */
             allocate_table(ht);
         }
     }
+    discover((const struct lyd_node *)node->parent,visits);
+    discover(node->prev,visits);
     discover(lyd_child(node),visits);
     discover(node->next,visits);
 }
@@ -242,6 +247,14 @@ static cJSON *table_json(const struct ly_ht *ht)
     }
     table_sizes[ti]=ht->size;
 #endif
+#ifdef NR_UNMODIFIED
+    /* Reconciliation tokens are not occurrence-lifetime evidence. In
+     * particular same-slot removal/reinsertion is observationally ambiguous.
+     * Keep retained generation references, but never assert their continuity. */
+    cJSON_AddStringToObject(j,"continuity",ht==generic?"observed-generic":"unknown");
+#else
+    cJSON_AddStringToObject(j,"continuity","observed");
+#endif
     number(j,"size",ht->size); number(j,"used",ht->used); number(j,"mode",ht->resize); number(j,"free",ht->first_free_rec);
     cJSON *buckets=cJSON_AddArrayToObject(j,"buckets"), *slots=cJSON_AddArrayToObject(j,"slots"), *chains=cJSON_AddArrayToObject(j,"chains");
     unsigned char active[LIMIT] = {0};
@@ -294,13 +307,14 @@ static struct nr_rb *rb_root(struct nr_rb *r)
 static cJSON *node_json(unsigned i)
 {
     cJSON *j=cJSON_CreateObject(); struct identity *id=&identities[i];
-    number(j,"generation",i); number(j,"id",id->script); number(j,"creation_operation",id->operation); number(j,"creation_ordinal",id->ordinal); number(j,"source",id->source); cJSON_AddBoolToObject(j,"alive",id->alive);
+    number(j,"generation",i); number(j,"id",id->script); number(j,"creation_operation",id->operation); number(j,"creation_ordinal",id->ordinal); number(j,"source",id->source); number(j,"attempt",id->attempt); cJSON_AddBoolToObject(j,"alive",id->alive);
     if (!id->alive) { cJSON_AddStringToObject(j,"current","unavailable"); return j; }
+    if(unsafe_snapshot && id->operation) { cJSON_AddStringToObject(j,"current","unsafe-native-links");return j; }
     const struct lyd_node *n=id->ptr;
     number(j,"context",LYD_CTX(n)==ctx?1:0);
     number(j,"hash",n->hash); number(j,"flags",n->flags); number(j,"prev",identity(n->prev)); number(j,"next",identity(n->next)); number(j,"parent",identity(n->parent));
-    if(n->schema) {cJSON_AddStringToObject(j,"schema",n->schema->name);if(event_schema_enabled){cJSON_AddStringToObject(j,"module",n->schema->module->name);number(j,"schema_identity",schema_identity(n->schema));}if(n->schema->nodetype&LYD_NODE_TERM)cJSON_AddStringToObject(j,"value",lyd_get_value(n));}
-    else {const struct lyd_node_opaq *o=(const void*)n;number(j,"prefix_format",o->format);cJSON_AddBoolToObject(j,"prefix_bound",o->val_prefix_data!=NULL);}
+    if(n->schema) {number(j,"nodetype",n->schema->nodetype);cJSON_AddBoolToObject(j,"key",lysc_is_key(n->schema));cJSON_AddStringToObject(j,"schema",n->schema->name);if(event_schema_enabled){cJSON_AddStringToObject(j,"module",n->schema->module->name);number(j,"schema_identity",schema_identity(n->schema));}if(n->schema->nodetype&LYD_NODE_TERM)cJSON_AddStringToObject(j,"value",lyd_get_value(n));}
+    else {const struct lyd_node_opaq *o=(const void*)n;number(j,"first",identity(o->child));number(j,"tail",identity(o->child?o->child->prev:NULL));number(j,"prefix_format",o->format);cJSON_AddBoolToObject(j,"prefix_bound",o->val_prefix_data!=NULL);}
     if(n->schema && (n->schema->nodetype & LYD_NODE_INNER)) { const struct lyd_node_inner *in=(const void*)n; number(j,"first",identity(in->child)); number(j,"tail",identity(in->child ? in->child->prev : NULL)); cJSON_AddItemToObject(j,"table",table_json(in->children_ht)); }
     cJSON *metas=cJSON_AddArrayToObject(j,"metadata"); for(const struct lyd_meta *m=n->meta;m;m=m->next) {
         cJSON_AddItemToArray(metas,cJSON_CreateString(m->name));
@@ -321,8 +335,26 @@ static cJSON *node_json(unsigned i)
 static void snapshot(const char *event, const void *node, const struct ly_ht *ht, int rc, const void *source)
 {
     cJSON *j=cJSON_CreateObject(); cJSON_AddStringToObject(j,"event",event); number(j,"operation",op); number(j,"rc",rc); number(j,"node_generation",identity(node)); number(j,"source_generation",identity(source));
-    if(working_rb)number(j,"working_rb_root",identity(working_rb->dnode));
+    if(working_rb && !unsafe_snapshot)number(j,"working_rb_root",identity(working_rb->dnode));
     if(ht) cJSON_AddItemToObject(j,"table",table_json(ht));
+    number(j,"output_handle",output_handle);number(j,"output_generation",output_generation);
+    number(j,"node_count",identity_count);number(j,"table_count",table_identity_count);
+#ifdef NR_UNMODIFIED
+    cJSON_AddStringToObject(j,"allocation_scope","survivors-and-observed-frees");
+#else
+    cJSON_AddStringToObject(j,"allocation_scope","every-allocation");
+#endif
+    cJSON *bindings=cJSON_AddArrayToObject(j,"bindings");
+    for(unsigned h=1;h<4096;++h)if(handle_revisions[h]) {
+        cJSON *b=cJSON_CreateObject();number(b,"handle",h);number(b,"generation",handle_generations[h]);
+        number(b,"revision",handle_revisions[h]);number(b,"operation",handle_operations[h]);cJSON_AddItemToArray(bindings,b);
+    }
+    cJSON *registry=cJSON_AddArrayToObject(j,"tables");
+    for(unsigned t=1;t<=table_identity_count;++t) {
+        cJSON *r=cJSON_CreateObject();number(r,"identity",t);cJSON_AddBoolToObject(r,"alive",table_identities[t].alive);
+        if(unsafe_snapshot && table_identities[t].alive)cJSON_AddItemToObject(r,"storage",table_json(table_identities[t].ptr));
+        cJSON_AddItemToArray(registry,r);
+    }
     cJSON *a=cJSON_AddArrayToObject(j,"nodes"); for(unsigned i=1;i<=identity_count;++i) cJSON_AddItemToArray(a,node_json(i));
     cJSON *errs=cJSON_AddArrayToObject(j,"diagnostics"); for(const struct ly_err_item *e=ctx?ly_err_first(ctx):NULL;e;e=e->next) { cJSON *ej=cJSON_CreateObject(); number(ej,"code",e->err); if(e->msg)cJSON_AddStringToObject(ej,"msg",e->msg); if(e->data_path)cJSON_AddStringToObject(ej,"path",e->data_path); if(e->apptag)cJSON_AddStringToObject(ej,"apptag",e->apptag); cJSON_AddItemToArray(errs,ej); }
     if(log_messages)cJSON_AddItemToObject(j,"logs",cJSON_Duplicate(log_messages,1));
@@ -342,7 +374,7 @@ void nr_event(const char *event, const void *node, const void *table, int rc, co
         else for(unsigned i=0;i<retired_count;++i)if(retired_tables[i]==ht)retired_tables[i]=NULL;
     }
     if(!strcmp(event,"node.allocate") || !strcmp(event,"node.dup.allocate")) {
-        unsigned i=allocation(node,source); if(pending_script){identities[i].script=pending_script;pending_script=0;} return;
+        allocation(node,source); return;
     }
     if(!strcmp(event,"lyd_insert_hash.before") || !strcmp(event,"lyd_unlink_hash.before")) ++hash_depth;
     if(!strcmp(event,"lyd_insert_hash.after") && node) {
@@ -411,6 +443,40 @@ static int require_handle(unsigned handle)
     return nodes[handle] && generation && identities[generation].ptr==nodes[handle];
 }
 
+static void bind_handle(unsigned handle)
+{
+    unsigned generation=nodes[handle]?identity(nodes[handle]):0;
+    if(generation!=handle_generations[handle] || !handle_revisions[handle]) {
+        handle_generations[handle]=generation;
+        if(++handle_revisions[handle]==0)exit(98);
+        handle_operations[handle]=op;
+    }
+}
+
+/* Destruction creates no data allocations. A known retired link after free
+ * cannot be a newly returned ancestor: never dereference it during discovery.
+ * Preserve allocation/binding/table evidence at an explicitly unsafe boundary. */
+static int retired_links_after_free(void)
+{
+    unsigned visits=0;
+    for(unsigned i=1;i<=identity_count;++i)if(identities[i].alive) {
+#ifdef NR_UNMODIFIED
+        if(++visits>4096)exit(97);
+#else
+        if(++visits>=LIMIT)exit(97);
+#endif
+        const struct lyd_node *n=identities[i].ptr;
+        if(n->schema && (n->schema->nodetype&LYD_NODE_INNER)) {
+            const struct ly_ht *ht=((const struct lyd_node_inner*)n)->children_ht;
+            if(ht && !table_identities[table_identity(ht)].alive)return 1;
+        }
+        const struct lyd_node *links[]={ (const struct lyd_node*)n->parent,n->prev,n->next,lyd_child(n) };
+        for(unsigned k=0;k<sizeof links/sizeof *links;++k)
+            if(links[k] && !identities[identity(links[k])].alive)return 1;
+    }
+    return 0;
+}
+
 static int prepare_output(unsigned handle)
 {
     if(!handle || handle>=4096)return 0;
@@ -468,7 +534,7 @@ int main(int argc, char **argv)
     while(fgets(line,sizeof line,stdin)) {
         unsigned a=0,b=0,c=0,d=0; int creating=0,refresh=0; char name[80]={0},value[256]={0};
         if(line[0]=='#' || sscanf(line,"%31s",cmd)!=1) continue;
-        ++op; ordinal=0;pending_script=0; ly_err_clean(ctx,NULL);cJSON_Delete(log_messages);log_messages=NULL;
+        ++op; ordinal=0;pending_script=0;output_handle=output_generation=0; ly_err_clean(ctx,NULL);cJSON_Delete(log_messages);log_messages=NULL;
         rc=LY_SUCCESS;
         if(tombstoned_occurrence() && (!strcmp(cmd,"schema") || !strcmp(cmd,"validate") || !strcmp(cmd,"rewind") || !strcmp(cmd,"print") || !strcmp(cmd,"attach") || !strcmp(cmd,"before") || !strcmp(cmd,"change") || !strcmp(cmd,"find-next-loop") || !strcmp(cmd,"root") || !strcmp(cmd,"term") || !strcmp(cmd,"dup") || !strcmp(cmd,"unlink") || !strcmp(cmd,"detach-siblings") || !strcmp(cmd,"free") || !strcmp(cmd,"free-root") || !strcmp(cmd,"opaque") || !strcmp(cmd,"parse") || !strcmp(cmd,"list") || !strcmp(cmd,"frontier"))) {snapshot("boundary.tombstoned-semantic-probe",NULL,generic,0,NULL);return 0;}
         if(!strcmp(cmd,"new")) {
@@ -518,6 +584,10 @@ int main(int argc, char **argv)
             rc=lyd_find_sibling_val(lyd_child(nodes[a]),nodes[b]->schema,NULL,0,&winner);
             cJSON *j=cJSON_CreateObject();cJSON_AddStringToObject(j,"event","read.schema");
             number(j,"operation",op);number(j,"rc",rc);number(j,"queried_parent",identity(nodes[a]));
+            /* Query hash observation: libyang v5.8.6 src/tree_data_common.c:lyd_find_sibling_schema. */
+            uint32_t schema_hash=lyht_hash_multi(0,nodes[b]->schema->module->name,strlen(nodes[b]->schema->module->name));
+            schema_hash=lyht_hash_multi(schema_hash,nodes[b]->schema->name,strlen(nodes[b]->schema->name));
+            schema_hash=lyht_hash_multi(schema_hash,NULL,0);number(j,"schema_hash",schema_hash);
             number(j,"winner",identity(winner));number(j,"current_parent",identity(winner?winner->parent:NULL));
             cJSON_AddItemToObject(j,"before",before);cJSON_AddItemToObject(j,"after",table_json(queried));emit(j);
         }
@@ -526,7 +596,7 @@ int main(int argc, char **argv)
 #ifdef NR_UNMODIFIED
             discover_boundary(nodes[a]);
 #endif
-            identities[identity(nodes[a])].script=a;handle_generations[a]=identity(nodes[a]);} if(!require_handle(a))return 4;if(strcmp(cmd,"remove") && generic->first_free_rec>=generic->size) {
+            if(!identities[identity(nodes[a])].script){identities[identity(nodes[a])].script=a;}bind_handle(a);} if(!require_handle(a))return 4;if(strcmp(cmd,"remove") && generic->first_free_rec>=generic->size) {
             int existing=0;
             if(c)for(uint32_t slot=generic->hlists[b&(generic->size-1)].first, steps=0;slot!=LYHT_NO_RECORD;) {
                 if(slot>=generic->size || ++steps>generic->size)return 94;
@@ -564,10 +634,20 @@ int main(int argc, char **argv)
         else if(!strcmp(cmd,"print")) {if(sscanf(line,"%*s %u",&a)!=1||a>=4096||!require_handle(a))return 4;char *json=NULL;rc=lyd_print_mem(&json,nodes[a],LYD_JSON,LYD_PRINT_SHRINK);cJSON *j=cJSON_CreateObject();cJSON_AddStringToObject(j,"event","public.result");number(j,"operation",op);number(j,"rc",rc);if(json)cJSON_AddStringToObject(j,"json",json);emit(j);free(json);}
         else if(!strcmp(cmd,"dump")) { /* Snapshot below is the requested result. */ }
         else return 4;
+        if((!strcmp(cmd,"free") || !strcmp(cmd,"free-root")) && retired_links_after_free()) {
+            unsafe_snapshot=1;
+            snapshot("boundary.retained-dangling-links",NULL,generic,rc,NULL);
+            return 0;
+        }
 #ifdef NR_UNMODIFIED
-        discover_boundary((creating||refresh)?nodes[a]:NULL);
+        /* Free has no fresh nodes/tables to discover. The bounded link scan
+         * above replaces discovery, preserving the same comparison visit cap. */
+        if(strcmp(cmd,"free") && strcmp(cmd,"free-root"))discover_boundary((creating||refresh)?nodes[a]:NULL);
 #endif
-        if((creating||refresh) && a && a<4096 && nodes[a]) {unsigned generation=identity(nodes[a]);handle_generations[a]=generation;if(creating)identities[generation].script=a;}
+        if((creating||refresh) && a && a<4096) {
+            bind_handle(a);output_handle=a;output_generation=nodes[a]?identity(nodes[a]):0;
+            if(creating && nodes[a] && identities[identity(nodes[a])].operation==op && !identities[identity(nodes[a])].script)identities[identity(nodes[a])].script=a;
+        }
         snapshot(cmd,NULL,generic,rc,NULL);
     }
     if(ferror(stdin))return 6;

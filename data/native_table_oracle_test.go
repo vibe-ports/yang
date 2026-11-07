@@ -23,9 +23,10 @@ import (
 )
 
 type nativeDriverResult struct {
-	Event     string       `json:"event"`
-	Operation int          `json:"operation"`
-	RC        nativeStatus `json:"rc"`
+	Evidence  json.RawMessage `json:"-"`
+	Event     string          `json:"event"`
+	Operation int             `json:"operation"`
+	RC        nativeStatus    `json:"rc"`
 	Table     struct {
 		Present bool `json:"present"`
 		nativeImage
@@ -179,7 +180,7 @@ func TestNativeReleaseRetirementPaths(t *testing.T) {
 				{"replaced-generic", "root 1 c\nnew 8 0\ninsert 7 7 0\nnew 8 0\nfree 7\nprint 1\n", "print", 6},
 				{"removed-child", "root 1 c\nterm 11 1 p P\nterm 12 1 q Q\nterm 13 1 v 1\nterm 14 1 v 2\nfree 14\nprint 1\n", "print", 7},
 				{"retained-generic", "new 8 0\ninsert 1 7 0\ninsert 1 7 0\nfree 1\nfind-next-loop 1 7 1\n", "boundary.tombstoned-semantic-probe", 5},
-				{"retained-foreign", remotePrefix + "free-root 2\nprint 13\n", "boundary.tombstoned-semantic-probe", 16},
+				{"retained-foreign", remotePrefix + "free-root 2\n", "boundary.retained-dangling-links", 15},
 			} {
 				t.Run(tc.name, func(t *testing.T) {
 					terminal := ""
@@ -228,15 +229,26 @@ func nativeDriverUntil(t *testing.T, script, terminal string) []nativeDriverResu
 	if err != nil {
 		t.Fatalf("native registration driver: %v\n%s\nscript:\n%s", err, out, script)
 	}
-	var results []nativeDriverResult
+	var raw []json.RawMessage
 	scan := bufio.NewScanner(bytes.NewReader(out))
 	scan.Buffer(make([]byte, 4096), 8<<20)
 	for scan.Scan() {
+		raw = append(raw, bytes.Clone(scan.Bytes()))
+	}
+	if err := scan.Err(); err != nil {
+		t.Fatal(err)
+	}
+	if err := nativeValidateEvidence(script, raw); err != nil {
+		t.Fatal(err)
+	}
+	var results []nativeDriverResult
+	for _, line := range raw {
 		var r nativeDriverResult
-		if err := json.Unmarshal(scan.Bytes(), &r); err != nil {
-			t.Fatalf("native trace: %v: %s", err, scan.Bytes())
+		if err := json.Unmarshal(line, &r); err != nil {
+			t.Fatal(err)
 		}
-		if r.Event == "driver.ready.actual-children-callback" {
+		r.Evidence = bytes.Clone(line)
+		if r.Event == "driver.ready.actual-children-callback" || r.Event == "allocation.address-reuse" {
 			continue
 		}
 		for i := range r.Table.Chains {
@@ -251,13 +263,47 @@ func nativeDriverUntil(t *testing.T, script, terminal string) []nativeDriverResu
 		}
 		results = append(results, r)
 	}
-	if err := scan.Err(); err != nil {
-		t.Fatal(err)
-	}
 	if err := nativeCompletedReplay(script, results, terminal); err != nil {
 		t.Fatal(err)
 	}
 	return results
+}
+
+// Validate the full evidence before projecting it into the private table model.
+// Python and Go consumers deliberately share this validator, including mutants.
+func nativeValidateEvidence(script string, rows []json.RawMessage) error {
+	payload, err := json.Marshal(struct {
+		Script string            `json:"script"`
+		Rows   []json.RawMessage `json:"rows"`
+	}{script, rows})
+	if err != nil {
+		return err
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+	//nolint:gosec // Fixed repository validator receives local test evidence.
+	cmd := exec.CommandContext(ctx, "python3", filepath.Join("..", "conformance", "oracle", "native_registration", "identity.py"))
+	cmd.Stdin = bytes.NewReader(payload)
+	if out, err := cmd.CombinedOutput(); err != nil {
+		return fmt.Errorf("native identity evidence: %w: %s", err, out)
+	}
+	return nil
+}
+
+func TestNativeIdentitySweep(t *testing.T) {
+	driver := os.Getenv("YANG_NATIVE_REGISTRATION_DRIVER")
+	if driver == "" {
+		t.Skip("set YANG_NATIVE_REGISTRATION_DRIVER after the isolated static build")
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+	defer cancel()
+	//nolint:gosec // Fixed test script and explicitly opted-in local driver.
+	cmd := exec.CommandContext(ctx, "python3", filepath.Join("..", "conformance", "oracle", "native_registration", "sweep_test.py"), "--driver", driver)
+	if out, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("identity/lifetime sweep: %v\n%s", err, out)
+	} else {
+		t.Logf("%s", out)
+	}
 }
 
 // Shared by every Go differential caller, including loops that could otherwise

@@ -12,11 +12,29 @@ import check
 
 
 def snapshot(event, operation):
-    return {"event": event, "operation": operation, "rc": 0, "diagnostics": [], "nodes": []}
+    nodes = [dict(generation=g, id=1 if g == 6 else 0, creation_operation=1 if g == 6 else 0,
+                  creation_ordinal=1 if g == 6 else g, source=0, attempt=1 if g == 6 else 0,
+                  alive=True, parent=1 if 2 <= g <= 5 else 0, prev=5 if g == 2 else g - 1 if 3 <= g <= 5 else g,
+                  next=g + 1 if 2 <= g < 5 else 0, schema="v" if 2 <= g <= 5 else "c") for g in range(1, 7)]
+    chains = [dict(generation=g, occurrence=i + 1, node=0, hash=8 * (i + 1), slot=i,
+                   bucket=0, ordinal=i, alive=True) for i, g in enumerate((2, 2, 3, 4, 5))]
+    nodes[0].update(first=2, tail=5, table=dict(present=True, identity=1, used=5, size=8,
+                    continuity="observed", slots=[{} for _ in range(8)], buckets=[{} for _ in range(8)], chains=chains))
+    nodes[5].update(first=0, tail=0, table=dict(present=False))
+    return {"event": event, "operation": operation, "rc": 0, "diagnostics": [], "nodes": nodes,
+            "output_handle": 1 if event == "root" else 0, "output_generation": 6 if event == "root" else 0,
+            "node_count": 6, "table_count": 1, "tables": [dict(identity=1, alive=True)], "allocation_scope": "every-allocation",
+            "bindings": [dict(handle=1, generation=6, revision=1, operation=1)]}
 
 
 class ControlComparisonTest(unittest.TestCase):
     def compare(self, script, rows, other=None):
+        def prefix(trace):
+            ready = snapshot("driver.ready.actual-children-callback", 0)
+            ready.update(nodes=ready["nodes"][:5], node_count=5, bindings=[])
+            return [ready, snapshot("root", 1)] + [dict(r, operation=r["operation"] + 1) for r in trace]
+        rows, other = prefix(rows), prefix(other) if other is not None else None
+        script = "root 1 c\n" + script
         with tempfile.TemporaryDirectory() as directory:
             root = pathlib.Path(directory)
             (root / "cases").mkdir()

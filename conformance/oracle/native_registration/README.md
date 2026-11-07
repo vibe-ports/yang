@@ -54,9 +54,10 @@ Dockerfile's oracle stage into a second library and links `driver-unmodified`.
 The replay check requires both executable paths explicitly, verifies their
 instrumented/unmodified ABI markers, and compares terminating public JSON,
 validation statuses/diagnostics, and schema-lookup statuses plus normalized
-winner/current-parent identities. Allocation generations are normalized through
-script handles before comparison; generations from different processes are
-never compared directly. Every comparison checks the exact completed command
+winner/current-parent identities. Allocation generations are normalized injectively from completed-operation
+components, anchored by operation-specific handle bindings. Internal allocations
+and successive incarnations of a reused handle have distinct keys; process-local
+generations are never compared directly. Every comparison checks the exact completed command
 sequence, statuses and diagnostic code/path/app-tag, plus the independently
 expected terminal command or stop boundary on both sides. LOGINT source paths
 and line numbers differ between builds; full validation diagnostics are still
@@ -107,8 +108,10 @@ Snapshots contain stable table identities, presence/capacity/used/mode, bucket e
 free-list order and its inert terminal `size` link, and ordered chains with
 recorded hash, allocation generation and trace-only occurrence serial. Resizes
 carry occurrence serials forward; checked duplicate elimination retires the
-eliminated occurrence. Nodes carry `(operation, creation ordinal)`, script ID
-where supplied, dup source ID, hash/flags/schema, raw link identities,
+eliminated occurrence. In the untouched build, children-table reconciliation
+tokens have `continuity: unknown` and do not establish occurrence lifetimes.
+Nodes carry `(operation, creation ordinal)`, an immutable successful-return label,
+a separate attempted-output label, dup source generation, hash/flags/schema, raw link identities,
 parent/first/tail, context identity, metadata ownership and bounded RB topology.
 `rb_stored_root` records the metadata pointer separately from `rb_root`, obtained
 by following the RB parent links before walking the complete component. Merge-2
@@ -506,11 +509,11 @@ The identity/lifetime sweep covers these differences between builds:
 | Recursive dup, parser and list-key allocation hooks | Discovery of all surviving descendants, including schema keys | `dup-descendant`, `parse-descendant`, `list-key` |
 | Implicit creation and node-retirement/free hooks | Discovery after validation and actual-free interposition, including default replacement | `validation-delete`; existing release retirement controls |
 | Table allocation/retirement hooks | Known-table free observation and fresh table identity on address reuse | `table-reuse`; existing generic replacement control |
-| Occurrence hooks carrying generations through resize | Preserve FIFO pointer/hash identities across layout changes; retire the exact earliest removed generic occurrence before shrink | `retained-resize`, `retained-remove` |
+| Occurrence hooks carrying generations through resize | Preserve retained generation references across layout changes; retire the exact earliest removed generic occurrence before shrink; children-table continuity is explicitly unknown | `retained-resize`, `retained-remove` |
 | Generation-bound script handles and retained records | Keep earlier handles and tombstones after replacement; never discover allocations through occurrence pointers | `stale-handle`, `retained-same-hash`, existing retained-foreign control |
 | Constructor hooks register identities before primitive snapshots | Finish live-boundary discovery before emitting snapshots; table registration itself emits no partial-forest snapshot | All lifetime cases compare quiet and verbose untouched runs |
 
-All eleven new independent live request cases are in `cases/lifetime/` and run
+The eleven allocator-reuse request cases are in `cases/lifetime/` and run
 through `TestNativeComparisonLifetimes` and the complete observer checker. Both
 processes must emit actual address-reuse evidence with resolved old and new
 generations. Descendant cases additionally require reuse between allocations
@@ -549,3 +552,207 @@ algorithm or golden changes. The observer keeps its existing identity/occurrence
 limits, traversal cap and process watchdog. The ordinary Go work baseline was
 rerun on actual `origin/main` (`18373297`) and head: all twelve
 visit/charge/allocation/byte tuples above remain identical.
+
+
+## Identity/lifetime sweep closure (F1–F8)
+
+Allocation registration never binds a handle. `pending_script` records the
+attempt only; all allocations made in the call can name that attempt without
+claiming its output handle. After native return and complete discovery,
+`bind_handle()` records the actual returned generation, binding revision and
+operation. Snapshots retain the complete binding map, including aliases, null
+refreshes and tombstoned targets. `id` is the first successful birth-operation
+return label and cannot be overwritten by a later alias or refresh.
+`output_handle`/`output_generation` independently record the returned pointer.
+
+Reference lookup cannot invent allocations. The untouched observer traverses
+parent, previous sibling, child and next sibling, bounded by the existing visited
+set, 4096-node traversal cap and watchdog. This discovers copied ancestors,
+ancestor keys, opaque children and tables before any live reference is serialized.
+It never discovers through a retained occurrence pointer. Reused addresses append
+a fresh generation; ordinary references continue resolving old tombstones.
+
+`identity.py` validates every trace consumed by `check.py`, including quiet,
+verbose, lifetime and comparison traces. The Go wrapper invokes the same validator
+on the full raw JSON before decoding `nativeImage` or indexing slots, and retains
+that raw evidence. Independent permanent bootstrap nodes and their required table, inner-node table
+presence, registry counts, contiguous
+positive generations/table identities, retained tombstones, immutable provenance,
+unique allocation labels, complete bindings, returned-pointer agreement, live
+completed-operation links, table ownership and occurrence references are required.
+Read winners must resolve to live allocations at the read operation. Schema reads
+record the native query hash and are checked against its ordered registration run;
+first-sibling reads are checked against the recorded component. Normalization
+assigns each surviving allocation an immutable `(birth operation, component
+ordinal)` key, including internal nodes. Comparisons check every completed live
+component and binding map as well as public results and reads. Null alone maps to
+zero. Allocation labels, raw serials and process-local generations are not comparison
+keys. RB membership uses generations, so equal script labels cannot collapse it.
+
+The unchanged comparison library has two explicit assurance limits:
+
+* Children-table snapshots say `continuity: unknown`. Same pointer/hash/slot and
+  final capacity do not establish retention across a native call. Their serialized
+  occurrence tokens preserve retained references for reconciliation and must not
+  be interpreted as known lifetime serials. Instrumented hooks establish actual
+  retirement/recreation; generic explicit operations retain their narrower
+  `observed-generic` evidence. The checker rejects a comparison trace claiming
+  observed children-table continuity.
+* `allocation_scope: survivors-and-observed-frees` covers surviving allocations
+  and subsequent actual frees of known allocations. It cannot establish temporary
+  objects created and freed inside a call. Only `every-allocation`, emitted by the
+  instrumented library, claims that coverage. Failed terms, partial parser trees
+  and successful leading metadata each have required allocation/free pairs;
+  deleting an entire pair fails that lane. The comparison does not claim it.
+
+The inventory below revisits every row of the sweep. **H** is the instrumented
+allocation hook; **D** is complete-component discovery in the untouched build;
+**B** is the separate returned-pointer binding; **F** is native retirement/free
+hooks (instrumented) or actual-free interposition for registered objects
+(untouched); **S** is discovery before serialization; **R** appends identities on
+reused node/table addresses; **T** retains tombstones, bindings and generation
+references. **Transient** means H/F/T evidence only, excluded from the untouched
+allocation assurance. “Existing” means the path moves or reads allocations already
+registered; it must not allocate a replacement identity.
+
+| Native path from the sweep | (a) Registration, instrumented / untouched | (b) Binding | (c) Free observation | (d) Survivors before serialization | (e) Address reuse | (f) Tombstones/references and controls |
+|---|---|---|---|---|---|---|
+| Bootstrap and `root` | H / D, five bootstrap nodes | B only returned root | F | S complete root component | R | T; bootstrap deletion mutants, recreate-print |
+| `term`, RPC input/output | H / D; failures transient | B successful output; attempt separate | F; failed value storage H/F | S | R | T; failed-term control, remote-last RPC cases |
+| `list` and keys | H / D list and keys | B list only | F; internal failed construction transient | S keys and tables | R | T; matrix shallow list, list-key reuse |
+| `opaque`, including children | H / D via lyd_child | B returned opaque only | F; failures transient | S opaque first/tail and descendants | R | T; opaque-eligibility, matrix list non-key child |
+| Shallow `dup` | H / D, keys-only shallow lists | B returned node | F | S | R | T; 32-mask container/list matrix, F7 old-assumption controls |
+| Recursive `dup` | H / D all descendants and tables | B returned node | F | S | R | T; matrix, dup-descendant, dup.table.initialized |
+| `dup WITH_PARENTS` | H / D ancestors, keys, descendants | B returned descendant, ancestors unhandled | F | S complete ancestry component | R required in quiet/verbose builds | T; ancestor-reuse and matrix |
+| Duplication modifiers | H / D for masks 0–15, 64–79 | B, independent of allocation order | F | S | R | T; all 224 shape/mask controls, fixed primitive schedules |
+| Existing-key duplicate return | Existing, zero allocations | B aliases; immutable birth labels | F through any alias | S existing component | No new generation on alias | T; repeated aliases, rewind and stale alias probe |
+| Duplication error cleanup | H / D survivors; failed copies transient | No failed output binding | F incl raw free | S surviving components | R | T; existing error cleanup/lifetime controls; foreign-context branch excluded |
+| JSON `parse` | H / D returned forest | B actual returned first data node | F; errors transient | S forest and ancestry | R | T; parse-descendant, internal-build |
+| Leading JSON metadata temporary nodes | H only for wholly transient opaque nodes | B returned data; temporary nodes unhandled | H/F pair required | S returned forest | R for subsequently reused observed addresses | T instrumented; successful-metadata pair-deletion mutant |
+| Parser errors, missing key/invalid value | H; D only surviving results | Null binding on failed parse | H/F partial forest required | S survivors even after error | R | T instrumented; partial-parser pair-deletion mutant |
+| Validation implicit nodes/defaults | H / D even after error | B refreshed root, including null | F | S new defaults/NP containers | R | T; validation-delete and d-to-c root-refresh control |
+| Validation autodeletion | Existing registered default identities | Retain other handles; B refreshed root | Actual F, no link-based inference | S survivors | R | T; validation-delete, stale-validation mutant |
+| Single insert/unlink/move | Existing generations | Existing B | F only if native frees | S current components | No allocation on relink | T; before/attach continuity control; untouched continuity unknown |
+| Sibling move/detach/sorted merge | Existing generations; RB nodes separate | Existing B | F | S surviving components | No replacement identity for moves | T; remote/merge cases; untouched occurrence continuity unknown |
+| Value/key `change` | Existing node generation | Existing B | F for any actual release | S | No generation for value replacement | T; change reinsertion control; untouched occurrence continuity unknown |
+| Synthetic `frontier` | Four existing allocations | Existing B | No free | S | No new generation | T; schema-pointer controls, synthetic reachability only |
+| `free`, `free-root`, sibling/subtree destruction | Existing registered nodes/tables | Bindings retain generation | F; parented-key refusal makes no tombstone | Bounded known-link scan replaces D after free; unsafe native links terminate before traversal | R on later allocations | T; release controls, retained-links safe terminal evidence, stale aliases, retained foreign/generic cases |
+| Children-table/generic/recursive-dup table creation | Native table H / explicit generic notice or D | Node handles independent of table IDs | F table and owned occurrences | S table registry | Fresh table identity on R | T table registry; table-reuse, zero/collapse-table mutants |
+| `I`/`U`, generic insert/remove, lazy duplicates | Existing nodes; lazy dup H / D | B lazy returned duplicate | F | S | R | T; earliest generic removal, retained-remove; child continuity unknown |
+| Table grow/shrink | Same ly_ht identity; storage replacement only | Existing B | Native F for backing arrays, not table retirement | S final layout | No fresh table identity on resize | T instrumented occurrence carry; retained-resize/remove; untouched continuity unknown |
+| `schema`, `rewind`, `print` reads | Existing allocations | B refresh for rewind | No data-node free | S already-complete component | No allocation on read | T; winner old-incarnation/internal-node/duplicate-label mutants |
+| Unreachable XML/anydata/raw/path/sibling-dup/raw-table-dup | Excluded from protocol | N/A | N/A | N/A | N/A | No claim; anydata traversal would need a payload-aware extension |
+
+Per-finding controls and counterfactual evidence:
+
+| Finding and root cause | Fix | Regression and rejected counterfactual |
+|---|---|---|
+| F1: first allocator consumed the requested handle | Register allocations and attempts independently; bind actual return | `test_f1_f7_flag_matrix`, leading metadata control; incidental-first-ancestor label mutant rejected |
+| F2: discovery omitted ancestry and reused parents resolved to tombstones | Discover complete connected component before serialization; references cannot create identities | `test_f2_ancestor_reuse`, 32 cycles in both builds and modes require actual ancestor reuse; dead-parent mutant rejected |
+| F3: aliases overwrote allocation labels; refreshes missing | Separate versioned bindings, immutable birth label, returned-pointer evidence | `test_f3_aliases_refresh_and_release`; stale rewind/validation and alias-label overwrite mutants rejected; release through alias then stale-alias probe |
+| F4: equal final slots falsely implied continuity | Untouched children continuity explicitly unknown; instrumented hooks retain lifetime evidence | `test_f4_occurrence_continuity`; before/attach/change end at original capacity; instrumented serials retire/recreate; false observed-continuity mutant rejected |
+| F5: handles/internal zero labels collapsed allocations | Injective per-operation component keys, complete binding history, independent read resolution | `test_f5_winners_and_f6_structural_mutants`; old incarnation, other internal child and duplicate label rejected on either side and both sides |
+| F6: comparison could omit identities and Go discarded evidence | Common validator before comparison and Go projection; raw evidence retained | Same Python controls and `TestNativeIdentityEvidenceRejections`; complete classes, an internal survivor, zero/collapsed tables, occurrence IDs and tombstone links rejected |
+| F7: unconditional recursion/ordinal-one assertions | Flag/branch-specific allocation multisets and child correspondence, including ancestor keys and existing-key aliases | 224 shape/mask requests with fixed before/after primitive schedules; correct shallow/parented copies explicitly fail the pre-fix assumptions |
+| F8: boundary discovery cannot observe internal transient lifetimes | Narrow untouched assurance explicitly; every-allocation lane independently requires transient pairs | `test_f8_transient_scope`: failed term (1), partial parser (3), successful metadata (1) dead allocations; dropping each entire lifetime fails |
+
+The Go entry points are `TestNativeIdentitySweep` and
+`TestNativeIdentityEvidenceRejections`; `TestNativeControlReplayRejections` retains
+all nine comparison-completion controls. `sweep_test.py` contains the independent
+live request inputs and writes measured primitive schedules under ignored `.build/`.
+No manifest fixture IDs or goldens are added. Fixed primitive seeds remain
+247, 0x7be55cae and 0x257, in both resize modes.
+
+Native algorithms, instrumentation sites and the hook interface are unchanged.
+Changed observer paths are allocation/reference lookup, boundary component
+discovery, bounded post-free retirement checks, safe terminal serialization,
+returned bindings and schema-read query observation;
+checker paths are common structural validation, normalization and duplication
+expectations. XML, anydata/anyxml payloads, raw/path constructors, direct sibling
+or raw-table duplication, foreign-context duplication, NO_EXT extension data and
+WITH_PRIV private pointers remain outside the reachable protocol. No production
+Go mutation path, ownership, cache, journal or resource budget is changed. All
+C observer allocations/visits retain the existing caps and watchdog. The unchanged
+ordinary-work test was run against actual origin/main 18373297 and head: all twelve
+visit/charge/allocation/byte tuples were identical, including 256-node adverse
+insertion order and duplicate-heavy input, with and without a journal.
+
+Counterfactual execution rebuilt the reviewed 83f3aee3 driver source against the
+same pinned objects in both modes. The parents and metadata F1 controls, the F2
+128-cycle list-ancestor reuse control, the F3 existing-key alias control and the
+F4 continuity-assurance control all failed on that source and passed on the fixed
+driver. The pre-fix checker accepted a stale-incarnation schema winner and a
+comparison trace with every node record removed; the new checker rejected each
+mutation independently on either side and both sides. F7's old recursive-copy and
+ordinal-one assertions are executed as expected failures on the correct matrix
+results. F8 removes each entire transient allocation/free lifetime and requires
+rejection from the every-allocation evidence lane.
+
+The final F6 table-class deletion control first failed with “accepted malformed
+identity evidence” when both the registry and every table snapshot were removed.
+The validator now independently requires the permanent bootstrap table and table
+presence fields for every live inner node. The same control is registered in
+both the Go wrapper and the either-side/both-sides Python mutation lane.
+
+The F7 flag matrix also includes 64 key cases: returning an existing key in a
+supplied parent, copying a list ancestor into a supplied higher container, and
+copying a detached key with WITH_PARENTS (which leaves its native local parent
+null even when a parent argument was supplied). Before the final checker fix,
+all 32 WITH_PARENTS cases failed: a higher matching supplied ancestor overwrote
+the immediate copied parent, and detached keys incorrectly reused the supplied
+parent. The checker now follows lyd_dup_get_local_parent's immediate-parent
+selection, requires the returned copied key to belong to that copied parent,
+and uses the native LYS_LIST kind and contiguous key prefix for shallow copies.
+All 64 cases have independent allocation/return assertions and fixed primitive
+counts, in addition to the original 160 scenarios.
+
+The first full driver-enabled run exposed the retained-foreign release edge:
+instrumented evidence contained a completed live tail reference to a freed node,
+and untouched discovery followed that pointer and crashed. Explicit destruction
+now checks known retirement before any discovery. It creates no data nodes or
+ly_ht objects, so this bounded check replaces post-free discovery rather than
+adding an uncharged traversal. The untouched cap remains 4096 live visits; the
+instrumented registry keeps its existing LIMIT and watchdog bounds. A retired
+physical link or owned table ends at `boundary.retained-dangling-links`.
+
+At that terminal boundary, bootstrap state remains available, every allocation
+and binding remains recorded, script-created live allocations have explicit
+`current: unsafe-native-links`, and every still-live table has a safe storage
+snapshot in its registry entry. Table records retain references to freed node
+generations. The observer does not dereference unsafe data links or claim a
+completed usable tree. Ordinary completed-operation links still must be live.
+`cases/lifetime/retained-links.calls` supplies a public result before the release; quiet and
+verbose runs in both builds must reach the exact boundary and retain the dead
+foreign occurrence. Missing table storage and relabeling the boundary as a
+completed free are rejected. Existing normal-release, alias, reuse and
+free-refused-key semantics retain their ordinary boundaries.
+
+
+### Final verification outcomes
+
+Changes are left uncommitted. No production source, policy file, dependency,
+public API or golden was changed. No manifest fixtures were added; the new live
+request is `lifetime/retained-links`, with the generated 224-case flag matrix in
+`sweep_test.py`.
+
+| Command/check | Outcome |
+|---|---|
+| `./dev make ci </dev/null` under the heavy lock | Exit 0; run once |
+| `DEV_PLATFORM=linux/amd64 ./dev make test-oracle oracle-check </dev/null` under the lock | Exit 0; run once |
+| Driver-enabled `go test -tags oracle ./data -run '^TestNative' -count=1 -v` under the lock | Exit 1, zero skips: retained-foreign release failed in both builds; all other selected tests passed |
+| After fixing that release: driver-enabled `go test -tags oracle ./data -run 'TestNative(Release|Identity|ComparisonLifetimes|ControlReplay)' -count=1 -v` | Exit 0; 31.373s; no skips |
+| After integrating the terminal case: driver-enabled `go test -tags oracle ./data -run '^TestNativeObserverEvidence$' -count=1 -v` under the lock | Exit 0; 125.291s; no skips |
+| `sweep_test.py ... IdentitySweep.test_retained_links_stop_before_discovery` after the fixture move | Exit 0; both builds, quiet and verbose |
+| `./dev make fmt-check registries sensitive </dev/null` | Formatting and registries passed; history scan initially lacked a Git blob |
+| `make secrets sensitive` in dev with cached objects supplied through `GIT_ALTERNATE_OBJECT_DIRECTORIES` | Exit 0; 646 commits scanned, no leaks or generic-sensitive findings; cached objects supplied without changing Git metadata |
+| `golangci-lint run --build-tags oracle --new-from-rev HEAD ./data/...` | Exit 0; zero new findings |
+| Optional whole oracle-tag lint | 12 pre-existing findings; no new findings after the focused oracle-tag lint above |
+| Ordinary counted-work test on origin/main 18373297 and head | Exit 0 on each; all twelve tuples in the work table above identical |
+| `git diff --check` | Exit 0 |
+
+The full driver-enabled suite was not repeated after correction, respecting the
+once-only full-run limit. Its failing paths and every affected observer/lifetime
+lane were rerun successfully as focused tests. A fresh aggregate full-suite result
+on the final worktree remains for the lead if required by the gate. The comparison
+assurance limits for transient allocations and occurrence continuity are explicit;
+no requested identity/lifetime code fix remains open.

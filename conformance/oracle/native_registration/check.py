@@ -7,7 +7,10 @@ import json
 import pathlib
 import subprocess
 
+from identity import validate
+
 root = pathlib.Path(__file__).resolve().parent
+LYS_LIST = 0x0010  # libyang v5.8.6 src/tree_schema.h
 
 
 def run(name, option="--quiet", unmodified=False):
@@ -31,24 +34,26 @@ def final_public(rows):
     return [r for r in rows if r.get("event") == "public.result"]
 
 
-def lookup_results(rows):
-    # Generations are process-local. Public handles identify the selected node
-    # and its actual current parent independently of constructor-hook activity.
-    handles = {}
-    for row in rows:
-        for node in row.get("nodes", []):
-            if node.get("id"):
-                handles[node["generation"]] = node["id"]
-    def normalize(generation):
-        assert not generation or generation in handles, ("unhandled lookup identity", generation)
-        return handles.get(generation, 0)
-    return [(r["operation"], r["rc"], normalize(r["queried_parent"]),
-             normalize(r["winner"]), normalize(r["current_parent"]))
-            for r in commands(rows, "read.schema")]
+def normalized_reads(name, rows):
+    return validate((root / "cases" / (name + ".calls")).read_text(), rows)
+
+
+def lookup_results(rows, name):
+    return [value for (op, event), value in normalized_reads(name, rows).items() if event == "read.schema"]
+
+
+def assert_lookup_handles(rows, expected):
+    reads = commands(rows, "read.schema")
+    assert len(reads) == len(expected), "missing lookup evidence"
+    for read, (winner, parent) in zip(reads, expected, strict=True):
+        snapshot = next(r for r in rows if r["event"] == "schema" and r["operation"] == read["operation"])
+        handles = by_handle(snapshot)
+        assert (read["winner"], read["current_parent"]) == (handles[winner]["generation"], handles[parent]["generation"])
 
 
 # Expected stops are request facts, never inferred from the observed final row.
 STOPS = {
+    "lifetime/retained-links": (16, "boundary.retained-dangling-links"),
     "remote-last": (14, "boundary.remote-last-corrupting-primitive"),
     "merge2-before": (11, "boundary.merge2-before-uninitialized-continuation"),
     "merge2-successor": (13, "boundary.merge2-successor-schema-precondition"),
@@ -105,16 +110,13 @@ def compared_results(name, rows):
     assert results, (name, "empty compared results")
     return (final_public(rows),
             [(r["operation"], r["rc"], r["diagnostics"]) for r in commands(rows, "validate")],
-            lookup_results(rows),
-            [(r["operation"], handle_for_generation(rows, r["winner"])) for r in commands(rows, "read.first-sibling")])
-
-
-def handle_for_generation(rows, generation):
-    return next(n["id"] for r in reversed(rows) for n in r.get("nodes", []) if n["generation"] == generation)
+            lookup_results(rows, name),
+            [value for (op, event), value in normalized_reads(name, rows).items() if event == "read.first-sibling"])
 
 
 def compare_control(name, rc, rows, plain_rc, plain_rows, stopped=True):
     expected_rc = 5 if name in ("invalid-capacity", "invalid-mode") else 0
+    assert normalized_reads(name, rows) == normalized_reads(name, plain_rows), (name, "control identity evidence changed")
     assert rc == plain_rc == expected_rc, (name, "control exit status")
     assert completed_replay(name, rows, stopped) == completed_replay(name, plain_rows, stopped), (name, "completed command results changed")
     assert compared_results(name, rows) == compared_results(name, plain_rows), (name, "control results changed")
@@ -165,6 +167,7 @@ LIFETIME_CONTROLS = ("recreate-print", "recreate-lookup", "dup-descendant", "par
 def lifetime_evidence(name, rows):
     # Check actual allocator reuse in BOTH processes. Merely running a sequence
     # that could reuse storage, or comparing equal stopped prefixes, is no proof.
+    normalized_reads(name, rows)
     completed_replay(name, rows)
     script = request_commands(name)
     seen, pairs = {}, []
@@ -196,6 +199,7 @@ def lifetime_evidence(name, rows):
     assert all(r["rc"] == 0 for r in rows if r["event"] in set(script) | {"public.result", "read.schema"}), (name, "unsuccessful control")
     if name.endswith("table-reuse"):
         tables = [n["table"] for r in commands(rows, "print") for n in r["nodes"] if n["alive"] and n["id"] == 1]
+        assert len({t["identity"] for t in tables[:-1]}) == 16 and all(t["identity"] > 0 for t in tables[:-1]), (name, "reused/collapsed table generation")
         assert len(tables) == 17 and all(t["present"] and not t.get("retired") and t["used"] == 5 for t in tables[:-1]) and not tables[-1]["present"], (name, "retired replacement table")
     if name.endswith("validation-delete"):
         validation = commands(rows, "validate")[0]
@@ -245,11 +249,71 @@ def lifetime_control(case):
 
 
 def by_handle(row):
-    return {n["id"]: n for n in row["nodes"] if n["alive"] and n["id"]}
+    nodes = {n["generation"]: n for n in row["nodes"]}
+    bindings = row["bindings"]
+    assert len({b["handle"] for b in bindings}) == len(bindings), "ambiguous handle"
+    return {b["handle"]: nodes[b["generation"]] for b in bindings if b["generation"] and nodes[b["generation"]]["alive"]}
+
+
+def duplication(row, fields):
+    """Native lyd_dup/lyd_dup_r allocation sets, independently of ordinals."""
+    nodes = {n["generation"]: n for n in row["nodes"]}
+    handles = by_handle(row)
+    out, src = handles[int(fields[1])], handles[int(fields[2])]
+    parent, flags = int(fields[3]), int(fields[4])
+    expected = Counter()
+    def copy(n, recursive):
+        expected[n["generation"]] += 1
+        child = n.get("first", 0) if recursive or n.get("nodetype") == LYS_LIST else 0
+        while child:
+            c = nodes[child]
+            if not recursive and not c.get("key"): break
+            copy(c, recursive)
+            child = c["next"]
+    local = 0 if flags & 4 else parent
+    if flags & 4:
+        ancestor = src["parent"]
+        while ancestor:
+            n = nodes[ancestor]
+            if parent and n.get("schema") == handles[parent].get("schema"):
+                if not local: local = parent
+                break
+            copy(n, False)
+            if not local: local = -1  # preserve the immediate copied parent
+            ancestor = n["parent"]
+    if not (src.get("key") and local):
+        copy(src, bool(flags & 1))
+    made = [n for n in nodes.values() if n["creation_operation"] == row["operation"]]
+    assert Counter(n["source"] for n in made) == expected, ("wrong duplication allocation set", fields, expected)
+    if src.get("key") and local:
+        assert out.get("key") and out.get("schema") == src.get("schema"), "wrong existing-key alias"
+        if local > 0:
+            assert out["parent"] == handles[local]["generation"]
+        else:
+            assert out["creation_operation"] == row["operation"] and out["source"] == src["generation"], "wrong copied-ancestor key"
+            local_parent = nodes[out["parent"]]
+            assert local_parent["creation_operation"] == row["operation"] and local_parent["source"] == src["parent"], "wrong immediate ancestor"
+    else:
+        assert out["source"] == src["generation"] and out["creation_operation"] == row["operation"], "wrong returned duplicate"
+    # Child correspondence applies recursively, or to keys only in a shallow list.
+    def children(n):
+        result, g = [], n.get("first", 0)
+        while g:
+            result.append(nodes[g]); g = nodes[g]["next"]
+        return result
+    def correspondence(dst, source, recursive):
+        wanted = children(source) if recursive or source.get("nodetype") == LYS_LIST else []
+        if not recursive:
+            first_nonkey = next((i for i, c in enumerate(wanted) if not c.get("key")), len(wanted))
+            wanted = wanted[:first_nonkey]
+        got = children(dst)
+        assert [c["source"] for c in got] == [c["generation"] for c in wanted], "wrong duplicate children"
+        for d, s in zip(got, wanted, strict=True): correspondence(d, s, recursive)
+    if not (src.get("key") and local): correspondence(out, src, bool(flags & 1))
 
 
 def rb_members(row):
-    generation = {n["generation"]: n["id"] for n in row["nodes"]}
+    generation = {n["generation"]: n["generation"] for n in row["nodes"]}
     return [{generation[r["node"]] for r in n.get("rb", [])} for n in row["nodes"] if n.get("rb")]
 
 
@@ -308,6 +372,9 @@ def generation_reference_sites(row):
 
 
 def tables(row):
+    for entry in row.get("tables", []):
+        if "storage" in entry:
+            yield "retained.table", entry["storage"]
     for key in ("table", "before", "after"):
         if key in row:
             yield key, row[key]
@@ -331,7 +398,7 @@ def internal_build_allocations(rows, creations):
     result = next(r for r in rows if r["event"] == "term" and r["operation"] == 3)
     assert result["rc"] == 7
     node = next(n for n in result["nodes"] if n["generation"] == failed)
-    assert node["id"] == 70 and not node["alive"] and node["source"] == 0
+    assert node["id"] == 0 and node["attempt"] == 70 and not node["alive"] and node["source"] == 0
     assert any(r["event"] == "node.free" and r["operation"] == 3 and
                r["node_generation"] == failed and r["rc"] == 7 for r in rows), "missing failed constructor free"
 
@@ -477,6 +544,7 @@ def records(row):
 
 
 def invariants(rows, name, stopped=True):
+    normalized_reads(name, rows)
     completed_replay(name, rows, stopped)
     counts = Counter(r["event"] for r in rows)
     assert counts["driver.ready.actual-children-callback"] == 1, (name, "missing ready")
@@ -587,26 +655,10 @@ def invariants(rows, name, stopped=True):
                 # These are all inner schemas in the driver's two fixed modules.
                 if node.get("schema") in ("c", "d", "r", "l"):
                     assert {"first", "tail", "table"} <= node.keys(), (name, "missing child/table snapshot")
-        if row["event"] == "dup":
+        if row["event"] == "dup" and row["rc"] == 0:
             fields = [line.split() for line in (root / "cases" / (name + ".calls")).read_text().splitlines()
                       if line.strip() and not line.lstrip().startswith("#")][row["operation"] - 1]
-            handles = by_handle(row)
-            if row["rc"] == 0:
-                duplicate, source = handles[int(fields[1])], handles[int(fields[2])]
-                assert duplicate["source"] == source["generation"], (name, "wrong dup source")
-                assert duplicate["creation_operation"] == row["operation"] and duplicate["creation_ordinal"] == 1
-                # Recursive copies retain the physical child correspondence,
-                # independently of the duplicate's script handle assignment.
-                pending = [(duplicate, source)]
-                while pending:
-                    dst, src = pending.pop()
-                    assert dst["source"] == src["generation"], (name, "recursive dup source")
-                    d, s = dst.get("first", 0), src.get("first", 0)
-                    while d:
-                        assert s, (name, "extra duplicate child")
-                        pending.append((nodes[d], nodes[s]))
-                        d, s = nodes[d]["next"], nodes[s]["next"]
-                    assert not s, (name, "missing duplicate child suffix")
+            duplication(row, fields)
         if row["event"] == "dup.table.initialized":
             duplicate, source = nodes[row["node_generation"]], nodes[row["source_generation"]]
             table = row["table"]
@@ -911,12 +963,15 @@ def main():
         lifetime_control(case)
     if args.lifetime_case:
         return
+    rc, rows = run("lifetime/retained-links")
+    control_equal("lifetime/retained-links", rc, rows)
 
     rc, rows = run("remote-last", "--remote-stop")
     assert rc == 0 and any(r["event"] == "boundary.remote-last-corrupting-primitive" for r in rows)
     assert all(r["rc"] == 0 for r in rows if r["event"] in ["term", "root", "dup", "unlink", "attach"])
     boundary = rows[-1]
     n = by_handle(boundary)
+    n[17] = next(node for node in boundary["nodes"] if node["attempt"] == 17 and node["creation_operation"] == boundary["operation"])
     g = {i: node["generation"] for i, node in n.items()}
     assert (n[11]["prev"], n[16]["next"], n[17]["prev"], n[17]["parent"], n[16]["prev"]) == (g[17], g[17], g[16], g[2], g[16])
     # Source retains the moved v3 schema occurrence before the local v2 occurrence.
@@ -942,7 +997,7 @@ def main():
         if name == "list-events":
             assert [by_handle(r)[1]["table"]["used"] for r in commands(rows, "list") if r["operation"] == 5] == [5]
             assert [by_handle(r)[1]["table"]["used"] for r in commands(rows, "unlink")] == [4, 4, 4]
-            assert [r[3:] for r in lookup_results(rows)] == [(4, 1), (5, 1), (6, 1), (5, 1)]
+            assert_lookup_handles(rows, [(4, 1), (5, 1), (6, 1), (5, 1)])
             assert len(final_public(rows)) == 1
         if name.startswith("schema-pointer"):
             n = by_handle(commands(rows, "I")[0])
@@ -964,7 +1019,7 @@ def main():
             # Two distinct physical run starts; checked schema insertion keeps the first.
             schema_adds = [r for r in rows if r["event"] == "lyd_insert_hash_add.before"]
             assert schema_adds and by_handle(rows[-1])[13]["prev"] == by_handle(rows[-1])[12]["generation"]
-            assert lookup_results(rows)[-1][3:] == (11, 1)
+            assert_lookup_handles(rows, [(11, 1)])
         if name == "opaque-eligibility":
             assert all(not n.get("table", {}).get("present") for n in rows[-1]["nodes"] if n["id"])
         if name == "resize-disabled":
@@ -981,7 +1036,7 @@ def main():
             assert len(retained) == 1 and retained[0]["occurrence"] == original["occurrence"]
             assert len({x["occurrence"] for x in chains}) == 2
         if name == "remote-last-results":
-            assert lookup_results(rows)[-1][3:] == (16, 2)
+            assert_lookup_handles(rows, [(16, 2)])
             assert len(final_public(rows)) == 2
         if name == "remote-last-release":
             assert len(commands(rows, "free-root")) == 3 and all(not n["alive"] for n in rows[-1]["nodes"] if n["id"] and n["id"] not in [13, 15])
@@ -1045,7 +1100,7 @@ def main():
         complete_rb_topology(rows[-1])
         expected = {21, 22, 11, 12}
         if name in ["merge2-before", "merge2-unsorted"]:
-            assert expected in rb_members(rows[-1]), (name, rb_members(rows[-1]))
+            assert {by_handle(rows[-1])[h]["generation"] for h in expected} in rb_members(rows[-1]), (name, rb_members(rows[-1]))
             assert rows[-1]["working_rb_root"]
             assert any(n.get("rb_stored_root") != n.get("rb_root") for n in rows[-1]["nodes"] if n.get("rb"))
         if name == "merge2-unsorted":
@@ -1056,7 +1111,7 @@ def main():
             assert n[11]["next"] == n[12]["generation"]
             assert [n[i]["value"] for i in [11, 12, 21, 22]] == ["4", "1", "2", "3"]
             assert not n[21]["parent"] and n[21]["next"] == n[22]["generation"]
-            assert {21, 22} in rb_members(prefix) and not n[12]["metadata"]
+            assert {by_handle(prefix)[h]["generation"] for h in (21, 22)} in rb_members(prefix) and not n[12]["metadata"]
             stopped = by_handle(rows[-1])
             assert stopped[1]["first"] == stopped[21]["generation"]
             assert [stopped[i]["next"] for i in [21, 22, 11, 12]] == [stopped[i]["generation"] for i in [22, 11, 12]] + [0]
