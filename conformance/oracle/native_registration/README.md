@@ -1016,3 +1016,111 @@ uncommitted. The full checks are the only remaining verification work.
 New manifest fixture ids: none. New live cases: `retained-null`,
 `retained-opaque`, `entry-guard`, `entry-order`, `entry-opaque`,
 `entry-duplicate`, `entry-schema-lineage`.
+
+## Deterministic reuse continuation
+
+This continuation resolves the inherited F2 blocker recorded above. Under UTC,
+startup/trace allocation activity could keep every ancestor address out of the
+next 32 duplications. More repetition did not force the required native path.
+The address-reuse assertion and all structural/mutant assertions remain active.
+
+The same bounded allocator setup used by the seven G1 exact-address requests
+now accepts inner nodes as well as terms. `# reuse-free HANDLE PATH` selects a
+live allocation through `self`, `parent`, or `child` (first child).
+The real native free runs first; its wrapper immediately reacquires that exact
+chunk and holds it across observer output. `# reuse-next PATH` drains the same
+seven-entry glibc bin, releases the reservation immediately before the next
+supported public constructor/validation call, and requires the node returned
+through PATH to have exactly that address. These test-setup directives create
+no aliases, identities, snapshots, or command ordinals. Native calloc/free and
+all pinned library objects remain unchanged. EOF with unused setup fails.
+
+`lyd_dup_single(... WITH_PARENTS ...)` creates the list ancestor/key before the
+top container. F2 therefore reserves the actual unhandled list parent from the
+first duplicate and requires the next duplicate's list parent to reuse it.
+The other 31 cycles and the original positive ancestor-reuse assertion remain.
+
+The complete positive-address-reuse inventory is:
+
+| Control | Forced allocation and next native path | Status |
+|---|---|---|
+| `IdentitySweep.test_f2_ancestor_reuse` | Unhandled list parent → `lyd_dup_single` list parent | Added |
+| `driver-lifetime` | Handle 100 term → handle 101 `lyd_new_term` | Added |
+| `lifetime/recreate-print` | Handle 11 term → next `lyd_new_term` | Added |
+| `lifetime/recreate-lookup` | Handle 11 term → next `lyd_new_term` | Added |
+| `lifetime/dup-descendant` | First internal child → next `lyd_dup_single` first child | Added |
+| `lifetime/parse-descendant` | First internal child → next `lyd_parse_data_mem` first child | Added |
+| `lifetime/list-key` | Internal key → next `lyd_new_list` key | Added |
+| `lifetime/table-reuse` | Root container → next `lyd_new_inner` root | Added |
+| `lifetime/validation-delete` | Internal default removed by explicit term creation → next `lyd_validate_all` default | Added |
+| `handle-tombstone` | Handle 14 term → handle 104 term | Already forced in G1 |
+| `handle-tombstone-probe` | Handle 14 term → handle 104 term | Already forced in G1 |
+| `retained-address-reuse` | Generic handle 1 term → replacement handle 1 term | Already forced in G1 |
+| `lifetime/stale-handle` | Handle 14 term → handle 104 term | Already forced in G1 |
+| `lifetime/retained-same-hash` | Generic handle 1 term → replacement handle 1 term | Already forced in G1 |
+| `lifetime/retained-resize` | Generic handle 1 term → replacement handle 1 term | Already forced in G1 |
+| `lifetime/retained-remove` | Generic handle 1 term → replacement handle 1 term | Already forced in G1 |
+
+Go consumers are `TestNativeIdentitySweep`, `TestNativeObserverEvidence`,
+`TestNativeTombstoneAddressReuse`, `TestNativeRetainedAddressReuse`, and
+`TestNativeComparisonLifetimes`. Their trace-corruption/completion controls use
+the same requests. The other `native_table_*_test.go` controls assert modeled
+slots/free chains, identity continuity, allocation counts, or synthetic pointer
+keys; they do not require Go allocator address reuse. `table-reuse` requires
+observed node reuse and sixteen distinct live table generations, not repeated
+physical table addresses. Table identity/retirement mutants remain active.
+The F5 winner sweep and `TestNativeIdentityEvidenceRejections` recreate a handle
+with a new generation; their stale-generation mutants require no physical address
+reuse. There are no other positive allocator-dependent requirements in this inventory.
+
+`TestNativeReuseEnvironmentMatrix` runs `reuse_test.py`: all sixteen controls in
+both builds and trace modes under UTC/C locale, unset TZ/C.UTF-8 locale, and
+UTC/C.UTF-8 with a 65,536-byte padding environment value. All 192 runs must pass.
+A separately compiled variant omits only the reservation release, keeping the
+exact chunk allocated across the native call. All 192 corresponding runs must
+exit 100 with the constructor-address assertion; compile/setup errors do not
+count as rejection. This regression reaches the actual free/constructor path.
+
+Changed native harness paths: free interception, bounded bin preparation,
+term/inner sizing, test-only path selection, and constructor address checks for
+root, term, list, duplicate, JSON parse, and validation. The seven G1 controls
+retain their request syntax and assertions. Excluded: production Go, native
+library algorithms/instrumentation, public API, journals, budgets, caches,
+ownership, dependencies, policy files, and golden files. Existing observer
+LIMIT/watchdog bounds still cap recovery/storage/traversal; every new malloc
+and constructor result is checked. No production hot path changed.
+
+The existing counted-work regression ran on current upstream main `a10a82a`
+(verified with `git ls-remote`) and this worktree: all twelve visit/charge/
+allocation/byte tuples match, including duplicate-heavy adverse insertion order
+at 64 and 256 children, with/without a journal. No new manifest fixture IDs.
+
+Continuation verification (amd64, normal dev user, UTC exported outside and
+inside the container, stdin redirected from `/dev/null`):
+
+| Command/check | Exit | Evidence |
+|---|---:|---|
+| `build.sh` | 0 | Both binaries rebuilt; driver source matches BUILDINFO |
+| Targeted Go reuse/lifetime/sweep regressions | 0 | Includes the new Go matrix regression |
+| `reuse_test.py -v` | 0 | 192 positive runs; 192 exact constructor-assertion rejections |
+| Go matrix regression with both release-disabled driver paths | 1 (expected) | All 192 positive cases fail at the constructor address check |
+| Standalone reuse patch on main `a10a82a` | 0 | Applies cleanly; both binaries build; all 192 positive matrix runs pass |
+| Main/head ordinary-work regression | 0 / 0 | All twelve tuples identical |
+| Oracle-tag `go vet ./data`; Python checker unit tests | 0 / 0 | 12 checker tests passed |
+| `make ci` | 0 | Race, 386, minimum Go, oracle, security and golden checks green |
+| `make test-oracle oracle-check` | 0 | Both oracle modules pass; goldens match |
+| Driver-enabled `go test -tags oracle ./data -run '^TestNative' -count=1 -timeout=30m -v` | 0 | 58 top-level passes, zero skips |
+| `check.py --driver … --comparison-driver …` | 0 | Both drivers; complete positive and rejecting replay controls |
+| `g2_mutants.py` | 0 | Eight rejecting mutants, two independently protected removals |
+
+The five full checks above ran in one `flock -w 1800` critical section; each
+prescribed make command ran once. The lock was acquired without a timeout.
+These full results certify part 1 plus the reuse fix; the standalone main patch
+was separately checked with both native builds and the 192-run positive matrix.
+Neither named #351 flake occurred. Unfiltered oracle-tag lint still exits 1 for
+the same twelve existing findings (two gocritic, ten gosec); none names the new
+Go regression. The default CI lint passed. No reuse finding remains open.
+
+Full logs and exact statuses are under ignored `.build/reuse-checks/`;
+targeted/sensitivity/standalone logs and all twelve work tuples are under
+`.build/reuse-evidence/`. No manifest fixture IDs were added.

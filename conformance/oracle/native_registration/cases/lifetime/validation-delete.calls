@@ -2,10 +2,12 @@
 # Live comparison control; both processes must reach actual address reuse.
 root 1 c
 validate 1
+# reuse-free 1 child
 term 11 1 def E
 validate 1
 print 1
 free 11
+# reuse-next child
 validate 1
 term 11 1 def E
 validate 1

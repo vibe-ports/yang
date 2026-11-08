@@ -20,7 +20,7 @@ def run(name, option="--quiet", unmodified=False):
     script = (root / "cases" / (name + ".calls")).read_bytes()
     options = [option] + (["--event-schema"] if name.startswith("entry-") or name in ("list-events", "schema-pointer", "schema-pointer-reverse", "lifetime/list-key", "lifetime/validation-delete") else [])
     env = dict(os.environ)
-    if name in ("handle-tombstone", "handle-tombstone-probe", "retained-address-reuse", "lifetime/stale-handle",
+    if b"# reuse-" in script or name in ("handle-tombstone", "handle-tombstone-probe", "retained-address-reuse", "lifetime/stale-handle",
                 "lifetime/retained-same-hash", "lifetime/retained-resize", "lifetime/retained-remove"):
         env["GLIBC_TUNABLES"] = "glibc.malloc.tcache_count=7"
     result = subprocess.run([str(plain if unmodified else binary), *options], input=script,

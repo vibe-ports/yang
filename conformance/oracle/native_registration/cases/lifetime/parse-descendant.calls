@@ -7,7 +7,9 @@ term 13 1 ll QQ==
 term 14 1 ll Qg==
 parse 2 {"m:c":{"p":"P","q":"Q","ll":["QQ==","Qg=="]}}
 print 2
+# reuse-free 2 child
 free 2
+# reuse-next child
 parse 2 {"m:c":{"p":"P","q":"Q","ll":["QQ==","Qg=="]}}
 print 2
 free 2

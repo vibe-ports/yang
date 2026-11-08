@@ -6,7 +6,9 @@ term 14 1 ll Qg==
 dup 2 1 0 3
 free 2
 term 100 1 p P
+# reuse-free 100 self
 free 100
+# reuse-next self
 term 101 1 p P
 free 101
 term 102 1 p P
