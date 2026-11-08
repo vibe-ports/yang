@@ -321,7 +321,7 @@ func TestNativeG2ReadStorageContinuity(t *testing.T) {
 func TestNativeG2TransientSchemaRegistry(t *testing.T) {
 	const script = "parse 1 {\"m:c\":{\"p\":\"P\",\"l\":[{}]}}\nroot 2 c\nlist 3 2 l x\nprint 2\n"
 	left := nativeDriverReplayPath(t, script, "", true, os.Getenv("YANG_NATIVE_REGISTRATION_DRIVER"))
-	right := nativeDriverReplayPath(t, script, "", true, os.Getenv("YANG_NATIVE_REGISTRATION_COMPARISON_DRIVER"))
+	right := nativeDriverReplayPath(t, script, "", true, nativeG2ComparisonDriver())
 	a, err := nativeCompletedCommandEvidence(script, left)
 	if err != nil {
 		t.Fatal(err)

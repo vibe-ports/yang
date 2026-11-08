@@ -738,7 +738,7 @@ func TestNativeCompletedCommandProjection(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	plain := nativeDriverReplayPath(t, script, "", false, os.Getenv("YANG_NATIVE_REGISTRATION_COMPARISON_DRIVER"))
+	plain := nativeDriverReplayPath(t, script, "", false, nativeG2ComparisonDriver())
 	b, err := nativeCompletedCommandEvidence(script, plain)
 	if err != nil {
 		t.Fatal(err)

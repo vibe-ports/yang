@@ -11,13 +11,23 @@ import (
 	"testing"
 )
 
+// nativeG2ComparisonDriver resolves the unmodified comparison driver: the
+// explicit variable, else driver-unmodified beside the instrumented driver.
+// Empty only when neither driver is configured, so callers skip rather than
+// silently losing the comparison when only the documented variable is set.
+func nativeG2ComparisonDriver() string {
+	if path := os.Getenv("YANG_NATIVE_REGISTRATION_COMPARISON_DRIVER"); path != "" {
+		return path
+	}
+	if driver := os.Getenv("YANG_NATIVE_REGISTRATION_DRIVER"); driver != "" {
+		return filepath.Join(filepath.Dir(driver), "driver-unmodified")
+	}
+	return ""
+}
+
 func nativeG2Unmodified(t *testing.T, script string, instrumented []nativeDriverResult) []nativeDriverResult {
 	t.Helper()
-	driver := os.Getenv("YANG_NATIVE_REGISTRATION_COMPARISON_DRIVER")
-	if driver == "" {
-		driver = filepath.Join(filepath.Dir(os.Getenv("YANG_NATIVE_REGISTRATION_DRIVER")), "driver-unmodified")
-	}
-	unmodified := nativeDriverReplayPath(t, script, "", false, driver)
+	unmodified := nativeDriverReplayPath(t, script, "", false, nativeG2ComparisonDriver())
 	if err := nativeG2CompareEvidence(script, instrumented, unmodified); err != nil {
 		t.Fatal(err)
 	}
