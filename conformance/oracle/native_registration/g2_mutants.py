@@ -16,6 +16,7 @@ root = pathlib.Path(__file__).resolve().parents[3]
 aux = root / "conformance/oracle/native_registration"
 work = aux / ".build/g2-mutants"
 work.mkdir(parents=True, exist_ok=True)
+(work / 'protocol.py').write_text((aux / 'protocol.py').read_text())
 os.environ["YANG_NATIVE_REGISTRATION_DRIVER"] = str(aux / ".build/driver")
 os.environ["YANG_NATIVE_REGISTRATION_COMPARISON_DRIVER"] = str(aux / ".build/driver-unmodified")
 
@@ -40,12 +41,14 @@ def go_mutant(name, file, before, after, test):
     result = run(["go", "test", "-tags", "oracle", "-overlay", str(overlay),
                   "./data", "-run", test, "-count=1"])
     (work / (name + ".log")).write_text(result.stdout)
-    if name == 'ignored-ENOT-code':
+    assert "no tests to run" not in result.stdout, (name, result.stdout)
+    if name in ('ignored-ENOT-code', 'ignored-command-status', 'ignored-required-message', 'missing-required-snapshot'):
+        # The complete protocol projection now independently protects this removal.
         # G1's shared projection now retains the exact equality code too.
         assert result.returncode == 0, result.stdout
         print(json.dumps({'mutant':name, 'protected_by_shared_validation':True}), flush=True)
         return
-    assert result.returncode and "--- FAIL:" in result.stdout and "[build failed]" not in result.stdout, (name, result.stdout)
+    assert result.returncode and "--- FAIL:" in result.stdout and "[build failed]" not in result.stdout and "ModuleNotFoundError" not in result.stdout, (name, result.stdout)
     print(json.dumps({"mutant": name, "rejected": True}), flush=True)
 
 
@@ -86,7 +89,7 @@ identity = (aux / 'identity.py').read_text()
 for name, before, after, test in (
     ('missing-required-snapshot', "        if command or event == 'driver.ready.actual-children-callback':\n            assert isinstance(row.get('nodes'), list), 'missing required snapshot nodes'\n", '',
      '^TestNativeG2RequiredSnapshots/dump/nodes/both$'),
-    ('ignored-current-hash', ", n['hash'])", ')', '^TestNativeG2CurrentHashEvidence$'),
+    ('ignored-current-hash', ", n['hash'],", ', 0,', '^TestNativeG2CurrentHashEvidence$'),
 ):
     assert before in identity, name
     path = work / (name + '.py')
@@ -146,3 +149,81 @@ native_driver_mutant('current-context-diagnostics',
 native_driver_mutant('current-context-cleanup',
     'for(unsigned i=1;i<=read_context_count;++i)ly_err_clean((struct ly_ctx*)read_contexts[i],NULL);',
     'ly_err_clean(ctx,NULL);', '^TestNativeG2RetainedContextDiagnostics$')
+
+
+# Audit-5 contract mutants. Each disables one complete protection family; the
+# unmodified positive controls must still run and the named regression must fail.
+identity = (aux / 'identity.py').read_text()
+shape_line = "        shape(row, command or event == 'driver.ready.actual-children-callback', read_context_evidence)"
+selection_begin = identity.index("        if event.startswith('read.selection.'):")
+selection_end = identity.index("        if 'nodes' not in row:", selection_begin)
+selection_unchecked = identity[:selection_begin] + identity[selection_end:]
+selection_unchecked = selection_unchecked.replace(shape_line, "        if not event.startswith('read.selection.'):\n    " + shape_line)
+mutants = (
+    ('unchecked-selection-identities', selection_unchecked, '^TestNativeG2SelectionContract/(identity|occurrence)/delete$'),
+    ('payload-dispatched-equality', identity.replace(shape_line, "        if event != 'read.equal':\n    " + shape_line), '^TestNativeG2EqualityResultContract/add-nodes$'),
+    ('dropped-opaque-state', identity.replace("n.get('opaque_name'), n.get('opaque_module'), n.get('opaque_prefix'), n.get('opaque_value')", 'None, None, None, None'), '^TestNativeG2OpaqueOperandContract$'),
+    ('dropped-context-metadata', identity.replace("row.get('modules')", 'None').replace("n['metadata'],", '[],') , '^TestNativeG2ContextMetadataContract/.*/.*/mutate$'),
+    ('dropped-bootstrap-channels', identity.replace("(row['event'], row['rc'], row.get('modules'),", "(row['event'], row['rc'] if operation else 0, row.get('modules'),").replace("messages(row['diagnostics']), messages(row.get('logs', [])),", "messages(row['diagnostics']) if operation else [], messages(row.get('logs', [])) if operation else [],"), '^TestNativeG2BootstrapChannelsContract/.*/mutate$'),
+)
+for name, replaced, test in mutants:
+    assert replaced != identity, name
+    path = work / (name + '.py')
+    path.write_text(replaced)
+    go_mutant(name, completion,
+              'filepath.Join("..", "conformance", "oracle", "native_registration", "identity.py")',
+              json.dumps(str(path)), test)
+
+# The generic field sweep must catch an omission outside the five named fields.
+# Keep its live requests rooted in the real case directory; only the copied
+# predicate drops a chain bucket. A missing fixture/import cannot be sensitivity.
+field_control = work / 'field-control'
+field_control.mkdir(exist_ok=True)
+(field_control / 'protocol.py').write_text((aux / 'protocol.py').read_text())
+(field_control / 'identity.py').write_text(identity.replace("if k != 'occurrence'", "if k not in ('occurrence', 'bucket')"))
+(field_control / 'evidence_test.py').write_text((aux / 'evidence_test.py').read_text().replace(
+    'ROOT = pathlib.Path(__file__).resolve().parent', 'ROOT = pathlib.Path(' + repr(str(aux)) + ')'))
+result = run(['python3', str(field_control / 'evidence_test.py')])
+(work / 'uncompared-bucket.log').write_text(result.stdout)
+assert result.returncode and "uncompared field" in result.stdout and "'bucket'" in result.stdout, result.stdout
+print(json.dumps({'mutant': 'uncompared-bucket', 'rejected': True}), flush=True)
+
+# Native opaque names may contain bytes outside UTF-8; neither the observer nor
+# the Go transport may silently convert them into equal replacement text.
+go_mutant('invalid-utf8-transport', completion, 'if !utf8.Valid(b) {',
+          'if false && !utf8.Valid(b) {', '^TestNativeG2EvidenceUTF8$')
+native_driver_mutant('raw-opaque-byte-name',
+    'bytes_or_null(j,"opaque_name",o->name.name);',
+    'if(!cJSON_AddStringToObject(j,"opaque_name",o->name.name))exit(91);',
+    '^TestNativeG2OpaqueByteNames$')
+
+# Replacing current storage with fresh, internally consistent registry IDs must
+# fail even when its normalized contents match and both peers are corrupted.
+path = work / 'replaced-completed-read-storage.py'
+path.write_text(identity.replace('if command and event in STABLE_STORAGE_COMMANDS:',
+                                 'if False and command and event in STABLE_STORAGE_COMMANDS:'))
+go_mutant('replaced-completed-read-storage', completion,
+          'filepath.Join("..", "conformance", "oracle", "native_registration", "identity.py")',
+          json.dumps(str(path)), '^TestNativeG2ReadStorageContinuity$')
+
+# Pin the measured observer-only exclusions independently in both consumers.
+path = work / 'schema-coverage-history.py'
+path.write_text(identity.replace("sorted({schema_keys[n['schema_identity']] for n in nodes.values() if n['alive'] and 'schema_identity' in n}, key=repr)",
+                                 'sorted(schema_keys.values(), key=repr)'))
+go_mutant('schema-coverage-history', completion,
+          'filepath.Join("..", "conformance", "oracle", "native_registration", "identity.py")',
+          json.dumps(str(path)), '^TestNativeG2TransientSchemaRegistry$')
+name_control = work / 'function-name-control'
+name_control.mkdir(exist_ok=True)
+(name_control / 'identity.py').write_text(identity)
+(name_control / 'protocol.py').write_text((aux / 'protocol.py').read_text().replace(
+    "return OBSERVER_FUNCTION.sub(r'\\1\\2\\3', LOCATION.sub(r'\\1\\2', value))",
+    "return LOCATION.sub(r'\\1\\2', value)"))
+go_mutant('python-observer-function-name', completion,
+          'filepath.Join("..", "conformance", "oracle", "native_registration", "identity.py")',
+          json.dumps(str(name_control / 'identity.py')), '^TestNativeG2ObserverFunctionAnnotation$')
+go_mutant('go-observer-function-name', evidence,
+          'v = nativeG2ObserverFunction.ReplaceAllString(v.(string), "$1$2$3")',
+          'v = fmt.Sprint(v)', '^TestNativeG2ObserverFunctionAnnotation$')
+go_mutant('observer-status-obligation', evidence,
+          'if raw == nil {', 'if raw == nil || raw["rc"] == nil {', '^TestNativeG2ObserverWithoutStatus$')

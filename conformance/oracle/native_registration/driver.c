@@ -73,6 +73,16 @@ static unsigned table_identity(const struct ly_ht *ht)
 }
 
 static void number(cJSON *j, const char *key, double value) { cJSON_AddNumberToObject(j, key, value); }
+/* Opaque text is a byte string. Hex also preserves malformed UTF-8 names. */
+static void bytes_or_null(cJSON *j, const char *key, const char *value)
+{
+    if(!value){if(!cJSON_AddNullToObject(j,key))exit(91);return;}
+    size_t len=strlen(value);if(len>SIZE_MAX/2-1)exit(93);
+    char *hex=malloc(2*len+1);if(!hex)exit(91);
+    static const char digits[]="0123456789abcdef";
+    for(size_t k=0;k<len;++k){unsigned char byte=(unsigned char)value[k];hex[2*k]=digits[byte>>4];hex[2*k+1]=digits[byte&15];}
+    hex[2*len]=0;if(!cJSON_AddStringToObject(j,key,hex))exit(91);free(hex);
+}
 static unsigned context_identity(const struct ly_ctx *context)
 {
     for(unsigned i=1;i<=read_context_count;++i)if(read_contexts[i]==context)return i;
@@ -347,7 +357,12 @@ static cJSON *node_json(unsigned i)
     if(read_schema_enabled)number(j,"context_generation",context_identity(LYD_CTX(n)));
     number(j,"hash",n->hash); number(j,"flags",n->flags); number(j,"prev",identity(n->prev)); number(j,"next",identity(n->next)); number(j,"parent",identity(n->parent));
     if(n->schema) {number(j,"nodetype",n->schema->nodetype);cJSON_AddBoolToObject(j,"key",lysc_is_key(n->schema));cJSON_AddStringToObject(j,"schema",n->schema->name);number(j,"schema_identity",schema_identity(n->schema));if(event_schema_enabled || read_schema_enabled){cJSON_AddStringToObject(j,"module",n->schema->module->name);}if(n->schema->nodetype&LYD_NODE_TERM)cJSON_AddStringToObject(j,"value",lyd_get_value(n));}
-    else {const struct lyd_node_opaq *o=(const void*)n;number(j,"first",identity(o->child));number(j,"tail",identity(o->child?o->child->prev:NULL));number(j,"prefix_format",o->format);cJSON_AddBoolToObject(j,"prefix_bound",o->val_prefix_data!=NULL);}
+    else {const struct lyd_node_opaq *o=(const void*)n;
+        bytes_or_null(j,"opaque_name",o->name.name);
+        bytes_or_null(j,"opaque_module",o->name.module_name);
+        bytes_or_null(j,"opaque_prefix",o->name.prefix);
+        bytes_or_null(j,"opaque_value",o->value);
+        number(j,"first",identity(o->child));number(j,"tail",identity(o->child?o->child->prev:NULL));number(j,"prefix_format",o->format);cJSON_AddBoolToObject(j,"prefix_bound",o->val_prefix_data!=NULL);}
 
     if(n->schema && (n->schema->nodetype & LYD_NODE_INNER)) { const struct lyd_node_inner *in=(const void*)n; number(j,"first",identity(in->child)); number(j,"tail",identity(in->child ? in->child->prev : NULL)); cJSON_AddItemToObject(j,"table",table_json(in->children_ht)); }
     cJSON *metas=cJSON_AddArrayToObject(j,"metadata"); for(const struct lyd_meta *m=n->meta;m;m=m->next) {
@@ -409,7 +424,7 @@ static void snapshot(const char *event, const void *node, const struct ly_ht *ht
         }
     }
     cJSON *errs=cJSON_AddArrayToObject(j,"diagnostics"); for(unsigned ci=1;ci<=read_context_count;++ci)for(const struct ly_err_item *e=ly_err_first(read_contexts[ci]);e;e=e->next) { cJSON *ej=cJSON_CreateObject(); number(ej,"code",e->err);number(ej,"context_generation",ci); if(e->msg)cJSON_AddStringToObject(ej,"msg",e->msg); if(e->data_path)cJSON_AddStringToObject(ej,"path",e->data_path); if(e->apptag)cJSON_AddStringToObject(ej,"apptag",e->apptag); cJSON_AddItemToArray(errs,ej); }
-    if(log_messages)cJSON_AddItemToObject(j,"logs",cJSON_Duplicate(log_messages,1));
+    if(!cJSON_AddItemToObject(j,"logs",log_messages?cJSON_Duplicate(log_messages,1):cJSON_CreateArray()))exit(91);
     emit(j);
 }
 

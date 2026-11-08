@@ -20,6 +20,7 @@ import (
 	"strings"
 	"testing"
 	"time"
+	"unicode/utf8"
 )
 
 type nativeDriverResult struct {
@@ -58,6 +59,9 @@ type nativeDriverResult struct {
 }
 
 func (r *nativeDriverResult) UnmarshalJSON(b []byte) error {
+	if !utf8.Valid(b) {
+		return fmt.Errorf("invalid UTF-8 in native evidence")
+	}
 	type plain nativeDriverResult
 	if err := json.Unmarshal(b, (*plain)(r)); err != nil {
 		return err

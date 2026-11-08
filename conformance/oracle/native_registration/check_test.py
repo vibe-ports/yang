@@ -12,6 +12,8 @@ import check
 
 
 def snapshot(event, operation):
+    if event == 'public.result':
+        return dict(event=event, operation=operation, rc=0)
     nodes = [dict(generation=g, id=1 if g == 6 else 0, creation_operation=1 if g == 6 else 0,
                   creation_ordinal=1 if g == 6 else g, source=0, attempt=1 if g == 6 else 0,
                   alive=True, context=1, hash=g, flags=4, metadata=[], nodetype=8 if 2 <= g <= 5 else 1, key=False,
@@ -20,9 +22,11 @@ def snapshot(event, operation):
     chains = [dict(generation=g, occurrence=i + 1, node=0, hash=8 * (i + 1), slot=i,
                    bucket=0, ordinal=i, alive=True) for i, g in enumerate((2, 2, 3, 4, 5))]
     nodes[0].update(first=2, tail=5, table=dict(present=True, identity=1, used=5, size=8,
-                    continuity="observed", mode=2, free=5, free_chain=[5, 6, 7], free_terminal=8, slots=[{} for _ in range(8)], buckets=[{} for _ in range(8)], chains=chains))
+                    continuity="observed", mode=2, free=5, free_chain=[5, 6, 7], free_terminal=8, slots=[dict(next=0, node=0, hash=0) for _ in range(8)], buckets=[dict(first=0, last=0) for _ in range(8)], chains=chains))
     nodes[5].update(first=0, tail=0, table=dict(present=False))
-    return {"event": event, "operation": operation, "rc": 0, "diagnostics": [], "nodes": nodes,
+    for n in nodes:
+        if n['nodetype'] == 1: del n['value']
+    return {"node_generation": 0, "source_generation": 0, "event": event, "operation": operation, "rc": 0, "diagnostics": [], "logs": [], "nodes": nodes,
             "output_handle": 1 if event == "root" else 0, "output_generation": 6 if event == "root" else 0,
             "node_count": 6, "table_count": 1, "tables": [dict(identity=1, alive=True)], "allocation_scope": "every-allocation",
             "schemas": [dict(identity=1, context=1, module='m', name='c', nodetype=1, parent=0),

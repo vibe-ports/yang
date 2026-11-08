@@ -7,6 +7,7 @@ from completed-operation components, never from a mutable allocation label.
 import json
 import sys
 from collections import Counter
+from protocol import shape, messages
 
 
 def requests(script):
@@ -25,14 +26,29 @@ def table_records(row):
             yield ('node', node['generation']), node['table']
 
 
-def validate(script, rows, refs=None):
+# These commands may refresh handles, contexts or observer history, but never
+# replace current data/generic hash storage. Mutation commands remain separate.
+STABLE_STORAGE_COMMANDS = frozenset(('dump', 'child', 'schema', 'instance', 'opaq-find',
+    'null-reads', 'rewind', 'print', 'check-handle', 'find-next-loop', 'context', 'context-keyless',
+    'read-schema', 'read-instance', 'read-value', 'read-opaque', 'equal'))
+
+
+def validate(script, rows, refs=None, *, project=True):
     req = requests(script)
     read_context_evidence = any(f[0].startswith('read-') or f[0] in ('equal', 'context', 'context-keyless') for f in req)
     recorded = {n['generation']: n for r in rows for n in r.get('nodes', [])}
     assert rows and rows[0]['event'] == 'driver.ready.actual-children-callback', 'missing bootstrap evidence'
+    assert rows[0]['operation'] == 0 and sum(r['event'] == 'driver.ready.actual-children-callback' for r in rows) == 1, 'invalid bootstrap count/operation'
+    # Check every closed layout before walking history. A malformed late row
+    # must not require constructing all earlier registries just to reject it.
+    for row in rows:
+        event, operation = row['event'], row.get('operation', 0)
+        command = 0 < operation <= len(req) and event == req[operation - 1][0]
+        shape(row, command or event == 'driver.ready.actual-children-callback', read_context_evidence)
     previous, provenance, labels, retired, table_owners, serials = {}, {}, {}, set(), {}, {}
     previous_tables, bindings, keys, indexes, creations = {}, {}, {}, Counter(), {}
     normalized, last_nodes, completed_nodes, completed_bindings = {}, {}, {}, {}
+    completed_row = {}
     schemas, schema_keys, schema_nodes = {}, {}, {}
     for row in rows:
         event, operation = row['event'], row.get('operation', 0)
@@ -43,7 +59,48 @@ def validate(script, rows, refs=None):
         # Snapshot obligations come from the protocol/request, never field presence.
         if command or event == 'driver.ready.actual-children-callback':
             assert isinstance(row.get('nodes'), list), 'missing required snapshot nodes'
+        if event.startswith('read.selection.'):
+            fields = req[operation - 1]
+            assert event == 'read.selection.' + fields[0].removeprefix('read-'), 'wrong selection request'
+            start, target = (int(x) for x in fields[1:3])
+            parent = int(fields[3]) if len(fields) > 3 else 0
+            owner = completed_bindings[parent]['generation'] if parent else last_nodes[completed_bindings[start]['generation']]['parent'] if start else 0
+            expected = last_nodes[owner].get('table', {'present': False}) if owner else {'present': False}
+            assert row['before'] == row['after'] == expected, 'wrong selection storage/identity/continuity'
+            for _, table in table_records(row):
+                if not table['present']: continue
+                t = table['identity']
+                assert type(t) is int and t > 0 and previous_tables[t]['alive'], 'invalid selection table identity'
+                assert table_owners[t] == ('node', owner), 'wrong selection table owner'
+                for x in table['chains']:
+                    assert type(x['occurrence']) is int and x['occurrence'] > 0, 'missing selection occurrence'
+                    assert serials[x['occurrence']] == (t, x['generation'], x['hash']), 'wrong selection occurrence'
+            winner = row['winner']
+            assert row['rc'] != 0 or winner, 'successful selection without winner'
+            assert not winner or row['rc'] == 0, 'failed selection with winner'
+            for field, label in (('winner', 'winner_script'), ('current_parent', 'parent_script'), ('next_generation', 'next_script')):
+                g = row[field]
+                assert not g or (g in keys and last_nodes[g]['alive']), 'invalid selection reference'
+                assert row[label] == (last_nodes[g]['id'] if g else 0), 'wrong selection label'
+            if winner:
+                assert row['current_parent'] == last_nodes[winner]['parent'] and row['next_generation'] == last_nodes[winner]['next'], 'wrong selection links'
+            else:
+                assert row['current_parent'] == row['next_generation'] == 0, 'links without winner'
         if 'nodes' not in row:
+            # Shape validation above dispatches by event, never payload presence.
+            # Preserve every semantic result field; local table/occurrence IDs
+            # have already been bound to the retained snapshot registry.
+            def read_ref(g):
+                assert not g or g in keys, 'unbound result reference'
+                return keys[g] if g else 0
+            def read_table(t):
+                if not t['present']: return t
+                return {k: ([{a: read_ref(b) if a == 'generation' else b for a, b in x.items() if a != 'occurrence'} for x in v]
+                            if k == 'chains' else v)
+                        for k, v in t.items() if k not in ('identity', 'continuity')}
+            references = {'generation', 'left_generation', 'right_generation', 'winner', 'current_parent', 'next_generation', 'queried_parent', 'target', 'supplied', 'schema_winner', 'instance_winner', 'value_winner'}
+            if project and event != 'read.compare' and event != 'allocation.address-reuse':
+                normalized[operation, event + '.complete'] = {k: read_ref(v) if k in references else read_table(v) if k in ('before', 'after') else v for k, v in row.items()}
             if event in ('read.null', 'read.schema'):
                 fields = req[operation - 1]
                 assert fields[0] == ('schema' if event == 'read.schema' else 'null-reads'), 'read at wrong operation'
@@ -330,6 +387,14 @@ def validate(script, rows, refs=None):
                     assert nodes[bs[h]['generation']]['creation_operation'] == operation, 'returned wrong incarnation'
                 if event == 'rewind':
                     assert keys[bs[h]['generation']] == normalized[operation, 'read.first-sibling'][1], 'rewind binding not refreshed'
+        if command and event in STABLE_STORAGE_COMMANDS:
+            # Bind result observations to the completed snapshot as well as the
+            # preceding one. Fresh local IDs with identical layout are still a
+            # storage replacement; they must not disappear in normalization.
+            for g, old in completed_nodes.items():
+                if old['alive'] and 'table' in old:
+                    assert nodes[g]['alive'] and nodes[g].get('table') == old['table'], 'read replaced/changed owned storage'
+            assert row.get('table') == completed_row.get('table'), 'read replaced/changed generic storage'
         # Assign injective cross-process keys in physical component order, once
         # per generation. Handles select traversal anchors; aliases do not label
         # allocations, and a reused handle gets a new allocation incarnation.
@@ -360,21 +425,42 @@ def validate(script, rows, refs=None):
             def ref(g):
                 assert not g or g in keys, 'incomplete normalization'
                 return keys[g] if g else 0
-            def storage(table):
-                if not table or not table['present']: return None
-                return (table['size'], table['used'], table['mode'], table['free'], table['buckets'], table['slots'],
-                        [(x['slot'], x['hash'], ref(x['generation']), x['alive']) for x in table['chains']],
-                        table['free_chain'], table['free_terminal'])
-            live = {}
-            for g, n in nodes.items():
-                if n['alive']:
-                    live[ref(g)] = (schema_keys.get(n.get('schema_identity')), n.get('module'), n.get('schema'), n.get('value'), n.get('flags'),
-                                    tuple(ref(n.get(f, 0)) for f in ('parent', 'prev', 'next', 'first', 'tail')),
-                                    n.get('context_generation', n.get('context')), n.get('nodetype'), n.get('key'),
-                                    n.get('prefix_format'), n.get('prefix_bound'), storage(n.get('table')), n['hash'])
+            # Keep reference completeness checks in the validation lane too.
+            for field in ('node_generation', 'source_generation', 'output_generation', 'working_rb_root'):
+                ref(row.get(field, 0))
+            for n in nodes.values():
+                if not n['alive']: continue
+                for field in ('parent', 'prev', 'next', 'first', 'tail', 'rb_root', 'rb_stored_root'):
+                    ref(n.get(field, 0))
+                for member in n.get('rb', []):
+                    for field in ('owner', 'node', 'parent', 'left', 'right'): ref(member[field])
+            for _, t in table_records(row):
+                if t['present']:
+                    for x in t['chains']: ref(x['generation'])
             if refs is not None: refs[operation] = dict(keys)
-            normalized[operation, 'identity.state'] = (live, {h: (ref(b['generation']), b['revision']) for h, b in bs.items()})
-        if command or operation == 0: completed_nodes, completed_bindings = nodes, bs
+            if project:
+                def storage(table):
+                    if not table or not table['present']: return None
+                    return (table['size'], table['used'], table['mode'], table['free'], table['buckets'], table['slots'],
+                            [{k: ref(v) if k == 'generation' else v for k, v in x.items() if k != 'occurrence'} for x in table['chains']],
+                            table['free_chain'], table['free_terminal'])
+                live = {}
+                for g, n in nodes.items():
+                    if n['alive']:
+                        live[ref(g)] = (schema_keys.get(n.get('schema_identity')), n.get('module'), n.get('schema'), n.get('value'), n.get('flags'),
+                                        tuple(ref(n.get(f, 0)) for f in ('parent', 'prev', 'next', 'first', 'tail')),
+                                        n.get('context_generation', n.get('context')), n.get('nodetype'), n.get('key'),
+                                        n.get('prefix_format'), n.get('prefix_bound'), storage(n.get('table')), n['hash'],
+                                        n['context'], n['metadata'], n.get('opaque_name'), n.get('opaque_module'), n.get('opaque_prefix'), n.get('opaque_value'),
+                                        ref(n.get('rb_root', 0)), ref(n.get('rb_stored_root', 0)),
+                                        [{f: ref(v) if f != 'color' else v for f, v in r.items()} for r in n.get('rb', [])])
+                normalized[operation, 'identity.state'] = (live, {h: (ref(b['generation']), b['revision'], b['operation']) for h, b in bs.items()})
+                normalized[operation, 'envelope'] = (row['event'], row['rc'], row.get('modules'),
+                    messages(row['diagnostics']), messages(row.get('logs', [])),
+                    {f: ref(row[f]) for f in ('node_generation', 'source_generation', 'output_generation')},
+                    row['output_handle'], ref(row.get('working_rb_root', 0)), storage(row.get('table')),
+                    sorted({schema_keys[n['schema_identity']] for n in nodes.values() if n['alive'] and 'schema_identity' in n}, key=repr))
+        if command or operation == 0: completed_row, completed_nodes, completed_bindings = row, nodes, bs
         previous, previous_tables, bindings, last_nodes = nodes, registry, bs, nodes
     return normalized
 
@@ -382,7 +468,7 @@ def validate(script, rows, refs=None):
 if __name__ == '__main__':
     payload = json.load(sys.stdin)
     refs = {} if payload.get('project') else None
-    result = validate(payload['script'], payload['rows'], refs)
+    result = validate(payload['script'], payload['rows'], refs, project=bool(payload.get('project')))
     if refs is not None:
         def canonical(value):
             if isinstance(value, dict):

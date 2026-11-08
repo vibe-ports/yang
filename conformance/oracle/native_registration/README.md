@@ -1192,3 +1192,235 @@ Go regression. The default CI lint passed. No reuse finding remains open.
 Full logs and exact statuses are under ignored `.build/reuse-checks/`;
 targeted/sensitivity/standalone logs and all twelve work tuples are under
 `.build/reuse-evidence/`. No manifest fixture IDs were added.
+
+## Part 1 evidence field inventory (pre-gate audit)
+
+The inventory was made before changing the acceptance predicate. `snapshot()` is
+shared by bootstrap, every completed command, instrumented native events and
+snapshot boundaries. Commands without a separate result still emit this full
+snapshot. The following table records the former validation/comparison gaps and
+the contracts the audit repair must enforce. All names refer to JSON keys.
+
+Command-to-channel dispatch is exhaustive for this extracted driver:
+
+| Request | Output in addition to the common completed snapshot |
+|---|---|
+| `new`, `root`, `term`, `list`, `frontier`, `opaque`, `opaque-invalid-xml`, `dup`, `dup-to-context`, `unlink`, `attach`, `before`, `detach-siblings`, `change`, `parse`, `parse-xml`, `context`, `context-keyless`, `child`, `record`, `record-as`, `insert`, `remove`, `I`, `U`, `free`, `free-root`, `validate`, `check-handle`, `dump`, `find-next-loop` | No separate successful result record. Instrumented events use the snapshot contract; explicit precondition/watchdog stops may replace completion, checked against the request's expected terminal. |
+| `schema` | `read.schema` |
+| `instance`, `opaq-find` | `read.instance`, `read.opaque`; instrumented comparison callbacks may accompany instance lookup. |
+| `null-reads` | `read.null`, containing all three native statuses/winners |
+| `read-schema`, `read-instance`, `read-value`, `read-opaque` | Corresponding `read.selection.*` |
+| `equal` | `read.equal` |
+| `rewind` | `read.first-sibling` |
+| `print` | `public.result` |
+| Bootstrap | One `driver.ready.actual-children-callback` snapshot at operation 0 |
+| `# reuse-free`, `# reuse-next` | Directives do not consume an operation; successful reuse may emit `allocation.address-reuse`. Existing positive/held-target rejection controls pin this channel. |
+
+The process exit status is checked before accepting a replay (the two rejected
+constructor controls explicitly expect exit 5). Stderr contains transport/control
+failure explanations and is retained for failure reporting, not semantic equality:
+these failures cannot certify successful evidence. Existing watchdog and held-target
+rejection controls pin that exclusion. Native semantic diagnostics use the JSON
+queue and logger channels below, including successful operations with diagnostics.
+
+| Channel / emitter | Complete emitted fields | Validation and comparison |
+|---|---|---|
+| Snapshot envelope | event, operation, rc, node_generation, source_generation, optional working_rb_root/table, output_handle, output_generation, node_count, table_count, allocation_scope, bindings, tables, nodes, schemas, diagnostics, optional modules; logs | `identity.validate` checks registries/provenance and request bindings. Previously bootstrap rc/logs and incidental envelope state were dropped. Require shape independently of field presence; compare bootstrap and completed semantic envelopes. |
+| Bindings | handle, generation, revision, operation | Request binding history validated; generations mapped injectively; compare all binding history fields. |
+| Node lifetime | generation, id, creation_operation, creation_ordinal, source, attempt, alive; dead/unsafe current | Provenance, tombstones, source ordering and birth labels validated. Observer ordering/provenance excluded only as described below; live component keys and bindings compared. |
+| Live common node | context, optional context_generation, hash, flags, prev, next, parent, metadata | References validated. Previously metadata contents and the current-context bit were dropped; preserve both, current hash separately from recorded hashes. |
+| Schema node | nodetype, key, schema, schema_identity, optional module/value; inner first, tail, table | Schema registry and ancestry validated; normalize schema identity through its descriptor, compare all semantic content. |
+| Opaque node | first, tail, prefix_format, prefix_bound | Previously name, module/namespace, prefix and raw value were not emitted. Add required opaque_name/opaque_module/opaque_prefix/opaque_value; preserve null versus empty and all opaque text bytes, including invalid XML. Prefix payload traversal remains part 2. |
+| Sorted metadata | rb_stored_root, rb_root, rb entries: owner, node, parent, left, right, color | References validated; previously topology omitted from shared projection. Preserve topology and metadata names. No new sorted-tree algorithm. |
+| Compiled schemas | identity, context, parent, nodetype, module, name | Immutable registry/ancestry validated; compare current live descriptors through structural keys. Unreferenced discovery history is excluded, with the temporary-parser control described below. |
+| Current context modules | name, optional namespace/revision, implemented, latest | Previously only key presence checked and contents dropped. Validate record types/nonempty registry and compare full ordered contents, including bootstrap. |
+| Table registry | identity, alive, optional storage at unsafe boundary | Registry/retirement/ownership validated. Observer history excluded across builds; current storage compared. |
+| Table observation | present; if present identity, optional retired, continuity, size, used, mode, free, buckets(first,last), slots(next,node,hash), chains(bucket,slot,ordinal,node,generation,occurrence,hash,alive), free_chain, free_terminal | Validate full shape/layout, owner, occurrence binding and continuity before normalization. Previously `read.selection.*` escaped this registry check. Compare every layout/content field after local identity resolution. |
+| Diagnostic queue | code, context_generation, optional msg/path/apptag | Validate field types/context; compare complete records at bootstrap and command completion. |
+| Logger (always present, including an empty bootstrap array) | level, line, optional msg/path/schema_path | Validate types and compare full records, including bootstrap. Normalize only the embedded Internal error C source location and the exact observer wrapper annotation described below. |
+| equal result | event, operation, rc, left_generation, right_generation, options | Validate by event and request regardless of `nodes`; reject snapshot fields here. Bind both operands to the preceding registry and compare identities/options/status. |
+| read-selection result (schema/instance/value/opaque) | event, operation, rc, winner, winner_script, current_parent, parent_script, next_generation, next_script, before, after | Validate request dispatch and all identities/storage against preceding snapshot, then compare semantic result and tables. |
+| G1 schema result | event, operation, rc, queried_parent, target, schema_hash, winner, current_parent, before, after | Existing request/winner validation retained; preserve every result field after reference resolution. |
+| G1 instance/opaque result | event, operation, rc, supplied, winner, current_parent, target or name, before, after | Existing dispatch validation retained; preserve complete result after reference resolution. |
+| Null result | event, operation, queried_parent, target, before, after, schema_rc/schema_winner, instance_rc/instance_winner, value_rc/value_winner | Existing null preconditions retained; preserve all three results and storage. |
+| Rewind / public result | event, operation, winner / event, operation, rc, optional json | Validate dispatch, compare complete normalized result; failed printing may omit json. |
+| Callback comparison | event, operation, left, right, options | Instrumented-only `read.compare`; validate live operands. Excluded across builds because the untouched library emits no callback observations. |
+| Reuse / tombstone boundary | event, old_generation, new_generation / event, operation, handle, generation, current | Validate against retained identities and bindings. Process-local reuse notices excluded across builds; tombstone boundary identity is validated. |
+| ABI query | pointer_bytes, long_double_bytes, long_double_mantissa_bits, pointer_record_bytes, rb_node_bytes, ndebug, instrumented | Separate `--abi` channel: checker asserts all seven exact expected constants (instrumented differs deliberately). No replay projection. |
+
+Cross-build exclusions are limited to instrumented intermediate snapshots/callbacks
+and reuse notices (no untouched counterpart), allocation_scope (different explicit
+coverage claims), lifetime registry counts/retired rows and creation_ordinal/source/
+attempt (transient observations and discovery order differ), numeric node/schema/
+table/occurrence identities (process-local, validated before structural resolution),
+and table continuity (instrumented `observed`, untouched children `unknown` or generic
+`observed-generic`). Live state, schema descriptors, binding revisions/operations,
+current tables, all result fields, bootstrap/command status and diagnostic contents
+are compared. An excluded identifier must still be present, correctly typed, owned,
+and consistent with retained history. Exclusions are pinned by positive equivalence
+and invalid-identity rejection controls, not by accepting missing fields. Unknown
+fields fail closed. Optional fields retain their presence in semantic comparison.
+
+
+The watchdog's `event`/`classification` line is an unsuccessful transport
+(exit 124), rejected before evidence comparison. It cannot certify a replay.
+Instrumented non-completed snapshots, including native precondition boundaries,
+are an observation lane: their closed JSON shape, identities and history are
+validated, while their intermediate state is excluded from cross-build equality
+because the untouched library does not emit the same event schedule. Existing G1
+boundary/completion controls pin the requested stop and diagnostics separately.
+The field sweep checks that this excluded lane still rejects malformed fields;
+`pin_exclusions` also proves quiet/verbose equivalence, complete occurrence-token
+renumbering, and the documented cross-build coverage/continuity difference.
+
+Audit-5 regression mapping:
+
+| Previous finding | Repair and live regression |
+|---|---|
+| Selection table identities disappeared | Closed table/occurrence shapes, preceding owner/storage equality, serial ownership and continuity checks before normalization. `TestNativeG2SelectionContract` deletes, adds and mutates table identity, occurrence and continuity on left/right/both peers. |
+| `nodes` bypassed equality operands | Result shape selected by event/request; snapshot fields rejected on results. `TestNativeG2EqualityResultContract` covers missing operands, the injected completed snapshot and a wrong operand binding, including identical peers. |
+| Opaque values absent | `node_json` emits required byte-exact hex name, nullable module/namespace, prefix and value bytes. `TestNativeG2OpaqueOperandContract` compares A/B with C/D at the same verdict and deletes/adds/mutates each new field. |
+| Modules and metadata dropped | Closed nonempty module registry and typed metadata arrays preserved, along with current-context bit and sorted topology. `TestNativeG2ContextMetadataContract` exercises bootstrap and completed equality, deletion/null/empty/addition/content mutation. |
+| Bootstrap status/diagnostics dropped | Bootstrap envelope includes rc and complete diagnostics/logs. `snapshot` always emits logs, including empty arrays. `TestNativeG2BootstrapChannelsContract` covers deletion/addition/mutation of all three channels. |
+
+Every named Go regression fails against the original predicate from `0fdf084`;
+all five failures are saved in `.build/audit5/predicate-before.log`. The generic
+sweep also fails against that predicate (`old-fields.log`, missing bootstrap
+operation). Self-contained audit mutants disable each repaired protection and
+must fail the corresponding Go regression. The generic bucket-omission mutant
+must fail specifically with an uncompared bucket, not an import or setup error.
+The generic sweep exposed and fixed omitted chain bucket/ordinal content too.
+
+`TestNativeG2EveryEmittedField` walks actual nested JSON, tries deletion, addition,
+same-type mutation and wrong-type mutation for each distinct emitted field shape,
+and exercises the documented exclusions. Synthetic queue/logger records cover
+optional diagnostic fields absent from the selected native failures; these are
+acceptance-predicate tests, not claims about native diagnostic semantics.
+
+Native functions changed: observer-only `node_json`, `snapshot`, and new
+`bytes_or_null`; library implementations remain pinned and unchanged. No production
+Go mutation, journal, cache, ownership, budget, public API, dependency, policy or
+golden path changed. Input lines, observer LIMIT bounds and native watchdog remain
+in force; opaque byte emission is linear in the bounded operand value. Parts 2–5
+(prefix payloads, read kernels/cursors, comparison kernels and validation adapters)
+remain excluded. No new manifest fixture IDs; all new native cases are live inline
+requests retained in the regression sources.
+
+Fresh audit-5 targeted evidence: all five named Go contracts, existing identity
+rejection controls, completed-command projection and protocol smoke passed (exit
+0); oracle-tag vet passed (exit 0); checker unit tests passed 12/12 (exit 0).
+The generic Go control passed (exit 0, 352.05s): 6,814 deletion controls, 1,270
+addition controls, 6,238 same-type mutations and 6,814 wrong-type mutations,
+plus 1,740 typed fields in the excluded intermediate lane. Its single accepted
+semantic perturbation is the explicitly excluded callback comparison option.
+All five new self-contained audit mutants and the generic bucket omission were
+rejected. Unfiltered oracle-tag lint exits 1 for the same twelve inherited
+findings (two gocritic, ten gosec); none is in the changed code.
+
+The ordinary-work regression was rerun on an archive of the specified main base
+`a10a82a` and this worktree (exit 0 / 0). All twelve visit/charge/memory-count/byte
+tuples match exactly, including duplicate-heavy reverse insertion at 64 and 256
+children, with and without the journal. At 64: `(4504,8099,1147,116176)` /
+`(4504,8649,1186,345128)`; at 256: `(26608,42844,4207,444112)` /
+`(26608,44994,4256,1425512)`. Full tuples are saved in
+`.build/audit5/work-main.log` and `work-head.log`. Protocol shape validation scans
+module evidence once per snapshot and checks each nested record once; no
+production work path changed.
+
+
+The final byte-boundary inventory also found a native-successful opaque name
+containing byte `ff`: cJSON emitted that byte directly, and Go's ordinary JSON
+decoder could replace it with Unicode replacement text. `bytes_or_null` therefore
+hex-encodes all four opaque text fields, not just values. The Go transport rejects
+invalid UTF-8 before decoding any channel. `TestNativeG2OpaqueByteNames` uses live
+`ff` versus `fe` names with the same verdict and compares both native builds;
+`TestNativeG2EvidenceUTF8` rejects malformed transport. Dedicated observer/Go
+counterfactuals pin both protections. These remain evidence-only changes.
+
+Final byte-boundary checks: rebuilt targeted drivers, all G2 contracts (including
+byte names/transport), completed-command projection, oracle-tag vet and 12 checker
+unit tests pass (exit 0). The generic sweep passes again with unchanged counts
+(exit 0, 345.91s). Both additional byte-boundary mutants are rejected. Oracle-tag
+lint still exits 1 for exactly the twelve inherited findings, with no new issue.
+
+The completed metadata corruption explicitly selects handle 1 from the audit
+request; the bootstrap case selects its independent seed. This oracle-only
+control was tightened while CI was in its untagged race phase, before oracle
+compilation; its focused rerun and oracle-tag vet both exit 0.
+
+Two observation differences are now pinned explicitly. Compiled-schema registry
+entries seen only while temporary data exists are coverage history: the untouched
+observer cannot discover them after cleanup. Every descriptor remains typed,
+unique, ancestry checked and immutable locally; descriptors of all current live
+nodes (with complete compiled ancestry) remain compared. The real missing-key
+parser case in `TestNativeG2TransientSchemaRegistry` compares verbose traces and
+then creates a live list, so a later referenced descriptor is still evidence.
+
+`instrument.py:wrap` adds `_nr_impl` to `__func__`. Only that suffix in the final
+function annotation of an `Invalid argument … (FUNCTION()).` message is normalized,
+and only for the exact wrapped-function inventory. Argument text, base function,
+code, context, path, app-tag, level and separate line remain exact. The real
+zero-hash remove in `TestNativeG2ObserverFunctionAnnotation` pins equivalence and
+rejects changed argument text. `TestNativeG2ObserverWithoutStatus` reaches the
+instrumented comparison callback, whose contract has no rc; status projection is
+selected by completed-command identity, without imposing rc on observer notices.
+
+Read storage identity is checked across the preceding and completed snapshots,
+including generic storage. All read, alias, print, dump and context commands are
+inventoried in `STABLE_STORAGE_COMMANDS`; constructors, index/data mutations,
+validation and synthetic schema mutation are excluded from that purity rule.
+`TestNativeG2ReadStorageContinuity` retires an old table and supplies a fresh,
+internally consistent registry/occurrence set with identical contents. Both owned
+and generic variants must fail on left/right/both peers before IDs are removed.
+Its disabled-guard counterfactual is rejected by the regression.
+
+Validation-only consumers now skip constructing comparison output, while keeping
+all shape, registry, reference, ownership, lifetime and read checks. The generic
+field sweep requires every wrong-type perturbation to fail in both lanes. Static
+layout contracts are bounded and contain no trace data; table obligations are
+checked before walking values. The existing checker-wrapper time budget is kept.
+Incomplete schedules and missing event counts are rejected before walking retained
+history. Each peer's complete projection is reused only within one comparison;
+mutable traces are never cached across comparisons. These changes retain every
+positive and negative acceptance obligation.
+
+The once-only locked full run acquired the heavy-check lock within the requested
+hour. Commands ran as the normal amd64 dev user, with UTC set outside and inside
+the container and both driver variables set inside. Exact command exits:
+
+| Command | Exit | Evidence / qualification |
+|---|---:|---|
+| `bash conformance/oracle/native_registration/build.sh` | 1, retry 0 | Existing cached build files had incompatible ownership; rebuilding with dev-owned copies succeeded. Fresh BUILDINFO matches driver.c and pinned native commit `47351e5`. |
+| `make ci` | 2 | Reached oracle tests after race, 386 and minimum-Go checks; exposed transient-schema and observer-function diagnostic differences now covered by focused regressions. |
+| `make test-oracle oracle-check` | 2 | Stopped in test-oracle on those differences and an invalid resize mode in the new storage-continuity test, since corrected to mode 1. Did not reach oracle-check in this invocation. |
+| Driver-enabled `go test -tags oracle ./data -run '^TestNative' -count=1 -timeout=30m -v` | 1 | Zero skips; only failure was the checker wrapper's three-minute deadline. |
+| `python3 .../check.py --driver ... --comparison-driver ...` | 0 | Both native binaries, all checker controls. |
+| `python3 .../g2_mutants.py` | 0 | All then-present sensitivity controls rejected their counterfactuals. Four subsequently added exclusion/status controls also passed in a targeted run. |
+| `make test-gates vuln secrets sensitive oracle-check registries` | 0 | Separately locked, previously unreached CI components; no golden edits. |
+| `go vet -tags oracle ./data` | 0 | Focused post-fix check. |
+
+Raw full statuses are in `.build/audit5/full-status.txt`; individual logs preserve
+the failures. The outer full-run controller accidentally used unavailable `rg`
+for aggregation: its exit 0 is **not** a passing aggregate. Individual command
+statuses above are authoritative; zero skips was checked separately on the host.
+The later focused-run statuses are in `final-status.txt`. No failure is attributed
+to the known unrelated flakes. A green full CI/oracle/native gate on the final
+patch remains pending: the user limited full suites to one run, so they were not
+repeated after fixes. No commit or push was made.
+
+Post-fix targeted verification: the complete G2 contract set (including the field
+sweep), completed-command projection, identity rejection controls and native
+identity sweep pass together (exit 0, 393.62s). The checker wrapper passes within
+its unchanged three-minute budget (exit 0, 125.75s), and checker unit tests pass
+12/12 (exit 0). Logs: `current-contracts.log`, `checker-budget-final3.log` and
+`current-units.log`. The earlier deadline failures are retained, rather than
+reclassified as unrelated flakes.
+
+Final validation-order check: `TestNativeG2EveryEmittedField` passes in 298.64s
+(exit 0), with the same 6,814 deletions, 1,270 additions, 6,238 value mutations,
+6,814 wrong-type controls and 1,740 typed excluded-lane fields. Oracle-tag vet and
+gofmt checks exit 0. Focused reruns of all five contract counterfactuals, generic
+bucket omission and four exclusion/status counterfactuals each exit 0 as runners:
+every intended broken predicate is rejected by a real failing regression. Logs:
+`current-fields.log` and `current-mutants.log`. Final sources are recorded in
+`final-sources.sha256`.

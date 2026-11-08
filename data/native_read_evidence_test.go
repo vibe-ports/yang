@@ -21,6 +21,9 @@ import (
 // level and every other diagnostic field remain evidence.
 var nativeG2Location = regexp.MustCompile(`^(Internal error) \([^()]*\.(?:c|h):[0-9]+\)(\.)$`)
 
+// Observer wrapper names are the exact wrap() inventory in instrument.py.
+var nativeG2ObserverFunction = regexp.MustCompile(`^(Invalid argument .+ \()(lyd_insert_hash|lyd_unlink_hash|lyd_insert_hash_add|lyht_resize|_lyht_insert_with_resize_cb|lyht_remove_with_resize_cb|lyht_find_next_with_collision_cb|lyd_insert_after_node|lyd_insert_before_node|lyd_unlink_ignore_lyds|lyd_insert_only_child|lyd_insert_node_last|lyds_move_meta|lyds_merge_nodes2_front|lyds_merge_nodes2_among|lyds_merge_nodes2_back|lyd_validate_duplicates)_nr_impl(\(\)\)\.)$`)
+
 func nativeG2CompareEvidence(script string, left, right []nativeDriverResult) error {
 	a, err := nativeG2Evidence(script, left)
 	if err != nil {
@@ -72,11 +75,14 @@ func nativeCompletedCommandEvidence(script string, rows []nativeDriverResult) (n
 	}
 	for _, row := range rows {
 		raw := row.raw
-		if raw == nil || raw["rc"] == nil {
+		if raw == nil {
 			return nativeCommandEvidence{}, fmt.Errorf("missing raw evidence")
 		}
 		if row.Operation <= 0 || row.Operation > len(commands) || row.Event != commands[row.Operation-1] {
 			continue
+		}
+		if raw["rc"] == nil {
+			return nativeCommandEvidence{}, fmt.Errorf("missing command status")
 		}
 		result.snapshots[row.Operation] = raw
 		// Project every completed command, independently of snapshot discovery.
@@ -84,7 +90,10 @@ func nativeCompletedCommandEvidence(script string, rows []nativeDriverResult) (n
 		if !ok {
 			return nativeCommandEvidence{}, fmt.Errorf("missing diagnostics at %d", row.Operation)
 		}
-		logs, _ := raw["logs"].([]any)
+		logs, ok := raw["logs"].([]any)
+		if !ok {
+			return nativeCommandEvidence{}, fmt.Errorf("missing logs at %d", row.Operation)
+		}
 		normalizeMessages := func(items []any) []any {
 			result := make([]any, len(items))
 			for i, item := range items {
@@ -92,6 +101,7 @@ func nativeCompletedCommandEvidence(script string, rows []nativeDriverResult) (n
 				for k, v := range item.(map[string]any) {
 					if k == "msg" {
 						v = nativeG2Location.ReplaceAllString(v.(string), "$1$2")
+						v = nativeG2ObserverFunction.ReplaceAllString(v.(string), "$1$2$3")
 					}
 					record[k] = v
 				}
@@ -745,9 +755,12 @@ func TestNativeCompletedCommandProjection(t *testing.T) {
 				if r["event"] != "validate" {
 					return
 				}
-				if field == "rc" {
+				switch field {
+				case "rc":
 					r[field] = float64(7)
-				} else {
+				case "logs":
+					r[field] = []any{map[string]any{"level": float64(0), "line": float64(0), "msg": "changed"}}
+				default:
 					r[field] = []any{map[string]any{"code": float64(7), "context_generation": float64(1), "msg": "changed"}}
 				}
 			})
