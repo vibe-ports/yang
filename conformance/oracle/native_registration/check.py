@@ -111,7 +111,8 @@ def completed_replay(name, rows, stopped=True):
     # An observational remote-link boundary may occur mid-replay, but an early
     # stop must never be interpreted as permission to omit subsequent commands.
     reads = {"schema": "read.schema", "rewind": "read.first-sibling", "print": "public.result",
-             "instance": "read.instance", "opaq-find": "read.opaque", "null-reads": "read.null"}
+             "instance": "read.instance", "opaq-find": "read.opaque", "null-reads": "read.null",
+             "read-schema": "read.selection.schema", "read-instance": "read.selection.instance", "read-value": "read.selection.value", "read-opaque": "read.selection.opaque", "equal": "read.equal"}
     expected_results = [(operation, reads[command]) for operation, command in expected if command in reads]
     actual_results = [(r["operation"], r["event"]) for r in rows if r["event"] in reads.values()]
     assert actual_results == expected_results, (name, "missing/extra/out-of-order read/public result")

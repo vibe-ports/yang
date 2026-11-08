@@ -25,8 +25,9 @@ def table_records(row):
             yield ('node', node['generation']), node['table']
 
 
-def validate(script, rows):
+def validate(script, rows, refs=None):
     req = requests(script)
+    read_context_evidence = any(f[0].startswith('read-') or f[0] in ('equal', 'context', 'context-keyless') for f in req)
     recorded = {n['generation']: n for r in rows for n in r.get('nodes', [])}
     assert rows and rows[0]['event'] == 'driver.ready.actual-children-callback', 'missing bootstrap evidence'
     previous, provenance, labels, retired, table_owners, serials = {}, {}, {}, set(), {}, {}
@@ -39,6 +40,9 @@ def validate(script, rows):
         if unsafe:
             assert row is rows[-1] and req[operation - 1][0] in ('free', 'free-root'), 'invalid unsafe boundary'
         command = 0 < operation <= len(req) and event == req[operation - 1][0]
+        # Snapshot obligations come from the protocol/request, never field presence.
+        if command or event == 'driver.ready.actual-children-callback':
+            assert isinstance(row.get('nodes'), list), 'missing required snapshot nodes'
         if 'nodes' not in row:
             if event in ('read.null', 'read.schema'):
                 fields = req[operation - 1]
@@ -89,7 +93,18 @@ def validate(script, rows):
             if event == 'boundary.tombstoned-handle':
                 g = row['generation']
                 assert g in last_nodes and not last_nodes[g]['alive'] and bindings[row['handle']]['generation'] == g, 'invalid tombstone probe'
+            if event == 'read.equal':
+                fields = req[operation - 1]
+                assert fields[0] == 'equal' and row['options'] == int(fields[3]), 'wrong comparison request'
+                operands = []
+                for field, handle in zip(('left_generation', 'right_generation'), map(int, fields[1:3]), strict=True):
+                    g = row[field]
+                    assert type(g) is int and g == (bindings[handle]['generation'] if handle else 0), 'wrong comparison operand binding'
+                    assert not g or (g in last_nodes and last_nodes[g]['alive'] and g in keys), 'invalid comparison operand'
+                    operands.append(keys[g] if g else 0)
+                normalized[operation, event] = (operation, row['rc'], *operands, row['options'])
             if event in ('read.schema', 'read.first-sibling'):
+
                 def live(g):
                     assert g == 0 or (g in last_nodes and last_nodes[g]['alive'] and g in keys), ('invalid read identity', g)
                     return keys[g] if g else 0
@@ -150,6 +165,11 @@ def validate(script, rows):
                     assert winner == expected, 'wrong first sibling'
                     normalized[operation, event] = (operation, live(winner))
             continue
+        assert 'diagnostics' in row and isinstance(row['diagnostics'], list), 'missing diagnostics'
+        for diagnostic in row['diagnostics']:
+            assert {'code', 'context_generation'} <= diagnostic.keys(), 'missing diagnostic context identity'
+            assert type(diagnostic['code']) is int and type(diagnostic['context_generation']) is int and 0 < diagnostic['context_generation'] < 16, 'invalid diagnostic identity'
+        if read_context_evidence: assert 'modules' in row, 'missing read context evidence'
         assert row['allocation_scope'] in ('every-allocation', 'survivors-and-observed-frees')
         assert type(row['node_count']) is int and 0 < row['node_count'] < 65536, 'invalid allocation count'
         assert type(row['table_count']) is int and 0 <= row['table_count'] < 65536, 'invalid table count'
@@ -160,7 +180,9 @@ def validate(script, rows):
         assert schemas.keys() <= registry_schemas.keys(), 'lost schema registry'
         current_schema_keys, unique_schemas = {}, set()
         for s, record in sorted(registry_schemas.items()):
-            assert type(s) is int and s > 0 and record['context'] == 1, 'invalid schema identity/context'
+            context = record['context']
+            assert type(s) is int and s > 0 and type(context) is int and 0 < context < 16, 'invalid schema identity/context'
+            assert context == 1 or read_context_evidence, 'invalid schema identity/context'
             assert record['module'] and record['name'] and record['nodetype'] > 0, 'incomplete schema descriptor'
             parent = record['parent']
             assert type(parent) is int and 0 <= parent < s, 'invalid compiled schema ancestry'
@@ -202,14 +224,23 @@ def validate(script, rows):
                     assert n['current'] == 'unsafe-native-links', 'missing unsafe availability'
                     continue
                 assert n.get('current') != 'unsafe-native-links', 'unsafe current state outside boundary'
+                assert {'context', 'hash', 'flags', 'parent', 'prev', 'next', 'metadata'} <= n.keys(), 'missing live node state'
+                if read_context_evidence or 'modules' in row:
+                    assert 'context_generation' in n and type(n['context_generation']) is int and 0 < n['context_generation'] < 16, 'missing read context identity'
+                if n.get('schema'):
+                    assert {'nodetype', 'key'} <= n.keys(), 'missing native node kind'
+                    if n['nodetype'] & 0x000c: assert 'value' in n, 'missing terminal value'
+                else:
+                    assert {'first', 'tail', 'prefix_format', 'prefix_bound'} <= n.keys(), 'missing opaque state'
                 if n.get('schema'):
                     s = n['schema_identity']
                     assert type(s) is int and s > 0 and s in schemas, 'missing schema identity'
                     descriptor = schemas[s]
-                    assert (n['schema'], n['nodetype'], n['context']) == (descriptor['name'], descriptor['nodetype'], descriptor['context']), 'node/schema descriptor mismatch'
+                    assert (n['schema'], n['nodetype'], n.get('context_generation', n['context'])) == (descriptor['name'], descriptor['nodetype'], descriptor['context']), 'node/schema descriptor mismatch'
                     assert 'module' not in n or n['module'] == descriptor['module'], 'node/schema module mismatch'
                     assert schema_nodes.setdefault(g, s) == s, 'node/schema identity drift'
-                if n.get('schema') in ('c', 'd', 'r', 'l', 'kl'):
+                # libyang v5.8.6 tree_data.h:LYD_NODE_INNER / tree_schema.h.
+                if n.get('nodetype', 0) & 0x0711 or n.get('schema') in ('c', 'd', 'r', 'l', 'kl'):
                     assert {'first', 'tail', 'table'} <= n.keys(), 'missing inner-node table evidence'
                 for field in ('parent', 'prev', 'next', 'first', 'tail', 'rb_root', 'rb_stored_root'):
                     ref = n.get(field, 0)
@@ -271,26 +302,31 @@ def validate(script, rows):
         if command:
             fields = req[operation - 1]
             unary = ('unlink', 'detach-siblings', 'change', 'I', 'U', 'free', 'free-root', 'rewind', 'validate', 'check-handle', 'print', 'find-next-loop', 'opaq-find')
-            inputs = [int(fields[1])] if event in unary else [int(fields[1]), int(fields[2])] if event in ('attach', 'before', 'schema', 'null-reads', 'instance') else [int(fields[2]), int(fields[3])] if event == 'dup' else [int(fields[2])] if event in ('term', 'list', 'opaque') else []
+            inputs = [int(fields[1])] if event in unary else [int(fields[1]), int(fields[2])] if event in ('attach', 'before', 'schema', 'equal', 'null-reads', 'instance') else [int(fields[2]), int(fields[3])] if event in ('dup', 'dup-to-context') else [int(fields[2])] if event in ('term', 'list', 'opaque', 'opaque-invalid-xml', 'child') else []
+            if event.startswith('read-'):
+                inputs = [int(fields[1]), int(fields[2]), int(fields[3]) if len(fields) > 3 else 0]
+            elif event in ('record', 'record-as'):
+                inputs = [int(fields[1]), int(fields[2])]
+                if event == 'record-as': inputs.append(int(fields[3]))
             for h in inputs:
                 if h:
                     assert h in completed_bindings, 'missing input binding'
                     g = completed_bindings[h]['generation']
                     assert g and g in completed_nodes and completed_nodes[g]['alive'], 'invalid input identity'
-            outputs = ('root', 'term', 'list', 'opaque', 'dup', 'parse', 'rewind', 'validate')
+            outputs = ('root', 'term', 'list', 'opaque', 'opaque-invalid-xml', 'dup', 'dup-to-context', 'parse', 'parse-xml', 'child', 'rewind', 'validate')
             changed = int(fields[1]) if event in outputs else 0
             lazy = int(fields[1]) if event in ('insert', 'remove') else 0
             for h, old in completed_bindings.items():
                 if h not in (changed, lazy): assert bs[h] == old, 'unrequested binding refresh'
 
-            if event in ('root', 'term', 'list', 'opaque', 'dup', 'parse', 'rewind', 'validate'):
+            if event in outputs:
                 h = int(fields[1])
                 assert h in bs, 'missing output binding'
                 assert row['output_handle'] == h and row['output_generation'] == bs[h]['generation'], 'binding differs from returned pointer'
                 if row['rc'] == 0 and event != 'validate':
                     g = bs[h]['generation']
                     assert g and nodes[g]['alive'], 'invalid returned binding'
-                if event in ('root', 'term', 'list', 'opaque', 'parse') and row['rc'] == 0:
+                if event in ('root', 'term', 'list', 'opaque', 'opaque-invalid-xml', 'parse', 'parse-xml') and row['rc'] == 0:
                     assert nodes[bs[h]['generation']]['creation_operation'] == operation, 'returned wrong incarnation'
                 if event == 'rewind':
                     assert keys[bs[h]['generation']] == normalized[operation, 'read.first-sibling'][1], 'rewind binding not refreshed'
@@ -324,11 +360,19 @@ def validate(script, rows):
             def ref(g):
                 assert not g or g in keys, 'incomplete normalization'
                 return keys[g] if g else 0
+            def storage(table):
+                if not table or not table['present']: return None
+                return (table['size'], table['used'], table['mode'], table['free'], table['buckets'], table['slots'],
+                        [(x['slot'], x['hash'], ref(x['generation']), x['alive']) for x in table['chains']],
+                        table['free_chain'], table['free_terminal'])
             live = {}
             for g, n in nodes.items():
                 if n['alive']:
                     live[ref(g)] = (schema_keys.get(n.get('schema_identity')), n.get('module'), n.get('schema'), n.get('value'), n.get('flags'),
-                                    tuple(ref(n.get(f, 0)) for f in ('parent', 'prev', 'next', 'first', 'tail')))
+                                    tuple(ref(n.get(f, 0)) for f in ('parent', 'prev', 'next', 'first', 'tail')),
+                                    n.get('context_generation', n.get('context')), n.get('nodetype'), n.get('key'),
+                                    n.get('prefix_format'), n.get('prefix_bound'), storage(n.get('table')), n['hash'])
+            if refs is not None: refs[operation] = dict(keys)
             normalized[operation, 'identity.state'] = (live, {h: (ref(b['generation']), b['revision']) for h, b in bs.items()})
         if command or operation == 0: completed_nodes, completed_bindings = nodes, bs
         previous, previous_tables, bindings, last_nodes = nodes, registry, bs, nodes
@@ -337,4 +381,13 @@ def validate(script, rows):
 
 if __name__ == '__main__':
     payload = json.load(sys.stdin)
-    validate(payload['script'], payload['rows'])
+    refs = {} if payload.get('project') else None
+    result = validate(payload['script'], payload['rows'], refs)
+    if refs is not None:
+        def canonical(value):
+            if isinstance(value, dict):
+                return [[canonical(k), canonical(v)] for k, v in sorted(value.items(), key=lambda x: repr(x[0]))]
+            if isinstance(value, (tuple, list)): return [canonical(x) for x in value]
+            return value
+        json.dump({'states': [[op, event, canonical(value)] for (op, event), value in result.items()],
+                   'refs': refs}, sys.stdout)

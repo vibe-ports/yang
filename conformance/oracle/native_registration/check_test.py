@@ -14,14 +14,13 @@ import check
 def snapshot(event, operation):
     nodes = [dict(generation=g, id=1 if g == 6 else 0, creation_operation=1 if g == 6 else 0,
                   creation_ordinal=1 if g == 6 else g, source=0, attempt=1 if g == 6 else 0,
-                  alive=True, parent=1 if 2 <= g <= 5 else 0, prev=5 if g == 2 else g - 1 if 3 <= g <= 5 else g,
-                  next=g + 1 if 2 <= g < 5 else 0, schema="v" if 2 <= g <= 5 else "c",
-                  schema_identity=2 if 2 <= g <= 5 else 1,
-                  context=1, nodetype=8 if 2 <= g <= 5 else 1) for g in range(1, 7)]
+                  alive=True, context=1, hash=g, flags=4, metadata=[], nodetype=8 if 2 <= g <= 5 else 1, key=False,
+                  value=str(g) if 2 <= g <= 5 else None, parent=1 if 2 <= g <= 5 else 0, prev=5 if g == 2 else g - 1 if 3 <= g <= 5 else g,
+                  next=g + 1 if 2 <= g < 5 else 0, schema="v" if 2 <= g <= 5 else "c", schema_identity=2 if 2 <= g <= 5 else 1) for g in range(1, 7)]
     chains = [dict(generation=g, occurrence=i + 1, node=0, hash=8 * (i + 1), slot=i,
                    bucket=0, ordinal=i, alive=True) for i, g in enumerate((2, 2, 3, 4, 5))]
     nodes[0].update(first=2, tail=5, table=dict(present=True, identity=1, used=5, size=8,
-                    continuity="observed", slots=[{} for _ in range(8)], buckets=[{} for _ in range(8)], chains=chains))
+                    continuity="observed", mode=2, free=5, free_chain=[5, 6, 7], free_terminal=8, slots=[{} for _ in range(8)], buckets=[{} for _ in range(8)], chains=chains))
     nodes[5].update(first=0, tail=0, table=dict(present=False))
     return {"event": event, "operation": operation, "rc": 0, "diagnostics": [], "nodes": nodes,
             "output_handle": 1 if event == "root" else 0, "output_generation": 6 if event == "root" else 0,
@@ -94,6 +93,50 @@ class ControlComparisonTest(unittest.TestCase):
         mutant[0]["rc"] = 7
         with self.assertRaises(AssertionError):
             self.compare("dump\nprint 1\n", rows, mutant)
+
+    def test_required_snapshots(self):
+        from identity import validate
+        ready = snapshot("driver.ready.actual-children-callback", 0)
+        ready.update(nodes=ready["nodes"][:5], node_count=5, bindings=[])
+        valid = [ready, snapshot("root", 1), snapshot("dump", 2)]
+        validate("root 1 c\ndump\n", valid)
+        for index in (0, 2):
+            mutant = copy.deepcopy(valid)
+            del mutant[index]["nodes"]
+            with self.subTest(index=index), self.assertRaises(AssertionError):
+                validate("root 1 c\ndump\n", mutant)
+
+    def test_current_hash_is_distinct_from_recorded_hash(self):
+        from identity import validate
+        ready = snapshot("driver.ready.actual-children-callback", 0)
+        ready.update(nodes=ready["nodes"][:5], node_count=5, bindings=[])
+        valid = [ready, snapshot("root", 1), snapshot("dump", 2)]
+        mutant = copy.deepcopy(valid)
+        mutant[-1]["nodes"][1]["hash"] += 1
+        # Bootstrap occurrences deliberately use hashes distinct from node hashes.
+        self.assertNotEqual(validate("root 1 c\ndump\n", valid),
+                            validate("root 1 c\ndump\n", mutant))
+
+    def test_read_result_completion(self):
+        for command, result in (("instance", "read.instance"),
+                                ("opaq-find", "read.opaque"),
+                                ("null-reads", "read.null"),
+                                ("read-schema", "read.selection.schema"),
+                                ("read-instance", "read.selection.instance"),
+                                ("read-value", "read.selection.value"),
+                                ("read-opaque", "read.selection.opaque"),
+                                ("equal", "read.equal")):
+            with tempfile.TemporaryDirectory() as directory:
+                root = pathlib.Path(directory)
+                (root / "cases").mkdir()
+                (root / "cases/control.calls").write_text(command + " 1 2 3\n")
+                rows = [snapshot(result, 1), snapshot(command, 1)]
+                with patch.object(check, "root", root):
+                    check.completed_replay("control", rows)
+                    for mutant in (rows[:1], rows[1:], rows[:1] + rows,
+                                   [dict(rows[0], operation=2), rows[1]]):
+                        with self.subTest(command=command), self.assertRaises(AssertionError):
+                            check.completed_replay("control", mutant)
 
 
 if __name__ == "__main__":

@@ -41,7 +41,9 @@ static size_t reuse_size = sizeof(struct lyd_node_term);
 static char reuse_next[16];
 static const struct lysc_node *schemas[256];
 static unsigned schema_count;
-static int event_schema_enabled;
+static const struct ly_ctx *read_contexts[16];
+static unsigned read_context_count;
+static int event_schema_enabled, read_schema_enabled;
 static int observe_read;
 static const struct ly_ht *retired_tables[LIMIT];
 static unsigned retired_count;
@@ -71,6 +73,12 @@ static unsigned table_identity(const struct ly_ht *ht)
 }
 
 static void number(cJSON *j, const char *key, double value) { cJSON_AddNumberToObject(j, key, value); }
+static unsigned context_identity(const struct ly_ctx *context)
+{
+    for(unsigned i=1;i<=read_context_count;++i)if(read_contexts[i]==context)return i;
+    if(read_context_count+1==16)exit(98);
+    read_contexts[++read_context_count]=context;return read_context_count;
+}
 static unsigned schema_identity(const struct lysc_node *schema)
 {
     if(!schema)return 0;
@@ -336,9 +344,11 @@ static cJSON *node_json(unsigned i)
     if(unsafe_snapshot && id->operation) { cJSON_AddStringToObject(j,"current","unsafe-native-links");return j; }
     const struct lyd_node *n=id->ptr;
     number(j,"context",LYD_CTX(n)==ctx?1:0);
+    if(read_schema_enabled)number(j,"context_generation",context_identity(LYD_CTX(n)));
     number(j,"hash",n->hash); number(j,"flags",n->flags); number(j,"prev",identity(n->prev)); number(j,"next",identity(n->next)); number(j,"parent",identity(n->parent));
-    if(n->schema) {number(j,"nodetype",n->schema->nodetype);cJSON_AddBoolToObject(j,"key",lysc_is_key(n->schema));cJSON_AddStringToObject(j,"schema",n->schema->name);number(j,"schema_identity",schema_identity(n->schema));if(event_schema_enabled){cJSON_AddStringToObject(j,"module",n->schema->module->name);}if(n->schema->nodetype&LYD_NODE_TERM)cJSON_AddStringToObject(j,"value",lyd_get_value(n));}
+    if(n->schema) {number(j,"nodetype",n->schema->nodetype);cJSON_AddBoolToObject(j,"key",lysc_is_key(n->schema));cJSON_AddStringToObject(j,"schema",n->schema->name);number(j,"schema_identity",schema_identity(n->schema));if(event_schema_enabled || read_schema_enabled){cJSON_AddStringToObject(j,"module",n->schema->module->name);}if(n->schema->nodetype&LYD_NODE_TERM)cJSON_AddStringToObject(j,"value",lyd_get_value(n));}
     else {const struct lyd_node_opaq *o=(const void*)n;number(j,"first",identity(o->child));number(j,"tail",identity(o->child?o->child->prev:NULL));number(j,"prefix_format",o->format);cJSON_AddBoolToObject(j,"prefix_bound",o->val_prefix_data!=NULL);}
+
     if(n->schema && (n->schema->nodetype & LYD_NODE_INNER)) { const struct lyd_node_inner *in=(const void*)n; number(j,"first",identity(in->child)); number(j,"tail",identity(in->child ? in->child->prev : NULL)); cJSON_AddItemToObject(j,"table",table_json(in->children_ht)); }
     cJSON *metas=cJSON_AddArrayToObject(j,"metadata"); for(const struct lyd_meta *m=n->meta;m;m=m->next) {
         cJSON_AddItemToArray(metas,cJSON_CreateString(m->name));
@@ -385,11 +395,20 @@ static void snapshot(const char *event, const void *node, const struct ly_ht *ht
     cJSON *sr=cJSON_AddArrayToObject(j,"schemas");
     for(unsigned i=1;i<=schema_count;++i) {
         const struct lysc_node *s=schemas[i];cJSON *r=cJSON_CreateObject();
-        number(r,"identity",i);number(r,"context",1);number(r,"parent",schema_identity(s->parent));
+        number(r,"identity",i);number(r,"context",context_identity(s->module->ctx));number(r,"parent",schema_identity(s->parent));
         number(r,"nodetype",s->nodetype);cJSON_AddStringToObject(r,"module",s->module->name);
         cJSON_AddStringToObject(r,"name",s->name);cJSON_AddItemToArray(sr,r);
     }
-    cJSON *errs=cJSON_AddArrayToObject(j,"diagnostics"); for(const struct ly_err_item *e=ctx?ly_err_first(ctx):NULL;e;e=e->next) { cJSON *ej=cJSON_CreateObject(); number(ej,"code",e->err); if(e->msg)cJSON_AddStringToObject(ej,"msg",e->msg); if(e->data_path)cJSON_AddStringToObject(ej,"path",e->data_path); if(e->apptag)cJSON_AddStringToObject(ej,"apptag",e->apptag); cJSON_AddItemToArray(errs,ej); }
+    if(read_schema_enabled && ctx) {
+        cJSON *modules=cJSON_AddArrayToObject(j,"modules");uint32_t index=0;struct lys_module *m;
+        while((m=ly_ctx_get_module_iter(ctx,&index))) {
+            cJSON *mj=cJSON_CreateObject();cJSON_AddStringToObject(mj,"name",m->name);
+            if(m->ns)cJSON_AddStringToObject(mj,"namespace",m->ns);
+            if(m->revision)cJSON_AddStringToObject(mj,"revision",m->revision);
+            cJSON_AddBoolToObject(mj,"implemented",m->implemented);number(mj,"latest",m->latest_revision);cJSON_AddItemToArray(modules,mj);
+        }
+    }
+    cJSON *errs=cJSON_AddArrayToObject(j,"diagnostics"); for(unsigned ci=1;ci<=read_context_count;++ci)for(const struct ly_err_item *e=ly_err_first(read_contexts[ci]);e;e=e->next) { cJSON *ej=cJSON_CreateObject(); number(ej,"code",e->err);number(ej,"context_generation",ci); if(e->msg)cJSON_AddStringToObject(ej,"msg",e->msg); if(e->data_path)cJSON_AddStringToObject(ej,"path",e->data_path); if(e->apptag)cJSON_AddStringToObject(ej,"apptag",e->apptag); cJSON_AddItemToArray(errs,ej); }
     if(log_messages)cJSON_AddItemToObject(j,"logs",cJSON_Duplicate(log_messages,1));
     emit(j);
 }
@@ -461,6 +480,9 @@ void nr_remote(const void *first, const void *sibling, const void *node)
 
 static const char *schema="module m {yang-version 1.1; namespace urn:m; prefix m; container c {leaf p {type string;} leaf q {type string;} leaf-list ll {type binary; ordered-by user;} leaf-list v {type uint32;} leaf z {type string;}} rpc r {input {leaf a {type string;} leaf a2 {type string;} leaf-list v {type uint32;}} output {leaf o {type string;}}}}";
 static const char *event_schema="module m {yang-version 1.1; namespace urn:m; prefix m; container c {leaf p {type string;} leaf q {type string;} leaf-list ll {type binary; ordered-by user;} leaf-list v {type uint32;} leaf z {type string;} list l {key k; ordered-by user; leaf k {type string;}} list kl {config false; leaf x {type string;}} leaf def {type string; default D;}} container d {presence synthetic; leaf-list ll {type binary; ordered-by user;}} rpc r {input {leaf a {type string;} leaf a2 {type string;} leaf-list v {type uint32;}} output {leaf o {type string;}}}}";
+static const char *read_schema="module m {yang-version 1.1;namespace urn:m;prefix m;container c {leaf p {type string;} leaf q {type string;} list i {key k;leaf k {type string;}leaf v {type string;}} list j {config false;leaf v {type string;}} leaf-list ll {type string;ordered-by user;}} container other {leaf p {type string;}}}";
+static const char *read_keyless_schema="module m {yang-version 1.1;namespace urn:m;prefix m;container c {leaf p {type string;} leaf q {type string;} list i {config false;leaf k {type string;}leaf v {type string;}} list j {config false;leaf v {type string;}} leaf-list ll {type string;ordered-by user;}} container other {leaf p {type string;}}}";
+
 static void watchdog(int signal_number) { (void)signal_number; const char msg[]="{\"event\":\"boundary.watchdog\",\"classification\":\"nontermination-or-unsafe-traversal\"}\n"; ssize_t written=write(STDOUT_FILENO,msg,sizeof msg-1); (void)written; _Exit(124); }
 
 /* Canonical Linux/glibc 2.41 allocator setup for exact-address controls.
@@ -632,14 +654,16 @@ int main(int argc, char **argv)
     struct lys_module *mod=NULL;
     LY_ERR rc=ly_ctx_new(ly_yang_module_dir(),LY_CTX_NO_YANGLIBRARY,&ctx);
     for(int i=2;i<argc;++i)if(!strcmp(argv[i],"--event-schema"))event_schema_enabled=1;
-    if(!rc) rc=lys_parse_mem(ctx,event_schema_enabled?event_schema:schema,LYS_IN_YANG,&mod);
+    for(int i=2;i<argc;++i)if(!strcmp(argv[i],"--read-schema"))read_schema_enabled=1;
+    if(ctx)context_identity(ctx);
+    if(!rc) rc=lys_parse_mem(ctx,read_schema_enabled?read_schema:event_schema_enabled?event_schema:schema,LYS_IN_YANG,&mod);
     if(rc) return 2;
     enabled=1;
     /* A real children table supplies the hidden native callback. */
     struct lyd_node *seed=NULL,*child=NULL;
     events=0;
     rc=lyd_new_inner(NULL,mod,"c",0,&seed);
-    for(unsigned i=0;!rc && i<4;++i) {char value[16];snprintf(value,sizeof value,"%u",i);rc=lyd_new_term(seed,mod,"v",value,0,&child);}
+    for(unsigned i=0;!rc && i<4;++i) {char value[16];snprintf(value,sizeof value,"%u",i);rc=lyd_new_term(seed,mod,read_schema_enabled?"ll":"v",value,0,&child);}
     if(!rc) {struct ly_ht *ht=((struct lyd_node_inner*)seed)->children_ht;if(ht){child_callback=ht->val_equal;child_data=ht->cb_data;}}
     if(rc || !child_callback) return 3;
 #ifdef NR_UNMODIFIED
@@ -660,9 +684,9 @@ int main(int argc, char **argv)
         }
         if(line[0]=='#' || sscanf(line,"%31s",cmd)!=1) continue;
         const struct lyd_node *directed_reuse=NULL;
-        ++op; ordinal=0;pending_script=0;output_handle=output_generation=0; ly_err_clean(ctx,NULL);cJSON_Delete(log_messages);log_messages=NULL;
+        ++op; ordinal=0;pending_script=0;output_handle=output_generation=0; for(unsigned i=1;i<=read_context_count;++i)ly_err_clean((struct ly_ctx*)read_contexts[i],NULL);cJSON_Delete(log_messages);log_messages=NULL;
         rc=LY_SUCCESS;
-        if(tombstoned_occurrence() && (!strcmp(cmd,"instance") || !strcmp(cmd,"opaq-find") || !strcmp(cmd,"null-reads") || !strcmp(cmd,"schema") || !strcmp(cmd,"validate") || !strcmp(cmd,"rewind") || !strcmp(cmd,"print") || !strcmp(cmd,"attach") || !strcmp(cmd,"before") || !strcmp(cmd,"change") || !strcmp(cmd,"find-next-loop") || !strcmp(cmd,"root") || !strcmp(cmd,"term") || !strcmp(cmd,"dup") || !strcmp(cmd,"unlink") || !strcmp(cmd,"detach-siblings") || !strcmp(cmd,"free") || !strcmp(cmd,"free-root") || !strcmp(cmd,"opaque") || !strcmp(cmd,"parse") || !strcmp(cmd,"list") || !strcmp(cmd,"frontier"))) {snapshot("boundary.tombstoned-semantic-probe",NULL,generic,0,NULL);return 0;}
+        if(tombstoned_occurrence() && (!strcmp(cmd,"instance") || !strcmp(cmd,"opaq-find") || !strcmp(cmd,"null-reads") || !strncmp(cmd,"read-",5) || !strcmp(cmd,"equal") || !strcmp(cmd,"record") || !strcmp(cmd,"record-as") || !strcmp(cmd,"child") || !strcmp(cmd,"schema") || !strcmp(cmd,"validate") || !strcmp(cmd,"rewind") || !strcmp(cmd,"print") || !strcmp(cmd,"attach") || !strcmp(cmd,"before") || !strcmp(cmd,"change") || !strcmp(cmd,"find-next-loop") || !strcmp(cmd,"root") || !strcmp(cmd,"term") || !strcmp(cmd,"dup") || !strcmp(cmd,"dup-to-context") || !strcmp(cmd,"unlink") || !strcmp(cmd,"detach-siblings") || !strcmp(cmd,"free") || !strcmp(cmd,"free-root") || !strcmp(cmd,"opaque") || !strcmp(cmd,"opaque-invalid-xml") || !strcmp(cmd,"parse") || !strcmp(cmd,"parse-xml") || !strcmp(cmd,"list") || !strcmp(cmd,"frontier"))) {snapshot("boundary.tombstoned-semantic-probe",NULL,generic,0,NULL);return 0;}
         if(!strcmp(cmd,"new")) {
             if(sscanf(line,"%*s %u %u",&a,&b)!=2 || a>32768 || b>65535)return 4;
             if(generic) {
@@ -683,10 +707,10 @@ int main(int argc, char **argv)
             creating=1;pending_script=a;
             const struct lyd_node *reuse=NULL;
             if(fields==6 && !(reuse=prepare_term_reuse(d)))return 4;
-            directed_reuse=begin_directed_reuse();rc=lyd_new_term(nodes[b],mod,name,value,c,&nodes[a]);
+            directed_reuse=begin_directed_reuse();rc=lyd_new_term(nodes[b],b&&nodes[b]->schema?nodes[b]->schema->module:mod,name,value,c,&nodes[a]);
             finish_node_reuse(reuse,nodes[a],rc);
         }
-        else if(!strcmp(cmd,"list")) {if(sscanf(line,"%*s %u %u %79s %255s",&a,&b,name,value)!=4 || !a || a>=4096 || b>=4096)return 4;if(b&&!require_handle(b))return 4;if(!prepare_output(a))return 4;creating=1;pending_script=a;directed_reuse=begin_directed_reuse();rc=lyd_new_list(nodes[b],mod,name,0,&nodes[a],value);}
+        else if(!strcmp(cmd,"list")) {if(sscanf(line,"%*s %u %u %79s %255s",&a,&b,name,value)!=4 || !a || a>=4096 || b>=4096)return 4;if(b&&!require_handle(b))return 4;if(!prepare_output(a))return 4;creating=1;pending_script=a;directed_reuse=begin_directed_reuse();rc=lyd_new_list(nodes[b],b&&nodes[b]->schema?nodes[b]->schema->module:mod,name,0,&nodes[a],!strcmp(value,"~")?"":value);}
         else if(!strcmp(cmd,"frontier")) {
             /* Synthetic low-level evidence only. The four real allocations
              * retain their schema pointers; no public compatibility claim. */
@@ -704,8 +728,12 @@ int main(int argc, char **argv)
                 nodes[ids[i]]->next=i<3?nodes[ids[i+1]]:NULL;
             }
         }
-        else if(!strcmp(cmd,"opaque")) {if(sscanf(line,"%*s %u %u %79s %255s",&a,&b,name,value)!=4||!a||a>=4096||b>=4096)return 4;if(b&&!require_handle(b))return 4;if(!prepare_output(a))return 4;creating=1;pending_script=a;rc=lyd_new_opaq(nodes[b],ctx,name,value,NULL,"m",&nodes[a]);}
+        else if(!strcmp(cmd,"opaque")) {if(sscanf(line,"%*s %u %u %79s %255s",&a,&b,name,value)!=4||!a||a>=4096||b>=4096)return 4;if(b&&!require_handle(b))return 4;if(!prepare_output(a))return 4;creating=1;pending_script=a;rc=lyd_new_opaq(nodes[b],b?LYD_CTX(nodes[b]):ctx,name,value,NULL,"m",&nodes[a]);}
         else if(!strcmp(cmd,"dup")) {if(sscanf(line,"%*s %u %u %u %u",&a,&b,&c,&d)!=4 || !a||a>=4096||b>=4096||c>=4096)return 4;if(!require_handle(b)||(c&&!require_handle(c)))return 4;if(!prepare_output(a))return 4;creating=1;pending_script=a;directed_reuse=begin_directed_reuse();rc=lyd_dup_single(nodes[b],nodes[c],d,&nodes[a]);}
+        else if(!strcmp(cmd,"dup-to-context")) {
+            if(sscanf(line,"%*s %u %u %u %u",&a,&b,&c,&d)!=4||!a||a>=4096||b>=4096||c>=4096||!require_handle(b)||(c&&!require_handle(c))||!prepare_output(a))return 4;
+            creating=1;pending_script=a;rc=lyd_dup_single_to_ctx(nodes[b],ctx,nodes[c],d,&nodes[a]);
+        }
         else if(!strcmp(cmd,"unlink")) {if(sscanf(line,"%*s %u",&a)!=1||a>=4096||!require_handle(a))return 4;rc=lyd_unlink_tree(nodes[a]);}
         else if(!strcmp(cmd,"attach")) {if(sscanf(line,"%*s %u %u",&a,&b)!=2||a>=4096||b>=4096||!require_handle(a)||!require_handle(b))return 4;rc=lyd_insert_child(nodes[a],nodes[b]);}
         else if(!strcmp(cmd,"before")) {if(sscanf(line,"%*s %u %u",&a,&b)!=2||a>=4096||b>=4096||!require_handle(a)||!require_handle(b))return 4;rc=lyd_insert_before(nodes[a],nodes[b]);}
@@ -752,6 +780,61 @@ int main(int argc, char **argv)
             number(j,"value_rc",value_rc);number(j,"value_winner",identity(winner));
             cJSON_AddItemToObject(j,"after",table_json(queried));emit(j);
             if(schema_rc!=LY_ENOTFOUND||instance_rc!=LY_ENOTFOUND||value_rc!=LY_ENOTFOUND)return 7;
+        }
+        else if(!strcmp(cmd,"context") || !strcmp(cmd,"context-keyless")) {
+            /* Independent public contexts; old nodes/contexts stay alive for the trace. */
+            rc=ly_ctx_new(ly_yang_module_dir(),LY_CTX_NO_YANGLIBRARY,&ctx);
+            int offset=0;sscanf(line,"%*s %n",&offset);
+            const char *text=offset && line[offset] && line[offset]!='\n'?line+offset:!strcmp(cmd,"context-keyless")?read_keyless_schema:read_schema;
+            if(ctx)context_identity(ctx);
+            if(!rc)rc=lys_parse_mem(ctx,text,LYS_IN_YANG,&mod);
+        }
+        else if(!strcmp(cmd,"opaque-invalid-xml")) {
+            if(sscanf(line,"%*s %u %u",&a,&b)!=2||!a||a>=4096||b>=4096||(b&&!require_handle(b))||!prepare_output(a))return 4;
+            const char invalid[]={(char)0xff,0};creating=1;pending_script=a;
+            rc=lyd_new_opaq2(nodes[b],b?LYD_CTX(nodes[b]):ctx,"u",invalid,NULL,"urn:unknown",&nodes[a]);
+        }
+        else if(!strcmp(cmd,"parse-xml")) {
+            int offset=0;if(sscanf(line,"%*s %u %n",&a,&offset)<1||!a||a>=4096)return 4;
+            if(!prepare_output(a))return 4;
+            creating=1;pending_script=a;
+            rc=lyd_parse_data_mem(ctx,line+offset,LYD_XML,LYD_PARSE_ONLY|LYD_PARSE_OPAQ,0,&nodes[a]);
+        }
+        else if(!strcmp(cmd,"child")) {
+            if(sscanf(line,"%*s %u %u %u",&a,&b,&c)!=3||!a||a>=4096||b>=4096||!require_handle(b)||!prepare_output(a))return 4;
+            nodes[a]=(struct lyd_node*)lyd_child(nodes[b]);while(c-- && nodes[a])nodes[a]=nodes[a]->next;
+            if(!nodes[a])return 4;
+            refresh=1; /* Alias the returned child; allocation provenance is immutable. */
+        }
+        else if(!strcmp(cmd,"record") || !strcmp(cmd,"record-as")) {
+            /* Synthetic occurrence control: retain real callback/schema/context. */
+            if(sscanf(line,"%*s %u %u %u %u",&a,&b,&c,&d)!=4||a>=4096||b>=4096||!require_handle(a)||!require_handle(b))return 4;
+            struct ly_ht *ht=((struct lyd_node_inner*)nodes[a])->children_ht;if(!ht)return 4;
+            if(!strcmp(cmd,"record-as")){if(c>=4096||!require_handle(c))return 4;c=nodes[c]->hash;}
+            rc=d?lyht_insert(ht,&nodes[b],c,NULL):lyht_insert_no_check(ht,&nodes[b],c,NULL);
+        }
+        else if(!strcmp(cmd,"equal")) {
+            if(sscanf(line,"%*s %u %u %u",&a,&b,&c)!=3||a>=4096||b>=4096||(a&&!require_handle(a))||(b&&!require_handle(b)))return 4;
+            rc=lyd_compare_single(nodes[a],nodes[b],c);
+            cJSON *j=cJSON_CreateObject();cJSON_AddStringToObject(j,"event","read.equal");number(j,"operation",op);number(j,"rc",rc);number(j,"left_generation",identity(nodes[a]));number(j,"right_generation",identity(nodes[b]));number(j,"options",c);emit(j);
+        }
+        else if(!strncmp(cmd,"read-",5)) {
+            int fields=sscanf(line,"%*s %u %u %u %255s",&a,&b,&c,value);
+            if(fields<2||a>=4096||b>=4096||c>=4096||(a&&!require_handle(a))||!require_handle(b)||(c&&!require_handle(c)))return 4;
+            const struct lyd_node *parent=c?nodes[c]:(a?(const struct lyd_node*)nodes[a]->parent:NULL);
+            const struct ly_ht *queried=parent&&parent->schema?((const struct lyd_node_inner*)parent)->children_ht:NULL;
+            cJSON *before=table_json(queried);struct lyd_node *winner=NULL;
+            if(!strcmp(cmd,"read-schema"))rc=lyd_find_sibling_val(nodes[a],nodes[b]->schema,NULL,0,&winner);
+            else if(!strcmp(cmd,"read-instance"))rc=lyd_find_sibling_first(nodes[a],nodes[b],&winner);
+            else if(!strcmp(cmd,"read-value"))rc=lyd_find_sibling_val(nodes[a],nodes[b]->schema,fields==4?value:NULL,0,&winner);
+            else if(!strcmp(cmd,"read-opaque"))rc=lyd_find_sibling_opaq_next(nodes[a],fields==4?value:"unknown",&winner);
+            else return 4;
+            cJSON *j=cJSON_CreateObject();cJSON_AddStringToObject(j,"event",!strcmp(cmd,"read-schema")?"read.selection.schema":!strcmp(cmd,"read-instance")?"read.selection.instance":!strcmp(cmd,"read-value")?"read.selection.value":"read.selection.opaque");number(j,"operation",op);number(j,"rc",rc);
+            number(j,"winner",identity(winner));number(j,"winner_script",winner?identities[identity(winner)].script:0);
+            number(j,"current_parent",identity(winner?winner->parent:NULL));number(j,"parent_script",winner&&winner->parent?identities[identity(winner->parent)].script:0);
+            number(j,"next_generation",identity(winner?winner->next:NULL));
+            number(j,"next_script",winner&&winner->next?identities[identity(winner->next)].script:0);
+            cJSON_AddItemToObject(j,"before",before);cJSON_AddItemToObject(j,"after",table_json(queried));emit(j);
         }
         else if(!strcmp(cmd,"schema")) {
             if(sscanf(line,"%*s %u %u",&a,&b)!=2||a>=4096||b>=4096||!require_handle(a)||!require_handle(b)||!nodes[b]->schema||!nodes[a]->schema||!(nodes[a]->schema->nodetype&LYD_NODE_INNER))return 4;

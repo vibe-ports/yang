@@ -24,10 +24,24 @@ import (
 
 type nativeDriverResult struct {
 	Evidence  json.RawMessage `json:"-"`
-	Event     string          `json:"event"`
-	Operation int             `json:"operation"`
-	RC        nativeStatus    `json:"rc"`
-	Table     struct {
+	bootstrap json.RawMessage
+	raw       map[string]any
+
+	Modules []struct {
+		Name        string `json:"name"`
+		Namespace   string `json:"namespace"`
+		Implemented bool   `json:"implemented"`
+		Latest      uint8  `json:"latest"`
+	} `json:"modules"`
+	Before       json.RawMessage `json:"before"`
+	After        json.RawMessage `json:"after"`
+	WinnerScript int             `json:"winner_script"`
+	ParentScript int             `json:"parent_script"`
+	NextScript   int             `json:"next_script"`
+	Event        string          `json:"event"`
+	Operation    int             `json:"operation"`
+	RC           nativeStatus    `json:"rc"`
+	Table        struct {
 		Present bool `json:"present"`
 		nativeImage
 		Slots []struct{ Next uint32 } `json:"slots"`
@@ -41,6 +55,15 @@ type nativeDriverResult struct {
 			Slots []struct{ Next uint32 } `json:"slots"`
 		} `json:"table"`
 	} `json:"nodes"`
+}
+
+func (r *nativeDriverResult) UnmarshalJSON(b []byte) error {
+	type plain nativeDriverResult
+	if err := json.Unmarshal(b, (*plain)(r)); err != nil {
+		return err
+	}
+	r.Evidence = bytes.Clone(b)
+	return json.Unmarshal(b, &r.raw)
 }
 
 // Both processes must finish P, Q, R release and still print the two detached
@@ -319,17 +342,36 @@ func nativeDriver(t *testing.T, script string) []nativeDriverResult {
 
 func nativeDriverUntil(t *testing.T, script, terminal string) []nativeDriverResult {
 	t.Helper()
-	path := os.Getenv("YANG_NATIVE_REGISTRATION_DRIVER")
+	return nativeDriverReplay(t, script, terminal, false)
+}
+
+func nativeDriverReplay(t *testing.T, script, terminal string, verbose bool) []nativeDriverResult {
+	t.Helper()
+	return nativeDriverReplayPath(t, script, terminal, verbose, os.Getenv("YANG_NATIVE_REGISTRATION_DRIVER"))
+}
+
+func nativeDriverReplayPath(t *testing.T, script, terminal string, verbose bool, path string) []nativeDriverResult {
+	t.Helper()
 	if path == "" {
 		t.Skip("isolated static observer: set YANG_NATIVE_REGISTRATION_DRIVER after its test-only build")
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 	options := []string{"--quiet"}
+	if verbose {
+		options[0] = "--events"
+	}
 	for _, line := range strings.Split(script, "\n") {
 		fields := strings.Fields(line)
 		if len(fields) > 0 && (fields[0] == "list" || fields[0] == "frontier") {
 			options = append(options, "--event-schema")
+			break
+		}
+	}
+	for _, line := range strings.Split(script, "\n") {
+		fields := strings.Fields(line)
+		if len(fields) > 0 && (strings.HasPrefix(fields[0], "read-") || fields[0] == "equal" || fields[0] == "context" || fields[0] == "context-keyless") {
+			options = append(options, "--read-schema")
 			break
 		}
 	}
@@ -341,6 +383,8 @@ func nativeDriverUntil(t *testing.T, script, terminal string) []nativeDriverResu
 		t.Fatalf("native registration driver: %v\n%s\nscript:\n%s", err, out, script)
 	}
 	var raw []json.RawMessage
+	ready := 0
+
 	scan := bufio.NewScanner(bytes.NewReader(out))
 	scan.Buffer(make([]byte, 4096), 8<<20)
 	for scan.Scan() {
@@ -358,8 +402,16 @@ func nativeDriverUntil(t *testing.T, script, terminal string) []nativeDriverResu
 		if err := json.Unmarshal(line, &r); err != nil {
 			t.Fatal(err)
 		}
-		r.Evidence = bytes.Clone(line)
-		if r.Event == "driver.ready.actual-children-callback" || r.Event == "allocation.address-reuse" {
+		r.bootstrap = raw[0]
+		if r.Event == "driver.ready.actual-children-callback" {
+			ready++
+			if ready != 1 || r.Operation != 0 || len(results) != 0 {
+				t.Fatal("invalid native ready event")
+			}
+
+			continue
+		}
+		if r.Event == "allocation.address-reuse" {
 			continue
 		}
 		for i := range r.Table.Chains {
@@ -374,6 +426,10 @@ func nativeDriverUntil(t *testing.T, script, terminal string) []nativeDriverResu
 		}
 		results = append(results, r)
 	}
+	if ready != 1 {
+		t.Fatal("missing native ready event")
+	}
+
 	if err := nativeCompletedReplay(script, results, terminal); err != nil {
 		t.Fatal(err)
 	}
@@ -383,22 +439,47 @@ func nativeDriverUntil(t *testing.T, script, terminal string) []nativeDriverResu
 // Validate the full evidence before projecting it into the private table model.
 // Python and Go consumers deliberately share this validator, including mutants.
 func nativeValidateEvidence(script string, rows []json.RawMessage) error {
+	_, err := nativeIdentityEvidenceRun(script, rows, false)
+	return err
+}
+
+type nativeIdentityEvidence struct {
+	States []any               `json:"states"`
+	Refs   map[int]map[int]any `json:"refs"`
+}
+
+func nativeIdentityProjection(script string, rows []json.RawMessage) (nativeIdentityEvidence, error) {
+	return nativeIdentityEvidenceRun(script, rows, true)
+}
+
+// G1 validation keeps its validation-only transport. G2 additionally requests
+// canonical states/refs after the same complete-evidence checks have succeeded.
+func nativeIdentityEvidenceRun(script string, rows []json.RawMessage, project bool) (nativeIdentityEvidence, error) {
+	var result nativeIdentityEvidence
 	payload, err := json.Marshal(struct {
-		Script string            `json:"script"`
-		Rows   []json.RawMessage `json:"rows"`
-	}{script, rows})
+		Script  string            `json:"script"`
+		Rows    []json.RawMessage `json:"rows"`
+		Project bool              `json:"project"`
+	}{script, rows, project})
 	if err != nil {
-		return err
+		return result, err
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 	//nolint:gosec // Fixed repository validator receives local test evidence.
 	cmd := exec.CommandContext(ctx, "python3", filepath.Join("..", "conformance", "oracle", "native_registration", "identity.py"))
 	cmd.Stdin = bytes.NewReader(payload)
-	if out, err := cmd.CombinedOutput(); err != nil {
-		return fmt.Errorf("native identity evidence: %w: %s", err, out)
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		return result, fmt.Errorf("native identity evidence: %w: %s", err, out)
 	}
-	return nil
+	if !project {
+		return result, nil
+	}
+	if err := json.Unmarshal(out, &result); err != nil {
+		return result, err
+	}
+	return result, nil
 }
 
 func TestNativeIdentitySweep(t *testing.T) {
@@ -431,7 +512,7 @@ func nativeCompletedReplay(script string, results []nativeDriverResult, terminal
 	}
 	var expected, expectedReads []event
 	commandNames := make(map[string]bool)
-	reads := map[string]string{"print": "public.result", "schema": "read.schema", "rewind": "read.first-sibling", "null-reads": "read.null", "instance": "read.instance", "opaq-find": "read.opaque"}
+	reads := map[string]string{"print": "public.result", "schema": "read.schema", "rewind": "read.first-sibling", "null-reads": "read.null", "instance": "read.instance", "opaq-find": "read.opaque", "read-schema": "read.selection.schema", "read-instance": "read.selection.instance", "read-value": "read.selection.value", "read-opaque": "read.selection.opaque", "equal": "read.equal"}
 	for _, line := range strings.Split(script, "\n") {
 		fields := strings.Fields(line)
 		if len(fields) == 0 || strings.HasPrefix(fields[0], "#") {
@@ -454,11 +535,14 @@ func nativeCompletedReplay(script string, results []nativeDriverResult, terminal
 		}
 	}
 	var actual, actualReads []event
-	for _, row := range results {
+	for i, row := range results {
+		if strings.HasPrefix(row.Event, "boundary.") && (row.Event != terminal || i != len(results)-1) {
+			return fmt.Errorf("unexpected native boundary: %s", row.Event)
+		}
 		if commandNames[row.Event] {
 			actual = append(actual, event{row.Operation, row.Event})
 		}
-		if row.Event == "public.result" || row.Event == "read.schema" || row.Event == "read.first-sibling" || row.Event == "read.null" || row.Event == "read.instance" || row.Event == "read.opaque" {
+		if row.Event == "public.result" || row.Event == "read.schema" || row.Event == "read.first-sibling" || row.Event == "read.null" || row.Event == "read.instance" || row.Event == "read.opaque" || row.Event == "read.equal" || strings.HasPrefix(row.Event, "read.selection.") {
 			actualReads = append(actualReads, event{row.Operation, row.Event})
 		}
 	}
@@ -491,6 +575,30 @@ func TestNativeDriverReplayCompletion(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			if err := nativeCompletedReplay(tc.script, tc.rows, tc.terminal); (err == nil) != tc.valid {
 				t.Fatalf("valid=%t: %v", tc.valid, err)
+			}
+		})
+	}
+}
+
+// G1 entry controls and G2 selections must share the completion validator.
+func TestNativeMergedReadCompletion(t *testing.T) {
+	commands := []string{"instance", "opaq-find", "null-reads", "read-schema", "read-instance", "read-value", "read-opaque", "equal"}
+	reads := []string{"read.instance", "read.opaque", "read.null", "read.selection.schema", "read.selection.instance", "read.selection.value", "read.selection.opaque", "read.equal"}
+	var script strings.Builder
+	var rows []nativeDriverResult
+	for i, command := range commands {
+		script.WriteString(command + " 1 2 3\n")
+		rows = append(rows, nativeDriverResult{Operation: i + 1, Event: reads[i]}, nativeDriverResult{Operation: i + 1, Event: command})
+	}
+	if err := nativeCompletedReplay(script.String(), rows, ""); err != nil {
+		t.Fatal(err)
+	}
+	for i, command := range commands {
+		t.Run(command, func(t *testing.T) {
+			missing := append([]nativeDriverResult(nil), rows[:2*i]...)
+			missing = append(missing, rows[2*i+1:]...)
+			if err := nativeCompletedReplay(script.String(), missing, ""); err == nil {
+				t.Fatal("accepted missing read result")
 			}
 		})
 	}

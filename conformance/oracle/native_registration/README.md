@@ -1017,6 +1017,74 @@ New manifest fixture ids: none. New live cases: `retained-null`,
 `retained-opaque`, `entry-guard`, `entry-order`, `entry-opaque`,
 `entry-duplicate`, `entry-schema-lineage`.
 
+
+## G2 part 1: complete native read evidence and normalization
+
+Based on `a10a82a`, this extraction establishes native evidence before later Go
+kernels consume it. Run read requests with `--quiet --read-schema` on both drivers.
+Require the ready snapshot, every completed command, exactly one separate result
+per read/equality request, and the exact terminal command. G1's inventory remains active.
+
+New protocol commands (covered by retained requests or `TestNativeG2ProtocolSmoke`):
+
+- `context [YANG MODULE]`, `context-keyless`: retain independent contexts.
+- `child ID PARENT INDEX`: bind a child alias without changing its allocation label.
+- `parse-xml ID XML`, `opaque-invalid-xml ID PARENT`: construct XML operands.
+- `dup-to-context ID SOURCE PARENT OPTIONS`: duplicate into the current context.
+- `read-schema START TARGET PARENT`, `read-instance START TARGET PARENT`, `read-value START TARGET PARENT VALUE`, `read-opaque START TARGET PARENT NAME`: native selection; START zero supplies null; PARENT identifies observed storage.
+- `equal A B OPTIONS`: native `lyd_compare_single`, observing both operand generations.
+- `record PARENT NODE HASH CHECK`, `record-as PARENT NODE HASH_SOURCE CHECK`: synthetic occurrence insertion, with no public-producer claim.
+- `list ID PARENT NAME ~`: supply an empty key.
+
+Generations resolve injectively through completed-operation component keys and
+versioned bindings; reused handles retain distinct incarnations and aliases preserve
+birth labels. Context collection and command-boundary cleanup cover every retained
+context in creation order, within the existing 16-slot cap, including old operands.
+
+Snapshot obligations derive from bootstrap/completed-command identity and the request,
+before field discovery. Missing nodes, tables, schemas or bindings fail on either or
+both peers. The audit's `root; dump; equal` reproducer also rejects missing dump nodes
+with differing statuses. Shared `nativeCompletedCommandEvidence` retains normalized
+state, exact statuses and both diagnostic channels for validation-only requests;
+`nativeG2Evidence` additionally requires and normalizes selection/equality results.
+
+Live state includes current node hashes separately from immutable occurrence hashes;
+they may differ. Equality resolves live operand bindings, context, kind, flags, links
+and inner storage. Selection retains winner/current-parent/next identities, layout,
+slots, bucket order, recorded hashes and free chains. Only process-local observer
+serials and embedded C source locations are normalized away; messages, code/path/app-tag,
+diagnostic context and log fields remain evidence.
+
+Live requests: `read-empty-prefix`, `read-equality-incarnations`, `read-retained-diagnostics`;
+inline requests cover audit reproducers, populated equality storage, command-only
+projection and protocol smoke. Empty-prefix requests here test evidence, not the later
+Go prefix implementation. No manifest fixture IDs or golden changes.
+`g2_mutants.py` uses compiler overlays and copied observer binaries; build errors or
+missing tests cannot count as rejection. Its equality shortcut needs no historical ref.
+
+Ordinary work on archived `a10a82a` and this worktree matches in all twelve unchanged
+`TestNativeOrdinaryWorkBaseline` cases. At 64 children: `(4504,8099,1147,116176)` without
+a journal, `(4504,8649,1186,345128)` with one; at 256: `(26608,42844,4207,444112)` and
+`(26608,44994,4256,1425512)` (visits, charges, allocations, bytes). No production Go
+hot path, mutation/journal ownership, routing, layout, public API or dependency changes.
+
+Deferred: prefix snapshots/scanning (part 2); schema/opaque selection, actual cursors
+and native input/output/type/revision discrimination (part 3); instance/value selection,
+recursive comparison, typed-target/separator/option discrimination (part 4); validation
+duplicate reads, exemptions and audit-3 finding 3 (part 5).
+
+Targeted G2/completion/common-projection Go tests passed (11.564s); Python checker
+passed 12 tests. Both native drivers rebuilt. Base/head ordinary-work tests, registry
+checks, oracle-tag vet and lint for new issues passed. Sensitivity controls rejected
+eight defects; two check removals remain independently protected by shared validation.
+
+Locked amd64 results (normal dev user; each prescribed full command invoked once):
+- `build.sh`: exit 0; `make ci`: exit 2; `make test-oracle oracle-check`: exit 2.
+- Both make commands stop at F2 ancestor-reuse with `TZ=UTC`: base and head each have zero ancestor reuses in 5/5 trials; without TZ both have one reuse in 5/5 trials. This inherited control remains open; neither named #351 flake occurred.
+- `go test -tags oracle ./data -run '^TestNative' -count=1 -timeout=30m -v`: exit 0, 57 top-level passes, zero skips; `check.py`: exit 0; `g2_mutants.py`: exit 0.
+- Previously unrun conformance oracle tests, `make test-gates vuln secrets sensitive registries`, and `make oracle-check` ran separately under the lock: all exit 0. Goldens match.
+- Isolated identity sweep: pass without TZ (29.507s), fail with UTC (26.898s); TZ-only reproduces the base/head failure, while `YANG_ORACLE_REQUIRED=1` alone does not.
+
 ## Deterministic reuse continuation
 
 This continuation resolves the inherited F2 blocker recorded above. Under UTC,
