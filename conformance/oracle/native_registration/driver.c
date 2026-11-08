@@ -71,7 +71,9 @@ static unsigned table_identity(const struct ly_ht *ht)
 static void number(cJSON *j, const char *key, double value) { cJSON_AddNumberToObject(j, key, value); }
 static unsigned schema_identity(const struct lysc_node *schema)
 {
+    if(!schema)return 0;
     for(unsigned i=1;i<=schema_count;++i)if(schemas[i]==schema)return i;
+    schema_identity(schema->parent);
     if(schema_count+1==256)exit(98);
     schemas[++schema_count]=schema;return schema_count;
 }
@@ -376,6 +378,15 @@ static void snapshot(const char *event, const void *node, const struct ly_ht *ht
         cJSON_AddItemToArray(registry,r);
     }
     cJSON *a=cJSON_AddArrayToObject(j,"nodes"); for(unsigned i=1;i<=identity_count;++i) cJSON_AddItemToArray(a,node_json(i));
+    /* Compiled ancestry is independent of the current data-parent links,
+     * including RPC input/output and synthetic moved-schema frontiers. */
+    cJSON *sr=cJSON_AddArrayToObject(j,"schemas");
+    for(unsigned i=1;i<=schema_count;++i) {
+        const struct lysc_node *s=schemas[i];cJSON *r=cJSON_CreateObject();
+        number(r,"identity",i);number(r,"context",1);number(r,"parent",schema_identity(s->parent));
+        number(r,"nodetype",s->nodetype);cJSON_AddStringToObject(r,"module",s->module->name);
+        cJSON_AddStringToObject(r,"name",s->name);cJSON_AddItemToArray(sr,r);
+    }
     cJSON *errs=cJSON_AddArrayToObject(j,"diagnostics"); for(const struct ly_err_item *e=ctx?ly_err_first(ctx):NULL;e;e=e->next) { cJSON *ej=cJSON_CreateObject(); number(ej,"code",e->err); if(e->msg)cJSON_AddStringToObject(ej,"msg",e->msg); if(e->data_path)cJSON_AddStringToObject(ej,"path",e->data_path); if(e->apptag)cJSON_AddStringToObject(ej,"apptag",e->apptag); cJSON_AddItemToArray(errs,ej); }
     if(log_messages)cJSON_AddItemToObject(j,"logs",cJSON_Duplicate(log_messages,1));
     emit(j);
@@ -668,6 +679,8 @@ int main(int argc, char **argv)
             observe_read=0;
             cJSON *j=cJSON_CreateObject();cJSON_AddStringToObject(j,"event",instance?"read.instance":"read.opaque");
             number(j,"operation",op);number(j,"rc",rc);number(j,"supplied",identity(start));number(j,"winner",identity(winner));number(j,"current_parent",identity(winner?winner->parent:NULL));
+            if(instance)number(j,"target",identity(nodes[b]));
+            else cJSON_AddStringToObject(j,"name",name);
             cJSON_AddItemToObject(j,"before",before);cJSON_AddItemToObject(j,"after",table_json(queried));emit(j);
         }
         else if(!strcmp(cmd,"null-reads")) {
@@ -677,7 +690,7 @@ int main(int argc, char **argv)
             if(sscanf(line,"%*s %u %u",&a,&b)!=2||a>=4096||b>=4096||!require_handle(a)||!require_handle(b)||!nodes[b]->schema||!nodes[a]->schema||!(nodes[a]->schema->nodetype&LYD_NODE_INNER)||lyd_child(nodes[a]))return 4;
             const struct ly_ht *queried=((const struct lyd_node_inner*)nodes[a])->children_ht;
             cJSON *j=cJSON_CreateObject();cJSON_AddStringToObject(j,"event","read.null");
-            number(j,"operation",op);number(j,"queried_parent",identity(nodes[a]));
+            number(j,"operation",op);number(j,"queried_parent",identity(nodes[a]));number(j,"target",identity(nodes[b]));
             cJSON_AddItemToObject(j,"before",table_json(queried));
             struct lyd_node *winner=nodes[b];
             LY_ERR schema_rc=lyd_find_sibling_schema(NULL,nodes[b]->schema,&winner);
@@ -698,7 +711,7 @@ int main(int argc, char **argv)
             struct lyd_node *winner=NULL;
             rc=lyd_find_sibling_val(lyd_child(nodes[a]),nodes[b]->schema,NULL,0,&winner);
             cJSON *j=cJSON_CreateObject();cJSON_AddStringToObject(j,"event","read.schema");
-            number(j,"operation",op);number(j,"rc",rc);number(j,"queried_parent",identity(nodes[a]));
+            number(j,"operation",op);number(j,"rc",rc);number(j,"queried_parent",identity(nodes[a]));number(j,"target",identity(nodes[b]));
             /* Query hash observation: libyang v5.8.6 src/tree_data_common.c:lyd_find_sibling_schema. */
             uint32_t schema_hash=lyht_hash_multi(0,nodes[b]->schema->module->name,strlen(nodes[b]->schema->module->name));
             schema_hash=lyht_hash_multi(schema_hash,nodes[b]->schema->name,strlen(nodes[b]->schema->name));

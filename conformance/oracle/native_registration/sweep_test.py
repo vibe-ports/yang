@@ -61,6 +61,113 @@ class IdentitySweep(unittest.TestCase):
             validate(script, mutant)
         return mutant
 
+    def reject_consumers(self, name, script, left, right, mutate):
+        """Reject one-sided and equal corruption before comparing projections."""
+        for side in ('instrumented', 'unmodified', 'both'):
+            a, b = copy.deepcopy(left), copy.deepcopy(right)
+            for trace in ([a, b] if side == 'both' else [a if side == 'instrumented' else b]):
+                mutate(trace)
+                with self.assertRaises((AssertionError, KeyError, IndexError), msg=side):
+                    validate(script, trace)
+            if side != 'unmodified':
+                with self.assertRaises((AssertionError, KeyError, IndexError), msg=side):
+                    check.invariants(a, name)
+            with self.assertRaises((AssertionError, KeyError, IndexError), msg=side):
+                check.compare_control(name, 0, a, 0, b)
+
+    def test_entry_request_binding_rejections(self):
+        for name, event in (('entry-guard', 'read.instance'), ('entry-opaque', 'read.opaque')):
+            with self.subTest(case=name):
+                script = (ROOT / 'cases' / (name + '.calls')).read_text()
+                left, right = self.pair(script, verbose=True)
+                def skipped(trace):
+                    for row in check.commands(trace, event):
+                        if not row['winner']:
+                            row.update(supplied=0, before={'present': False}, after={'present': False})
+                self.reject_consumers(name, script, left, right, skipped)
+                if event == 'read.instance':
+                    self.reject_consumers(name, script, left, right,
+                                          lambda trace: check.commands(trace, event)[0].update(target=0))
+                else:
+                    self.reject_consumers(name, script, left, right,
+                                          lambda trace: check.commands(trace, event)[0].update(name='wrong-name'))
+        for name, event in (('entry-guard', 'read.schema'), ('retained-null', 'read.null')):
+            script = (ROOT / 'cases' / (name + '.calls')).read_text()
+            left, right = self.pair(script, verbose=True, event_schema=name == 'entry-guard')
+            for field in ('queried_parent', 'target'):
+                with self.subTest(case=name, field=field):
+                    self.reject_consumers(name, script, left, right,
+                                          lambda trace: check.commands(trace, event)[0].update({field: 0}))
+        self.pair('root 1 c\nterm 2 1 p P\ninstance 0 2\nopaq-find 0 absent\n')
+
+    def test_schema_identity_rejections(self):
+        for name, mutation in (('entry-order', 'collapse'), ('entry-schema-lineage', 'split'),
+                               ('entry-order', 'drift')):
+            with self.subTest(case=name, mutation=mutation):
+                script = (ROOT / 'cases' / (name + '.calls')).read_text()
+                left, right = self.pair(script, verbose=True)
+                def corrupt(trace):
+                    for index, row in enumerate(trace):
+                        for node in row.get('nodes', []):
+                            if 'schema_identity' in node:
+                                node['schema_identity'] = (1 if mutation == 'collapse' else
+                                                           node['generation'] + 100 if mutation == 'split' else
+                                                           node['schema_identity'] + (100 if index else 0))
+                self.reject_consumers(name, script, left, right, corrupt)
+
+    def test_schema_registry_lineage_comparison(self):
+        name = 'entry-schema-lineage'
+        script = (ROOT / 'cases' / (name + '.calls')).read_text()
+        for event_schema in (False, True):
+            left, right = self.pair(script, verbose=True, event_schema=event_schema)
+            mutant = copy.deepcopy(left)
+            changed = 0
+            for row in mutant:
+                for schema in row.get('schemas', []):
+                    # A schema-only ancestor has no data node whose name could
+                    # independently expose the change in the old projection.
+                    if schema['name'] == 'input':
+                        schema['name'] = 'changed-input'
+                        changed += 1
+            self.assertGreater(changed, 0)
+            self.assertNotEqual(validate(script, mutant), validate(script, right))
+            with self.assertRaises(AssertionError):
+                check.compare_control(name, 0, mutant, 0, right)
+
+            # Two v allocations have identical names/types/context but distinct
+            # compiled ancestry. A late rebind must fail before comparison.
+            mutant = copy.deepcopy(left)
+            nodes = check.by_handle(mutant[-1])
+            nodes[4]['schema_identity'] = nodes[13]['schema_identity']
+            with self.assertRaisesRegex(AssertionError, 'identity drift'):
+                validate(script, mutant)
+
+            # Duplicate registry descriptors must not let one pointer split into
+            # two identities, even if all node bindings are changed consistently.
+            mutant = copy.deepcopy(left)
+            for row in mutant:
+                if 'schemas' in row:
+                    duplicate = dict(row['schemas'][0], identity=len(row['schemas']) + 1)
+                    row['schemas'].append(duplicate)
+            with self.assertRaisesRegex(AssertionError, 'split compiled schema'):
+                validate(script, mutant)
+
+    def test_duplicate_operand_rejections(self):
+        name = 'entry-duplicate'
+        script = (ROOT / 'cases' / (name + '.calls')).read_text()
+        left, right = self.pair(script, verbose=True)
+        for mutation in ('reversed', 'wrong-option', 'wrong-operation'):
+            mutant = copy.deepcopy(left)
+            for row in check.commands(mutant, 'read.compare'):
+                if mutation == 'reversed': row['left'], row['right'] = row['right'], row['left']
+                elif mutation == 'wrong-option': row['options'] = 2
+                else: row['operation'] += 1
+            with self.subTest(mutation=mutation):
+                with self.assertRaises((AssertionError, KeyError, IndexError)):
+                    check.invariants(mutant, name)
+                with self.assertRaises((AssertionError, KeyError, IndexError)):
+                    check.compare_control(name, 0, mutant, 0, right)
+
     def test_retained_null_and_opaque_entries(self):
         for name, expected in (('retained-null', (0, 5)), ('retained-opaque', (2, 0))):
             script = (ROOT / 'cases' / (name + '.calls')).read_text()
@@ -123,24 +230,17 @@ class IdentitySweep(unittest.TestCase):
                         next(r for r in mutant if r['event'] in ('read.schema', 'read.instance', 'read.opaque'))['rc'] = 7
                         with self.assertRaises(AssertionError): assert_winners(mutant)
                         if side == 0:
+                            check.entry_comparisons(name, rows)
                             comparisons = check.commands(rows, 'read.compare')
                             if name == 'entry-guard': self.assertFalse(comparisons, 'guard must precede rewind/comparison')
-                            if name == 'entry-order':
-                                def assert_order(trace):
-                                    expected_pairs = [(4, 11), (11, 4), (11, 4), (11, 4), (4, 11), (14, 5)]
-                                    observed = check.commands(trace, 'read.compare')
-                                    self.assertEqual(len(observed), len(expected_pairs))
-                                    for row, (left, right) in zip(observed, expected_pairs, strict=True):
-                                        snapshot = next(r for r in trace if 'nodes' in r and r['operation'] == row['operation'])
-                                        nodes = check.by_handle(snapshot)
-                                        self.assertEqual((row['left'], row['right'], row['options']), (nodes[left]['generation'], nodes[right]['generation'], 0))
-                                assert_order(rows)
-                                mutant = copy.deepcopy(rows)
-                                for row in check.commands(mutant, 'read.compare'): row['left'], row['right'] = row['right'], row['left']
-                                with self.assertRaises(AssertionError): assert_order(mutant)
-                            if name == 'entry-duplicate':
-                                self.assertTrue(comparisons)
-                                self.assertTrue(all(r['options'] != 0 for r in comparisons), 'duplicate-instance comparison needs full recursion')
+                            if name in ('entry-order', 'entry-duplicate'):
+                                for mutation in ('reversed', 'wrong-option', 'wrong-operation'):
+                                    mutant = copy.deepcopy(rows)
+                                    for row in check.commands(mutant, 'read.compare'):
+                                        if mutation == 'reversed': row['left'], row['right'] = row['right'], row['left']
+                                        elif mutation == 'wrong-option': row['options'] = 2
+                                        else: row['operation'] += 1
+                                    with self.assertRaises(AssertionError): check.entry_comparisons(name, mutant)
                         if name == 'entry-duplicate':
                             def missing_inner_table(trace):
                                 for row in trace:

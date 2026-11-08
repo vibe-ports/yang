@@ -16,7 +16,8 @@ def snapshot(event, operation):
                   creation_ordinal=1 if g == 6 else g, source=0, attempt=1 if g == 6 else 0,
                   alive=True, parent=1 if 2 <= g <= 5 else 0, prev=5 if g == 2 else g - 1 if 3 <= g <= 5 else g,
                   next=g + 1 if 2 <= g < 5 else 0, schema="v" if 2 <= g <= 5 else "c",
-                  schema_identity=2 if 2 <= g <= 5 else 1) for g in range(1, 7)]
+                  schema_identity=2 if 2 <= g <= 5 else 1,
+                  context=1, nodetype=8 if 2 <= g <= 5 else 1) for g in range(1, 7)]
     chains = [dict(generation=g, occurrence=i + 1, node=0, hash=8 * (i + 1), slot=i,
                    bucket=0, ordinal=i, alive=True) for i, g in enumerate((2, 2, 3, 4, 5))]
     nodes[0].update(first=2, tail=5, table=dict(present=True, identity=1, used=5, size=8,
@@ -25,6 +26,8 @@ def snapshot(event, operation):
     return {"event": event, "operation": operation, "rc": 0, "diagnostics": [], "nodes": nodes,
             "output_handle": 1 if event == "root" else 0, "output_generation": 6 if event == "root" else 0,
             "node_count": 6, "table_count": 1, "tables": [dict(identity=1, alive=True)], "allocation_scope": "every-allocation",
+            "schemas": [dict(identity=1, context=1, module='m', name='c', nodetype=1, parent=0),
+                        dict(identity=2, context=1, module='m', name='v', nodetype=8, parent=1)],
             "bindings": [dict(handle=1, generation=6, revision=1, operation=1)]}
 
 

@@ -93,14 +93,40 @@ allocator address-reuse setup. `frontier PARENT A B C D` is a **synthetic low-le
 four-child frontier with real native allocations and untouched schema pointers;
 it provides no evidence of public mixed-schema reachability. Both schema modes
 emit stable schema-pointer identities; the event schema also emits module names.
+Every snapshot retains an injective compiled-schema registry with context,
+module, name, node type and compiled-parent identity, including schema-only
+ancestors. Live allocation generations keep their original schema binding.
+Cross-build state compares these descriptors and their ancestry independently
+of process-local schema numbering, in both schema modes.
 `instance START TARGET` calls `lyd_find_sibling_first` with the supplied start
 (zero means NULL), and `opaq-find START NAME` calls `lyd_find_sibling_opaq_next`.
+Read evidence binds START, TARGET (for instance/schema/NULL probes), queried
+parent and opaque NAME to the preceding completed handle bindings and request.
 `null-reads PARENT TARGET` requires an empty parent and probes the schema,
 instance and value APIs with NULL, retaining snapshots of the parent's table.
 Its invalid binary value checks that value preparation is bypassed. These are
 finite dispatch controls, not a general G2 comparison model. During `instance`
 only, the instrumented build emits read-only `read.compare` operand/option
 observations from `lyd_compare_single`; the comparison build remains untouched.
+The finite order and duplicate controls pin each comparison's operation,
+ordered operands and exact option bits. Duplicate probes require handle pairs
+`(11,4), (11,5), (11,5), (11,4)` with `LYD_COMPARE_FULL_RECURSION` (`1`).
+The checker and sweep reject swapped operands, wrong flags and wrong operations.
+
+The G1 entry audit inventories all sibling-read consumers: the driver's
+instance, opaque, schema, NULL and first-sibling emitters; `identity.validate`;
+the checker's invariants, reference/deletion controls and cross-build comparison;
+the sweep's quiet/verbose pairs and finite dispatch assertions; and the Go
+wrapper's full-evidence validation. `TestNativeEntryAuditRejections` runs the
+live request cases with one-sided and equal trace corruption for request
+binding and schema collapse, split and drift. An internally consistent change
+to a schema-only ancestor must also fail cross-build state comparison.
+These changes observe `lyd_find_sibling_first`, `lyd_find_sibling_opaq_next`,
+`lyd_find_sibling_val`, `lyd_find_sibling_schema`, `lyd_first_sibling` and
+`lyd_compare_single`; they change no native algorithms or data mutation paths.
+Foreign-context equivalence, non-NULL typed-value dispatch, nested selection
+and instrumented verbose generic retained-lifetime coverage remain excluded.
+Allocator reservation, constructor address checks and tcache setup are unchanged.
 
 Stdout is JSONL. `--quiet` emits command snapshots; the default emits primitive
 events as well. `--remote-stop` exits immediately after the remote-last

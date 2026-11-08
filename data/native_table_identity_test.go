@@ -15,6 +15,28 @@ import (
 	"time"
 )
 
+// Each live-oracle case corrupts complete traces, including equal corruption
+// on both sides, through the shared validator and checker comparison path.
+func TestNativeEntryAuditRejections(t *testing.T) {
+	if os.Getenv("YANG_NATIVE_REGISTRATION_DRIVER") == "" {
+		t.Skip("set YANG_NATIVE_REGISTRATION_DRIVER after the isolated static build")
+	}
+	for _, name := range []string{"entry_request_binding_rejections", "schema_identity_rejections", "schema_registry_lineage_comparison", "duplicate_operand_rejections"} {
+		t.Run(name, func(t *testing.T) {
+			ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+			defer cancel()
+			//nolint:gosec // Fixed repository script and finite regression names.
+			cmd := exec.CommandContext(ctx, "python3", filepath.Join("..", "conformance", "oracle", "native_registration", "sweep_test.py"),
+				"IdentitySweep.test_"+name)
+			if out, err := cmd.CombinedOutput(); err != nil {
+				t.Fatalf("entry audit regression: %v\n%s", err, out)
+			} else {
+				t.Logf("%s", out)
+			}
+		})
+	}
+}
+
 // A retained registration supplies no sibling when physical storage is empty.
 // The opaque variant has exactly the same residual winner, but a non-null start.
 func TestNativeRetainedReadEntries(t *testing.T) {

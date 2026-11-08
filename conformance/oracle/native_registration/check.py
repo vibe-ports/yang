@@ -140,6 +140,7 @@ def compared_results(name, rows):
 def compare_control(name, rc, rows, plain_rc, plain_rows, stopped=True):
     expected_rc = 5 if name in ("invalid-capacity", "invalid-mode") else 0
     assert normalized_reads(name, rows) == normalized_reads(name, plain_rows), (name, "control identity evidence changed")
+    entry_comparisons(name, rows)
     assert rc == plain_rc == expected_rc, (name, "control exit status")
     assert completed_replay(name, rows, stopped) == completed_replay(name, plain_rows, stopped), (name, "completed command results changed")
     assert compared_results(name, rows) == compared_results(name, plain_rows), (name, "control results changed")
@@ -173,6 +174,11 @@ def control_equal(name, rc, rows, stopped=True):
         if name in ("invalid-capacity", "invalid-mode"):
             empty = lambda trace: [dict(r, logs=[]) for r in trace]
         mutate("empty-results-control", empty)
+        if name == 'entry-guard':
+            def skipped(trace):
+                return [dict(r, supplied=0, before={'present': False}, after={'present': False})
+                        if r['event'] == 'read.instance' else r for r in trace]
+            mutate('skipped-nonnull-probes', skipped)
     try:
         compared_results(name, empty(rows))
     except AssertionError:
@@ -377,7 +383,7 @@ def complete_rb_topology(row):
 def generation_reference_sites(row):
     """Enumerate generation fields by representation; script handles are not IDs."""
     for key in ("node_generation", "source_generation", "working_rb_root", "old_generation",
-                "new_generation", "generation", "queried_parent", "winner", "current_parent", "supplied", "left", "right",
+                "new_generation", "generation", "queried_parent", "winner", "current_parent", "supplied", "target", "left", "right",
                 "schema_winner", "instance_winner", "value_winner"):
         if key in row:
             yield "event." + key, row, key
@@ -542,13 +548,13 @@ REUSE_CASES = {"driver-lifetime", "handle-tombstone", "handle-tombstone-probe", 
 IDENTITY_FIELDS = {"generation", "id", "creation_operation", "creation_ordinal", "source", "alive"}
 EVENT_FIELDS = {
     "allocation.address-reuse": {"old_generation", "new_generation"},
-    "read.schema": {"operation", "rc", "queried_parent", "winner", "current_parent", "before", "after"},
+    "read.schema": {"operation", "rc", "queried_parent", "target", "winner", "current_parent", "before", "after"},
     "read.first-sibling": {"operation", "winner"},
     "public.result": {"operation", "rc"},
     "boundary.tombstoned-handle": {"operation", "handle", "generation", "current"},
-    "read.instance": {"operation", "rc", "supplied", "winner", "current_parent", "before", "after"},
-    "read.opaque": {"operation", "rc", "supplied", "winner", "current_parent", "before", "after"},
-    "read.null": {"operation", "queried_parent", "before", "after", "schema_rc", "schema_winner",
+    "read.instance": {"operation", "rc", "supplied", "target", "winner", "current_parent", "before", "after"},
+    "read.opaque": {"operation", "rc", "supplied", "name", "winner", "current_parent", "before", "after"},
+    "read.null": {"operation", "queried_parent", "target", "before", "after", "schema_rc", "schema_winner",
                   "instance_rc", "instance_winner", "value_rc", "value_winner"},
     "read.compare": {"operation", "left", "right", "options"},
 }
@@ -587,12 +593,35 @@ def records(row):
                     yield label, record
 
 
+def entry_comparisons(name, rows):
+    """Finite §2.1 controls: operation, ordered native operands, exact flags."""
+    schedules = {
+        'entry-order': (0, [[(4, 11)], [(11, 4)], [(11, 4)], [(11, 4)], [(4, 11)], [(14, 5)]]),
+        'entry-duplicate': (1, [[(11, 4), (11, 5)], [(11, 5)], [(11, 4)]]),
+        'entry-guard': (0, [[], [], [], []]),
+    }
+    if name not in schedules: return
+    options, groups = schedules[name]
+    reads = commands(rows, 'read.instance')
+    assert len(reads) == len(groups), (name, 'missing instance controls')
+    expected = []
+    for read, pairs in zip(reads, groups, strict=True):
+        snapshot = next((r for r in rows if r['event'] == 'instance' and r['operation'] == read['operation']), None)
+        assert snapshot is not None, (name, 'missing instance snapshot')
+        nodes = by_handle(snapshot)
+        expected.extend((read['operation'], nodes[left]['generation'], nodes[right]['generation'], options)
+                        for left, right in pairs)
+    observed = [(r['operation'], r['left'], r['right'], r['options']) for r in commands(rows, 'read.compare')]
+    assert observed == expected, (name, 'wrong comparison operation/operands/options', observed, expected)
+
+
 def invariants(rows, name, stopped=True):
     # Validate read/event shape before the model uses operation to index input.
     for row in rows:
         if row["event"] in EVENT_FIELDS:
             assert EVENT_FIELDS[row["event"]] <= row.keys(), (name, "missing event fields", row["event"])
     normalized_reads(name, rows)
+    entry_comparisons(name, rows)
     completed_replay(name, rows, stopped)
     counts = Counter(r["event"] for r in rows)
     assert counts["driver.ready.actual-children-callback"] == 1, (name, "missing ready")

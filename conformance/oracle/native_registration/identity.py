@@ -32,6 +32,7 @@ def validate(script, rows):
     previous, provenance, labels, retired, table_owners, serials = {}, {}, {}, set(), {}, {}
     previous_tables, bindings, keys, indexes, creations = {}, {}, {}, Counter(), {}
     normalized, last_nodes, completed_nodes, completed_bindings = {}, {}, {}, {}
+    schemas, schema_keys, schema_nodes = {}, {}, {}
     for row in rows:
         event, operation = row['event'], row.get('operation', 0)
         unsafe = event == 'boundary.retained-dangling-links'
@@ -39,11 +40,27 @@ def validate(script, rows):
             assert row is rows[-1] and req[operation - 1][0] in ('free', 'free-root'), 'invalid unsafe boundary'
         command = 0 < operation <= len(req) and event == req[operation - 1][0]
         if 'nodes' not in row:
+            if event in ('read.null', 'read.schema'):
+                fields = req[operation - 1]
+                assert fields[0] == ('schema' if event == 'read.schema' else 'null-reads'), 'read at wrong operation'
+                for field, index in (('queried_parent', 1), ('target', 2)):
+                    g = completed_bindings[int(fields[index])]['generation']
+                    assert row[field] == g and g in keys and last_nodes[g]['alive'], 'wrong requested ' + field
             if event in ('read.instance', 'read.opaque'):
                 # These are finite native dispatch controls, not a G2 general
                 # comparison model. Their exact winners/order are pinned by the
                 # sweep independently on each side before control comparison.
                 supplied, winner, parent = row['supplied'], row['winner'], row['current_parent']
+                fields = req[operation - 1]
+                assert fields[0] == ('instance' if event == 'read.instance' else 'opaq-find'), 'read at wrong operation'
+                handle = int(fields[1])
+                expected_start = completed_bindings[handle]['generation'] if handle else 0
+                assert supplied == expected_start, 'read skipped/replaced requested start'
+                if event == 'read.instance':
+                    target = completed_bindings[int(fields[2])]['generation']
+                    assert row['target'] == target and target in keys and last_nodes[target]['alive'], 'wrong requested target'
+                else:
+                    assert row['name'] == fields[2], 'wrong opaque name'
                 for g in (supplied, winner, parent):
                     assert not g or (g in keys and last_nodes[g]['alive']), 'invalid read identity'
                 if not supplied:
@@ -54,8 +71,10 @@ def validate(script, rows):
                 owner = last_nodes[supplied]['parent'] if supplied else 0
                 expected_table = last_nodes[owner].get('table', {'present': False}) if owner else {'present': False}
                 assert row['before'] == expected_table, 'wrong queried storage'
-                normalized[operation, event] = (operation, row['rc'], keys.get(supplied, 0), keys.get(winner, 0), keys.get(parent, 0))
+                normalized[operation, event] = (operation, row['rc'], keys.get(supplied, 0), keys.get(winner, 0), keys.get(parent, 0),
+                                                keys[target] if event == 'read.instance' else row['name'])
             if event == 'read.compare':
+                assert 0 < operation <= len(req) and req[operation - 1][0] == 'instance', 'comparison at wrong operation'
                 assert all(g in keys and last_nodes[g]['alive'] for g in (row['left'], row['right'])), 'invalid comparison operands'
             if event == 'read.null':
                 parent = row['queried_parent']
@@ -119,6 +138,7 @@ def validate(script, rows):
                     assert row['rc'] == (0 if winner else 5), 'wrong schema status'
                     normalized[operation, event] = (operation, row['rc'], live(parent), live(winner), live(row['current_parent']))
                 else:
+                    assert req[operation - 1][0] == 'rewind', 'rewind at wrong operation'
                     h = int(req[operation - 1][1]); g = bindings[h]['generation']
                     if last_nodes[g]['parent']:
                         expected = last_nodes[last_nodes[g]['parent']]['first']
@@ -134,6 +154,22 @@ def validate(script, rows):
         assert type(row['node_count']) is int and 0 < row['node_count'] < 65536, 'invalid allocation count'
         assert type(row['table_count']) is int and 0 <= row['table_count'] < 65536, 'invalid table count'
         nodes = {n['generation']: n for n in row['nodes']}
+        registry_schemas = {s['identity']: s for s in row['schemas']}
+        assert len(registry_schemas) == len(row['schemas']), 'collapsed schema registry'
+        assert set(registry_schemas) == set(range(1, len(registry_schemas) + 1)), 'invalid schema registry'
+        assert schemas.keys() <= registry_schemas.keys(), 'lost schema registry'
+        current_schema_keys, unique_schemas = {}, set()
+        for s, record in sorted(registry_schemas.items()):
+            assert type(s) is int and s > 0 and record['context'] == 1, 'invalid schema identity/context'
+            assert record['module'] and record['name'] and record['nodetype'] > 0, 'incomplete schema descriptor'
+            parent = record['parent']
+            assert type(parent) is int and 0 <= parent < s, 'invalid compiled schema ancestry'
+            key = (record['context'], record['module'], record['name'], record['nodetype'], current_schema_keys.get(parent))
+            assert key not in unique_schemas, 'split compiled schema identity'
+            unique_schemas.add(key)
+            assert s not in schemas or schemas[s] == record, 'schema registry drift'
+            current_schema_keys[s] = key
+        schemas, schema_keys = registry_schemas, current_schema_keys
         for field in ('node_generation', 'source_generation', 'working_rb_root', 'output_generation'):
             ref = row.get(field, 0)
             assert type(ref) is int and (not ref or ref in nodes), ('invalid event reference', field)
@@ -166,7 +202,13 @@ def validate(script, rows):
                     assert n['current'] == 'unsafe-native-links', 'missing unsafe availability'
                     continue
                 assert n.get('current') != 'unsafe-native-links', 'unsafe current state outside boundary'
-                if n.get('schema'): assert n['schema_identity'] > 0, 'missing schema identity'
+                if n.get('schema'):
+                    s = n['schema_identity']
+                    assert type(s) is int and s > 0 and s in schemas, 'missing schema identity'
+                    descriptor = schemas[s]
+                    assert (n['schema'], n['nodetype'], n['context']) == (descriptor['name'], descriptor['nodetype'], descriptor['context']), 'node/schema descriptor mismatch'
+                    assert 'module' not in n or n['module'] == descriptor['module'], 'node/schema module mismatch'
+                    assert schema_nodes.setdefault(g, s) == s, 'node/schema identity drift'
                 if n.get('schema') in ('c', 'd', 'r', 'l', 'kl'):
                     assert {'first', 'tail', 'table'} <= n.keys(), 'missing inner-node table evidence'
                 for field in ('parent', 'prev', 'next', 'first', 'tail', 'rb_root', 'rb_stored_root'):
@@ -285,7 +327,7 @@ def validate(script, rows):
             live = {}
             for g, n in nodes.items():
                 if n['alive']:
-                    live[ref(g)] = (n.get('module'), n.get('schema'), n.get('value'), n.get('flags'),
+                    live[ref(g)] = (schema_keys.get(n.get('schema_identity')), n.get('module'), n.get('schema'), n.get('value'), n.get('flags'),
                                     tuple(ref(n.get(f, 0)) for f in ('parent', 'prev', 'next', 'first', 'tail')))
             normalized[operation, 'identity.state'] = (live, {h: (ref(b['generation']), b['revision']) for h, b in bs.items()})
         if command or operation == 0: completed_nodes, completed_bindings = nodes, bs
