@@ -48,7 +48,9 @@ def go_mutant(name, file, before, after, test):
         assert result.returncode == 0, result.stdout
         print(json.dumps({'mutant':name, 'protected_by_shared_validation':True}), flush=True)
         return
-    assert result.returncode and "--- FAIL:" in result.stdout and "[build failed]" not in result.stdout and "ModuleNotFoundError" not in result.stdout, (name, result.stdout)
+    assert result.returncode and "--- FAIL:" in result.stdout and not any(
+        failure in result.stdout for failure in ('[build failed]', 'ModuleNotFoundError', 'ImportError',
+                                                 'SyntaxError', 'FileNotFoundError', 'NameError')), (name, result.stdout)
     print(json.dumps({"mutant": name, "rejected": True}), flush=True)
 
 
@@ -227,3 +229,97 @@ go_mutant('go-observer-function-name', evidence,
           'v = fmt.Sprint(v)', '^TestNativeG2ObserverFunctionAnnotation$')
 go_mutant('observer-status-obligation', evidence,
           'if raw == nil {', 'if raw == nil || raw["rc"] == nil {', '^TestNativeG2ObserverWithoutStatus$')
+
+# Round-2 same-peer defects: keep the new wire format and positive native
+# controls, but remove the complete request-binding / outcome requirement.
+request_check = "        assert row['request'] == expected_requests[operation], 'wrong request arguments'\n"
+operand_begin = identity.index("            for field, handle in (('start_generation', start), ('target_generation', target)):")
+operand_end = identity.index("            expected = last_nodes[owner]", operand_begin)
+unbound = identity[:operand_begin] + identity[operand_end:]
+unbound = unbound.replace(request_check, '').replace(
+    "            elif not start:\n                assert (row['rc'], winner) == (5, 0), 'null sibling must return ENOTFOUND'\n", '')
+path = work / 'unbound-request.py'
+path.write_text(unbound)
+go_mutant('unbound-request', completion,
+          'filepath.Join("..", "conformance", "oracle", "native_registration", "identity.py")',
+          json.dumps(str(path)), '^TestNativeG2SubstitutedNullStart$')
+
+payload_control = work / 'optional-success-payload'
+payload_control.mkdir(exist_ok=True)
+(payload_control / 'identity.py').write_text(identity)
+(payload_control / 'protocol.py').write_text((aux / 'protocol.py').read_text().replace(
+    "if event == 'public.result' and row.get('rc') == 0:", "if False and event == 'public.result':").replace(
+    "if event == 'public.result' and row.get('rc') != 0 else {}", "if event == 'public.result' else {}"))
+go_mutant('optional-success-payload', completion,
+          'filepath.Join("..", "conformance", "oracle", "native_registration", "identity.py")',
+          json.dumps(str(payload_control / 'identity.py')), '^TestNativeG2RequiredSuccessPayload/both$')
+
+path = work / 'failed-read-parent.py'
+path.write_text(identity.replace("                assert winner or parent == 0, 'parent without winner'\n", ''))
+go_mutant('failed-read-parent', completion,
+          'filepath.Join("..", "conformance", "oracle", "native_registration", "identity.py")',
+          json.dumps(str(path)), '^TestNativeG2FailedResultLinks/read.instance$')
+
+path = work / 'unrequested-tombstone.py'
+tombstone_begin = identity.index('                requested = input_handles(req[operation - 1])')
+tombstone_end = identity.index('                assert g in last_nodes', tombstone_begin)
+path.write_text(identity[:tombstone_begin] + identity[tombstone_end:])
+go_mutant('unrequested-tombstone', completion,
+          'filepath.Join("..", "conformance", "oracle", "native_registration", "identity.py")',
+          json.dumps(str(path)), '^TestNativeG2TombstoneRequestBinding$')
+
+path = work / 'nullable-mandatory-input.py'
+null_guard = "        assert handle or position in NULLABLE_INPUTS.get(command, ()), 'NULL mandatory input'\n"
+assert null_guard in identity
+path.write_text(identity.replace(null_guard, ''))
+go_mutant('nullable-mandatory-input', completion,
+          'filepath.Join("..", "conformance", "oracle", "native_registration", "identity.py")',
+          json.dumps(str(path)), '^TestNativeG2MandatoryInputs$')
+
+schema_begin = identity.index("            if fields[0] in ('read-schema', 'read-value') and 'schema' not in last_nodes[row['target_generation']]:")
+schema_end = identity.index("            assert row['rc'] != 0 or winner", schema_begin)
+schema_unchecked = identity[:schema_begin] + "            if not start:\n                assert (row['rc'], winner) == (5, 0), 'null sibling must return ENOTFOUND'\n" + identity[schema_end:]
+for name, changed, test in (
+    ('occupied-output-slot', identity.replace("                assert not old or not old['generation'] or not completed_nodes[old['generation']]['alive'], 'occupied output handle'\n", ''), '^TestNativeG2OutputSlotBindings$'),
+    ('unrequested-new-binding', identity.replace("        assert bs.keys() - completed_bindings.keys() <= allowed, 'unrequested new binding'\n", ''), '^TestNativeG2UnrequestedBindings$'),
+    ('NULL-start-before-schema', schema_unchecked, '^TestNativeG2NullSchemaPreconditions$'),
+):
+    assert changed != identity, name
+    path = work / (name + '.py')
+    path.write_text(changed)
+    go_mutant(name, completion,
+              'filepath.Join("..", "conformance", "oracle", "native_registration", "identity.py")',
+              json.dumps(str(path)), test)
+
+# The generic inventory must independently reject the identical-payload defect,
+# even when no named Go regression is selected.
+for name, directory in (('request-substitution-control', work / 'request-control'),
+                        ('success-payload-control', payload_control),
+                        ('mandatory-NULL-control', work / 'mandatory-null-control')):
+    directory.mkdir(exist_ok=True)
+    if name == 'request-substitution-control':
+        (directory / 'identity.py').write_text(unbound)
+        (directory / 'protocol.py').write_text((aux / 'protocol.py').read_text())
+    if name == 'mandatory-NULL-control':
+        (directory / 'identity.py').write_text(identity.replace(null_guard, ''))
+        (directory / 'protocol.py').write_text((aux / 'protocol.py').read_text())
+    (directory / 'evidence_test.py').write_text((aux / 'evidence_test.py').read_text().replace(
+        'ROOT = pathlib.Path(__file__).resolve().parent', 'ROOT = pathlib.Path(' + repr(str(aux)) + ')'))
+    # Start with the small named live request instead of rerunning the full
+    # field inventory merely to establish that the generic control is reached.
+    control = '''
+import evidence_test as e
+s = (e.ROOT / 'cases/read/read-success-payload.calls').read_text()
+left, right = e.replay(s), e.replay(s, plain=True)
+e.request_substitutions(s, left, right)
+e.sweep(s, left)
+'''
+    result = subprocess.run(
+        ['python3', '-c', control], cwd=directory, text=True, stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT, timeout=180, check=False)
+    (work / (name + '.log')).write_text(result.stdout)
+    expected = {'request-substitution-control': 'accepted substituted request',
+                'success-payload-control': 'accepted identical contract defect',
+                'mandatory-NULL-control': 'accepted mandatory NULL request'}[name]
+    assert result.returncode and expected in result.stdout, (name, result.stdout)
+    print(json.dumps({'mutant': name, 'rejected': True}), flush=True)

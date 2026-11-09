@@ -55,6 +55,7 @@ static lyht_value_equal_cb child_callback;
 static void *child_data;
 static struct ly_ctx *ctx;
 static cJSON *log_messages;
+static cJSON *request_arguments;
 static int enabled, events = 1, hash_depth, remote_stop, remote_watch, remote_pending, ub_stop;
 
 static unsigned identity(const void *ptr)
@@ -74,14 +75,18 @@ static unsigned table_identity(const struct ly_ht *ht)
 
 static void number(cJSON *j, const char *key, double value) { cJSON_AddNumberToObject(j, key, value); }
 /* Opaque text is a byte string. Hex also preserves malformed UTF-8 names. */
-static void bytes_or_null(cJSON *j, const char *key, const char *value)
+static cJSON *bytes_value(const char *value)
 {
-    if(!value){if(!cJSON_AddNullToObject(j,key))exit(91);return;}
+    if(!value){cJSON *item=cJSON_CreateNull();if(!item)exit(91);return item;}
     size_t len=strlen(value);if(len>SIZE_MAX/2-1)exit(93);
     char *hex=malloc(2*len+1);if(!hex)exit(91);
     static const char digits[]="0123456789abcdef";
     for(size_t k=0;k<len;++k){unsigned char byte=(unsigned char)value[k];hex[2*k]=digits[byte>>4];hex[2*k+1]=digits[byte&15];}
-    hex[2*len]=0;if(!cJSON_AddStringToObject(j,key,hex))exit(91);free(hex);
+    hex[2*len]=0;cJSON *item=cJSON_CreateString(hex);free(hex);if(!item)exit(91);return item;
+}
+static void bytes_or_null(cJSON *j, const char *key, const char *value)
+{
+    if(!cJSON_AddItemToObject(j,key,bytes_value(value)))exit(91);
 }
 static unsigned context_identity(const struct ly_ctx *context)
 {
@@ -99,6 +104,11 @@ static unsigned schema_identity(const struct lysc_node *schema)
 }
 static void emit(cJSON *j)
 {
+    /* Retain the exact token arguments, including omitted/defaulted operands.
+     * The input line is capped at 1024 bytes; no unbounded request storage. */
+    cJSON *args=request_arguments?cJSON_Duplicate(request_arguments,1):cJSON_CreateArray();
+    if(!args || !cJSON_AddItemToObject(j,"request",args))exit(91);
+    if(!cJSON_HasObjectItem(j,"operation") && !cJSON_AddNumberToObject(j,"operation",op))exit(91);
     char *s = cJSON_PrintUnformatted(j);
     if (!s || puts(s) == EOF || fflush(stdout)) exit(91);
     free(s);
@@ -698,6 +708,26 @@ int main(int argc, char **argv)
             continue;
         }
         if(line[0]=='#' || sscanf(line,"%31s",cmd)!=1) continue;
+        cJSON_Delete(request_arguments);request_arguments=cJSON_CreateArray();
+        if(!request_arguments)exit(91);
+        char arguments[sizeof line];strcpy(arguments,line);
+        char *save=NULL;
+        unsigned token=0;
+        for(char *arg=strtok_r(arguments," \t\r\n\v\f",&save);arg;arg=strtok_r(NULL," \t\r\n\v\f",&save)) {
+            int offset=0;
+            if(token==2 && (!strcmp(cmd,"parse") || !strcmp(cmd,"parse-xml"))) {
+                sscanf(line,"%*s %*u %n",&offset);if(!offset)return 4;
+            }
+            if(token==1 && (!strcmp(cmd,"context") || !strcmp(cmd,"context-keyless"))) {
+                sscanf(line,"%*s %n",&offset);if(!offset)return 4;
+            }
+            char payload[sizeof line];
+            if(offset) {strcpy(payload,line+offset);size_t len=strlen(payload);if(len && payload[len-1]=='\n')payload[len-1]=0;arg=payload;}
+            cJSON *item=bytes_value(arg);
+            if(!item || !cJSON_AddItemToArray(request_arguments,item))exit(91);
+            if(offset)break;
+            ++token;
+        }
         const struct lyd_node *directed_reuse=NULL;
         ++op; ordinal=0;pending_script=0;output_handle=output_generation=0; for(unsigned i=1;i<=read_context_count;++i)ly_err_clean((struct ly_ctx*)read_contexts[i],NULL);cJSON_Delete(log_messages);log_messages=NULL;
         rc=LY_SUCCESS;
@@ -772,7 +802,7 @@ int main(int argc, char **argv)
             cJSON *j=cJSON_CreateObject();cJSON_AddStringToObject(j,"event",instance?"read.instance":"read.opaque");
             number(j,"operation",op);number(j,"rc",rc);number(j,"supplied",identity(start));number(j,"winner",identity(winner));number(j,"current_parent",identity(winner?winner->parent:NULL));
             if(instance)number(j,"target",identity(nodes[b]));
-            else cJSON_AddStringToObject(j,"name",name);
+            else bytes_or_null(j,"name",name);
             cJSON_AddItemToObject(j,"before",before);cJSON_AddItemToObject(j,"after",table_json(queried));emit(j);
         }
         else if(!strcmp(cmd,"null-reads")) {
@@ -845,6 +875,11 @@ int main(int argc, char **argv)
             else if(!strcmp(cmd,"read-opaque"))rc=lyd_find_sibling_opaq_next(nodes[a],fields==4?value:"unknown",&winner);
             else return 4;
             cJSON *j=cJSON_CreateObject();cJSON_AddStringToObject(j,"event",!strcmp(cmd,"read-schema")?"read.selection.schema":!strcmp(cmd,"read-instance")?"read.selection.instance":!strcmp(cmd,"read-value")?"read.selection.value":"read.selection.opaque");number(j,"operation",op);number(j,"rc",rc);
+            number(j,"start_generation",identity(nodes[a]));number(j,"target_generation",identity(nodes[b]));number(j,"queried_parent",identity(parent));
+            if(!strcmp(cmd,"read-value")) {
+                bytes_or_null(j,"value",fields==4?value:NULL);
+            }
+            if(!strcmp(cmd,"read-opaque"))bytes_or_null(j,"name",fields==4?value:"unknown");
             number(j,"winner",identity(winner));number(j,"winner_script",winner?identities[identity(winner)].script:0);
             number(j,"current_parent",identity(winner?winner->parent:NULL));number(j,"parent_script",winner&&winner->parent?identities[identity(winner->parent)].script:0);
             number(j,"next_generation",identity(winner?winner->next:NULL));

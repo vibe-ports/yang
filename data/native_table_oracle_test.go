@@ -8,6 +8,7 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"math/rand/v2"
@@ -461,10 +462,10 @@ func nativeIdentityProjection(script string, rows []json.RawMessage) (nativeIden
 func nativeIdentityEvidenceRun(script string, rows []json.RawMessage, project bool) (nativeIdentityEvidence, error) {
 	var result nativeIdentityEvidence
 	payload, err := json.Marshal(struct {
-		Script  string            `json:"script"`
+		Script  string            `json:"script_hex"`
 		Rows    []json.RawMessage `json:"rows"`
 		Project bool              `json:"project"`
-	}{script, rows, project})
+	}{hex.EncodeToString([]byte(script)), rows, project})
 	if err != nil {
 		return result, err
 	}

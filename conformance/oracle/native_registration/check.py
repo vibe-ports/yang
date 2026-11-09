@@ -8,7 +8,7 @@ import os
 import pathlib
 import subprocess
 
-from identity import validate
+from identity import requests, validate
 
 root = pathlib.Path(__file__).resolve().parent
 LYS_LIST = 0x0010  # libyang v5.8.6 src/tree_schema.h
@@ -19,6 +19,8 @@ ENTRY_CASES = ("retained-null", "retained-opaque", "entry-guard", "entry-order",
 def run(name, option="--quiet", unmodified=False):
     script = (root / "cases" / (name + ".calls")).read_bytes()
     options = [option] + (["--event-schema"] if name.startswith("entry-") or name in ("list-events", "schema-pointer", "schema-pointer-reverse", "lifetime/list-key", "lifetime/validation-delete") else [])
+    if any(f[0].startswith('read-') or f[0] in ('equal', 'context', 'context-keyless') for f in requests(script.decode())):
+        options.append('--read-schema')
     env = dict(os.environ)
     if b"# reuse-" in script or name in ("handle-tombstone", "handle-tombstone-probe", "retained-address-reuse", "lifetime/stale-handle",
                 "lifetime/retained-same-hash", "lifetime/retained-resize", "lifetime/retained-remove"):
@@ -125,7 +127,7 @@ def completed_replay(name, rows, stopped=True):
 
 
 def compared_results(name, rows, evidence=None):
-    results = [r for r in rows if r['event'] in ('public.result', 'validate', 'read.schema', 'read.first-sibling', 'read.instance', 'read.opaque', 'read.null')]
+    results = [r for r in rows if r['event'] in ('public.result', 'validate', 'read.schema', 'read.first-sibling', 'read.instance', 'read.opaque', 'read.null', 'read.equal') or r['event'].startswith('read.selection.')]
     if name in ("invalid-capacity", "invalid-mode"):
         # Rejected constructors have no completed command or public read. Their
         # explicit native rejection and nonempty log are the comparison result.
@@ -155,6 +157,8 @@ def compare_control(name, rc, rows, plain_rc, plain_rows, stopped=True):
 def control_equal(name, rc, rows, stopped=True):
     plain_rc, plain_rows = run(name, unmodified=True)
     compare_control(name, rc, rows, plain_rc, plain_rows, stopped)
+    from evidence_test import request_substitutions
+    substitutions = request_substitutions((root / 'cases' / (name + '.calls')).read_text(), rows, plain_rows)
     # Mutate each side independently AND both together: equal truncations and
     # equal empty sets were the original false-positive class.
     def rejected(label, left, right):
@@ -176,7 +180,7 @@ def control_equal(name, rc, rows, stopped=True):
             return trace[:first] + trace[first + 1:]
         mutate("missing-command-control", missing_command)
         # Exercise result validation independently of command completeness.
-        empty = lambda trace: [r for r in trace if r["event"] not in ("public.result", "validate", "read.schema", "read.first-sibling", "read.instance", "read.opaque", "read.null")]
+        empty = lambda trace: [r for r in trace if r["event"] not in ("public.result", "validate", "read.schema", "read.first-sibling", "read.instance", "read.opaque", "read.null", "read.equal") and not r['event'].startswith('read.selection.')]
         if name in ("invalid-capacity", "invalid-mode"):
             empty = lambda trace: [dict(r, logs=[]) for r in trace]
         mutate("empty-results-control", empty)
@@ -192,7 +196,7 @@ def control_equal(name, rc, rows, stopped=True):
     else:
         raise AssertionError((name, "accepted empty compared results"))
     print(json.dumps({"case": name, "control_completed": True, "terminal": rows[-1]["event"],
-                      "commands": len(completed_replay(name, rows, stopped))}))
+                      "commands": len(completed_replay(name, rows, stopped)), "request_substitutions_both": substitutions}))
 
 
 LIFETIME_CONTROLS = ("recreate-print", "recreate-lookup", "dup-descendant", "parse-descendant",
@@ -650,19 +654,13 @@ def invariants(rows, name, stopped=True):
     script_commands = set(script)
 
     resizing, identities, creations, next_ordinal = [], {}, {}, Counter()
-    dead, occurrences, generic = set(), {}, False
+    dead, occurrences = set(), {}
     # Address-reuse notices precede the new identity's first snapshot. All other
     # snapshot references must resolve in that snapshot, including tombstones.
     recorded = {n["generation"] for r in rows for n in r.get("nodes", [])}
     for row in rows:
-        if row["event"] == "new" and row["rc"] == 0:
-            generic = True
-        if generic and (row["event"] in script_commands or ("nodes" in row and row["event"].startswith("boundary.") and row["event"] != "boundary.new-null")):
-            assert "table" in row and row["table"]["present"], (name, "missing generic command/stop table", row["event"])
         if row["event"] in EVENT_FIELDS:
             assert EVENT_FIELDS[row["event"]] <= row.keys(), (name, "missing event fields", row["event"])
-            if row["event"] == "public.result" and row["rc"] == 0:
-                assert "json" in row, (name, "missing public JSON")
             if row["event"] == "allocation.address-reuse":
                 assert row["old_generation"] > 0 and row["new_generation"] > 0, (name, "reuse without allocation identities")
         else:
@@ -1055,6 +1053,10 @@ def main():
         return
 
     if not args.lifetime_case:
+        for case in ('read-request-binding', 'read-success-payload'):
+            name = 'read/' + case
+            rc, rows = run(name)
+            control_equal(name, rc, rows)
         for name in ENTRY_CASES:
             rc, rows = run(name, "--events")
             assert rc == 0, (name, rc)

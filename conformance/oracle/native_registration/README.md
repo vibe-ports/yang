@@ -1424,3 +1424,191 @@ bucket omission and four exclusion/status counterfactuals each exit 0 as runners
 every intended broken predicate is rejected by a real failing regression. Logs:
 `current-fields.log` and `current-mutants.log`. Final sources are recorded in
 `final-sources.sha256`.
+
+## PR #352 round 2: request and outcome contracts
+
+The inventory below covers every command accepted by `main`, every `emit` call,
+and every snapshot/result layout. `request` is mandatory on every replay record,
+including intermediate snapshots, boundaries and memory-reuse notices. It contains
+lowercase hex encodings of the exact command and argument bytes; `parse`,
+`parse-xml`, `context` and `context-keyless` retain their parser payload as one
+byte-preserving argument, including significant interior and trailing spaces.
+Tokenization uses C's ASCII whitespace; Unicode spaces and line separators can
+remain opaque name bytes. Bootstrap has
+`operation: 0, request: []`. Other records name the executing operation and must
+match that request before history is walked. Omitted arguments remain omitted;
+they cannot be silently replaced with explicitly supplied defaults. `--abi` and
+the emergency process-watchdog output are separate transport channels, unchanged.
+
+Here `h` is an input handle resolved through the preceding completed bindings;
+`out` is the requested output handle. All scalar arguments below, including
+output handles, flags, hashes, names, values and native parser text, are bound by
+`request`. Live input generations, output bindings and selection operands receive
+the additional checks shown. Zero input handles denote NULL where the driver
+permits it; they never select a different live binding.
+
+| Command and arguments | Additional binding / outcome obligation |
+|---|---|
+| `new capacity mode` | Successful completion requires present generic `table`; rejected creation ends at `boundary.new-null`, without generic storage. Subsequent completed snapshots require that storage until another `new`. |
+| `root out name` | Successful output is a live allocation born in this operation; name is request-bound. |
+| `term out parent name value [flags [reuse]]` | Live parent or NULL; successful output is a new live allocation. Optional reuse names a retained dead generation. Flags and value remain exact request arguments, before native canonicalization. |
+| `list out parent name keys` | Live parent or NULL; new live output on success. `~` is the driver's explicit empty-key string argument. |
+| `opaque out parent name value` | Live parent or NULL; new live output on success; byte-exact opaque fields remain required in live node evidence. |
+| `opaque-invalid-xml out parent` | Live parent or NULL; new live output on success; fixed invalid value is a driver control, not a request argument. |
+| `parse out json`, `parse-xml out xml` | Exact raw parser payload; successful returned allocation was born in this operation. A failed parse may retain native partial output and failure history. |
+| `dup out source parent flags`, `dup-to-context out source parent flags` | Live source and live parent or NULL; returned binding must match the native output pointer. Native flags determine copy depth/context; output need not be a newly born object when native returns an existing key. |
+| `child out parent index` | Live parent; returned child aliases a live generation and is the only binding allowed to refresh. Index is request-bound. |
+| `frontier parent h1 h2 h3 h4` | All five inputs are live; synthetic schema/link setup, not a public mutation claim. |
+| `unlink h`, `detach-siblings h`, `change h value`, `I h`, `U h` | Live input; no output binding. Native mutations/statuses and complete post-state remain comparison evidence. |
+| `attach parent child`, `before sibling node` | Both inputs live; no output binding. |
+| `record parent node hash checked`, `record-as parent node hash-source checked` | Live parent/node and, for `record-as`, live hash source; no output binding. Synthetic registration controls retain native storage/callbacks. |
+| `insert h hash [checked [reuse]]`, `remove h hash` | Existing live input or the driver's lazy construction/binding path; optional construction reuse names a retained dead generation. Only the requested lazy handle may refresh. |
+| `free h [reuse-target]`, `free-root h [reuse-target]` | Inputs live before destruction; bindings/history remain retained. Unsafe links require the explicit terminal boundary and unavailable-node representation. |
+| `rewind h` | Live input; required `read.first-sibling`; refreshed output binding must equal its winner. |
+| `validate h` | Live input; only this output binding may refresh. Failure does not discard native partial state, diagnostics or history. |
+| `check-handle h`, `print h`, `find-next-loop h hash cap` | Live input; `print` requires `public.result`; other commands have no separate ordinary result. Find-next's explicit cap boundary can replace completion. |
+| `dump` | Complete state/status/diagnostic snapshot, no output binding or separate result. |
+| `context [yang]`, `context-keyless [yang]` | Exact optional raw schema payload; old contexts remain retained. Current module evidence and context-tagged diagnostics are required. |
+| `schema parent target`, `null-reads parent target` | Live parent/target generations equal `queried_parent`/`target`; mandatory `read.schema` / `read.null`. |
+| `instance start target`, `opaq-find start name` | `supplied` equals the actual start generation; instance target generation / opaque name equals the request. NULL start requires ENOTFOUND and zero winner/parent. |
+| `read-schema start target [parent]`, `read-instance start target [parent]` | Mandatory actual `start_generation`, `target_generation`, `queried_parent`, bound to preceding live bindings and requested observation owner. No value/name field permitted. |
+| `read-value start target [parent [value]]` | Same generations, plus mandatory nullable `value`: NULL only when omitted. |
+| `read-opaque start target [parent [name]]` | Same generations, plus mandatory `name`: native default `unknown` only when omitted. The target remains the request's live observation anchor even though the opaque API itself only takes start/name. No value field permitted. |
+| `equal left right options` | `read.equal` operands resolve the actual preceding handle generations, including NULL; exact options. |
+| `# reuse-free h path`, `# reuse-next path` | Preparation directives, no semantic operation/result. Existing live-target, held-target and actual memory-reuse controls remain required. They are excluded from semantic request-line substitution. |
+
+Every completed command retains the full closed snapshot layout, even on error.
+Commands without a returned pointer forbid nonzero `output_handle` or
+`output_generation`. Constructors and refreshing commands require the requested
+output handle and its exact binding; a failed call may return NULL or native
+partial output. No validator invents success or discards failure diagnostics.
+Each separate result must occur once before its matching completed command, with
+the same status when it carries `rc`. Unknown fields, fields belonging to another
+result kind, missing required fields and wrong types are rejected in the shared
+validator used by both Python and Go.
+
+| Record kind | Required outcome fields and forbidden states |
+|---|---|
+| Bootstrap / completed / intermediate / snapshot boundary | Common closed snapshot: status, allocation coverage/counts, complete nodes/tables/schemas/bindings, event pointer fields, diagnostics and logs; read contexts also require modules. Availability and node-kind dependent fields follow the existing closed node/table contracts. Generic storage is required on completed commands/terminal snapshots when a successful `new` established it. Native intermediate events keep their existing observational exclusions. |
+| `read.selection.schema/instance/value/opaque` | All operand generations, winner/script labels, current parent and next identities/labels, before/after storage always required. Success requires nonzero live winner and exact current links. Error requires zero winner, parent and next (including script labels). NULL start requires `(rc,winner) == (5,0)` even when a nonzero observation parent retains a table. `value` and `name` are required only on their respective kinds and forbidden on the others. |
+| `read.schema`, `read.instance`, `read.opaque` | Status, requested generation/name fields, winner/parent, before/after always required; success iff winner, otherwise ENOTFOUND and zero parent. Query storage is unchanged and bound to its preceding owner; schema hash remains native observed data. |
+| `read.null` | Parent/target, before/after, all three statuses/winners required. Each native NULL read requires ENOTFOUND and zero winner. No generic `rc`, JSON, or selection-only fields. |
+| `read.first-sibling` | Winner required, independently derived from the preceding sibling component; no `rc` or JSON. |
+| `read.equal` | `rc`, both operand generations, options required for either outcome. No snapshot payload, selection links or JSON. |
+| `public.result` | `rc == 0`: string `json` required. `rc != 0`: `json` remains optional because a failed print may retain partial output. All selection/snapshot/operand fields forbidden. |
+| `read.compare` | Operation/request and live left/right generations/options required. Instrumented callback observation, not a result required on the untouched peer. |
+| `allocation.address-reuse` | Operation/request plus old/new generations required; old generation dead and new generation later in retained history. No snapshot or `rc`. |
+| `boundary.tombstoned-handle` | Operation/request, requested handle, its retained dead generation, and `current: unavailable` required; no snapshot or success fields. |
+| `--abi` | Unchanged separate seven-field ABI assertion in the checker; no semantic request payload. |
+
+The two named regressions are `TestNativeG2SubstitutedNullStart` and
+`TestNativeG2RequiredSuccessPayload`, backed by live requests
+`read/read-request-binding.calls` and `read/read-success-payload.calls`.
+Both fail against the validator and rebuilt drivers from `703b425`: the former
+accepts the wrong successful request, and the latter accepts missing JSON on both
+peers. `TestNativeG2SelectionArguments` covers every selection kind with omitted
+and explicit parent/value/name arguments; `TestNativeG2RawRequestArguments`
+separately binds whitespace in JSON, XML and YANG parser payloads. Outcome unit
+controls preserve failed-print optionality and reject unrelated result fields.
+
+The generic control now applies every perturbation to identical peers and checks
+the validation-only lane before comparison. Its independent `contract_defect`
+inventory requires rejection for required-field deletion, unknown additions,
+request/operand/option/status/link substitutions and every wrong type. It does
+not infer optionality from the validator under test. Each executed argument of
+each request line, including command tokens, is also substituted against both
+real native peers; validation must reject without using projection inequality.
+`check.py` runs this request control on every paired replay in its command
+inventory, including the two named cases. Unexecuted suffixes after explicit
+native stop boundaries and preparation comments are recorded exclusions.
+
+There is an essential limit to a structural validator: changing well-formed
+native observed data (for example a terminal value, diagnostic text or printed
+JSON) is distinguishable by the independent native outcome, not by comparing two
+identical alterations. Deleting an explicitly optional diagnostic or failed-print
+payload is also valid. The field control reports these as `native_outcome_fields`
+and retains their independent projection checks; it never counts equal altered
+peers as rejection evidence. This boundary is separate from required-by-outcome
+fields and request bindings, which must fail validation on each peer alone.
+
+Self-contained sensitivity controls remove the entire request-binding family or
+relax successful JSON back to optional. The named Go regressions and the generic
+request/outcome controls must fail for the corresponding defect; a compile/import
+failure cannot count as sensitivity evidence.
+
+Changed native functions are driver-only `emit`, `bytes_value` / `bytes_or_null`,
+and command argument/result observation in `main`. Selection value/name fields
+and G1 opaque-name arguments use the same byte-exact hex representation. The Go
+validator transport carries `script_hex`; Python uses surrogate escape only to
+split the original bytes without replacing invalid UTF-8. `TestNativeG2OpaqueByteNames`
+remains a positive control, and `TestNativeG2OpaqueByteArguments` independently
+rejects substitutions of distinct invalid UTF-8 request bytes. The actual library functions remain pinned:
+`lyd_find_sibling_val`, `lyd_find_sibling_first`,
+`lyd_find_sibling_opaq_next`, `lyd_compare_single`, `lyd_print_mem`.
+No native mutation algorithm, production Go path, #257 journal operation, cache,
+ownership rule, budget, public API, dependency, policy file or golden is changed.
+Request emission uses the existing 1024-byte input cap and existing process
+watchdog; one request array is replaced per operation, and record copies are
+bounded by that line. Validation scans request bytes once per record before its
+existing shape/history passes. Parts 2–5 remain excluded.
+
+Ordinary work is checked against the specified main base `a10a82a` with the
+unchanged duplicate-heavy, reverse-insertion `TestNativeOrdinaryWorkBaseline`,
+with and without the journal. The twelve `(visits, charges, allocations, bytes)`
+tuples are the same as the table above; no production work path changed.
+Current run commands/statuses are reported with the review request, separately
+from the historical runs above. No new manifest fixture IDs; all new cases are
+live native requests, with no golden generation or edits.
+
+The command inventory is pinned independently against the driver's command
+branches by the checker unit test. Shared completion and the closed snapshot-kind
+inventory also reject renamed/extra intermediate records and incomplete traces
+that still contain their result rows. `TestNativeG2FailedResultLinks` covers
+schema, instance, opaque and general selection failures; the non-NULL G1 misses
+ensure its disabled-parent-guard counterfactual reaches that guard.
+The evidence-work control counts executed validator lines on duplicate-heavy,
+reverse-order setup followed by 4/16 prints, requires a fixed per-field allowance
+and at most 5% growth per emitted field, and is run unchanged with main's validator.
+Observer-only temporary retirement records with no counterpart on the untouched
+build remain in the documented lifetime-history exclusion; their local closed
+shapes and types are still required.
+
+`TestNativeG2TombstoneRequestBinding` supplies two independently retired handles
+and coherently replaces both handle and generation in the terminal boundary.
+Each native peer must reject that boundary unless the retired handle is actually
+an input to the executing request. Live-input checks and this terminal check use
+one shared input inventory, including lazy insertion and optional free targets.
+Its disabled-binding sensitivity control must fail after valid native replays.
+The terminal control also supplies two retired inputs to `instance`: it rejects
+the second input being reported instead of the first failing handle check.
+
+Request typing is independent of the trace's echoed bytes. Minimum argument
+counts cover every command; unsigned fields, handle ranges, historical reuse
+handles and the native token widths must be representable without a partial
+scan or truncation. These are private replay-protocol preconditions, not changes
+to a libyang API. Nullability is explicit: constructor parents and duplicate
+parents may be NULL, `instance` / `opaq-find` starts may be NULL, both equality
+operands may be NULL, and general selections allow NULL start and observation
+parent. General selection targets, including the opaque observation anchor,
+remain mandatory. All other input handles are mandatory. Constructing and
+aliasing commands require a vacant output slot; `rewind` and `validate` refresh
+an existing live handle. Every new or refreshed binding, including intermediate
+snapshots, must belong to the executing request's output or lazy insert/remove
+handle. A terminal boundary cannot retain a separate result from its unfinished
+command.
+
+`TestNativeG2MandatoryInputs` coherently edits both the request echo and selection
+target generation to NULL, or edits print/unlink request inputs to NULL, on both
+peers. Both actual native drivers reject these malformed programs with exit 4.
+The generic control includes zero substitutions and independently forges the
+matching request echoes for mandatory inputs; equal forged echoes are not proof
+of valid arguments. `TestNativeG2OutputSlotBindings` coherently changes output
+bindings, labels and retained history to replace a still-occupied slot;
+`TestNativeG2UnrequestedBindings` adds a fully formed alias on a read-only command.
+Their disabled-precondition counterfactuals must fail the named regressions.
+
+Input-handle nullability is separate from schema-argument validity.
+`lyd_find_sibling_val` checks its schema before NULL-start handling.
+`TestNativeG2NullSchemaPreconditions` uses live opaque targets with NULL and
+non-NULL starts in schema/value reads: native EINVAL (3), rather than ENOTFOUND
+(5), is required and preserved. No typed value is prepared on this path.

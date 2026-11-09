@@ -5,6 +5,7 @@
 package data
 
 import (
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -37,6 +38,352 @@ func nativeG2CompareEvidence(script string, left, right []nativeDriverResult) er
 		return fmt.Errorf("native G2 evidence differs:\ninstrumented=%v\nunmodified=%v", a, b)
 	}
 	return nil
+}
+
+func TestNativeG2SubstitutedNullStart(t *testing.T) {
+	const script = "root 1 c\nterm 2 1 p same\nread-instance 2 2 1\n"
+	const substituted = "root 1 c\nterm 2 1 p same\nread-instance 0 2 1\n"
+	valid := nativeDriver(t, script)
+	nativeG2Unmodified(t, script, valid)
+	for _, row := range valid {
+		if row.Event == "read.selection.instance" && row.RC != nativeOK {
+			t.Fatal("positive control did not select the term")
+		}
+	}
+	if err := nativeG2CompareEvidence(substituted, valid, valid); err == nil {
+		t.Fatal("accepted both peers executing the wrong request")
+	}
+	miss := nativeDriver(t, substituted)
+	nativeG2Unmodified(t, substituted, miss)
+	for _, row := range miss {
+		if row.Event == "read.selection.instance" && (row.RC != nativeNotFound || row.raw["winner"] != float64(0)) {
+			t.Fatal("NULL start did not return ENOTFOUND with no winner")
+		}
+	}
+	// Changing the raw request echo cannot hide an incorrect parsed operand.
+	mutant := nativeG2CloneRows(t, valid, func(r map[string]any) {
+		if r["operation"] == float64(3) {
+			r["request"] = []any{hex.EncodeToString([]byte("read-instance")), "30", "32", "31"}
+		}
+	})
+	if err := nativeG2CompareEvidence(substituted, mutant, mutant); err == nil {
+		t.Fatal("accepted a request echo concealing the actual start")
+	}
+}
+
+func TestNativeG2RequiredSuccessPayload(t *testing.T) {
+	const script = "root 1 c\nprint 1\nequal 1 1 0\n"
+	valid := nativeDriver(t, script)
+	nativeG2Unmodified(t, script, valid)
+	mutant := nativeG2CloneRows(t, valid, func(r map[string]any) {
+		if r["event"] == "public.result" {
+			delete(r, "json")
+		}
+	})
+	for _, side := range []string{"left", "right", "both"} {
+		t.Run(side, func(t *testing.T) {
+			a, b := mutant, valid
+			if side == "right" {
+				a, b = valid, mutant
+			}
+			if side == "both" {
+				b = mutant
+			}
+			if err := nativeG2CompareEvidence(script, a, b); err == nil {
+				t.Fatal("accepted successful printing without output")
+			}
+		})
+	}
+}
+
+func TestNativeG2SelectionArguments(t *testing.T) {
+	for _, command := range []string{"read-schema", "read-instance", "read-value", "read-opaque"} {
+		for _, suffix := range []string{"", " 1", " 1 same"} {
+			script := "root 1 c\nroot 3 c\nterm 2 1 p same\n" + command + " 2 2" + suffix + "\n"
+			t.Run(command+suffix, func(t *testing.T) {
+				valid := nativeDriver(t, script)
+				nativeG2Unmodified(t, script, valid)
+				var alternate any
+				for _, row := range valid {
+					for _, item := range nativeEvidenceArray(row.raw["nodes"]) {
+						n := item.(map[string]any)
+						if n["id"] == float64(3) {
+							alternate = n["generation"]
+						}
+					}
+				}
+				if alternate == nil {
+					t.Fatal("missing live alternate operand")
+				}
+				for _, field := range []string{"start_generation", "target_generation", "queried_parent", "name", "value"} {
+					if field == "name" && command != "read-opaque" || field == "value" && command != "read-value" {
+						continue
+					}
+					t.Run(field, func(t *testing.T) {
+						mutant := nativeG2CloneRows(t, valid, func(r map[string]any) {
+							if !strings.HasPrefix(r["event"].(string), "read.selection.") {
+								return
+							}
+							if field == "value" || field == "name" {
+								r[field] = hex.EncodeToString([]byte("substituted"))
+							} else {
+								r[field] = alternate
+							}
+						})
+						if err := nativeG2CompareEvidence(script, mutant, mutant); err == nil {
+							t.Fatal("accepted identically substituted parsed argument")
+						}
+					})
+				}
+			})
+		}
+	}
+}
+
+func TestNativeG2RawRequestArguments(t *testing.T) {
+	for _, script := range []string{
+		"parse 1 {\"m:c\":{\"p\":\"a  b\"}}\nequal 1 1 0\n",
+		"parse-xml 1 <c xmlns=\"urn:m\"><p>a  b</p></c>\nequal 1 1 0\n",
+		"context module m {yang-version 1.1;namespace urn:m;prefix m;description \"a  b\";container c {leaf p {type string;}}}\nroot 1 c\nequal 1 1 0\n",
+	} {
+		valid := nativeDriver(t, script)
+		nativeG2Unmodified(t, script, valid)
+		if err := nativeG2CompareEvidence(strings.ReplaceAll(script, "a  b", "a b"), valid, valid); err == nil {
+			t.Fatal("accepted substituted raw payload whitespace")
+		}
+	}
+}
+
+func TestNativeG2OpaqueByteArguments(t *testing.T) {
+	for _, name := range []string{"\xff", "a\u00a0b", "a\u0085b"} {
+		script := "opaque 1 0 " + name + " A\nread-opaque 1 1 0 " + name + "\n"
+		valid := nativeDriver(t, script)
+		nativeG2Unmodified(t, script, valid)
+		if err := nativeG2CompareEvidence(strings.ReplaceAll(script, name, name+"changed"), valid, valid); err == nil {
+			t.Fatal("accepted different opaque request bytes")
+		}
+	}
+}
+
+func TestNativeG2FailedResultLinks(t *testing.T) {
+	const script = "root 1 c\nroot 3 other\nterm 2 1 p same\ninstance 2 3\nopaq-find 2 missing\nschema 1 3\nread-instance 0 2 1\nread-opaque 2 2 1 missing\nequal 1 1 0\n"
+	valid := nativeDriver(t, script)
+	nativeG2Unmodified(t, script, valid)
+	var parent any
+	for _, row := range valid {
+		if row.Event == "root" && row.raw["output_handle"] == float64(1) {
+			parent = row.raw["output_generation"]
+		}
+	}
+	if parent == nil {
+		t.Fatal("missing live parent control")
+	}
+	for _, event := range []string{"read.instance", "read.opaque", "read.schema", "read.selection.instance", "read.selection.opaque"} {
+		t.Run(event, func(t *testing.T) {
+			mutant := nativeG2CloneRows(t, valid, func(r map[string]any) {
+				if r["event"] == event {
+					if r["rc"] != float64(nativeNotFound) || r["winner"] != float64(0) {
+						t.Fatal("control must reach the failed-result path")
+					}
+					r["current_parent"] = parent
+				}
+			})
+			if err := nativeG2CompareEvidence(script, mutant, mutant); err == nil {
+				t.Fatal("accepted parent on failed result")
+			}
+		})
+	}
+}
+
+func TestNativeG2TombstoneRequestBinding(t *testing.T) {
+	const setup = "root 1 c\nterm 2 1 p A\nterm 3 1 q B\nfree 2\nfree 3\n"
+	for _, request := range []string{"check-handle 2\n", "instance 2 3\n"} {
+		for _, path := range []string{os.Getenv("YANG_NATIVE_REGISTRATION_DRIVER"), nativeG2ComparisonDriver()} {
+			script := setup + request
+			valid := nativeDriverReplayPath(t, script, "boundary.tombstoned-handle", false, path)
+			var other any
+			for _, row := range valid {
+				for _, item := range nativeEvidenceArray(row.raw["nodes"]) {
+					n := item.(map[string]any)
+					if n["id"] == float64(3) && n["alive"] == false {
+						other = n["generation"]
+					}
+				}
+			}
+			if other == nil {
+				t.Fatal("missing independently retired handle")
+			}
+			mutant := nativeG2CloneRows(t, valid, func(r map[string]any) {
+				if r["event"] == "boundary.tombstoned-handle" {
+					r["handle"], r["generation"] = float64(3), other
+				}
+			})
+			raw := []json.RawMessage{mutant[0].bootstrap}
+			for _, row := range mutant {
+				b, err := json.Marshal(row.raw)
+				if err != nil {
+					t.Fatal(err)
+				}
+				raw = append(raw, b)
+			}
+			if err := nativeValidateEvidence(script, raw); err == nil {
+				t.Fatal("accepted a different, internally consistent retired input")
+			}
+		}
+	}
+}
+
+func TestNativeG2MandatoryInputs(t *testing.T) {
+	for _, command := range []string{"read-schema", "read-instance", "read-value", "read-opaque", "print", "unlink"} {
+		t.Run(command, func(t *testing.T) {
+			request, bad := command+" 2 2 1", command+" 2 0 1"
+			if command == "print" || command == "unlink" {
+				request, bad = command+" 2", command+" 0"
+			}
+			const setup = "root 1 c\nterm 2 1 p same\n"
+			script := setup + request + "\nequal 1 1 0\n"
+			substituted := setup + bad + "\nequal 1 1 0\n"
+			valid := nativeDriver(t, script)
+			nativeG2Unmodified(t, script, valid)
+			var wire []any
+			for _, word := range strings.Fields(bad) {
+				wire = append(wire, hex.EncodeToString([]byte(word)))
+			}
+			mutant := nativeG2CloneRows(t, valid, func(r map[string]any) {
+				if r["operation"] == float64(3) {
+					r["request"] = wire
+					if strings.HasPrefix(r["event"].(string), "read.selection.") {
+						r["target_generation"] = float64(0)
+					}
+				}
+			})
+			if err := nativeG2CompareEvidence(substituted, mutant, mutant); err == nil {
+				t.Fatal("accepted a coherent NULL mandatory input on both peers")
+			}
+			nativeG2InvalidRequest(t, substituted)
+		})
+	}
+}
+
+func nativeG2InvalidRequest(t *testing.T, script string) {
+	t.Helper()
+	for _, path := range []string{os.Getenv("YANG_NATIVE_REGISTRATION_DRIVER"), nativeG2ComparisonDriver()} {
+		//nolint:gosec // Explicit test driver and fixed bounded native request; driver has its process watchdog.
+		cmd := exec.Command(path, "--quiet", "--read-schema")
+		cmd.Stdin = strings.NewReader(script)
+		out, err := cmd.CombinedOutput()
+		exit, ok := err.(*exec.ExitError)
+		if !ok || exit.ExitCode() != 4 {
+			t.Fatalf("native request rejection: %v\n%s", err, out)
+		}
+	}
+}
+
+func TestNativeG2NullSchemaPreconditions(t *testing.T) {
+	for _, command := range []string{"read-schema", "read-value"} {
+		for _, start := range []string{"0", "1"} {
+			script := "opaque 1 0 u A\n" + command + " " + start + " 1 0\n"
+			valid := nativeDriver(t, script)
+			nativeG2Unmodified(t, script, valid)
+			for _, row := range valid {
+				if strings.HasPrefix(row.Event, "read.selection.") && row.RC != 3 { // LY_EINVAL precedes NULL-start handling.
+					t.Fatalf("native schema precondition returned %v", row.RC)
+				}
+			}
+			mutant := nativeG2CloneRows(t, valid, func(r map[string]any) {
+				if r["operation"] == float64(2) {
+					r["rc"] = float64(nativeNotFound)
+				}
+			})
+			if err := nativeG2CompareEvidence(script, mutant, mutant); err == nil {
+				t.Fatal("accepted ENOTFOUND instead of the schema precondition error")
+			}
+		}
+	}
+}
+
+func TestNativeG2UnrequestedBindings(t *testing.T) {
+	const script = "root 1 c\ndump\nequal 1 1 0\n"
+	valid := nativeDriver(t, script)
+	nativeG2Unmodified(t, script, valid)
+	mutant := nativeG2CloneRows(t, valid, func(r map[string]any) {
+		if r["operation"].(float64) < 2 || r["bindings"] == nil {
+			return
+		}
+		bindings := r["bindings"].([]any)
+		generation := bindings[0].(map[string]any)["generation"]
+		r["bindings"] = append(bindings, map[string]any{"handle": float64(99), "generation": generation,
+			"revision": float64(1), "operation": float64(2)})
+	})
+	if err := nativeG2CompareEvidence(script, mutant, mutant); err == nil {
+		t.Fatal("accepted a coherent alias created by an unrelated request")
+	}
+}
+
+func TestNativeG2OutputSlotBindings(t *testing.T) {
+	const script = "root 1 c\nroot 2 c\nequal 2 2 0\n"
+	const substituted = "root 1 c\nroot 1 c\nequal 1 1 0\n"
+	valid := nativeDriver(t, script)
+	nativeG2Unmodified(t, script, valid)
+	var old, fresh any
+	for _, row := range valid {
+		if row.Event == "root" {
+			if row.Operation == 1 {
+				old = row.raw["output_generation"]
+			} else {
+				fresh = row.raw["output_generation"]
+			}
+		}
+	}
+	if old == nil || fresh == nil || old == fresh {
+		t.Fatal("missing two independent output slots")
+	}
+	mutant := nativeG2CloneRows(t, valid, func(r map[string]any) {
+		if r["operation"].(float64) < 2 {
+			return
+		}
+		words := []string{"equal", "1", "1", "0"}
+		if r["operation"] == float64(2) {
+			words = []string{"root", "1", "c"}
+			r["output_handle"] = float64(1)
+		}
+		var wire []any
+		for _, word := range words {
+			wire = append(wire, hex.EncodeToString([]byte(word)))
+		}
+		r["request"] = wire
+		if r["bindings"] == nil {
+			return
+		}
+		var bindings []any
+		for _, item := range r["bindings"].([]any) {
+			b := item.(map[string]any)
+			if b["handle"] == float64(1) {
+				b["generation"], b["revision"], b["operation"] = fresh, float64(2), float64(2)
+				bindings = append(bindings, b)
+			}
+		}
+		r["bindings"] = bindings
+		for _, item := range nativeEvidenceArray(r["nodes"]) {
+			n := item.(map[string]any)
+			if n["generation"] == old {
+				for field := range n {
+					switch field {
+					case "generation", "id", "creation_operation", "creation_ordinal", "source", "attempt", "alive":
+					default:
+						delete(n, field)
+					}
+				}
+				n["alive"], n["current"] = false, "unavailable"
+			} else if n["generation"] == fresh {
+				n["id"], n["attempt"] = float64(1), float64(1)
+			}
+		}
+	})
+	if err := nativeG2CompareEvidence(substituted, mutant, mutant); err == nil {
+		t.Fatal("accepted a coherent replacement of an occupied output slot")
+	}
+	nativeG2InvalidRequest(t, substituted)
 }
 
 // Shared with validation-only traces: G2 adds its nonempty read-result contract below.

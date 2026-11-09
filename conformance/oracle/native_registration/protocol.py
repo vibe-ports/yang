@@ -138,27 +138,44 @@ RESULTS = {
     'read.equal': dict.fromkeys(('rc', 'left_generation', 'right_generation', 'options'), int),
     'read.schema': dict.fromkeys(('rc', 'queried_parent', 'target', 'schema_hash', 'winner', 'current_parent'), int) | {'before': table, 'after': table},
     'read.instance': dict.fromkeys(('rc', 'supplied', 'winner', 'current_parent', 'target'), int) | {'before': table, 'after': table},
-    'read.opaque': dict.fromkeys(('rc', 'supplied', 'winner', 'current_parent'), int) | {'name': str, 'before': table, 'after': table},
+    'read.opaque': dict.fromkeys(('rc', 'supplied', 'winner', 'current_parent'), int) | {'name': opaque_name, 'before': table, 'after': table},
     'read.null': dict.fromkeys(('queried_parent', 'target', 'schema_rc', 'schema_winner', 'instance_rc', 'instance_winner', 'value_rc', 'value_winner'), int) | {'before': table, 'after': table},
     'read.first-sibling': {'winner': int},
     'read.compare': dict.fromkeys(('left', 'right', 'options'), int),
     'public.result': {'rc': int},
 }
 for kind in ('schema', 'instance', 'value', 'opaque'):
-    RESULTS['read.selection.' + kind] = dict.fromkeys(('rc', 'winner', 'winner_script', 'current_parent', 'parent_script', 'next_generation', 'next_script'), int) | {'before': table, 'after': table}
+    RESULTS['read.selection.' + kind] = dict.fromkeys(('rc', 'start_generation', 'target_generation', 'queried_parent', 'winner', 'winner_script', 'current_parent', 'parent_script', 'next_generation', 'next_script'), int) | {'before': table, 'after': table}
+RESULTS['read.selection.value']['value'] = opaque_bytes
+RESULTS['read.selection.opaque']['name'] = opaque_name
+
+COMMANDS = frozenset(('new', 'root', 'term', 'list', 'frontier', 'opaque', 'opaque-invalid-xml',
+    'dup', 'dup-to-context', 'unlink', 'attach', 'before', 'detach-siblings', 'change', 'parse',
+    'parse-xml', 'context', 'context-keyless', 'child', 'record', 'record-as', 'insert', 'remove',
+    'I', 'U', 'free', 'free-root', 'validate', 'check-handle', 'dump', 'find-next-loop', 'schema',
+    'instance', 'opaq-find', 'null-reads', 'read-schema', 'read-instance', 'read-value',
+    'read-opaque', 'equal', 'rewind', 'print'))
+BOUNDARIES = frozenset('boundary.' + x for x in ('tombstoned-handle', 'tombstoned-semantic-probe',
+    'new-null', 'retained-dangling-links', 'primitive-free-slot-cap', 'watchdog.find-next-cycle',
+    'remote-last-corrupting-primitive', 'merge2-before-uninitialized-continuation',
+    'merge2-exhausted-forward-iterator', 'merge2-successor-schema-precondition'))
 
 
 def shape(row, snapshot, read_context):
     event = row['event']
-    common = {'event': str, 'operation': int}
+    common = {'event': str, 'operation': int, 'request': array(opaque_name)}
     if event == 'allocation.address-reuse':
-        record(row, {'event': str, 'old_generation': int, 'new_generation': int})
+        record(row, common | {'old_generation': int, 'new_generation': int})
     elif event == 'boundary.tombstoned-handle':
         record(row, common | {'handle': int, 'generation': int, 'current': str})
         assert row['current'] == 'unavailable', 'invalid tombstone availability'
     elif event in RESULTS:
-        record(row, common | RESULTS[event], {'json': str} if event == 'public.result' else {})
+        fields = common | RESULTS[event]
+        if event == 'public.result' and row.get('rc') == 0:
+            fields = fields | {'json': str}
+        record(row, fields, {'json': str} if event == 'public.result' and row.get('rc') != 0 else {})
     else:
+        assert event in SNAPSHOTS, 'unknown snapshot kind'
         # Native event snapshots use exactly the same contract as completed commands.
         module_evidence = read_context or any(type(x) is dict and 'module' in x for x in row.get('nodes', []))
         required = common | dict.fromkeys(('rc', 'node_generation', 'source_generation', 'output_handle', 'output_generation', 'node_count', 'table_count'), int)
@@ -183,6 +200,12 @@ LOCATION = re.compile(r'^(Internal error) \([^()]*\.(?:c|h):[0-9]+\)(\.)$')
 # Only wrap() in instrument.py adds this suffix to __func__ in LOGARG.
 OBSERVER_FUNCTIONS = ('lyd_insert_hash', 'lyd_unlink_hash', 'lyd_insert_hash_add', 'lyht_resize', '_lyht_insert_with_resize_cb', 'lyht_remove_with_resize_cb', 'lyht_find_next_with_collision_cb', 'lyd_insert_after_node', 'lyd_insert_before_node', 'lyd_unlink_ignore_lyds', 'lyd_insert_only_child', 'lyd_insert_node_last', 'lyds_move_meta', 'lyds_merge_nodes2_front', 'lyds_merge_nodes2_among', 'lyds_merge_nodes2_back', 'lyd_validate_duplicates')
 OBSERVER_FUNCTION = re.compile(r'^(Invalid argument .+ \()(' + '|'.join(OBSERVER_FUNCTIONS) + r')_nr_impl(\(\)\)\.)$')
+SNAPSHOTS = COMMANDS | (BOUNDARIES - {'boundary.tombstoned-handle'}) | frozenset(
+    name + phase for name in OBSERVER_FUNCTIONS for phase in ('.before', '.after')) | frozenset((
+    'driver.ready.actual-children-callback', 'table.allocate', 'table.retire', 'node.retiring', 'node.free',
+    'dup.table.initialized', 'prefix.copy.before', 'prefix.copy.after', 'prefix.replace.before',
+    'prefix.replace.after', 'merge2.back.no-successor', 'merge2.among.exhausted-forward',
+    'merge2.among.successor-schema', 'remote.nonlast.before', 'remote.last.before'))
 
 
 def message(value):
