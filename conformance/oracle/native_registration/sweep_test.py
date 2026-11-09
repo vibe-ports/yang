@@ -21,7 +21,8 @@ COMPARISON_DRIVER = None
 def execute(script, plain=False, verbose=False, terminal=None, event_schema=True):
     path = COMPARISON_DRIVER if plain else DRIVER
     result = subprocess.run([str(path), '--events' if verbose else '--quiet', *(['--event-schema'] if event_schema else [])],
-                            input=script, text=True, capture_output=True, timeout=25, check=False)
+                            input=script, text=True, capture_output=True, timeout=25, check=False,
+                            env=dict(os.environ, GLIBC_TUNABLES='glibc.malloc.tcache_count=7') if '# reuse-' in script else None)
     assert result.returncode == 0, (result.returncode, result.stderr, result.stdout[-1000:])
     rows = [json.loads(line) for line in result.stdout.splitlines()]
     validate(script, rows)
@@ -39,6 +40,14 @@ def execute(script, plain=False, verbose=False, terminal=None, event_schema=True
 
 def output(rows):
     return [(r['operation'], r.get('rc'), r.get('json')) for r in rows if r['event'] == 'public.result']
+
+
+def ancestor_reuse_script():
+    script = 'root 1 c\nlist 2 1 l x\nopaque 3 2 extra value\n'
+    # WITH_PARENTS duplicates the list/key before the top container. Reserve
+    # the actual list parent, without giving that internal ancestor a handle.
+    script += 'dup 10 3 0 5\nprint 10\n# reuse-free 10 parent\nfree-root 10\n# reuse-next parent\n'
+    return script + ('dup 10 3 0 5\nprint 10\nfree-root 10\n' * 31) + 'print 1\n'
 
 
 class IdentitySweep(unittest.TestCase):
@@ -356,8 +365,7 @@ class IdentitySweep(unittest.TestCase):
         (ROOT / '.build' / 'sweep-key-primitive-counts.json').write_text(json.dumps({f'{f}/{d}': c for (f, d), c in counts.items()}, indent=2) + '\n')
 
     def test_f2_ancestor_reuse(self):
-        script = 'root 1 c\nlist 2 1 l x\nopaque 3 2 extra value\n'
-        script += ('dup 10 3 0 5\nprint 10\nfree-root 10\n' * 32) + 'print 1\n'
+        script = ancestor_reuse_script()
         for plain in (False, True):
             for verbose in (False, True):
                 with self.subTest(plain=plain, verbose=verbose):

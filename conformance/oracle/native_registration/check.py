@@ -8,7 +8,7 @@ import os
 import pathlib
 import subprocess
 
-from identity import validate
+from identity import requests, validate
 
 root = pathlib.Path(__file__).resolve().parent
 LYS_LIST = 0x0010  # libyang v5.8.6 src/tree_schema.h
@@ -19,8 +19,10 @@ ENTRY_CASES = ("retained-null", "retained-opaque", "entry-guard", "entry-order",
 def run(name, option="--quiet", unmodified=False):
     script = (root / "cases" / (name + ".calls")).read_bytes()
     options = [option] + (["--event-schema"] if name.startswith("entry-") or name in ("list-events", "schema-pointer", "schema-pointer-reverse", "lifetime/list-key", "lifetime/validation-delete") else [])
+    if any(f[0].startswith('read-') or f[0] in ('equal', 'context', 'context-keyless') for f in requests(script.decode())):
+        options.append('--read-schema')
     env = dict(os.environ)
-    if name in ("handle-tombstone", "handle-tombstone-probe", "retained-address-reuse", "lifetime/stale-handle",
+    if b"# reuse-" in script or name in ("handle-tombstone", "handle-tombstone-probe", "retained-address-reuse", "lifetime/stale-handle",
                 "lifetime/retained-same-hash", "lifetime/retained-resize", "lifetime/retained-remove"):
         env["GLIBC_TUNABLES"] = "glibc.malloc.tcache_count=7"
     result = subprocess.run([str(plain if unmodified else binary), *options], input=script,
@@ -39,7 +41,7 @@ def commands(rows, command):
 
 def retained_reuse_evidence(rows):
     name = "retained-address-reuse"
-    normalized_reads(name, rows)
+    normalized_reads(name, rows, project=False)
     completed_replay(name, rows)
     reuse = commands(rows, "allocation.address-reuse")
     assert reuse, "missing retained address reuse"
@@ -56,12 +58,13 @@ def final_public(rows):
     return [r for r in rows if r.get("event") == "public.result"]
 
 
-def normalized_reads(name, rows):
-    return validate((root / "cases" / (name + ".calls")).read_text(), rows)
+def normalized_reads(name, rows, *, project=True):
+    return validate((root / "cases" / (name + ".calls")).read_text(), rows, project=project)
 
 
-def lookup_results(rows, name):
-    return [value for (op, event), value in normalized_reads(name, rows).items() if event == "read.schema"]
+def lookup_results(rows, name, evidence=None):
+    if evidence is None: evidence = normalized_reads(name, rows, project=False)
+    return [value for (op, event), value in evidence.items() if event == "read.schema"]
 
 
 def assert_lookup_handles(rows, expected):
@@ -111,7 +114,8 @@ def completed_replay(name, rows, stopped=True):
     # An observational remote-link boundary may occur mid-replay, but an early
     # stop must never be interpreted as permission to omit subsequent commands.
     reads = {"schema": "read.schema", "rewind": "read.first-sibling", "print": "public.result",
-             "instance": "read.instance", "opaq-find": "read.opaque", "null-reads": "read.null"}
+             "instance": "read.instance", "opaq-find": "read.opaque", "null-reads": "read.null",
+             "read-schema": "read.selection.schema", "read-instance": "read.selection.instance", "read-value": "read.selection.value", "read-opaque": "read.selection.opaque", "equal": "read.equal"}
     expected_results = [(operation, reads[command]) for operation, command in expected if command in reads]
     actual_results = [(r["operation"], r["event"]) for r in rows if r["event"] in reads.values()]
     assert actual_results == expected_results, (name, "missing/extra/out-of-order read/public result")
@@ -122,8 +126,8 @@ def completed_replay(name, rows, stopped=True):
             for r in rows if r["event"] in script_commands]
 
 
-def compared_results(name, rows):
-    results = [r for r in rows if r['event'] in ('public.result', 'validate', 'read.schema', 'read.first-sibling', 'read.instance', 'read.opaque', 'read.null')]
+def compared_results(name, rows, evidence=None):
+    results = [r for r in rows if r['event'] in ('public.result', 'validate', 'read.schema', 'read.first-sibling', 'read.instance', 'read.opaque', 'read.null', 'read.equal') or r['event'].startswith('read.selection.')]
     if name in ("invalid-capacity", "invalid-mode"):
         # Rejected constructors have no completed command or public read. Their
         # explicit native rejection and nonempty log are the comparison result.
@@ -131,24 +135,30 @@ def compared_results(name, rows):
         assert terminal["rc"] == 0 and terminal.get("logs"), (name, "missing rejection log")
         return [(terminal["event"], terminal["rc"], terminal["diagnostics"], terminal["logs"])]
     assert results, (name, "empty compared results")
+    if evidence is None: evidence = normalized_reads(name, rows, project=False)
     return (final_public(rows),
             [(r["operation"], r["rc"], r["diagnostics"]) for r in commands(rows, "validate")],
-            lookup_results(rows, name),
-            [value for (op, event), value in normalized_reads(name, rows).items() if event in ("read.first-sibling", "read.instance", "read.opaque", "read.null")])
+            lookup_results(rows, name, evidence),
+            [value for (op, event), value in evidence.items() if event in ("read.first-sibling", "read.instance", "read.opaque", "read.null")])
 
 
 def compare_control(name, rc, rows, plain_rc, plain_rows, stopped=True):
     expected_rc = 5 if name in ("invalid-capacity", "invalid-mode") else 0
-    assert normalized_reads(name, rows) == normalized_reads(name, plain_rows), (name, "control identity evidence changed")
-    entry_comparisons(name, rows)
     assert rc == plain_rc == expected_rc, (name, "control exit status")
+    # Reject incomplete schedules before walking their retained history. Reuse
+    # the two complete projections within this call; never cache mutable traces.
     assert completed_replay(name, rows, stopped) == completed_replay(name, plain_rows, stopped), (name, "completed command results changed")
-    assert compared_results(name, rows) == compared_results(name, plain_rows), (name, "control results changed")
+    left, right = normalized_reads(name, rows), normalized_reads(name, plain_rows)
+    assert left == right, (name, "control identity evidence changed")
+    entry_comparisons(name, rows)
+    assert compared_results(name, rows, left) == compared_results(name, plain_rows, right), (name, "control results changed")
 
 
 def control_equal(name, rc, rows, stopped=True):
     plain_rc, plain_rows = run(name, unmodified=True)
     compare_control(name, rc, rows, plain_rc, plain_rows, stopped)
+    from evidence_test import request_substitutions
+    substitutions = request_substitutions((root / 'cases' / (name + '.calls')).read_text(), rows, plain_rows)
     # Mutate each side independently AND both together: equal truncations and
     # equal empty sets were the original false-positive class.
     def rejected(label, left, right):
@@ -170,7 +180,7 @@ def control_equal(name, rc, rows, stopped=True):
             return trace[:first] + trace[first + 1:]
         mutate("missing-command-control", missing_command)
         # Exercise result validation independently of command completeness.
-        empty = lambda trace: [r for r in trace if r["event"] not in ("public.result", "validate", "read.schema", "read.first-sibling", "read.instance", "read.opaque", "read.null")]
+        empty = lambda trace: [r for r in trace if r["event"] not in ("public.result", "validate", "read.schema", "read.first-sibling", "read.instance", "read.opaque", "read.null", "read.equal") and not r['event'].startswith('read.selection.')]
         if name in ("invalid-capacity", "invalid-mode"):
             empty = lambda trace: [dict(r, logs=[]) for r in trace]
         mutate("empty-results-control", empty)
@@ -186,7 +196,7 @@ def control_equal(name, rc, rows, stopped=True):
     else:
         raise AssertionError((name, "accepted empty compared results"))
     print(json.dumps({"case": name, "control_completed": True, "terminal": rows[-1]["event"],
-                      "commands": len(completed_replay(name, rows, stopped))}))
+                      "commands": len(completed_replay(name, rows, stopped)), "request_substitutions_both": substitutions}))
 
 
 LIFETIME_CONTROLS = ("recreate-print", "recreate-lookup", "dup-descendant", "parse-descendant",
@@ -196,7 +206,7 @@ LIFETIME_CONTROLS = ("recreate-print", "recreate-lookup", "dup-descendant", "par
 def lifetime_evidence(name, rows):
     # Check actual allocator reuse in BOTH processes. Merely running a sequence
     # that could reuse storage, or comparing equal stopped prefixes, is no proof.
-    normalized_reads(name, rows)
+    normalized_reads(name, rows, project=False)
     completed_replay(name, rows)
     script = request_commands(name)
     seen, pairs = {}, []
@@ -620,8 +630,6 @@ def invariants(rows, name, stopped=True):
     for row in rows:
         if row["event"] in EVENT_FIELDS:
             assert EVENT_FIELDS[row["event"]] <= row.keys(), (name, "missing event fields", row["event"])
-    normalized_reads(name, rows)
-    entry_comparisons(name, rows)
     completed_replay(name, rows, stopped)
     counts = Counter(r["event"] for r in rows)
     assert counts["driver.ready.actual-children-callback"] == 1, (name, "missing ready")
@@ -640,23 +648,19 @@ def invariants(rows, name, stopped=True):
     for event in ("lyht_resize.before", "lyht_resize.after"):
         assert counts[event] == RESIZES.get(name, 0), (name, "missing/extra resize boundary", event)
     assert counts["dup.table.initialized"] == DUP_INITS.get(name, 0), (name, "missing/extra dup initialization")
+    normalized_reads(name, rows, project=False)
+    entry_comparisons(name, rows)
     script = request_commands(name)
     script_commands = set(script)
 
     resizing, identities, creations, next_ordinal = [], {}, {}, Counter()
-    dead, occurrences, generic = set(), {}, False
+    dead, occurrences = set(), {}
     # Address-reuse notices precede the new identity's first snapshot. All other
     # snapshot references must resolve in that snapshot, including tombstones.
     recorded = {n["generation"] for r in rows for n in r.get("nodes", [])}
     for row in rows:
-        if row["event"] == "new" and row["rc"] == 0:
-            generic = True
-        if generic and (row["event"] in script_commands or ("nodes" in row and row["event"].startswith("boundary.") and row["event"] != "boundary.new-null")):
-            assert "table" in row and row["table"]["present"], (name, "missing generic command/stop table", row["event"])
         if row["event"] in EVENT_FIELDS:
             assert EVENT_FIELDS[row["event"]] <= row.keys(), (name, "missing event fields", row["event"])
-            if row["event"] == "public.result" and row["rc"] == 0:
-                assert "json" in row, (name, "missing public JSON")
             if row["event"] == "allocation.address-reuse":
                 assert row["old_generation"] > 0 and row["new_generation"] > 0, (name, "reuse without allocation identities")
         else:
@@ -1049,6 +1053,10 @@ def main():
         return
 
     if not args.lifetime_case:
+        for case in ('read-request-binding', 'read-success-payload'):
+            name = 'read/' + case
+            rc, rows = run(name)
+            control_equal(name, rc, rows)
         for name in ENTRY_CASES:
             rc, rows = run(name, "--events")
             assert rc == 0, (name, rc)

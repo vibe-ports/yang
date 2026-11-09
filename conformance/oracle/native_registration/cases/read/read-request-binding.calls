@@ -1,0 +1,5 @@
+# SPDX-License-Identifier: BSD-3-Clause
+# The successful instance trace must not certify a request with NULL start.
+root 1 c
+term 2 1 p same
+read-instance 2 2 1

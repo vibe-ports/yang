@@ -6,7 +6,9 @@ term 12 1 q Q
 term 13 1 ll QQ==
 term 14 1 ll Qg==
 print 1
+# reuse-free 1 self
 free 1
+# reuse-next self
 root 1 c
 term 11 1 p P
 term 12 1 q Q
