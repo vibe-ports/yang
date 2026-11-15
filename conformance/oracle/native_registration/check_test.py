@@ -3,6 +3,7 @@
 import contextlib
 import copy
 import io
+import os
 import pathlib
 import re
 import tempfile
@@ -39,6 +40,21 @@ def snapshot(event, operation):
 
 
 class ControlComparisonTest(unittest.TestCase):
+    def test_comparison_driver_resolution(self):
+        from drivers import comparison_driver
+        for setting in (None, ''):
+            env = {'YANG_NATIVE_REGISTRATION_DRIVER': '/selected/driver'}
+            if setting is not None:
+                env['YANG_NATIVE_REGISTRATION_COMPARISON_DRIVER'] = setting
+            with self.subTest(setting=setting), patch.dict(os.environ, env, clear=True):
+                self.assertEqual(comparison_driver(), pathlib.Path('/selected/driver-unmodified'))
+                self.assertEqual(comparison_driver('/cli/driver'), pathlib.Path('/cli/driver-unmodified'))
+        with patch.dict(os.environ, {}, clear=True):
+            self.assertIsNone(comparison_driver())
+        with patch.dict(os.environ, {'YANG_NATIVE_REGISTRATION_COMPARISON_DRIVER': '/explicit/control'}, clear=True):
+            self.assertEqual(comparison_driver('/selected/driver'), pathlib.Path('/explicit/control'))
+            self.assertEqual(comparison_driver('/selected/driver', '/cli/control'), pathlib.Path('/cli/control'))
+
     def test_command_inventory(self):
         from protocol import COMMANDS
         from identity import MIN_ARGUMENTS

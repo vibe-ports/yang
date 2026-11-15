@@ -198,7 +198,7 @@ func TestNativeG2FailedResultLinks(t *testing.T) {
 func TestNativeG2TombstoneRequestBinding(t *testing.T) {
 	const setup = "root 1 c\nterm 2 1 p A\nterm 3 1 q B\nfree 2\nfree 3\n"
 	for _, request := range []string{"check-handle 2\n", "instance 2 3\n"} {
-		for _, path := range []string{os.Getenv("YANG_NATIVE_REGISTRATION_DRIVER"), nativeG2ComparisonDriver()} {
+		for _, path := range []string{os.Getenv("YANG_NATIVE_REGISTRATION_DRIVER"), nativeComparisonDriver()} {
 			script := setup + request
 			valid := nativeDriverReplayPath(t, script, "boundary.tombstoned-handle", false, path)
 			var other any
@@ -267,7 +267,7 @@ func TestNativeG2MandatoryInputs(t *testing.T) {
 
 func nativeG2InvalidRequest(t *testing.T, script string) {
 	t.Helper()
-	for _, path := range []string{os.Getenv("YANG_NATIVE_REGISTRATION_DRIVER"), nativeG2ComparisonDriver()} {
+	for _, path := range []string{os.Getenv("YANG_NATIVE_REGISTRATION_DRIVER"), nativeComparisonDriver()} {
 		//nolint:gosec // Explicit test driver and fixed bounded native request; driver has its process watchdog.
 		cmd := exec.Command(path, "--quiet", "--read-schema")
 		cmd.Stdin = strings.NewReader(script)
@@ -1085,7 +1085,7 @@ func TestNativeCompletedCommandProjection(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	plain := nativeDriverReplayPath(t, script, "", false, nativeG2ComparisonDriver())
+	plain := nativeDriverReplayPath(t, script, "", false, nativeComparisonDriver())
 	b, err := nativeCompletedCommandEvidence(script, plain)
 	if err != nil {
 		t.Fatal(err)

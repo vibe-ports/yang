@@ -21,10 +21,7 @@ func TestNativeReuseEnvironmentMatrix(t *testing.T) {
 	if driver == "" {
 		t.Skip("set YANG_NATIVE_REGISTRATION_DRIVER after the isolated static build")
 	}
-	comparison := os.Getenv("YANG_NATIVE_REGISTRATION_COMPARISON_DRIVER")
-	if comparison == "" {
-		comparison = filepath.Join(filepath.Dir(driver), "driver-unmodified")
-	}
+	comparison := nativeComparisonDriver()
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 	defer cancel()
 	cmd := exec.CommandContext(ctx, "python3", filepath.Join("..", "conformance", "oracle", "native_registration", "reuse_test.py"),

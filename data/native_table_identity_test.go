@@ -44,10 +44,7 @@ func TestNativeRetainedReadEntries(t *testing.T) {
 	if driver == "" {
 		t.Skip("set YANG_NATIVE_REGISTRATION_DRIVER after the isolated static build")
 	}
-	comparison := os.Getenv("YANG_NATIVE_REGISTRATION_COMPARISON_DRIVER")
-	if comparison == "" {
-		comparison = filepath.Join(filepath.Dir(driver), "driver-unmodified")
-	}
+	comparison := nativeComparisonDriver()
 	for label, path := range map[string]string{"instrumented": driver, "unmodified": comparison} {
 		t.Run(label, func(t *testing.T) {
 			t.Setenv("YANG_NATIVE_REGISTRATION_DRIVER", path)
@@ -124,10 +121,7 @@ func TestNativeSeparateDriverPaths(t *testing.T) {
 	if driver == "" {
 		t.Skip("set YANG_NATIVE_REGISTRATION_DRIVER after the isolated static build")
 	}
-	comparison := os.Getenv("YANG_NATIVE_REGISTRATION_COMPARISON_DRIVER")
-	if comparison == "" {
-		comparison = filepath.Join(filepath.Dir(driver), "driver-unmodified")
-	}
+	comparison := nativeComparisonDriver()
 	directory := t.TempDir()
 	paths := make([]string, 2)
 	for i, original := range []string{driver, comparison} {

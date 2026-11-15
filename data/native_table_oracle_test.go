@@ -78,10 +78,7 @@ func TestNativeReleaseControlCompletion(t *testing.T) {
 	if driver == "" {
 		t.Skip("set YANG_NATIVE_REGISTRATION_DRIVER after the isolated static build")
 	}
-	comparison := os.Getenv("YANG_NATIVE_REGISTRATION_COMPARISON_DRIVER")
-	if comparison == "" {
-		comparison = filepath.Join(filepath.Dir(driver), "driver-unmodified")
-	}
+	comparison := nativeComparisonDriver()
 	script, err := os.ReadFile(filepath.Join("..", "conformance", "oracle", "native_registration", "cases", "remote-last-release.calls"))
 	if err != nil {
 		t.Fatal(err)
@@ -157,10 +154,7 @@ func TestNativeTombstoneAddressReuse(t *testing.T) {
 	if driver == "" {
 		t.Skip("set YANG_NATIVE_REGISTRATION_DRIVER after the isolated static build")
 	}
-	comparison := os.Getenv("YANG_NATIVE_REGISTRATION_COMPARISON_DRIVER")
-	if comparison == "" {
-		comparison = filepath.Join(filepath.Dir(driver), "driver-unmodified")
-	}
+	comparison := nativeComparisonDriver()
 	for label, path := range map[string]string{"instrumented": driver, "unmodified": comparison} {
 		for _, name := range []string{"handle-tombstone", "handle-tombstone-probe", "lifetime/stale-handle"} {
 			//nolint:gosec // Fixed repository replay names from the literal case list.
@@ -243,10 +237,7 @@ func TestNativeRetainedAddressReuse(t *testing.T) {
 	if driver == "" {
 		t.Skip("set YANG_NATIVE_REGISTRATION_DRIVER after the isolated static build")
 	}
-	comparison := os.Getenv("YANG_NATIVE_REGISTRATION_COMPARISON_DRIVER")
-	if comparison == "" {
-		comparison = filepath.Join(filepath.Dir(driver), "driver-unmodified")
-	}
+	comparison := nativeComparisonDriver()
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 	//nolint:gosec // Fixed checker and explicit opt-in local driver paths.
@@ -268,10 +259,7 @@ func TestNativeComparisonLifetimes(t *testing.T) {
 	if driver == "" {
 		t.Skip("set YANG_NATIVE_REGISTRATION_DRIVER after the isolated static build")
 	}
-	comparison := os.Getenv("YANG_NATIVE_REGISTRATION_COMPARISON_DRIVER")
-	if comparison == "" {
-		comparison = filepath.Join(filepath.Dir(driver), "driver-unmodified")
-	}
+	comparison := nativeComparisonDriver()
 	for _, name := range []string{"recreate-print", "recreate-lookup", "dup-descendant", "parse-descendant", "list-key", "table-reuse", "validation-delete", "retained-same-hash", "stale-handle", "retained-resize", "retained-remove"} {
 		t.Run(name, func(t *testing.T) {
 			ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
@@ -297,10 +285,7 @@ func TestNativeReleaseRetirementPaths(t *testing.T) {
 	if driver == "" {
 		t.Skip("set YANG_NATIVE_REGISTRATION_DRIVER after the isolated static build")
 	}
-	comparison := os.Getenv("YANG_NATIVE_REGISTRATION_COMPARISON_DRIVER")
-	if comparison == "" {
-		comparison = filepath.Join(filepath.Dir(driver), "driver-unmodified")
-	}
+	comparison := nativeComparisonDriver()
 	remote, err := os.ReadFile(filepath.Join("..", "conformance", "oracle", "native_registration", "cases", "remote-last-release.calls"))
 	if err != nil {
 		t.Fatal(err)
@@ -492,10 +477,7 @@ func TestNativeIdentitySweep(t *testing.T) {
 	if driver == "" {
 		t.Skip("set YANG_NATIVE_REGISTRATION_DRIVER after the isolated static build")
 	}
-	comparison := os.Getenv("YANG_NATIVE_REGISTRATION_COMPARISON_DRIVER")
-	if comparison == "" {
-		comparison = filepath.Join(filepath.Dir(driver), "driver-unmodified")
-	}
+	comparison := nativeComparisonDriver()
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 	defer cancel()
 	//nolint:gosec // Fixed test script and explicitly opted-in local driver.
@@ -614,10 +596,7 @@ func TestNativeObserverEvidence(t *testing.T) {
 	if driver == "" {
 		t.Skip("set YANG_NATIVE_REGISTRATION_DRIVER after the isolated static build")
 	}
-	comparison := os.Getenv("YANG_NATIVE_REGISTRATION_COMPARISON_DRIVER")
-	if comparison == "" {
-		comparison = filepath.Join(filepath.Dir(driver), "driver-unmodified")
-	}
+	comparison := nativeComparisonDriver()
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Minute)
 	defer cancel()
 	// This independently checks occurrence identities, retirement, logging versus

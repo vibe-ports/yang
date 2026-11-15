@@ -1612,3 +1612,48 @@ Input-handle nullability is separate from schema-argument validity.
 `TestNativeG2NullSchemaPreconditions` uses live opaque targets with NULL and
 non-NULL starts in schema/value reads: native EINVAL (3), rather than ENOTFOUND
 (5), is required and preserved. No typed value is prepared on this path.
+
+
+## Driver input-kind audit (G2 part 1)
+
+Every input handle is checked for a live allocation before a kind-specific
+layout is read. Wrong kinds exit with status 4 before native calls, output
+bindings or reuse preparation. `TestNativeDriverNodeKinds` replays each
+`cases/input/*.calls` prefix and full request in both builds and both observer
+modes, requiring identical prefix evidence and exit 4 for the final line.
+
+| Command / argument | Required kind |
+| --- | --- |
+| `term`, `list`: parent | NULL or compiled inner |
+| `opaque`, `opaque-invalid-xml`: parent | NULL, compiled inner or opaque |
+| `dup`, `dup-to-context`: destination parent | NULL, compiled inner or opaque |
+| `attach`: parent; `child`: source parent | Compiled inner or opaque |
+| `record`, `record-as`, `schema`, `null-reads`: owner | Compiled inner |
+| Every `read-*`: explicit queried parent | NULL or compiled inner |
+| `frontier`: owner / children | Compiled container / schema-backed nodes |
+| `schema`, `null-reads`: target | Schema-backed node |
+| `change`: target | Compiled terminal |
+| `before`: inserted node | Opaque or compiled list/leaf-list; native checks user ordering and schema compatibility |
+| `free`, `free-root`: optional reuse target; `# reuse-free`: selected self/parent/child | Compiled inner or terminal |
+| `term`, synthetic `insert`: explicit reuse target | Retained terminal allocation; kind saved before free |
+
+Inferred parents on sibling reads are checked before reading an inner table;
+opaque parents have no such table. Constructor output handles, duplication
+sources, sibling starts/targets, comparison operands, record payload/hash-source
+nodes and the remaining unlink/hash/free/validation/printing commands accept
+all native node kinds. Their native semantics, constructor-name checks and
+schema/context compatibility errors remain native responsibilities. NULL schema
+read targets still reach the native precondition diagnostics. Native callbacks,
+algorithms, allocation ownership, retirement history, production journals and
+budgets are unchanged. Kind checks use fixed handle lookup and schema bits;
+they allocate no memory and add no traversals.
+
+Comparison selection is shared by all Go tests (`nativeComparisonDriver`) and
+Python entry points (`drivers.comparison_driver`). A nonempty explicit
+comparison setting wins; otherwise the resolver selects `driver-unmodified`
+beside the instrumented executable. With neither setting it returns no path so
+the caller can skip. A configured missing executable fails normally. CLI
+arguments precede environment settings. The Go fallback command regression runs
+`go test -tags oracle ./data -run '^TestNativeComparisonDriverFallbackCommand$' -count=1 -v`
+with only `YANG_NATIVE_REGISTRATION_DRIVER`, for unset and empty comparison
+settings, and requires both peers' live read evidence through the Python field inventory's replay entry.

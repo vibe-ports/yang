@@ -7,6 +7,9 @@ import pathlib
 import subprocess
 import signal
 import sys
+import unittest
+
+from drivers import comparison_driver
 
 from identity import request_evidence, requests, validate
 from protocol import RESULTS, shape
@@ -31,7 +34,10 @@ signal.signal(signal.SIGALRM, timed_out)
 
 
 def replay(script, mode='--quiet', read=True, plain=False):
-    result = subprocess.run([os.environ['YANG_NATIVE_REGISTRATION_COMPARISON_DRIVER' if plain else 'YANG_NATIVE_REGISTRATION_DRIVER'], mode,
+    driver = comparison_driver() if plain else os.environ.get('YANG_NATIVE_REGISTRATION_DRIVER')
+    if not driver:
+        raise unittest.SkipTest('set native drivers')
+    result = subprocess.run([str(driver), mode,
                              '--read-schema' if read else '--event-schema'], input=script,
                             text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                             timeout=30, check=False, env=dict(os.environ, GLIBC_TUNABLES='glibc.malloc.tcache_count=7'))

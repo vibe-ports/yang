@@ -1,0 +1,4 @@
+# SPDX-License-Identifier: BSD-3-Clause
+opaque 1 0 u A
+opaque 2 1 u B
+# reuse-free 2 parent

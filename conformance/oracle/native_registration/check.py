@@ -8,6 +8,7 @@ import os
 import pathlib
 import subprocess
 
+from drivers import comparison_driver
 from identity import requests, validate
 
 root = pathlib.Path(__file__).resolve().parent
@@ -1028,13 +1029,13 @@ def main():
     global binary, plain
     parser = argparse.ArgumentParser()
     parser.add_argument("--driver", type=pathlib.Path, default=os.environ.get("YANG_NATIVE_REGISTRATION_DRIVER") or None)
-    parser.add_argument("--comparison-driver", type=pathlib.Path, default=os.environ.get("YANG_NATIVE_REGISTRATION_COMPARISON_DRIVER") or None)
+    parser.add_argument("--comparison-driver", type=pathlib.Path)
     parser.add_argument("--lifetime-case", choices=LIFETIME_CONTROLS)
     parser.add_argument("--retained-reuse", action="store_true")
     args = parser.parse_args()
     if args.driver is None: parser.error('--driver or YANG_NATIVE_REGISTRATION_DRIVER is required')
     binary = args.driver.resolve()
-    plain = args.comparison_driver.resolve() if args.comparison_driver else binary.with_name('driver-unmodified')
+    plain = comparison_driver(binary, args.comparison_driver)
     assert binary != plain, "comparison must be an identified unmodified executable"
     for executable, instrumented in [(binary, 1), (plain, 0)]:
         abi = json.loads(subprocess.check_output([str(executable), "--abi"], timeout=5))

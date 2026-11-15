@@ -11,6 +11,7 @@ import unittest
 from collections import Counter
 
 import check
+from drivers import comparison_driver
 from identity import validate, requests
 
 ROOT = pathlib.Path(__file__).resolve().parent
@@ -563,9 +564,9 @@ class IdentitySweep(unittest.TestCase):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--driver', type=pathlib.Path, default=os.environ.get('YANG_NATIVE_REGISTRATION_DRIVER') or None)
-    parser.add_argument('--comparison-driver', type=pathlib.Path, default=os.environ.get('YANG_NATIVE_REGISTRATION_COMPARISON_DRIVER') or None)
+    parser.add_argument('--comparison-driver', type=pathlib.Path)
     args, rest = parser.parse_known_args()
     if args.driver is None: parser.error('--driver or YANG_NATIVE_REGISTRATION_DRIVER is required')
     DRIVER = args.driver.resolve()
-    COMPARISON_DRIVER = args.comparison_driver.resolve() if args.comparison_driver else DRIVER.with_name('driver-unmodified')
+    COMPARISON_DRIVER = comparison_driver(DRIVER, args.comparison_driver)
     unittest.main(argv=[sys.argv[0], *rest])

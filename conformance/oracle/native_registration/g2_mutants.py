@@ -16,6 +16,7 @@ root = pathlib.Path(__file__).resolve().parents[3]
 aux = root / "conformance/oracle/native_registration"
 work = aux / ".build/g2-mutants"
 work.mkdir(parents=True, exist_ok=True)
+(work / 'drivers.py').write_text((aux / 'drivers.py').read_text())
 (work / 'protocol.py').write_text((aux / 'protocol.py').read_text())
 os.environ["YANG_NATIVE_REGISTRATION_DRIVER"] = str(aux / ".build/driver")
 os.environ["YANG_NATIVE_REGISTRATION_COMPARISON_DRIVER"] = str(aux / ".build/driver-unmodified")
@@ -181,6 +182,7 @@ for name, replaced, test in mutants:
 # predicate drops a chain bucket. A missing fixture/import cannot be sensitivity.
 field_control = work / 'field-control'
 field_control.mkdir(exist_ok=True)
+(field_control / 'drivers.py').write_text((aux / 'drivers.py').read_text())
 (field_control / 'protocol.py').write_text((aux / 'protocol.py').read_text())
 (field_control / 'identity.py').write_text(identity.replace("if k != 'occurrence'", "if k not in ('occurrence', 'bucket')"))
 (field_control / 'evidence_test.py').write_text((aux / 'evidence_test.py').read_text().replace(
@@ -297,6 +299,7 @@ for name, directory in (('request-substitution-control', work / 'request-control
                         ('success-payload-control', payload_control),
                         ('mandatory-NULL-control', work / 'mandatory-null-control')):
     directory.mkdir(exist_ok=True)
+    (directory / 'drivers.py').write_text((aux / 'drivers.py').read_text())
     if name == 'request-substitution-control':
         (directory / 'identity.py').write_text(unbound)
         (directory / 'protocol.py').write_text((aux / 'protocol.py').read_text())

@@ -1,0 +1,6 @@
+# SPDX-License-Identifier: BSD-3-Clause
+new 8 1
+root 1 c
+# reuse-free 1 self
+free 1
+insert 9 123 0 1
