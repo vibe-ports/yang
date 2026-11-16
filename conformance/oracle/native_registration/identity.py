@@ -8,7 +8,7 @@ import json
 import re
 import sys
 from collections import Counter
-from protocol import BOUNDARIES, COMMANDS, shape, messages
+from protocol import BOUNDARIES, COMMANDS, INNER_NODE_TYPES, TERM_NODE_TYPES, shape, messages
 
 
 def requests(script):
@@ -114,6 +114,7 @@ def input_handles(fields):
 def request_contract(fields):
     command = fields[0]
     assert len(fields) > MIN_ARGUMENTS[command], 'missing request argument'
+    if command == 'list': assert len(fields) == 5, 'list requires one value token (ignored for keyless lists)'
     assert all('\x00' not in f for f in fields), 'NUL in request argument'
     for position in UINT_ARGUMENTS.get(command, ()):
         if position >= len(fields): continue
@@ -414,7 +415,7 @@ def validate(script, rows, refs=None, *, project=True):
         assert set(nodes) == set(range(1, row['node_count'] + 1)), 'generation gap'
         bootstrap = [n for n in nodes.values() if n['creation_operation'] == 0]
         assert len(bootstrap) == 5 and all(n['alive'] for n in bootstrap), 'missing bootstrap identities'
-        seed = [n for n in bootstrap if n.get('schema') == 'c']
+        seed = [n for n in bootstrap if n.get('nodetype', 0) & INNER_NODE_TYPES and not n['parent']]
         assert len(seed) == 1, 'missing bootstrap root'
         seed_table = seed[0]['table']
         assert seed_table['present'] and seed_table['identity'] == 1 and seed_table['used'] == 5 and seed_table['size'] == 8, 'missing bootstrap table evidence'
@@ -444,7 +445,7 @@ def validate(script, rows, refs=None, *, project=True):
                     assert 'context_generation' in n and type(n['context_generation']) is int and 0 < n['context_generation'] < 16, 'missing read context identity'
                 if n.get('schema'):
                     assert {'nodetype', 'key'} <= n.keys(), 'missing native node kind'
-                    if n['nodetype'] & 0x000c: assert 'value' in n, 'missing terminal value'
+                    if n['nodetype'] & TERM_NODE_TYPES: assert 'value' in n, 'missing terminal value'
                 else:
                     assert {'first', 'tail', 'prefix_format', 'prefix_bound'} <= n.keys(), 'missing opaque state'
                 if n.get('schema'):
@@ -455,7 +456,7 @@ def validate(script, rows, refs=None, *, project=True):
                     assert 'module' not in n or n['module'] == descriptor['module'], 'node/schema module mismatch'
                     assert schema_nodes.setdefault(g, s) == s, 'node/schema identity drift'
                 # libyang v5.8.6 tree_data.h:LYD_NODE_INNER / tree_schema.h.
-                if n.get('nodetype', 0) & 0x0711 or n.get('schema') in ('c', 'd', 'r', 'l', 'kl'):
+                if n.get('nodetype', 0) & INNER_NODE_TYPES:
                     assert {'first', 'tail', 'table'} <= n.keys(), 'missing inner-node table evidence'
                 for field in ('parent', 'prev', 'next', 'first', 'tail', 'rb_root', 'rb_stored_root'):
                     ref = n.get(field, 0)

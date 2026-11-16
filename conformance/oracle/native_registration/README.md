@@ -1657,3 +1657,60 @@ arguments precede environment settings. The Go fallback command regression runs
 `go test -tags oracle ./data -run '^TestNativeComparisonDriverFallbackCommand$' -count=1 -v`
 with only `YANG_NATIVE_REGISTRATION_DRIVER`, for unset and empty comparison
 settings, and requires both peers' live read evidence through the Python field inventory's replay entry.
+
+## Custom schema argument and evidence contracts
+
+Custom inline `context` schemas remain supported. The bounded `list ID PARENT
+NAME VALUE` protocol represents zero or one key. For a keyless list, VALUE is a
+legacy ignored placeholder and the native call receives no variadic arguments.
+For a one-key list, VALUE is the key (`~` means the empty string). Larger key
+counts, missing/non-list schema nodes, extra tokens, and truncated name/value
+tokens exit 4 before output preparation or native construction. The compiled
+schema lookup follows `_lyd_new_list_node` input dispatch; checking the first
+key and its immediate successor suffices to reject every larger key count.
+
+The schema-dependent native-call inventory is:
+
+| Calls / commands | Argument representation and dispatch |
+| --- | --- |
+| `lyd_new_list` / `list` | The only variadic call; compiled key flags select exactly zero or one string arguments, otherwise exit 4. |
+| `lyd_new_inner` / `root`, bootstrap | Fixed arguments; native lookup checks container/RPC/action/notification kind. Bootstrap uses the fixed initial module. |
+| `lyd_new_term`, `lyd_change_term` / `term`, `change`, bootstrap | Fixed textual string and native JSON/canonical options; native type plugins parse the string. Parent/terminal layouts are checked before access. No binary/LYB or any-value union is passed. |
+| `lyd_new_opaq`, `lyd_new_opaq2` / opaque commands | Fixed string arguments, JSON module or XML namespace; parent layout checked. The invalid-XML request intentionally supplies invalid UTF-8 as text. |
+| `lyd_find_sibling_val` / schema, NULL, read-schema/value | Fixed textual value/predicate or NULL; native schema kind selects schema-only, leaf-list value, or list-predicate parsing. No key varargs. NULL-schema diagnostics remain native results. |
+| `lyd_find_sibling_schema`, `lyd_find_sibling_first`, `lyd_find_sibling_opaq_next`, `lyd_compare_single` | Fixed schema/node pointers or opaque name; request-bound handles and native kind dispatch. Comparisons preserve operand order and options. |
+| `lyd_dup_single`, `lyd_dup_single_to_ctx` / dup, lazy insert/remove | Fixed node/parent/options; native recursion owns key copying and context/representation checks. |
+| `lyd_parse_data_mem`, `lys_parse_mem`, `lyd_validate_all`, `lyd_print_mem` | Fixed format and textual JSON/XML/YANG input; native parsers own variable schema/value shape. |
+| Child, link/unlink, free, first-sibling, hash/table controls and observers | Fixed pointers/counts, checked handle liveness and layout; generic hash records always contain one node pointer. No schema-sized argument vector. |
+
+Python layout validation (`protocol.node_fields`, `identity.validate`, and the
+checker's `require_inner_fields`) uses recorded node-type masks. Duplication
+ancestor matching and key aliases use compiled schema identity, including the
+full path/context, rather than names. Bootstrap selection uses creation operation,
+inner kind and parentlessness. The Go evidence consumers invoke this same closed
+contract and preserve the complete schema descriptors; they have no separate
+name-based kind dispatch. Ancestor-reuse controls likewise select inner kinds.
+Names remain semantic descriptor data and explicit expected results of fixed
+request cases (parser child order, default `def`, expected winner substitutions),
+never a layout or schema-equivalence shortcut. Metadata `lyds_tree` is a native
+metadata identifier, not a schema name.
+
+`cases/custom/reused-names.calls` reuses all 21 built-in names as different
+node kinds. `same-name-ancestors.calls` distinguishes equal-named compiled paths
+in WITH_PARENTS duplication. `custom_schema_test.py` deterministically sweeps
+21 names, nine kinds (including lists with 0/1/2/3 keys), three rotating nesting
+depths, both modes and both builds. Every completed trace validates and compares;
+unrepresentable list requests must exit 4 with exactly the setup trace. Go
+regressions independently exercise top-level and nested key counts and full
+evidence validation. `g2_mutants.py` restores both reported defects and requires
+those Go regressions to fail, without treating compilation failure as evidence.
+
+These changes affect only request admission and test evidence. They add no Go
+production mutation, journal operation, budget charge, native algorithm, or
+exported API. The admission check adds one existing native schema lookup and a
+constant two-key inspection, bounded by the existing input/context caps. The
+ordinary duplicate-heavy/reverse-order counted-work regression is also run on
+the pinned main baseline and the worktree. Non-NULL typed selection, embedded
+any payload lifetime, generic foreign-context equivalence and broader G2
+comparison modeling remain outside part 1; the sweep uses empty any payloads
+and schema-only selection.

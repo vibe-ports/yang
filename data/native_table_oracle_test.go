@@ -597,7 +597,8 @@ func TestNativeObserverEvidence(t *testing.T) {
 		t.Skip("set YANG_NATIVE_REGISTRATION_DRIVER after the isolated static build")
 	}
 	comparison := nativeComparisonDriver()
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Minute)
+	// The checker also replays the bounded custom-schema matrix in both builds.
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
 	defer cancel()
 	// This independently checks occurrence identities, retirement, logging versus
 	// context diagnostics, public controls and the labeled native stop boundaries.

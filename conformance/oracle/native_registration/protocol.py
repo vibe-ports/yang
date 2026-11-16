@@ -3,6 +3,10 @@
 import re
 from functools import lru_cache
 
+# libyang v5.8.6 tree_data.h:LYD_NODE_INNER / LYD_NODE_TERM.
+INNER_NODE_TYPES = 0x0711
+TERM_NODE_TYPES = 0x000c
+
 
 def record(value, required, optional=None):
     assert type(value) is dict, 'expected object'
@@ -99,8 +103,8 @@ def node_fields(read_context, module, schema, nodetype, sorted_metadata):
     if schema:
         fields |= {'nodetype': int, 'key': bool, 'schema': str, 'schema_identity': int}
         if module: fields['module'] = str
-        if nodetype & 0x000c: fields['value'] = str
-        if nodetype & 0x0711: fields |= {'first': int, 'tail': int, 'table': table}
+        if nodetype & TERM_NODE_TYPES: fields['value'] = str
+        if nodetype & INNER_NODE_TYPES: fields |= {'first': int, 'tail': int, 'table': table}
     else:
         fields |= {'first': int, 'tail': int, 'prefix_format': int, 'prefix_bound': bool,
                    'opaque_name': opaque_name, 'opaque_module': opaque_bytes, 'opaque_prefix': opaque_bytes, 'opaque_value': opaque_bytes}

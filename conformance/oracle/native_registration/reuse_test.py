@@ -44,7 +44,7 @@ def evidence(name, rows):
     validate(script_for(name), rows)
     if name == 'ancestor-reuse':
         ancestors = {n['generation'] for r in check.commands(rows, 'dup') for n in r['nodes']
-                     if n['alive'] and n['creation_operation'] == r['operation'] and n.get('schema') in ('c', 'l')}
+                     if n['alive'] and n['creation_operation'] == r['operation'] and n.get('nodetype', 0) & 0x0711}
         assert any(r['old_generation'] in ancestors for r in check.commands(rows, 'allocation.address-reuse')), 'must actually reuse an ancestor address'
     elif name.startswith('lifetime/'):
         check.lifetime_evidence(name, rows)

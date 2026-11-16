@@ -776,7 +776,27 @@ int main(int argc, char **argv)
             directed_reuse=begin_directed_reuse();rc=lyd_new_term(nodes[b],b&&nodes[b]->schema?nodes[b]->schema->module:mod,name,value,c,&nodes[a]);
             finish_node_reuse(reuse,nodes[a],rc);
         }
-        else if(!strcmp(cmd,"list")) {if(sscanf(line,"%*s %u %u %79s %255s",&a,&b,name,value)!=4 || !a || a>=4096 || b>=4096)return 4;if(b&&!require_kind(b,LYD_NODE_INNER))return 4;if(!prepare_output(a))return 4;creating=1;pending_script=a;directed_reuse=begin_directed_reuse();rc=lyd_new_list(nodes[b],b&&nodes[b]->schema?nodes[b]->schema->module:mod,name,0,&nodes[a],!strcmp(value,"~")?"":value);}
+        else if(!strcmp(cmd,"list")) {
+            if(sscanf(line,"%*s %u %u %79s %255s",&a,&b,name,value)!=4 || !a || a>=4096 || b>=4096)return 4;
+            if(cJSON_GetArraySize(request_arguments)!=5 ||
+                    strlen(cJSON_GetArrayItem(request_arguments,3)->valuestring)!=2*strlen(name) ||
+                    strlen(cJSON_GetArrayItem(request_arguments,4)->valuestring)!=2*strlen(value))return 4;
+            if(b&&!require_kind(b,LYD_NODE_INNER))return 4;
+            const struct lys_module *module=b?nodes[b]->schema->module:mod;
+            /* Match _lyd_new_list_node's input schema lookup before entering
+             * lyd_new_list's schema-sized va_arg loop. The bounded protocol
+             * represents zero or one key only; never read a second vararg.
+             * The legacy value token is ignored for keyless lists. */
+            const struct lysc_node *s=lys_find_child(ctx,b?nodes[b]->schema:NULL,module,NULL,0,name,0,0);
+            if(!s || s->nodetype!=LYS_LIST)return 4;
+            const struct lysc_node *key=lysc_node_child(s);
+            unsigned keys=key && (key->flags&LYS_KEY)?1:0;
+            if(keys && key->next && (key->next->flags&LYS_KEY))return 4;
+            if(!prepare_output(a))return 4;
+            creating=1;pending_script=a;directed_reuse=begin_directed_reuse();
+            if(keys)rc=lyd_new_list(nodes[b],module,name,0,&nodes[a],!strcmp(value,"~")?"":value);
+            else rc=lyd_new_list(nodes[b],module,name,0,&nodes[a]);
+        }
         else if(!strcmp(cmd,"frontier")) {
             /* Synthetic low-level evidence only. The four real allocations
              * retain their schema pointers; no public compatibility claim. */

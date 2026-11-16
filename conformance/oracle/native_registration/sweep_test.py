@@ -373,7 +373,7 @@ class IdentitySweep(unittest.TestCase):
                     rows = execute(script, plain, verbose)
                     final = {n['generation']: n for n in rows[-1]['nodes']}
                     ancestors = {n['generation'] for r in check.commands(rows, 'dup') for n in r['nodes']
-                                 if n['alive'] and n['creation_operation'] == r['operation'] and n.get('schema') in ('c', 'l')}
+                                 if n['alive'] and n['creation_operation'] == r['operation'] and n.get('nodetype', 0) & 0x0711}
                     reused = [r for r in rows if r['event'] == 'allocation.address-reuse' and r['old_generation'] in ancestors]
                     self.assertTrue(reused, 'must actually reuse an ancestor address')
                     for row in check.commands(rows, 'dup'):

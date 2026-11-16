@@ -10,6 +10,7 @@ import subprocess
 
 from drivers import comparison_driver
 from identity import requests, validate
+from protocol import INNER_NODE_TYPES
 
 root = pathlib.Path(__file__).resolve().parent
 LYS_LIST = 0x0010  # libyang v5.8.6 src/tree_schema.h
@@ -295,6 +296,22 @@ def by_handle(row):
     return {b["handle"]: nodes[b["generation"]] for b in bindings if b["generation"] and nodes[b["generation"]]["alive"]}
 
 
+def compare_custom(script, rows, plain_rows):
+    """Custom schemas use the same full validator, without fixed-case counts."""
+    assert validate(script, rows) == validate(script, plain_rows), 'custom schema evidence differs'
+    fields = requests(script)
+    for row in rows:
+        for node in row.get('nodes', []):
+            require_inner_fields(node)
+        if row['event'] == 'dup' and row['rc'] == 0:
+            duplication(row, fields[row['operation'] - 1])
+
+
+def require_inner_fields(node):
+    if node['alive'] and node.get('nodetype', 0) & INNER_NODE_TYPES:
+        assert {'first', 'tail', 'table'} <= node.keys(), 'missing child/table snapshot'
+
+
 def duplication(row, fields):
     """Native lyd_dup/lyd_dup_r allocation sets, independently of ordinals."""
     nodes = {n["generation"]: n for n in row["nodes"]}
@@ -315,7 +332,7 @@ def duplication(row, fields):
         ancestor = src["parent"]
         while ancestor:
             n = nodes[ancestor]
-            if parent and n.get("schema") == handles[parent].get("schema"):
+            if parent and n.get("schema_identity") == handles[parent].get("schema_identity"):
                 if not local: local = parent
                 break
             copy(n, False)
@@ -326,7 +343,7 @@ def duplication(row, fields):
     made = [n for n in nodes.values() if n["creation_operation"] == row["operation"]]
     assert Counter(n["source"] for n in made) == expected, ("wrong duplication allocation set", fields, expected)
     if src.get("key") and local:
-        assert out.get("key") and out.get("schema") == src.get("schema"), "wrong existing-key alias"
+        assert out.get("key") and out.get("schema_identity") == src.get("schema_identity"), "wrong existing-key alias"
         if local > 0:
             assert out["parent"] == handles[local]["generation"]
         else:
@@ -723,7 +740,7 @@ def invariants(rows, name, stopped=True):
                 assert source in nodes and source < generation, (name, "invalid duplication source")
                 assert script[creation[0] - 1] in ("dup", "insert", "remove"), (name, "unexpected duplication")
                 if node["alive"] and nodes[source]["alive"]:
-                    assert node.get("schema") == nodes[source].get("schema"), (name, "dup schema")
+                    assert node.get("schema_identity") == nodes[source].get("schema_identity"), (name, "dup schema")
             elif creation[0]:
                 assert script[creation[0] - 1] != "dup", (name, "missing duplication source")
             if not node["alive"]:
@@ -734,9 +751,7 @@ def invariants(rows, name, stopped=True):
                 assert node["context"] == 1
                 assert {"hash", "flags", "metadata", "prev", "next", "parent"} <= node.keys(), (name, "missing current metadata")
                 assert "schema" in node or {"prefix_format", "prefix_bound"} <= node.keys(), (name, "missing schema/opaque metadata")
-                # These are all inner schemas in the driver's two fixed modules.
-                if node.get("schema") in ("c", "d", "r", "l", "kl"):
-                    assert {"first", "tail", "table"} <= node.keys(), (name, "missing child/table snapshot")
+                require_inner_fields(node)
         if row["event"] == "dup" and row["rc"] == 0:
             fields = [line.split() for line in (root / "cases" / (name + ".calls")).read_text().splitlines()
                       if line.strip() and not line.lstrip().startswith("#")][row["operation"] - 1]
@@ -1054,6 +1069,8 @@ def main():
         return
 
     if not args.lifetime_case:
+        from custom_schema_test import sweep
+        sweep(binary, plain)
         for case in ('read-request-binding', 'read-success-payload'):
             name = 'read/' + case
             rc, rows = run(name)

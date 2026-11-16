@@ -326,3 +326,38 @@ e.sweep(s, left)
                 'mandatory-NULL-control': 'accepted mandatory NULL request'}[name]
     assert result.returncode and expected in result.stdout, (name, result.stdout)
     print(json.dumps({'mutant': name, 'rejected': True}), flush=True)
+
+
+# Round-4 classes: restore the unsafe schema-sized vararg read and the former
+# schema-name layout dispatch. Both must fail live Go regressions.
+native_driver_mutant('unchecked-list-key-arity',
+    '            if(keys && key->next && (key->next->flags&LYS_KEY))return 4;',
+    '            /* mutant: enter native variadic constructor with too few keys */',
+    '^TestNativeDriverListArity/keys[23]/')
+
+path = work / 'schema-name-layout.py'
+path.write_text(identity.replace("if n.get('nodetype', 0) & INNER_NODE_TYPES:",
+                                 "if n.get('nodetype', 0) & INNER_NODE_TYPES or n.get('schema') in ('c', 'd', 'r', 'l', 'kl'):"))
+go_mutant('schema-name-layout', completion,
+          'filepath.Join("..", "conformance", "oracle", "native_registration", "identity.py")',
+          json.dumps(str(path)), '^TestNativeCustomSchemaKinds/reused-names$')
+
+for name, before, after in (
+    ('checker-schema-name-layout', "node.get('nodetype', 0) & INNER_NODE_TYPES:",
+     "node.get('schema') in ('c', 'd', 'r', 'l', 'kl'):"),
+    ('checker-schema-name-ancestor', 'n.get("schema_identity") == handles[parent].get("schema_identity")',
+     'n.get("schema") == handles[parent].get("schema")'),
+):
+    directory = work / name
+    directory.mkdir(exist_ok=True)
+    checker = (aux / 'check.py').read_text()
+    assert before in checker, name
+    (directory / 'check.py').write_text(checker.replace(before, after))
+    for module in ('identity.py', 'protocol.py', 'drivers.py'):
+        (directory / module).write_text((aux / module).read_text())
+    target = directory / 'custom_schema_test.py'
+    target.write_text((aux / 'custom_schema_test.py').read_text().replace(
+        'ROOT = pathlib.Path(__file__).resolve().parent', 'ROOT = pathlib.Path(' + repr(str(aux)) + ')'))
+    go_mutant(name, 'data/native_custom_schema_test.go',
+              'filepath.Join("..", "conformance", "oracle", "native_registration", "custom_schema_test.py")',
+              json.dumps(str(target)), '^TestNativeCustomSchemaSweep$')
