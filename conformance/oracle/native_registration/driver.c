@@ -57,7 +57,7 @@ static void *child_data;
 static struct ly_ctx *ctx;
 static cJSON *log_messages;
 static cJSON *request_arguments;
-static int enabled, events = 1, hash_depth, remote_stop, remote_watch, remote_pending, ub_stop;
+static int enabled, events = 1, hash_depth, remote_stop, remote_watch, remote_pending, ub_stop, context_setup;
 
 static unsigned identity(const void *ptr)
 {
@@ -456,7 +456,13 @@ void nr_event(const char *event, const void *node, const void *table, int rc, co
     if(!strcmp(event,"table.retire") && !observed(ht)) return;
     if(!strcmp(event,"table.allocate")) {
         if(observed(ht))allocate_table(ht);
-        else for(unsigned i=0;i<retired_count;++i)if(retired_tables[i]==ht)retired_tables[i]=NULL;
+        else {
+            for(unsigned i=0;i<retired_count;++i)if(retired_tables[i]==ht)retired_tables[i]=NULL;
+            /* Context construction can hold ly_ctx_data_rwlock. Snapshot
+             * getters must wait for it to return. Unrelated allocation events
+             * during data operations still carry their original evidence. */
+            if(context_setup)return;
+        }
     }
     if(!strcmp(event,"node.allocate") || !strcmp(event,"node.dup.allocate")) {
         allocation(node,source); return;
@@ -626,6 +632,217 @@ static int require_parent(unsigned handle)
     return require_handle(handle) && (!nodes[handle]->schema || node_kind(nodes[handle],LYD_NODE_INNER));
 }
 
+/* Native entry contracts, audited against the pinned sources in README.
+ * All walks share the existing 4096-node traversal cap. They inspect only live
+ * storage, allocate nothing, and run before output/reuse/native mutation. */
+static int comparison_tree(const struct lyd_node *node, int schema_only, unsigned *visits)
+{
+    if(!node)return 1;
+    if(++*visits>4096)return 0;
+    if(schema_only && !node->schema)return 0;
+    if(node_kind(node,LYD_NODE_ANY)) {
+        const struct lyd_node_any *any=(const void*)node;
+        /* Embedded any payloads have no part-1 lifetime/representation model.
+         * In particular native comparison does not check both value pointers. */
+        if(any->child || any->value)return 0;
+    }
+    for(const struct lyd_node *child=lyd_child(node);child;child=child->next)
+        if(!comparison_tree(child,schema_only,visits))return 0;
+    return 1;
+}
+
+static int comparison_inputs(const struct lyd_node *left, const struct lyd_node *right)
+{
+    if(!left || !right)return 1; /* native NULL short circuit */
+    int foreign=LYD_CTX(left)!=LYD_CTX(right);
+    unsigned visits=0;
+    return comparison_tree(left,foreign,&visits) && comparison_tree(right,foreign,&visits);
+}
+
+static int instance_inputs(const struct lyd_node *start, const struct lyd_node *target)
+{
+    if(!start)return 1; /* native checks the target then returns ENOTFOUND */
+    const struct lyd_node *first=lyd_first_sibling(start);
+    unsigned visits=0;int foreign=0;
+    if(!comparison_tree(target,0,&visits))return 0;
+    for(const struct lyd_node *n=first;n;n=n->next) {
+        int different=LYD_CTX(n)!=LYD_CTX(target);
+        foreign|=different;
+        if(!comparison_tree(n,different,&visits))return 0;
+    }
+    /* Synthetic retained occurrences need not belong to the sibling frontier.
+     * Their schema is guaranteed at record admission; compare their trees too. */
+    const struct lyd_node *parent=lyd_parent(start);
+    const struct ly_ht *ht=node_kind(parent,LYD_NODE_INNER)?((const struct lyd_node_inner*)parent)->children_ht:NULL;
+    for(unsigned i=0;i<occurrence_count;++i) {
+        if(!ht || !occurrences[i].live || occurrences[i].ht!=ht)continue;
+        const struct lyd_node *n=identities[occurrences[i].identity].ptr;
+        int different=LYD_CTX(n)!=LYD_CTX(target);
+        foreign|=different;
+        if(!comparison_tree(n,different,&visits))return 0;
+    }
+    return !foreign || comparison_tree(target,1,&visits);
+}
+
+static int acyclic_destination(const struct lyd_node *parent, const struct lyd_node *node)
+{
+    unsigned visits=0;
+    for(;parent;parent=lyd_parent(parent)) {
+        if(++visits>4096 || parent==node)return 0;
+    }
+    return 1;
+}
+
+static int attachment_inputs(const struct lyd_node *parent, const struct lyd_node *node)
+{
+    int siblings=!node->parent && !node->prev->next && node->next;
+    unsigned visits=0;
+    for(const struct lyd_node *n=node;n;n=siblings?n->next:NULL) {
+        if(++visits>4096 || LYD_CTX(parent)!=LYD_CTX(n) || !acyclic_destination(parent,n))return 0;
+        if(lysc_is_key(n->schema) && n->parent)return 0;
+        if(n->schema && parent->schema && lysc_data_parent(n->schema)!=parent->schema)return 0;
+    }
+    return 1;
+}
+
+/* Cross-context schema lookup in lyd_dup_r checks names, but not the layout
+ * subsequently written through the source-kind allocation. Missing schemas
+ * still reach native ENOTFOUND; existing schemas must have matching layouts. */
+static int duplicate_schema(const struct lysc_node *source, const struct ly_ctx *destination,
+        const struct lysc_node **mapped, unsigned *visits)
+{
+    *mapped=NULL;
+    if(!source)return 1;
+    if(++*visits>4096)return 0;
+    const struct lysc_node *parent=NULL;
+    if(!duplicate_schema(lysc_data_parent(source),destination,&parent,visits))return 0;
+    if(lysc_data_parent(source) && !parent)return 1;
+    *mapped=lys_find_child(destination,parent,NULL,source->module->name,0,source->name,0,0);
+    if(!*mapped)return 1;
+    if((*mapped)->nodetype!=source->nodetype)return 0;
+    if(source->nodetype==LYS_LIST) {
+        const struct lysc_node *a=lysc_node_child(source), *b=lysc_node_child(*mapped);
+        if((source->flags&LYS_KEYLESS)!=((*mapped)->flags&LYS_KEYLESS))return 0;
+        while((a && (a->flags&LYS_KEY)) || (b && (b->flags&LYS_KEY))) {
+            if(++*visits>4096 || !a || !b || !(a->flags&LYS_KEY) || !(b->flags&LYS_KEY) || strcmp(a->name,b->name))return 0;
+            a=a->next;b=b->next;
+        }
+    }
+    return 1;
+}
+
+static int duplicate_tree(const struct lyd_node *node, const struct ly_ctx *destination,
+        uint32_t options, unsigned *visits)
+{
+    if(++*visits>4096)return 0;
+    if(node->schema && LYD_CTX(node)!=destination) {
+        const struct lysc_node *mapped=NULL;
+        if(!duplicate_schema(node->schema,destination,&mapped,visits))return 0;
+    }
+    if(options&LYD_DUP_RECURSIVE)
+        for(const struct lyd_node *child=lyd_child(node);child;child=child->next)
+            if(!duplicate_tree(child,destination,options,visits))return 0;
+    return 1;
+}
+
+static int free_reuse_input(const struct lyd_node *node, const struct lyd_node *target, int all)
+{
+    unsigned visits=0;
+    if(!all && lysc_is_key(node->schema) && node->parent)return 0;
+    if(all) {
+        while(node->parent) {if(++visits>4096)return 0;node=lyd_parent(node);}
+        while(target->parent) {if(++visits>4096)return 0;target=lyd_parent(target);}
+        return lyd_first_sibling(node)==lyd_first_sibling(target);
+    }
+    for(;target;target=lyd_parent(target)) {
+        if(++visits>4096)return 0;
+        if(node==target)return 1;
+    }
+    return 0;
+}
+
+static int duplicate_inputs(const struct lyd_node *source, const struct lyd_node *parent,
+        const struct ly_ctx *destination, uint32_t options)
+{
+    unsigned visits=0;
+    if(parent && LYD_CTX(parent)!=destination)return 0;
+    if(!duplicate_tree(source,destination,options,&visits))return 0;
+    if(options&LYD_DUP_WITH_PARENTS) {
+        int matched=!parent || !source->parent;
+        for(const struct lyd_node *n=lyd_parent(source);n;n=lyd_parent(n)) {
+            if(++visits>4096)return 0;
+            if(parent && LYD_CTX(parent)!=LYD_CTX(n) && !parent->schema && !n->schema)return 0;
+            if(!duplicate_tree(n,destination,0,&visits))return 0;
+            const struct lysc_node *mapped=n->schema;
+            if(n->schema && LYD_CTX(n)!=destination && !duplicate_schema(n->schema,destination,&mapped,&visits))return 0;
+            if(parent && mapped==parent->schema)matched=1;
+        }
+        if(!matched)return 0;
+    } else if(parent && source->schema) {
+        const struct lysc_node *mapped=source->schema;
+        if(LYD_CTX(source)!=destination && !duplicate_schema(source->schema,destination,&mapped,&visits))return 0;
+        if(mapped && lysc_data_parent(mapped)!=parent->schema)return 0;
+    }
+    return 1;
+}
+
+static int unlink_inputs(const struct lyd_node *node, int siblings)
+{
+    unsigned visits=0;
+    for(;node;node=siblings?node->next:NULL)
+        if(++visits>4096 || (lysc_is_key(node->schema) && node->parent))return 0;
+    return 1;
+}
+
+static int before_inputs(const struct lyd_node *sibling, const struct lyd_node *node)
+{
+    if(sibling==node || LYD_CTX(sibling)!=LYD_CTX(node) || !acyclic_destination(lyd_parent(sibling),node))return 0;
+    if(node->schema) {
+        if(!(node->schema->nodetype&(LYS_LIST|LYS_LEAFLIST)) || !(node->schema->flags&LYS_ORDBY_USER))return 0;
+        if(sibling->schema && node->schema!=sibling->schema)return 0;
+    }
+    return 1;
+}
+
+static int schema_read_inputs(const struct lyd_node *start, const struct lysc_node *schema)
+{
+    /* lyd_find_sibling_schema's linear branch casts a non-NULL parent to inner. */
+    return schema && (!start || !start->parent || node_kind(lyd_parent(start),LYD_NODE_INNER));
+}
+
+static int next_inputs(const struct lyd_node *node, uint32_t hash)
+{
+    if(!node->schema)return 0;
+    int found=0;
+    for(unsigned i=0;i<occurrence_count;++i) {
+        if(!occurrences[i].live || occurrences[i].ht!=generic)continue;
+        const struct lyd_node *candidate=identities[occurrences[i].identity].ptr;
+        if(candidate==node && occurrences[i].hash==hash)found=1;
+        if(!comparison_inputs(node,candidate))return 0;
+    }
+    return found;
+}
+
+static int opaque_read_inputs(const struct lyd_node *start, const char *name)
+{
+    unsigned visits=0;
+    if(start && start->schema) {
+        start=lyd_first_sibling(start)->prev;
+        if(start->schema)return 1;
+        while(!start->prev->schema) {
+            if(++visits>4096)return 0;
+            start=start->prev;
+        }
+    }
+    /* Native asserts opaque layout at every visited node, even when its name
+     * is not a match. An earlier match in a synthetic mixed run is safe. */
+    for(;start;start=start->next) {
+        if(++visits>4096 || start->schema)return 0;
+        if(!strcmp(LYD_NAME(start),name))break;
+    }
+    return 1;
+}
+
 static void bind_handle(unsigned handle)
 {
     unsigned generation=nodes[handle]?identity(nodes[handle]):0;
@@ -754,7 +971,7 @@ int main(int argc, char **argv)
         rc=LY_SUCCESS;
         if(tombstoned_occurrence() && (!strcmp(cmd,"instance") || !strcmp(cmd,"opaq-find") || !strcmp(cmd,"null-reads") || !strncmp(cmd,"read-",5) || !strcmp(cmd,"equal") || !strcmp(cmd,"record") || !strcmp(cmd,"record-as") || !strcmp(cmd,"child") || !strcmp(cmd,"schema") || !strcmp(cmd,"validate") || !strcmp(cmd,"rewind") || !strcmp(cmd,"print") || !strcmp(cmd,"attach") || !strcmp(cmd,"before") || !strcmp(cmd,"change") || !strcmp(cmd,"find-next-loop") || !strcmp(cmd,"root") || !strcmp(cmd,"term") || !strcmp(cmd,"dup") || !strcmp(cmd,"dup-to-context") || !strcmp(cmd,"unlink") || !strcmp(cmd,"detach-siblings") || !strcmp(cmd,"free") || !strcmp(cmd,"free-root") || !strcmp(cmd,"opaque") || !strcmp(cmd,"opaque-invalid-xml") || !strcmp(cmd,"parse") || !strcmp(cmd,"parse-xml") || !strcmp(cmd,"list") || !strcmp(cmd,"frontier"))) {snapshot("boundary.tombstoned-semantic-probe",NULL,generic,0,NULL);return 0;}
         if(!strcmp(cmd,"new")) {
-            if(sscanf(line,"%*s %u %u",&a,&b)!=2 || a>32768 || b>65535)return 4;
+            if(sscanf(line,"%*s %u %u",&a,&b)!=2 || a>32768 || (a&(a-1)) || b>1)return 4;
             if(generic) {
                 lyht_free(generic,NULL);
             }
@@ -764,11 +981,12 @@ int main(int argc, char **argv)
             nr_event("table.allocate",NULL,generic,0,NULL);
 #endif
         }
-        else if(!strcmp(cmd,"root")) {if(sscanf(line,"%*s %u %79s",&a,name)!=2 || !a||a>=4096)return 4;if(!prepare_output(a))return 4;creating=1;pending_script=a;directed_reuse=begin_directed_reuse();rc=lyd_new_inner(NULL,mod,name,0,&nodes[a]);}
+        else if(!strcmp(cmd,"root")) {if(sscanf(line,"%*s %u %79s",&a,name)!=2 || !a||a>=4096||!mod)return 4;if(!prepare_output(a))return 4;creating=1;pending_script=a;directed_reuse=begin_directed_reuse();rc=lyd_new_inner(NULL,mod,name,0,&nodes[a]);}
         else if(!strcmp(cmd,"term")) {
             int fields=sscanf(line,"%*s %u %u %79s %255s %u %u",&a,&b,name,value,&c,&d);
             if(fields<4 || !a || a>=4096 || b>=4096)return 4;
-            if(b&&!require_kind(b,LYD_NODE_INNER))return 4;
+            if((b&&!require_kind(b,LYD_NODE_INNER)) || (!b&&!mod))return 4;
+            if((c&LYD_NEW_VAL_STORE_ONLY) && (c&LYD_NEW_VAL_CANON))return 4;
             if(!prepare_output(a))return 4;
             creating=1;pending_script=a;
             const struct lyd_node *reuse=NULL;
@@ -781,7 +999,7 @@ int main(int argc, char **argv)
             if(cJSON_GetArraySize(request_arguments)!=5 ||
                     strlen(cJSON_GetArrayItem(request_arguments,3)->valuestring)!=2*strlen(name) ||
                     strlen(cJSON_GetArrayItem(request_arguments,4)->valuestring)!=2*strlen(value))return 4;
-            if(b&&!require_kind(b,LYD_NODE_INNER))return 4;
+            if((b&&!require_kind(b,LYD_NODE_INNER)) || (!b&&!mod))return 4;
             const struct lys_module *module=b?nodes[b]->schema->module:mod;
             /* Match _lyd_new_list_node's input schema lookup before entering
              * lyd_new_list's schema-sized va_arg loop. The bounded protocol
@@ -805,7 +1023,15 @@ int main(int argc, char **argv)
             if(!nodes[a]->schema || nodes[a]->schema->nodetype!=LYS_CONTAINER || ((struct lyd_node_inner*)nodes[a])->children_ht)return 4;
             for(unsigned i=0;i<4;++i) {
                 if(ids[i]>=4096 || !require_handle(ids[i]) || !nodes[ids[i]]->schema || (nodes[ids[i]]->parent && nodes[ids[i]]->parent!=nodes[a]))return 4;
+                if(LYD_CTX(nodes[a])!=LYD_CTX(nodes[ids[i]]) || !acyclic_destination(nodes[a],nodes[ids[i]]))return 4;
+                if(!nodes[ids[i]]->parent && (nodes[ids[i]]->next || nodes[ids[i]]->prev!=nodes[ids[i]]))return 4;
                 for(unsigned j=0;j<i;++j)if(ids[i]==ids[j])return 4;
+            }
+            unsigned visits=0;
+            for(const struct lyd_node *n=lyd_child(nodes[a]);n;n=n->next) {
+                if(++visits>4096)return 4;
+                unsigned found=0;for(unsigned i=0;i<4;++i)if(n==nodes[ids[i]])found=1;
+                if(!found)return 4;
             }
             ((struct lyd_node_inner*)nodes[a])->child=nodes[ids[0]];
             for(unsigned i=0;i<4;++i) {
@@ -815,15 +1041,15 @@ int main(int argc, char **argv)
             }
         }
         else if(!strcmp(cmd,"opaque")) {if(sscanf(line,"%*s %u %u %79s %255s",&a,&b,name,value)!=4||!a||a>=4096||b>=4096)return 4;if(b&&!require_parent(b))return 4;if(!prepare_output(a))return 4;creating=1;pending_script=a;rc=lyd_new_opaq(nodes[b],b?LYD_CTX(nodes[b]):ctx,name,value,NULL,"m",&nodes[a]);}
-        else if(!strcmp(cmd,"dup")) {if(sscanf(line,"%*s %u %u %u %u",&a,&b,&c,&d)!=4 || !a||a>=4096||b>=4096||c>=4096)return 4;if(!require_handle(b)||(c&&!require_parent(c)))return 4;if(!prepare_output(a))return 4;creating=1;pending_script=a;directed_reuse=begin_directed_reuse();rc=lyd_dup_single(nodes[b],nodes[c],d,&nodes[a]);}
+        else if(!strcmp(cmd,"dup")) {if(sscanf(line,"%*s %u %u %u %u",&a,&b,&c,&d)!=4 || !a||a>=4096||b>=4096||c>=4096)return 4;if(!require_handle(b)||(c&&!require_parent(c)))return 4;if(!duplicate_inputs(nodes[b],nodes[c],LYD_CTX(nodes[b]),d)||!prepare_output(a))return 4;creating=1;pending_script=a;directed_reuse=begin_directed_reuse();rc=lyd_dup_single(nodes[b],nodes[c],d,&nodes[a]);}
         else if(!strcmp(cmd,"dup-to-context")) {
-            if(sscanf(line,"%*s %u %u %u %u",&a,&b,&c,&d)!=4||!a||a>=4096||b>=4096||c>=4096||!require_handle(b)||(c&&!require_parent(c))||!prepare_output(a))return 4;
+            if(sscanf(line,"%*s %u %u %u %u",&a,&b,&c,&d)!=4||!a||a>=4096||b>=4096||c>=4096||!require_handle(b)||(c&&!require_parent(c))||!duplicate_inputs(nodes[b],nodes[c],ctx,d)||!prepare_output(a))return 4;
             creating=1;pending_script=a;rc=lyd_dup_single_to_ctx(nodes[b],ctx,nodes[c],d,&nodes[a]);
         }
-        else if(!strcmp(cmd,"unlink")) {if(sscanf(line,"%*s %u",&a)!=1||a>=4096||!require_handle(a))return 4;rc=lyd_unlink_tree(nodes[a]);}
-        else if(!strcmp(cmd,"attach")) {if(sscanf(line,"%*s %u %u",&a,&b)!=2||a>=4096||b>=4096||!require_parent(a)||!require_handle(b))return 4;rc=lyd_insert_child(nodes[a],nodes[b]);}
-        else if(!strcmp(cmd,"before")) {if(sscanf(line,"%*s %u %u",&a,&b)!=2||a>=4096||b>=4096||!require_handle(a)||!require_handle(b)||(nodes[b]->schema&&!node_kind(nodes[b],LYS_LIST|LYS_LEAFLIST)))return 4;rc=lyd_insert_before(nodes[a],nodes[b]);}
-        else if(!strcmp(cmd,"detach-siblings")) {if(sscanf(line,"%*s %u",&a)!=1||a>=4096||!require_handle(a))return 4;rc=lyd_unlink_siblings(nodes[a]);}
+        else if(!strcmp(cmd,"unlink")) {if(sscanf(line,"%*s %u",&a)!=1||a>=4096||!require_handle(a)||!unlink_inputs(nodes[a],0))return 4;rc=lyd_unlink_tree(nodes[a]);}
+        else if(!strcmp(cmd,"attach")) {if(sscanf(line,"%*s %u %u",&a,&b)!=2||a>=4096||b>=4096||!require_parent(a)||!require_handle(b))return 4;if(!attachment_inputs(nodes[a],nodes[b]))return 4;rc=lyd_insert_child(nodes[a],nodes[b]);}
+        else if(!strcmp(cmd,"before")) {if(sscanf(line,"%*s %u %u",&a,&b)!=2||a>=4096||b>=4096||!require_handle(a)||!require_handle(b)||(nodes[b]->schema&&!node_kind(nodes[b],LYS_LIST|LYS_LEAFLIST)))return 4;if(!before_inputs(nodes[a],nodes[b]))return 4;rc=lyd_insert_before(nodes[a],nodes[b]);}
+        else if(!strcmp(cmd,"detach-siblings")) {if(sscanf(line,"%*s %u",&a)!=1||a>=4096||!require_handle(a)||!unlink_inputs(nodes[a],1))return 4;rc=lyd_unlink_siblings(nodes[a]);}
         else if(!strcmp(cmd,"change")) {if(sscanf(line,"%*s %u %255s",&a,value)!=2||a>=4096||!require_kind(a,LYD_NODE_TERM))return 4;rc=lyd_change_term(nodes[a],value);}
         else if(!strcmp(cmd,"parse")) {int offset=0;if(sscanf(line,"%*s %u %n",&a,&offset)<1||!a||a>=4096)return 4;if(!prepare_output(a))return 4;creating=1;pending_script=a;directed_reuse=begin_directed_reuse();rc=lyd_parse_data_mem(ctx,line+offset,LYD_JSON,LYD_PARSE_ONLY|LYD_PARSE_ORDERED,0,&nodes[a]);}
         else if(!strcmp(cmd,"instance") || !strcmp(cmd,"opaq-find")) {
@@ -831,6 +1057,8 @@ int main(int argc, char **argv)
             if(instance) {
                 if(sscanf(line,"%*s %u %u",&a,&b)!=2||a>=4096||b>=4096||(a&&!require_handle(a))||!require_handle(b))return 4;
             } else if(sscanf(line,"%*s %u %79s",&a,name)!=2||a>=4096||(a&&!require_handle(a)))return 4;
+            if(instance && !instance_inputs(nodes[a],nodes[b]))return 4;
+            if(!instance && !opaque_read_inputs(nodes[a],name))return 4;
             const struct lyd_node *start=nodes[a];
             const struct lyd_node *parent=start?lyd_parent(start):NULL;
             const struct ly_ht *queried=node_kind(parent,LYD_NODE_INNER)?((const struct lyd_node_inner*)parent)->children_ht:NULL;
@@ -869,11 +1097,13 @@ int main(int argc, char **argv)
         }
         else if(!strcmp(cmd,"context") || !strcmp(cmd,"context-keyless")) {
             /* Independent public contexts; old nodes/contexts stay alive for the trace. */
+            context_setup=1;
             rc=ly_ctx_new(ly_yang_module_dir(),LY_CTX_NO_YANGLIBRARY,&ctx);
             int offset=0;sscanf(line,"%*s %n",&offset);
             const char *text=offset && line[offset] && line[offset]!='\n'?line+offset:!strcmp(cmd,"context-keyless")?read_keyless_schema:read_schema;
             if(ctx)context_identity(ctx);
             if(!rc)rc=lys_parse_mem(ctx,text,LYS_IN_YANG,&mod);
+            context_setup=0;
         }
         else if(!strcmp(cmd,"opaque-invalid-xml")) {
             if(sscanf(line,"%*s %u %u",&a,&b)!=2||!a||a>=4096||b>=4096||(b&&!require_parent(b))||!prepare_output(a))return 4;
@@ -895,18 +1125,23 @@ int main(int argc, char **argv)
         else if(!strcmp(cmd,"record") || !strcmp(cmd,"record-as")) {
             /* Synthetic occurrence control: retain real callback/schema/context. */
             if(sscanf(line,"%*s %u %u %u %u",&a,&b,&c,&d)!=4||a>=4096||b>=4096||!require_kind(a,LYD_NODE_INNER)||!require_handle(b))return 4;
-            struct ly_ht *ht=((struct lyd_node_inner*)nodes[a])->children_ht;if(!ht)return 4;
+            struct ly_ht *ht=((struct lyd_node_inner*)nodes[a])->children_ht;if(!ht || !nodes[b]->schema)return 4;
             if(!strcmp(cmd,"record-as")){if(c>=4096||!require_handle(c))return 4;c=nodes[c]->hash;}
             rc=d?lyht_insert(ht,&nodes[b],c,NULL):lyht_insert_no_check(ht,&nodes[b],c,NULL);
         }
         else if(!strcmp(cmd,"equal")) {
             if(sscanf(line,"%*s %u %u %u",&a,&b,&c)!=3||a>=4096||b>=4096||(a&&!require_handle(a))||(b&&!require_handle(b)))return 4;
+            if(!comparison_inputs(nodes[a],nodes[b]))return 4;
             rc=lyd_compare_single(nodes[a],nodes[b],c);
             cJSON *j=cJSON_CreateObject();cJSON_AddStringToObject(j,"event","read.equal");number(j,"operation",op);number(j,"rc",rc);number(j,"left_generation",identity(nodes[a]));number(j,"right_generation",identity(nodes[b]));number(j,"options",c);emit(j);
         }
         else if(!strncmp(cmd,"read-",5)) {
             int fields=sscanf(line,"%*s %u %u %u %255s",&a,&b,&c,value);
             if(fields<2||a>=4096||b>=4096||c>=4096||(a&&!require_handle(a))||!require_handle(b)||(c&&!require_kind(c,LYD_NODE_INNER)))return 4;
+            if(!strcmp(cmd,"read-instance") && !instance_inputs(nodes[a],nodes[b]))return 4;
+            if((!strcmp(cmd,"read-schema") || !strcmp(cmd,"read-value")) && !schema_read_inputs(nodes[a],nodes[b]->schema))return 4;
+            if(!strcmp(cmd,"read-value") && fields==4 && node_kind(nodes[b],LYS_LIST|LYS_LEAFLIST) && !instance_inputs(nodes[a],nodes[b]))return 4;
+            if(!strcmp(cmd,"read-opaque") && !opaque_read_inputs(nodes[a],fields==4?value:"unknown"))return 4;
             const struct lyd_node *parent=c?nodes[c]:(a?(const struct lyd_node*)nodes[a]->parent:NULL);
             const struct ly_ht *queried=node_kind(parent,LYD_NODE_INNER)?((const struct lyd_node_inner*)parent)->children_ht:NULL;
             cJSON *before=table_json(queried);struct lyd_node *winner=NULL;
@@ -942,11 +1177,12 @@ int main(int argc, char **argv)
             number(j,"winner",identity(winner));number(j,"current_parent",identity(winner?winner->parent:NULL));
             cJSON_AddItemToObject(j,"before",before);cJSON_AddItemToObject(j,"after",table_json(queried));emit(j);
         }
-        else if(!strcmp(cmd,"find-next-loop")) {if(sscanf(line,"%*s %u %u %u",&a,&b,&c)!=3||a>=4096||c>1024||!generic||!require_handle(a))return 4;struct lyd_node *iter=nodes[a];unsigned steps=0;for(;steps<c;++steps){void *match=NULL;rc=lyht_find_next(generic,&iter,b,&match);if(rc)break;memcpy(&iter,match,sizeof iter);}if(steps==c){snapshot("boundary.watchdog.find-next-cycle",iter,generic,0,NULL);return 0;}}
+        else if(!strcmp(cmd,"find-next-loop")) {if(sscanf(line,"%*s %u %u %u",&a,&b,&c)!=3||a>=4096||c>1024||!generic||!require_handle(a)||!next_inputs(nodes[a],b))return 4;struct lyd_node *iter=nodes[a];unsigned steps=0;for(;steps<c;++steps){void *match=NULL;rc=lyht_find_next(generic,&iter,b,&match);if(rc)break;memcpy(&iter,match,sizeof iter);}if(steps==c){snapshot("boundary.watchdog.find-next-cycle",iter,generic,0,NULL);return 0;}}
         else if(!strcmp(cmd,"insert") || !strcmp(cmd,"remove")) {
             int fields=sscanf(line,"%*s %u %u %u %u",&a,&b,&c,&d);
             if(fields<2||!a||a>=4096||!generic)return 4;
             if(fields==4 && (strcmp(cmd,"insert") || nodes[a]))return 4;
+            if(nodes[a] && (!require_handle(a) || !nodes[a]->schema))return 4;
             if(!nodes[a]) {
                 pending_script=a;
                 const struct lyd_node *reuse=NULL;
@@ -988,15 +1224,16 @@ int main(int argc, char **argv)
         else if(!strcmp(cmd,"free") || !strcmp(cmd,"free-root")) {
             int fields=sscanf(line,"%*s %u %u",&a,&b);
             if(fields<1||a>=4096||!require_handle(a))return 4;
+            if(!strcmp(cmd,"free") && !unlink_inputs(nodes[a],0))return 4;
             if(fields==2) {
-                if(b>=4096 || !require_kind(b,LYD_NODE_INNER|LYD_NODE_TERM))return 4;
+                if(b>=4096 || !require_kind(b,LYD_NODE_INNER|LYD_NODE_TERM) || !free_reuse_input(nodes[a],nodes[b],!strcmp(cmd,"free-root")))return 4;
                 arm_node_reuse(nodes[b]);
             }
             if(!strcmp(cmd,"free-root"))lyd_free_all(nodes[a]);else lyd_free_tree(nodes[a]);if(!identities[handle_generations[a]].alive)nodes[a]=NULL;
             if(fields==2 && !reuse_reserved) {fputs("native free did not release the reuse target\n",stderr);return 100;}
         }
         else if(!strcmp(cmd,"rewind")) {if(sscanf(line,"%*s %u",&a)!=1||a>=4096||!require_handle(a))return 4;refresh=1;nodes[a]=lyd_first_sibling(nodes[a]);cJSON *j=cJSON_CreateObject();cJSON_AddStringToObject(j,"event","read.first-sibling");number(j,"operation",op);number(j,"winner",identity(nodes[a]));emit(j);}
-        else if(!strcmp(cmd,"validate")) {if(sscanf(line,"%*s %u",&a)!=1||a>=4096||!require_handle(a))return 4;refresh=1;directed_reuse=begin_directed_reuse();rc=lyd_validate_all(&nodes[a],ctx,LYD_VALIDATE_PRESENT,NULL);}
+        else if(!strcmp(cmd,"validate")) {if(sscanf(line,"%*s %u",&a)!=1||a>=4096||!require_handle(a)||LYD_CTX(nodes[a])!=ctx)return 4;refresh=1;directed_reuse=begin_directed_reuse();rc=lyd_validate_all(&nodes[a],ctx,LYD_VALIDATE_PRESENT,NULL);}
         else if(!strcmp(cmd,"check-handle")) {if(sscanf(line,"%*s %u",&a)!=1||!require_handle(a))return 4;}
         else if(!strcmp(cmd,"print")) {if(sscanf(line,"%*s %u",&a)!=1||a>=4096||!require_handle(a))return 4;char *json=NULL;rc=lyd_print_mem(&json,nodes[a],LYD_JSON,LYD_PRINT_SHRINK);cJSON *j=cJSON_CreateObject();cJSON_AddStringToObject(j,"event","public.result");number(j,"operation",op);number(j,"rc",rc);if(json)cJSON_AddStringToObject(j,"json",json);emit(j);free(json);}
         else if(!strcmp(cmd,"dump")) { /* Snapshot below is the requested result. */ }

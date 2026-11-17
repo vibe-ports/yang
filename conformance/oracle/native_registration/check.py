@@ -61,7 +61,10 @@ def final_public(rows):
 
 
 def normalized_reads(name, rows, *, project=True):
-    return validate((root / "cases" / (name + ".calls")).read_text(), rows, project=project)
+    script = (root / "cases" / (name + ".calls")).read_text()
+    if name in ('invalid-capacity', 'invalid-mode'):
+        script = ''  # Refused before entry: the completed prefix is bootstrap.
+    return validate(script, rows, project=project)
 
 
 def lookup_results(rows, name, evidence=None):
@@ -90,8 +93,8 @@ STOPS = {
     "dead-occurrence": (5, "boundary.tombstoned-semantic-probe"),
     "find-next-watchdog": (4, "boundary.watchdog.find-next-cycle"),
     "free-slot-cap": (13, "boundary.primitive-free-slot-cap"),
-    "invalid-capacity": (1, "boundary.new-null"),
-    "invalid-mode": (1, "boundary.new-null"),
+    "invalid-capacity": (0, "driver.ready.actual-children-callback"),
+    "invalid-mode": (0, "driver.ready.actual-children-callback"),
     "lifetime/stale-handle": (16, "boundary.tombstoned-handle"),
     "lifetime/retained-same-hash": (8, "boundary.tombstoned-semantic-probe"),
     "lifetime/retained-resize": (56, "boundary.tombstoned-semantic-probe"),
@@ -107,7 +110,7 @@ def completed_replay(name, rows, stopped=True):
     script = request_commands(name)
     stop = STOPS.get(name) if stopped else None
     end = stop[0] if stop else len(script) + 1
-    expected = list(enumerate(script[:end - 1], 1))
+    expected = list(enumerate(script[:max(0, end - 1)], 1))
     script_commands = set(script)
     actual = [(r["operation"], r["event"]) for r in rows if r["event"] in script_commands]
     assert actual == expected, (name, "incomplete/out-of-order completed commands", actual, expected)
@@ -131,11 +134,10 @@ def completed_replay(name, rows, stopped=True):
 def compared_results(name, rows, evidence=None):
     results = [r for r in rows if r['event'] in ('public.result', 'validate', 'read.schema', 'read.first-sibling', 'read.instance', 'read.opaque', 'read.null', 'read.equal') or r['event'].startswith('read.selection.')]
     if name in ("invalid-capacity", "invalid-mode"):
-        # Rejected constructors have no completed command or public read. Their
-        # explicit native rejection and nonempty log are the comparison result.
-        terminal = rows[-1]
-        assert terminal["rc"] == 0 and terminal.get("logs"), (name, "missing rejection log")
-        return [(terminal["event"], terminal["rc"], terminal["diagnostics"], terminal["logs"])]
+        # Input validation refuses these calls before native entry. Bootstrap
+        # evidence is the complete prefix, independently checked on both peers.
+        assert len(rows) == 1 and rows[0]['operation'] == 0
+        return validate('', rows)
     assert results, (name, "empty compared results")
     if evidence is None: evidence = normalized_reads(name, rows, project=False)
     return (final_public(rows),
@@ -145,7 +147,7 @@ def compared_results(name, rows, evidence=None):
 
 
 def compare_control(name, rc, rows, plain_rc, plain_rows, stopped=True):
-    expected_rc = 5 if name in ("invalid-capacity", "invalid-mode") else 0
+    expected_rc = 4 if name in ("invalid-capacity", "invalid-mode") else 0
     assert rc == plain_rc == expected_rc, (name, "control exit status")
     # Reject incomplete schedules before walking their retained history. Reuse
     # the two complete projections within this call; never cache mutable traces.
@@ -184,7 +186,7 @@ def control_equal(name, rc, rows, stopped=True):
         # Exercise result validation independently of command completeness.
         empty = lambda trace: [r for r in trace if r["event"] not in ("public.result", "validate", "read.schema", "read.first-sibling", "read.instance", "read.opaque", "read.null", "read.equal") and not r['event'].startswith('read.selection.')]
         if name in ("invalid-capacity", "invalid-mode"):
-            empty = lambda trace: [dict(r, logs=[]) for r in trace]
+            empty = lambda trace: []
         mutate("empty-results-control", empty)
         if name == 'entry-guard':
             def skipped(trace):
@@ -593,8 +595,6 @@ ERROR_COUNTS = {
     "collision-history-retained": {7: (1, 1)},
     "collision-history-shrunk": {39: (1, 1), 40: (2, 4)},
     "internal-build": {1: (1, 1), 3: (1, 1)},
-    "invalid-capacity": {1: (0, 1)},
-    "invalid-mode": {1: (0, 1)},
     "repeated-pointer": {6: (1, 2), 7: (1, 1)},
 }
 RECORD_FIELDS = {
@@ -683,7 +683,11 @@ def invariants(rows, name, stopped=True):
                 assert row["old_generation"] > 0 and row["new_generation"] > 0, (name, "reuse without allocation identities")
         else:
             assert {"nodes", "operation", "rc", "diagnostics", "node_generation", "source_generation"} <= row.keys(), (name, "missing snapshot fields", row["event"])
-        if "nodes" in row and (row["event"] in script_commands or row is rows[-1]):
+        # Bootstrap has loader information logs, preserved and compared by
+        # normalized_reads. ERROR_COUNTS describes script operations only.
+        if not row["operation"] and name in ('invalid-capacity', 'invalid-mode'):
+            assert not row['diagnostics'] and row['logs'], 'missing/changed bootstrap loader channels'
+        if "nodes" in row and row["operation"] and (row["event"] in script_commands or row is rows[-1]):
             expected = ERROR_COUNTS.get(name, {}).get(row["operation"], (0, 0))
             assert (len(row["diagnostics"]), len(row.get("logs", []))) == expected, (name, "missing/extra command diagnostics/logs", row["operation"])
         if row["event"] in ("node.free", "node.retiring"):
@@ -855,7 +859,7 @@ def negative_evidence(name, rows, stopped=True):
         container[key] = max(allocations) + 1
         rejected("unresolved-" + label, mutant)
 
-    snapshot = next(i for i, r in enumerate(rows) if i and "nodes" in r)
+    snapshot = next((i for i, r in enumerate(rows) if i and "nodes" in r), 0)
     for field in ("nodes", "diagnostics", "node_generation", "source_generation"):
         mutant = rows[:]
         mutant[snapshot] = dict(rows[snapshot])
@@ -1045,6 +1049,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--driver", type=pathlib.Path, default=os.environ.get("YANG_NATIVE_REGISTRATION_DRIVER") or None)
     parser.add_argument("--comparison-driver", type=pathlib.Path)
+    parser.add_argument("--suite", choices=("all", "core"), default="all")
     parser.add_argument("--lifetime-case", choices=LIFETIME_CONTROLS)
     parser.add_argument("--retained-reuse", action="store_true")
     args = parser.parse_args()
@@ -1069,8 +1074,9 @@ def main():
         return
 
     if not args.lifetime_case:
-        from custom_schema_test import sweep
-        sweep(binary, plain)
+        if args.suite == "all":
+            from custom_schema_test import sweep
+            sweep(binary, plain)
         for case in ('read-request-binding', 'read-success-payload'):
             name = 'read/' + case
             rc, rows = run(name)
@@ -1235,7 +1241,7 @@ def main():
         summary(name, rc, rows)
     for name in ("invalid-capacity", "invalid-mode"):
         rc, rows = run(name, "--events")
-        assert rc == 5 and rows[-1]["event"] == "boundary.new-null", name
+        assert rc == 4 and len(rows) == 1 and rows[0]["event"] == "driver.ready.actual-children-callback", name
         invariants(rows, name)
         negative_evidence(name, rows)
         assert not commands(rows, "table.allocate"), (name, "allocation before rejection")

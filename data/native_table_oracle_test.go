@@ -597,13 +597,14 @@ func TestNativeObserverEvidence(t *testing.T) {
 		t.Skip("set YANG_NATIVE_REGISTRATION_DRIVER after the isolated static build")
 	}
 	comparison := nativeComparisonDriver()
-	// The checker also replays the bounded custom-schema matrix in both builds.
+	// TestNativeCustomSchemaSweep owns the custom matrix; this test runs the
+	// core native cases without repeating that matrix in the same Go suite.
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
 	defer cancel()
 	// This independently checks occurrence identities, retirement, logging versus
 	// context diagnostics, public controls and the labeled native stop boundaries.
 	cmd := exec.CommandContext(ctx, "python3", filepath.Join("..", "conformance", "oracle", "native_registration", "check.py"),
-		"--driver", driver, "--comparison-driver", comparison)
+		"--driver", driver, "--comparison-driver", comparison, "--suite", "core")
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		t.Fatalf("native observer evidence: %v\n%s", err, out)

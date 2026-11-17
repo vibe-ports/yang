@@ -140,16 +140,27 @@ func TestNativeCustomSchemaSweep(t *testing.T) {
 		t.Fatalf("custom schema sweep: %v\n%s", err, out)
 	}
 	var summary struct {
-		Passed   bool `json:"custom_schema_sweep"`
-		Names    int  `json:"names"`
-		Kinds    int  `json:"kinds"`
-		Skips    int  `json:"skips"`
-		Valid    int  `json:"valid_pairs"`
-		Rejected int  `json:"rejected_pairs"`
-		Runs     int  `json:"driver_runs"`
+		Passed        bool `json:"custom_schema_sweep"`
+		Names         int  `json:"names"`
+		Kinds         int  `json:"kinds"`
+		Skips         int  `json:"skips"`
+		Valid         int  `json:"valid_pairs"`
+		Rejected      int  `json:"rejected_pairs"`
+		Runs          int  `json:"driver_runs"`
+		Preconditions struct {
+			Contexts int `json:"contexts"`
+			Commands int `json:"commands"`
+			Valid    int `json:"valid_pairs"`
+			Rejected int `json:"rejected_pairs"`
+			Runs     int `json:"driver_runs"`
+			Skips    int `json:"skips"`
+		} `json:"preconditions"`
 	}
 	if err := json.Unmarshal(out, &summary); err != nil || !summary.Passed || summary.Names != 21 || summary.Kinds != 9 || summary.Skips != 0 || summary.Valid != 466 || summary.Rejected != 672 || summary.Runs != 2276 {
 		t.Fatalf("incomplete sweep: %v, %s", err, out)
+	}
+	if p := summary.Preconditions; p.Contexts != 3 || p.Commands != 17 || p.Valid != 756 || p.Rejected != 2774 || p.Runs != 7320 || p.Skips != 0 {
+		t.Fatalf("incomplete input validation sweep: %+v", p)
 	}
 	t.Logf("%s", out)
 }

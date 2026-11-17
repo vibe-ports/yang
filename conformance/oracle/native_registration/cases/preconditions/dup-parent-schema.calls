@@ -1,0 +1,5 @@
+# SPDX-License-Identifier: BSD-3-Clause
+root 1 c
+root 2 other
+term 3 1 p A
+dup 4 3 2 0

@@ -134,8 +134,8 @@ def native_driver_mutant(name, before, after, test):
     source = work / (name + '.c')
     source.write_text(text.replace(before, after))
     binary = work / name
-    result = run(['gcc', '-DNDEBUG', '-O3', '-std=c11', '-Wl,--wrap=free', *shlex.split(config['C_INCLUDES']),
-                  '-I'+str(aux), '-o', str(binary), str(source), str(aux.parent / 'cjson/cJSON.c'),
+    result = run(['gcc', '-DNDEBUG', '-O3', '-std=c11', '-Wl,--wrap=free', '-Dlys_find_child=nr_entry_find_child', *shlex.split(config['C_INCLUDES']),
+                  '-I'+str(aux), '-o', str(binary), str(source), str(aux / 'entry_contracts.c'), str(aux.parent / 'cjson/cJSON.c'),
                   str(aux / '.build/static/libyang.a'), '-lpcre2-8', '-lm', '-lpthread', '-ldl'])
     assert result.returncode == 0, result.stdout
     env = dict(os.environ, YANG_NATIVE_REGISTRATION_DRIVER=str(binary))
@@ -278,13 +278,9 @@ go_mutant('nullable-mandatory-input', completion,
           'filepath.Join("..", "conformance", "oracle", "native_registration", "identity.py")',
           json.dumps(str(path)), '^TestNativeG2MandatoryInputs$')
 
-schema_begin = identity.index("            if fields[0] in ('read-schema', 'read-value') and 'schema' not in last_nodes[row['target_generation']]:")
-schema_end = identity.index("            assert row['rc'] != 0 or winner", schema_begin)
-schema_unchecked = identity[:schema_begin] + "            if not start:\n                assert (row['rc'], winner) == (5, 0), 'null sibling must return ENOTFOUND'\n" + identity[schema_end:]
 for name, changed, test in (
     ('occupied-output-slot', identity.replace("                assert not old or not old['generation'] or not completed_nodes[old['generation']]['alive'], 'occupied output handle'\n", ''), '^TestNativeG2OutputSlotBindings$'),
     ('unrequested-new-binding', identity.replace("        assert bs.keys() - completed_bindings.keys() <= allowed, 'unrequested new binding'\n", ''), '^TestNativeG2UnrequestedBindings$'),
-    ('NULL-start-before-schema', schema_unchecked, '^TestNativeG2NullSchemaPreconditions$'),
 ):
     assert changed != identity, name
     path = work / (name + '.py')
@@ -361,3 +357,66 @@ for name, before, after in (
     go_mutant(name, 'data/native_custom_schema_test.go',
               'filepath.Join("..", "conformance", "oracle", "native_registration", "custom_schema_test.py")',
               json.dumps(str(target)), '^TestNativeCustomSchemaSweep$')
+
+# Schema-less targets must now be refused before the native value lookup.
+native_driver_mutant('NULL-start-before-schema',
+    'return schema && (!start || !start->parent || node_kind(lyd_parent(start),LYD_NODE_INNER));',
+    'return !start || !start->parent || node_kind(lyd_parent(start),LYD_NODE_INNER);',
+    '^TestNativeG2NullSchemaPreconditions$')
+
+# Removing foreign schema dispatch must fail the native linear/table regression.
+path = work / 'foreign-schema-identities.py'
+old = "if schemas[candidate]['context'] == schemas[schema]['context']:"
+assert old in identity
+path.write_text(identity.replace(old, 'if True:'))
+go_mutant('foreign-schema-identities', completion,
+          'filepath.Join("..", "conformance", "oracle", "native_registration", "identity.py")',
+          json.dumps(str(path)), '^TestNativeDriverForeignSchemaReads$')
+
+# Re-entering diagnostic accessors from unrelated context table allocation
+# deadlocks under the native write lock; a live verbose request detects it.
+native_driver_mutant('unobserved-context-table',
+    'if(context_setup)return;', 'if(0)return;',
+    '^TestNativeDriverContextSnapshots$')
+native_driver_mutant('dropped-unrelated-allocation',
+    'if(context_setup)return;', 'return;',
+    '^TestNativeDriverUnrelatedAllocationEvidence$')
+
+# Every named input-validation regression must fail against the interrupted
+# change's exact base, in both native builds and both observation modes.
+base_sha = '1b41fab618c3fb6418acdc5f2df2c6f8683e4424'
+base = run(['git', 'show', base_sha + ':conformance/oracle/native_registration/driver.c'])
+assert base.returncode == 0, base.stdout
+source = work / 'admission-base.c'
+source.write_text(base.stdout)
+paths = []
+for label, definitions, library in (
+    ('instrumented', [], aux / '.build/static/libyang.a'),
+    ('unmodified', ['-DNR_UNMODIFIED'], aux / '.build/libyang-unmodified.a'),
+):
+    binary = work / ('admission-base-' + label)
+    built = run(['gcc', *definitions, '-DNDEBUG', '-O3', '-std=c11', '-Wl,--wrap=free', '-Dlys_find_child=nr_entry_find_child',
+                 *shlex.split(config['C_INCLUDES']), '-I'+str(aux), '-o', str(binary),
+                 str(source), str(aux / 'entry_contracts.c'), str(aux.parent / 'cjson/cJSON.c'), str(library),
+                 '-lpcre2-8', '-lm', '-lpthread', '-ldl'])
+    assert built.returncode == 0, built.stdout
+    paths.append(binary)
+base_env = dict(os.environ, YANG_NATIVE_REGISTRATION_DRIVER=str(paths[0]),
+                YANG_NATIVE_REGISTRATION_COMPARISON_DRIVER=str(paths[1]))
+result = subprocess.run(['go', 'test', '-json', '-tags', 'oracle', './data', '-run',
+                         '^TestNativeDriverPreconditions$', '-count=1'],
+                        cwd=root, env=base_env, text=True, stdout=subprocess.PIPE,
+                        stderr=subprocess.STDOUT, timeout=900, check=False)
+(work / 'admission-base.log').write_text(result.stdout)
+assert result.returncode == 1 and '[build failed]' not in result.stdout, result.stdout[-1000:]
+records = [json.loads(line) for line in result.stdout.splitlines() if line.startswith('{')]
+assert not any('setup exit' in r.get('Output', '') for r in records), 'baseline setup failed before rejection test'
+failed = {r.get('Test') for r in records if r.get('Action') == 'fail'}
+for file in sorted((aux / 'cases/preconditions').glob('*.calls')):
+    for build in ('instrumented', 'unmodified'):
+        for mode in ('--quiet', '--events'):
+            name = f'TestNativeDriverPreconditions/{file.name}/{build}/{mode}'
+            assert name in failed, ('regression did not fail on base', name)
+print(json.dumps({'mutant': 'admission-base', 'sha': base_sha,
+                  'named_cases': len(list((aux / 'cases/preconditions').glob('*.calls'))),
+                  'builds': 2, 'modes': 2, 'all_failed': True}), flush=True)

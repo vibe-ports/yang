@@ -1714,3 +1714,211 @@ the pinned main baseline and the worktree. Non-NULL typed selection, embedded
 any payload lifetime, generic foreign-context equivalence and broader G2
 comparison modeling remain outside part 1; the sweep uses empty any payloads
 and schema-only selection.
+
+## Request admission audit (G2 part 1, PR #352)
+
+This inventory supersedes the earlier input-kind audit where it delegated caller
+preconditions to native diagnostics. It covers every libyang function called
+by `driver.c`, including observer accessors and synthetic table controls. The
+reference is the pinned v5.8.6 tree, specifically the Doxygen contracts beside
+these declarations and their implementations (inspected with `scripts/lyfn`).
+`TD` means `src/tree_data.h` / `src/tree_data.c`; `NEW` is
+`src/tree_data_new.c`; `COMMON` is `src/tree_data_common.c`; `HASH` is
+`src/tree_data_hash.c`; `HT` means `src/hash_table.h` / `src/hash_table.c`;
+`SC` means `src/tree_schema.h` / `src/tree_schema.c`. These are paths in
+`.cache/libyang`, at commit `47351e59e2965e350f9d4098f15ecbe6b3850f6f`.
+
+Every script handle is resolved to a live generation before dereference. Every
+output slot must be empty or dead before construction. New guards run before
+output preparation, allocator reuse, native calls, or synthetic link writes;
+refused requests exit 4 with exactly their completed prefix evidence. Invalid
+YANG/JSON/XML text, unknown constructor names, malformed typed values and list
+predicate text remain native parsing/validation results: the caller supplies a
+valid textual representation, not a promise that the content satisfies a type.
+The documented `lyd_find_sibling_val` NULL-schema precondition is now checked
+before both its NULL-start and non-NULL-start paths.
+
+The comparison header explicitly supports different contexts. The source's
+`lyd_compare_schema_parents_equal` nevertheless dereferences both schemas when
+both foreign nodes are opaque. This driver conservatively admits foreign
+comparisons only for schema-backed trees. Same-context opaque/schema operands,
+NULL comparisons and supported foreign schema operands remain admitted. This is
+input validation in a test driver, not a change to the native comparison API.
+Nonempty any payload comparison remains outside part 1 and is refused before
+entry, in both operand orders, including indirect instance lookup. Empty any
+nodes remain supported. The source's asymmetric any-value pointer test is not
+used as an input validator.
+
+| Function | Caller requirement (docs and source) | Driver check / fixed argument; source |
+| --- | --- | --- |
+| `ly_ctx_new` | Non-NULL output; search directory/flags valid | Address of context slot, `ly_yang_module_dir()`, fixed `LY_CTX_NO_YANGLIBRARY`; `src/context.c` |
+| `ly_yang_module_dir` | No arguments | Fixed installed module directory; `src/parser_common.c` |
+| `lys_parse_mem` | Live context, NUL-terminated schema text, supported format, module output | Retained context; bounded text or fixed module; `LYS_IN_YANG`, output address; `src/tree_schema.c` |
+| `ly_log_options` | Supported log option bits | Fixed `LY_LOSTORE | LY_LOLOG`; `src/log.c` |
+| `ly_set_log_clb` | Callback has native signature and lives while installed | Static `logger`; `src/log.c` |
+| `ly_err_first` | Live context for the calling thread; cannot re-enter while the context-data write lock is held | Retained contexts only; unrelated table-allocation hooks during context setup return before snapshot accessors; `src/log.c`, `src/ly_common.c` |
+| `ly_err_clean` | Live mutable context; error item belongs to it or NULL | Same registry, fixed NULL (all errors); `src/log.c` |
+| `ly_ctx_get_module_iter` | Live context, initialized non-NULL index | Current retained context; local `uint32_t index=0`; `src/context.c` |
+| `lyd_new_inner` | Parent or module, name; output when parent is NULL | Bootstrap checks parse success; `root` refuses a NULL current module after failed schema loading, before output/reuse; bounded name and output address; TD/NEW |
+| `lyd_new_inner` | Inner schema dispatch (container/RPC/action/notification) | Native fixed-argument lookup reports unknown/wrong-kind names; no schema-sized input; NEW |
+| `lyd_new_term` | Parent/module contexts equal; parent has inner layout | `require_kind` before reading parent's module; module always taken from parent or current module; NEW `_lyd_new_term` |
+| `lyd_new_term` | Value is textual JSON or canonical; STORE_ONLY and CANON cannot combine | Bounded string, native textual format dispatch; reject both bits before output/reuse; NEW `lyd_new_val_get_format`, `_lyd_new_term` |
+| `lyd_new_term` | Parent or module, name, output for top-level construction | Non-NULL current module for a top-level request (checked after failed schema loading), or retained parent module; fixed/bounded name and output address; native terminal lookup/type parsing; NEW |
+| `lyd_new_list` | Parent/module contexts equal and inner parent | `require_kind`, module from parent; NEW |
+| `lyd_new_list` | Exactly one value argument per schema key; textual value format | Existing compiled lookup admits 0/1 keys, passes exactly that count, options 0; NEW `_lyd_new_list_node` / key va_arg loop |
+| `lyd_new_list` | List schema exists; parent or module, name and output | Non-NULL current module or retained parent module before schema lookup; existing list lookup/kind check before output; NEW |
+| `lyd_new_opaq` | Parent inner or opaque, or context; output if no parent | `require_parent`; context from parent or retained current context; output address; NEW |
+| `lyd_new_opaq` | Parent/context equal; JSON name/module/value strings; prefix absent or equals module | Context derived from parent, bounded text, fixed module `m`, NULL prefix; NEW |
+| `lyd_new_opaq2` | Parent inner or opaque, or context; output if no parent | `require_parent`; context derived from parent/current context, output address; NEW |
+| `lyd_new_opaq2` | Parent/context equal; XML namespace/value text | Fixed namespace, NULL prefix, deliberately malformed UTF-8 text (native result), no binary/raw union; NEW |
+| `lyd_change_term` | Non-NULL schema-backed leaf or leaf-list | `require_kind(..., LYD_NODE_TERM)`; TD/NEW |
+| `lyd_change_term` | NUL-terminated JSON textual value or NULL | Bounded value token; native type validation; NEW |
+| `lyd_parse_data_mem` | Live context, NUL-terminated input, supported format/options, output | Retained context, bounded JSON/XML remainder, fixed parse flags, output slot checked; `src/parser_data.c` |
+| `lyd_dup_single` | Live source; parent inner/opaque or NULL; same top context | Live handles, `require_parent`, `duplicate_inputs` checks parent/source contexts; TD |
+| `lyd_dup_single` | Without WITH_PARENTS, supplied parent matches source schema's data parent | `duplicate_inputs` compares compiled data-parent identity (opaque insertion supported); TD `lyd_dup` / `lyd_dup_r` |
+| `lyd_dup_single` | WITH_PARENTS supplied parent matches an ancestor, unless source is top-level | Bounded ancestor walk and compiled identities, matching native top-level parent short circuit; TD `lyd_dup_get_local_parent` |
+| `lyd_dup_single_to_ctx` | Source/destination live; destination parent belongs to destination context | Retained current context; live source/parent; `duplicate_inputs`; TD |
+| `lyd_dup_single_to_ctx` | Mapped schemas have compatible node layouts and list key names/order/count | `duplicate_schema` checks every mapped ancestor and copied subtree; same nodetype and keyed/keyless shape; TD `lyd_find_schema_ctx`, `lyd_dup_r` |
+| `lyd_dup_single_to_ctx` | Supplied parent matches mapped direct parent or WITH_PARENTS ancestor | Same compiled checks after destination lookup; missing destination schema remains native ENOTFOUND; TD |
+| `lyd_dup_single_to_ctx` | Foreign opaque ancestor matching cannot call schema-parent comparator with NULL schemas | Reject both-opaque foreign ancestor pair before call; TD `lyd_dup_get_local_parent` |
+| `lyd_unlink_tree` | Cannot unlink an attached list key | `unlink_inputs`, before native mutation; TD `lyd_unlink_check` |
+| `lyd_unlink_siblings` | Cannot unlink any attached list key in the suffix | Bounded complete suffix check before first mutation; TD `lyd_unlink_check` |
+| `lyd_insert_child` | Non-NULL inner/opaque parent, live node | `require_parent` / `require_handle`; TD |
+| `lyd_insert_child` | Matching contexts, schema parent, and legal unlink | `attachment_inputs` checks every node native bulk insertion would move; compiled parent identity and attached-key refusal; TD `lyd_insert_check_schema`, `lyd_move_nodes` |
+| `lyd_insert_child` | Insertion preserves an acyclic tree | Bounded destination ancestry walk for each moved sibling; TD link insertion assumes a tree |
+| `lyd_insert_before` | Distinct non-NULL nodes, same context | `before_inputs`, including alias equality; TD |
+| `lyd_insert_before` | Inserted schema node is user-ordered list/leaf-list, same schema as schema-backed sibling | `before_inputs` kind/flag/identity checks; opaque nodes remain allowed by source; TD |
+| `lyd_insert_before` | Destination cannot be below inserted node | `acyclic_destination` before unlink/relink; TD |
+| `lyd_find_sibling_first` | Non-NULL target; siblings may be NULL | Mandatory live target; NULL start admitted; TD |
+| `lyd_find_sibling_first` | Every comparison reached has supported context/schema/any representation | `instance_inputs` checks actual first-sibling frontier and retained live occurrences in its native table, plus target; `instance`, `read-instance`; TD |
+| `lyd_find_sibling_first` | NULL start returns before comparisons | Guard returns immediately for NULL start; also fixed NULL start in `null-reads`; TD |
+| `lyd_find_sibling_val` | Non-NULL data schema (not choice/case) | `schema_read_inputs` on read-schema/value, schema-backed targets on schema/null-reads; all data handles have data schema types; TD |
+| `lyd_find_sibling_val` | Textual leaf-list value or list predicates, or NULL for schema-only lookup | Bounded string or NULL, length 0 requests strlen, native JSON type/predicate parsing; TD |
+| `lyd_find_sibling_val` | Native linear schema search assumes inner parent layout | `schema_read_inputs` refuses a non-NULL start under an opaque parent; schema command derives start from checked inner owner; TD/COMMON |
+| `lyd_find_sibling_schema` | Non-NULL schema; NULL siblings allowed | `null-reads` supplies checked target schema and NULL start; internal duplication guards preserve schema layout; COMMON |
+| `lyd_find_sibling_opaq_next` | Non-NULL name; valid opaque-at-end sibling list | Fixed/bounded NUL-terminated name; `opaque_read_inputs` follows native start dispatch and checks every node visited before a match is opaque, including synthetic mixed runs; TD |
+| `lyd_compare_single` | NULL operands short circuit | Explicit nullable handles; `comparison_inputs` preserves this short circuit; TD |
+| `lyd_compare_single` | Foreign comparison path requires schemas where it dereferences parent schemas | `comparison_inputs` rejects foreign opaque trees, including descendants; TD `lyd_compare_single_schema`, `lyd_compare_schema_parents_equal` |
+| `lyd_compare_single` | Any payload representation compatible before string/child access | Part-1 admission requires empty any nodes in compared trees, both directions; TD `lyd_compare_single_data` |
+| `lyd_insert_hash` | Live node with valid parent links/layout; opaque/root/any parent may short circuit | Live handle; constructors/link guards and frontier admission preserve layouts; HASH |
+| `lyd_unlink_hash` | Live node with valid parent links; table records remain pointer-sized | Same invariant, and no handles into embedded any payloads; HASH |
+| `lyd_free_tree` | No attached list key | `unlink_inputs` also on free without reuse; `src/tree_data_free.c` |
+| `lyd_free_tree` | Optional allocator target is actually in freed subtree and supported layout | `free_reuse_input` bounded target-ancestry check and inner/terminal kind; `src/tree_data_free.c` |
+| `lyd_free_all` | Live tree with acyclic parents and sibling component | Live handles and link admission; native walks to root; `src/tree_data_free.c` |
+| `lyd_free_all` | Optional allocator target belongs to freed root/sibling component | `free_reuse_input(..., all)` compares first root siblings before arming reuse; `src/tree_data_free.c` |
+| `lyd_validate_all` | Non-NULL tree pointer; data and supplied context equal | Live handle, address of slot; current-context equality before validation/reuse; `src/parser_data.h`, `src/validation.c` |
+| `lyd_validate_all` | Standard data tree, fixed supported validation flags | Native parser/constructors establish data layout; fixed PRESENT; native validates content; `src/validation.c` |
+| `lyd_print_mem` | Valid output address, live tree and supported data format/flags | Local NULL output buffer/address, live handle, fixed JSON/SHRINK; `src/printer_data.c` |
+| `lyd_child` | Live node or NULL; kind controls child layout | Native accessor after handle check; arbitrary layout accesses use `node_kind`/`require_parent`; TD inline accessor |
+| `lyd_parent` | Live node or NULL | Checked handles or bounded walks of live native storage; TD inline accessor |
+| `lyd_first_sibling` | Live node/NULL with consistent prev/next links | Live handles, link admission, existing retirement boundaries before dangling traversal; TD |
+| `lyd_get_value` | Live terminal/opaque node; native value storage initialized | Observer calls only after terminal kind and native initialization hooks; TD inline accessor |
+| `lysc_is_key` | Schema may be NULL, otherwise live compiled schema | Retained contexts and schema-backed native allocations; SC inline accessor |
+| `lysc_data_parent` | Schema may be NULL, otherwise live compiled schema | Retained schemas in duplication and attachment admission; SC inline accessor |
+| `lysc_node_child` | Live compiled schema of a supported kind | Looked-up list/mapped list in key guards; `src/tree_schema_common.c` |
+| `lys_find_child` | Context/parent/module, name, exactly one of module or module-name | Retained context/schema; list uses module only, duplication module-name only; bounded strings; SC |
+| `lyht_new` | Power-of-two capacity (source also accepts 0), nonzero record size, callback, resize 0/1 | Capacity/mode rejected before freeing old table; fixed pointer record size and captured native callback; HT |
+| `lyht_free` | Live table; optional free callback compatible with records | Existing generic table, fixed NULL callback; HT |
+| `lyht_insert` | Live table, pointer to correctly sized record | Generic/children tables carry exactly one node pointer; live payload and non-NULL schema checks on insert/record/record-as; HT/HASH callback |
+| `lyht_insert_no_check` | Same record representation even when duplicate checking is disabled | Same admission as checked insertion; synthetic retained schema/context mismatches remain intentional; HT |
+| `lyht_remove` | Live table, pointer-sized record and matching hash token | Mandatory generic table; live schema payload (or fixed native duplicate); bounded unsigned hash; HT |
+| `lyht_find_next` | Live table, previous pointer record and hash, compatible callback operands | Mandatory generic table/live schema handle; `next_inputs` requires a previous pointer/hash occurrence and checks retained comparison operands before call; finite 1024-step control; HT/HASH |
+| `lyht_get_rec` | Record storage, actual record size, in-range slot | Existing bounded snapshot/chain walks check slot bounds; HT internal accessor |
+| `lyht_hash_multi` | Valid byte span/length, final NULL terminator call | Native schema name/module strlen spans, initial 0 and final NULL/0; HT |
+
+`record` and `record-as` deliberately allow schema-backed nodes from a different
+context or parent: modification callbacks compare pointers only. Their later
+lookup comparisons are checked at read admission. Opaque record payloads are
+refused even for no-check insertion, because the captured callback dereferences
+its search operand schema. Hash-source handles in `record-as` may be opaque;
+only their numeric hash is used. Generic `insert`/`remove` and `find-next-loop`
+receive the same schema protection. `frontier` additionally checks four distinct
+schema nodes, common context, no cycles or detached sibling suffixes, and that
+no existing child is abandoned. Its deliberately synthetic schema placement
+remains outside public data-tree compatibility claims.
+
+The new walks allocate nothing, have the existing 4096-node traversal limit,
+and scan at most the existing LIMIT occurrence history. Production Go paths,
+journals, budgets, native algorithms and exported API are unchanged. Ordinary
+counted work is checked against main with the unchanged
+`TestNativeOrdinaryWorkBaseline` (reverse insertion and duplicate-heavy input).
+
+`TestNativeDriverPreconditions` has a named live request for every added
+requirement in `cases/preconditions/`, including the exact foreign-opaque
+example, reversed operands, indirect reads, record payloads, destination
+layouts, link cycles, list-key restrictions, format options and allocator
+ownership. Each compares prefix and rejected evidence in both modes/builds.
+`TestNativeDriverForeignSchemaReads` covers the supported foreign-schema linear
+and table paths in both directions. The evidence validator now follows native
+cross-context schema matching on those paths, retaining full same-context
+schema identity checks. `custom_schema_test.py` adds three contexts and an
+independent expected-admission matrix for all multi-handle commands, plus
+optional free/reuse operands and positive controls. Every accepted trace is
+fully validated and compared; every refusal must equal its setup trace.
+
+Non-NULL typed comparison modeling, embedded any payload ownership, and general
+G2 normalization beyond these request admission paths remain excluded. No
+manifest fixtures or goldens are added: these are named live-oracle requests.
+
+The three-context verbose sweep also exposed an observer precondition: native
+`ly_ctx_data_add` can allocate a private hash table while holding
+`ly_ctx_data_rwlock` for writing. Taking a snapshot there calls `ly_err_first`,
+which tries to acquire that lock again. `nr_event` defers unrelated allocation snapshots while `context` /
+`context-keyless` construct and parse a new context; these callbacks still clear
+reused retirement addresses. Allocation snapshots during data operations remain
+visible, including unrelated native tables. All data-table events, diagnostics
+and completed command evidence remain checked. `TestNativeDriverContextSnapshots` runs the valid
+three-context script in both builds/modes; the named `unobserved-context-table`
+mutant restores the re-entry and must fail this test. Native library code is
+unchanged.
+
+The deterministic admission matrix covers 3 contexts and 17 commands: 756
+accepted and 2,774 refused cases (7,320 native process runs including setup
+prefixes). The Go sweep regression pins those counts and zero skips. All 62
+named refusal regressions fail on `1b41fab618c3fb6418acdc5f2df2c6f8683e4424`
+in both builds and modes with the same entry probe (248 rejecting subtests), with successful setup
+prefixes; `g2_mutants.py` repeats this sensitivity check.
+
+Main `a10a82a567a1fc79cb8c01e3479522be4afef932` (verified from the remote) and
+this worktree both passed `TestNativeOrdinaryWorkBaseline`. Each entry is
+`(visits, charges, allocations, bytes)`; all twelve tuples are identical:
+
+| Children | Without journal, main = head | With journal, main = head |
+| --- | --- | --- |
+| 0 | (1, 0, 16, 2248) | (1, 11, 36, 12384) |
+| 1 | (8, 17, 37, 4152) | (8, 42, 58, 18256) |
+| 2 | (38, 155, 65, 6392) | (38, 187, 86, 20496) |
+| 3 | (53, 208, 77, 7504) | (53, 247, 98, 21624) |
+| 64 | (4504, 8099, 1147, 116176) | (4504, 8649, 1186, 345128) |
+| 256 | (26608, 42844, 4207, 444112) | (26608, 44994, 4256, 1425512) |
+
+Failed inline schema parsing clears `mod` (`lys_parse` initializes its output to
+NULL). `root`, top-level `term`, and top-level `list` now refuse a missing current
+module before any native call or output preparation. Named `*-missing-module`
+requests pin this error path; `TestNativeDriverFailedContextParent` proves that
+valid construction through a retained parent module still works and preserves
+the failed schema load's diagnostics.
+
+`entry_contracts.c` provides a driver-call entry probe for `lys_find_child` in both
+builds. It stops with invariant-failure status 101 if invalid arguments reach
+that API; normal request admission returns 4 first. This independently proves
+that the missing-module `list` request never enters native code: the former
+lookup itself returned NULL, so its subsequent exit 4 otherwise hid the bad
+call. The base-source sensitivity builds link the same probe and require all
+62 named regressions to fail; compilation failure is not accepted as evidence.
+The probe stores no state, allocates nothing, and forwards valid inputs and
+results unchanged. BUILDINFO includes its digest.
+
+`TestNativeDriverUnrelatedAllocationEvidence` pins all three native allocation
+callbacks in `collision-build` (the unmodified library has no internal hooks).
+The `dropped-unrelated-allocation` mutant restores the overly broad omission and
+must fail this regression. Context setup is the only enabled path that creates
+contexts; bootstrap construction runs before observation is enabled. The
+instrumentation and pinned library algorithms are unchanged.
+
+The Go suite runs the full custom-schema/admission sweep once, through
+`TestNativeCustomSchemaSweep`. `TestNativeObserverEvidence` selects
+`check.py --suite core` for the independent core fixtures and their evidence
+mutants, avoiding a duplicate 7,320-process admission sweep in the same test
+invocation. No Go test is skipped. Standalone `check.py` defaults to `--suite all`
+and still executes both the matrix and every core fixture afresh.

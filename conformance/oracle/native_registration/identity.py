@@ -349,7 +349,20 @@ def validate(script, rows, refs=None, *, project=True):
                     schema = last_nodes[target]['schema_identity']
                     def matches(g):
                         n = last_nodes[g]
-                        return n.get('schema_identity') == schema
+                        candidate = n.get('schema_identity')
+                        if not candidate: return False
+                        if schemas[candidate]['context'] == schemas[schema]['context']:
+                            return candidate == schema
+                        # Native table callback compares complete schema ancestry
+                        # across contexts; the linear path compares names only.
+                        left, right = candidate, schema
+                        while left and right:
+                            a, b = schemas[left], schemas[right]
+                            if (a['module'], a['name']) != (b['module'], b['name']): return False
+                            if not table['present']: return True
+                            if a['nodetype'] != b['nodetype']: return False
+                            left, right = a['parent'], b['parent']
+                        return left == right
                     if table['present']:
                         candidates = [x['generation'] for x in table['chains'] if x['hash'] == row['schema_hash'] and matches(x['generation'])]
                         assert not winner or winner in candidates, 'winner outside queried schema run'

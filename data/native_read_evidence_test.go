@@ -283,21 +283,9 @@ func TestNativeG2NullSchemaPreconditions(t *testing.T) {
 	for _, command := range []string{"read-schema", "read-value"} {
 		for _, start := range []string{"0", "1"} {
 			script := "opaque 1 0 u A\n" + command + " " + start + " 1 0\n"
-			valid := nativeDriver(t, script)
-			nativeG2Unmodified(t, script, valid)
-			for _, row := range valid {
-				if strings.HasPrefix(row.Event, "read.selection.") && row.RC != 3 { // LY_EINVAL precedes NULL-start handling.
-					t.Fatalf("native schema precondition returned %v", row.RC)
-				}
-			}
-			mutant := nativeG2CloneRows(t, valid, func(r map[string]any) {
-				if r["operation"] == float64(2) {
-					r["rc"] = float64(nativeNotFound)
-				}
+			t.Run(command+"/"+start, func(t *testing.T) {
+				nativePreconditionRequest(t, script)
 			})
-			if err := nativeG2CompareEvidence(script, mutant, mutant); err == nil {
-				t.Fatal("accepted ENOTFOUND instead of the schema precondition error")
-			}
 		}
 	}
 }

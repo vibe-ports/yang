@@ -1,0 +1,4 @@
+# SPDX-License-Identifier: BSD-3-Clause
+new 8 0
+opaque 1 0 u A
+find-next-loop 1 7 1
