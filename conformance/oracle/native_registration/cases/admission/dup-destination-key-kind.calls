@@ -1,0 +1,7 @@
+# SPDX-License-Identifier: BSD-3-Clause
+context module m {yang-version 1.1;namespace urn:m;prefix m;container c {list p {key k;leaf k {type string;}}}}
+parse 1 {"m:c":{"p":[{"k":"A"}]}}
+child 2 1 0
+context module m {yang-version 1.1;namespace urn:m;prefix m;container d {list p {config false;leaf k {type string;}}}}
+root 3 d
+dup-to-context 4 2 3 0

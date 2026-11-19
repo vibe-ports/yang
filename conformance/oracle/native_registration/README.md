@@ -1776,10 +1776,12 @@ used as an input validator.
 | `lyd_parse_data_mem` | Live context, NUL-terminated input, supported format/options, output | Retained context, bounded JSON/XML remainder, fixed parse flags, output slot checked; `src/parser_data.c` |
 | `lyd_dup_single` | Live source; parent inner/opaque or NULL; same top context | Live handles, `require_parent`, `duplicate_inputs` checks parent/source contexts; TD |
 | `lyd_dup_single` | Without WITH_PARENTS, supplied parent matches source schema's data parent | `duplicate_inputs` compares compiled data-parent identity (opaque insertion supported); TD `lyd_dup` / `lyd_dup_r` |
-| `lyd_dup_single` | WITH_PARENTS supplied parent matches an ancestor, unless source is top-level | Bounded ancestor walk and compiled identities, matching native top-level parent short circuit; TD `lyd_dup_get_local_parent` |
+| `lyd_dup_single` | WITH_PARENTS supplied parent matches an ancestor, unless source is top-level; copied parents link through compatible data ancestry | Bounded ancestor walk, complete compiled matching, and each copied-to-copied or copied-to-supplied parent link, matching native top-level parent short circuit; TD `lyd_dup_get_local_parent` |
 | `lyd_dup_single_to_ctx` | Source/destination live; destination parent belongs to destination context | Retained current context; live source/parent; `duplicate_inputs`; TD |
-| `lyd_dup_single_to_ctx` | Mapped schemas have compatible node layouts and list key names/order/count | `duplicate_schema` checks every mapped ancestor and copied subtree; same nodetype and keyed/keyless shape; TD `lyd_find_schema_ctx`, `lyd_dup_r` |
-| `lyd_dup_single_to_ctx` | Supplied parent matches mapped direct parent or WITH_PARENTS ancestor | Same compiled checks after destination lookup; missing destination schema remains native ENOTFOUND; TD |
+| `lyd_dup_single_to_ctx` | Every mapped schema exists and has the source node kind and list key names/order/count | `duplicate_schema` follows `lyd_find_schema_ctx` relative to the actual supplied compiled parent; otherwise it resolves the full data ancestry. `duplicate_tree` carries each mapped parent through recursive children and shallow list keys; TD |
+| `lyd_dup_single_to_ctx` | Destination-relative child schema or WITH_PARENTS ancestor is compatible | Direct lookup uses the supplied parent, even when the original source path is absent or incompatible. WITH_PARENTS follows native complete compiled-ancestor matching, then checks every copied ancestor and the mapped local parent. Missing/wrong-kind mappings exit 4 before entry; TD |
+| `lyd_dup_single`, `lyd_dup_single_to_ctx` | Each copied list supplies its compiled keys in the initial data positions | `duplicate_tree` checks only the required key prefix before shallow/recursive copies and ancestor creation, sharing the 4096-visit cap; TD `lyd_dup_r`, HASH `lyd_hash` |
+| `lyd_dup_single`, `lyd_dup_single_to_ctx` | A source key with a local parent returns an existing key instead of entering recursive duplication | `duplicate_key` requires a list parent, a mapped key of the same kind and complete compiled ancestry, and the key in the existing destination prefix or the original prefix copied into a new list ancestor; TD `lyd_dup`, `lyd_find_sibling_schema` |
 | `lyd_dup_single_to_ctx` | Foreign opaque ancestor matching cannot call schema-parent comparator with NULL schemas | Reject both-opaque foreign ancestor pair before call; TD `lyd_dup_get_local_parent` |
 | `lyd_unlink_tree` | Cannot unlink an attached list key | `unlink_inputs`, before native mutation; TD `lyd_unlink_check` |
 | `lyd_unlink_siblings` | Cannot unlink any attached list key in the suffix | Bounded complete suffix check before first mutation; TD `lyd_unlink_check` |
@@ -1788,7 +1790,7 @@ used as an input validator.
 | `lyd_insert_child` | Insertion preserves an acyclic tree | Bounded destination ancestry walk for each moved sibling; TD link insertion assumes a tree |
 | `lyd_insert_before` | Distinct non-NULL nodes, same context | `before_inputs`, including alias equality; TD |
 | `lyd_insert_before` | Inserted schema node is user-ordered list/leaf-list, same schema as schema-backed sibling | `before_inputs` kind/flag/identity checks; opaque nodes remain allowed by source; TD |
-| `lyd_insert_before` | Destination cannot be below inserted node | `acyclic_destination` before unlink/relink; TD |
+| `lyd_insert_before` | Destination cannot be below inserted node; actual compiled parent has the inserted node's data schema ancestry | `acyclic_destination` and `before_inputs` before unlink/relink, including an opaque anchor under a compiled parent; TD |
 | `lyd_find_sibling_first` | Non-NULL target; siblings may be NULL | Mandatory live target; NULL start admitted; TD |
 | `lyd_find_sibling_first` | Every comparison reached has supported context/schema/any representation | `instance_inputs` checks actual first-sibling frontier and retained live occurrences in its native table, plus target; `instance`, `read-instance`; TD |
 | `lyd_find_sibling_first` | NULL start returns before comparisons | Guard returns immediately for NULL start; also fixed NULL start in `null-reads`; TD |
@@ -1832,8 +1834,8 @@ lookup comparisons are checked at read admission. Opaque record payloads are
 refused even for no-check insertion, because the captured callback dereferences
 its search operand schema. Hash-source handles in `record-as` may be opaque;
 only their numeric hash is used. Generic `insert`/`remove` and `find-next-loop`
-receive the same schema protection. `frontier` additionally checks four distinct
-schema nodes, common context, no cycles or detached sibling suffixes, and that
+receive the same schema protection. `frontier` additionally checks four distinct resolved
+schema nodes (different handles may alias one allocation), common context, no cycles or detached sibling suffixes, and that
 no existing child is abandoned. Its deliberately synthetic schema placement
 remains outside public data-tree compatibility claims.
 
@@ -1922,3 +1924,59 @@ The Go suite runs the full custom-schema/admission sweep once, through
 mutants, avoiding a duplicate 7,320-process admission sweep in the same test
 invocation. No Go test is skipped. Standalone `check.py` defaults to `--suite all`
 and still executes both the matrix and every core fixture afresh.
+
+
+## PR #352: destination and alias input validation
+
+This follow-up changes only input validation in the test driver. All guards run
+before output preparation, reuse, native entry or synthetic link writes. A
+rejection exits 4 and preserves exactly the completed prefix evidence.
+
+| Command family | Resolved-node and destination requirements |
+| --- | --- |
+| `frontier parent a b c d` | The four children resolve to pairwise distinct allocations and differ from the owner. Context, cycle, complete prior-child coverage and detached-suffix guards still apply. Handle-number distinctness is insufficient. Its synthetic schema placement is intentional. |
+| `attach parent node` | Resolved nodes differ; every moved sibling has matching context and the actual compiled data parent, and cannot contain the destination. Existing checks already use node pointers. |
+| `before anchor node` | Resolved nodes differ. In addition to user ordering/context/schema checks, the actual destination parent must match the inserted schema ancestry even when the anchor is opaque. |
+| `dup`, `dup-to-context` | Output slots are empty/dead. Source and parent may alias only where native duplication and schema ancestry permit it; there is no blanket distinctness requirement. Every schema native will copy must exist with the same kind/key layout in the destination. Direct copies resolve relative to the supplied parent; recursive copies and shallow keys resolve relative to their mapped parent. WITH_PARENTS resolves copied ancestors, validates each new parent link, and matches the supplied ancestor using complete compiled ancestry, including choice/case. A top-level source key follows native existing-key dispatch: the mapped node must be a key in the matching list ancestry, and the existing or copied parent must supply its key prefix. |
+| `record`, `record-as`, generic `insert`/`remove`, allocator controls | Pointer-only records may repeat a node, including a hash-source alias. Generic insertion duplicates the fixed bootstrap terminal into no parent and does not map a request-supplied destination. Optional reuse operands identify historical storage and may alias the allocation being released. |
+| Reads and `equal` | Aliases are valid subject to the existing layout, context and representation guards. Output-producing constructors and `child` require empty/dead output slots rather than different input handle numbers. |
+
+`TestNativeDriverAdmission` runs twenty-one named live requests in `cases/admission/`
+in both builds and both output modes. Each fails on the preserved fa9d6c2
+binaries and requires exit 4 with unchanged prefix evidence on this patch.
+The cases include both review examples, reversed source/destination kinds,
+missing direct/root/ancestor schemas, recursive child and shallow list-key
+mapping, relocation beside an opaque anchor, and existing-key duplication.
+The key cases distinguish wrong node kind, a non-key leaf, incompatible compiled
+ancestry, an opaque ancestor, and absent key prefixes in existing or copied
+parents. Whole-list shallow/recursive copies and non-key copies with list
+ancestors receive the same required-key-prefix validation. Copied ancestors
+and the final matched parent must also have compatible compiled data ancestry;
+the synthetic frontier controls exercise both links before native insertion. `custom/existing-key.calls` covers same-context and foreign-context
+existing-key returns, matched and copied ancestors, both comparison orders,
+and table and linear lookup paths. Go assertions pin the returned aliases,
+new copied-ancestor key, both equality orders, and actual table/index presence. `custom/ignored-descendants.calls` pins
+nonrecursive container/opaque copies with real ignored key children and a
+destination missing those children's original schema paths. Each copy must
+allocate exactly one empty data node; its four public prints must succeed.
+
+The deterministic custom-schema sweep also covers every multi-input command
+with aliased live handles. Its destination matrix crosses nine source kinds
+with nine destination kinds plus a missing child, using absent original paths,
+misleading original paths and deeper actual destination parents, plus matching
+WITH_PARENTS destinations. Output-slot and historical reuse aliases are also
+covered. Same-context
+attach, before and both duplication modes check incompatible destination
+ancestry. Admitted requests pass the full evidence validator and cross-build
+comparison; rejected requests preserve the prefix; unexpected exit codes fail.
+
+Native functions whose admission changes are `lyd_dup_single`,
+`lyd_dup_single_to_ctx` (through `lyd_dup`, `lyd_dup_get_local_parent`,
+`lyd_find_schema_ctx`, `lyd_dup_r`) and `lyd_insert_before`, plus synthetic
+`frontier` link assignment. Native algorithms, production Go mutations,
+journals, caches, work accounting and exported API remain unchanged. Admission
+walks allocate nothing and share the existing 4096-visit cap. Key admission
+walks only the key prefix, never the list payload or retained occurrence history. Embedded any
+payload lifetimes, typed non-NULL comparison modeling and general G2 extensions
+remain outside part 1. Live requests replace manifest fixtures here; no golden
+files are created or edited.

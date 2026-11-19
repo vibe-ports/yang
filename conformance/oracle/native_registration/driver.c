@@ -705,21 +705,25 @@ static int attachment_inputs(const struct lyd_node *parent, const struct lyd_nod
     return 1;
 }
 
-/* Cross-context schema lookup in lyd_dup_r checks names, but not the layout
- * subsequently written through the source-kind allocation. Missing schemas
- * still reach native ENOTFOUND; existing schemas must have matching layouts. */
+/* Follow lyd_find_schema_ctx's destination-relative lookup. With a compiled
+ * parent and a nested source, native starts at that supplied parent, not at
+ * the source's original root. Otherwise it resolves the complete data ancestry.
+ * Every visited mapping must exist and preserve the source allocation layout. */
 static int duplicate_schema(const struct lysc_node *source, const struct ly_ctx *destination,
-        const struct lysc_node **mapped, unsigned *visits)
+        const struct lysc_node *parent, const struct lysc_node **mapped, unsigned *visits)
 {
     *mapped=NULL;
     if(!source)return 1;
     if(++*visits>4096)return 0;
-    const struct lysc_node *parent=NULL;
-    if(!duplicate_schema(lysc_data_parent(source),destination,&parent,visits))return 0;
-    if(lysc_data_parent(source) && !parent)return 1;
-    *mapped=lys_find_child(destination,parent,NULL,source->module->name,0,source->name,0,0);
-    if(!*mapped)return 1;
-    if((*mapped)->nodetype!=source->nodetype)return 0;
+    if(source->module->ctx==destination) {
+        *mapped=source;
+    } else {
+        const struct lysc_node *source_parent=lysc_data_parent(source);
+        if(!parent && source_parent && !duplicate_schema(source_parent,destination,NULL,&parent,visits))return 0;
+        /* A top-level source ignores the supplied parent during native lookup. */
+        *mapped=lys_find_child(destination,source_parent?parent:NULL,NULL,source->module->name,0,source->name,0,0);
+        if(!*mapped || (*mapped)->nodetype!=source->nodetype)return 0;
+    }
     if(source->nodetype==LYS_LIST) {
         const struct lysc_node *a=lysc_node_child(source), *b=lysc_node_child(*mapped);
         if((source->flags&LYS_KEYLESS)!=((*mapped)->flags&LYS_KEYLESS))return 0;
@@ -732,17 +736,58 @@ static int duplicate_schema(const struct lysc_node *source, const struct ly_ctx 
 }
 
 static int duplicate_tree(const struct lyd_node *node, const struct ly_ctx *destination,
-        uint32_t options, unsigned *visits)
+        const struct lysc_node *parent, uint32_t options, const struct lysc_node **mapped, unsigned *visits)
 {
-    if(++*visits>4096)return 0;
-    if(node->schema && LYD_CTX(node)!=destination) {
-        const struct lysc_node *mapped=NULL;
-        if(!duplicate_schema(node->schema,destination,&mapped,visits))return 0;
+    if(++*visits>4096 || !duplicate_schema(node->schema,destination,parent,mapped,visits))return 0;
+    if(parent && *mapped && lysc_data_parent(*mapped)!=parent)return 0;
+    /* Native hashing and shallow list copies assume the compiled keys occupy
+     * the initial data positions. Validate just those positions for every list
+     * copied, including recursive children and WITH_PARENTS ancestors. */
+    if(node_kind(node,LYS_LIST)) {
+        const struct lyd_node *key=lyd_child(node);
+        for(const struct lysc_node *schema_key=lysc_node_child(node->schema);
+                schema_key && lysc_is_key(schema_key);schema_key=schema_key->next) {
+            if(++*visits>4096 || !key || key->schema!=schema_key || lyd_parent(key)!=node)return 0;
+            key=key->next;
+        }
     }
-    if(options&LYD_DUP_RECURSIVE)
-        for(const struct lyd_node *child=lyd_child(node);child;child=child->next)
-            if(!duplicate_tree(child,destination,options,visits))return 0;
+    /* Native copies list keys even without RECURSIVE. Child lookups start at
+     * the newly mapped parent, including when the original ancestry is absent. */
+    for(const struct lyd_node *child=lyd_child(node);child;child=child->next) {
+        if(!(options&LYD_DUP_RECURSIVE) && (!node_kind(node,LYS_LIST) || !lysc_is_key(child->schema)))break;
+        const struct lysc_node *child_schema=NULL;
+        if(!duplicate_tree(child,destination,*mapped,options,&child_schema,visits))return 0;
+    }
     return 1;
+}
+
+/* lyd_dup_get_local_parent matches complete compiled ancestry (choice/case
+ * included), while ordinary mapping above follows data parents. */
+static int duplicate_parent_match(const struct lysc_node *a, const struct lysc_node *b, unsigned *visits)
+{
+    for(;a && b;a=a->parent,b=b->parent) {
+        if(++*visits>4096 || a->nodetype!=b->nodetype || strcmp(a->name,b->name) || strcmp(a->module->name,b->module->name))return 0;
+    }
+    return !a && !b;
+}
+
+/* lyd_dup handles a top-level key before lyd_dup_r: it returns an existing
+ * key from the local parent instead of allocating/copying the source. Native
+ * linear lookup matches foreign names without checking key flags or ancestry.
+ * Validate that dispatch explicitly. Only walk the key prefix, not payloads. */
+static int duplicate_key(const struct lyd_node *source, const struct lysc_node *mapped,
+        const struct lysc_node *parent, const struct lyd_node *existing, unsigned *visits)
+{
+    if(!parent || parent->nodetype!=LYS_LIST || !lysc_is_key(mapped))return 0;
+    if(source->schema->module->ctx==mapped->module->ctx) {
+        if(source->schema!=mapped)return 0;
+    } else if(!duplicate_parent_match(source->schema,mapped,visits))return 0;
+    if(!existing)return 1; /* duplicate_tree already checked the copied list's key prefix */
+    for(const struct lyd_node *key=lyd_child(existing);key && lysc_is_key(key->schema);key=key->next) {
+        if(++*visits>4096)return 0;
+        if(key->schema==mapped)return 1;
+    }
+    return 0;
 }
 
 static int free_reuse_input(const struct lyd_node *node, const struct lyd_node *target, int all)
@@ -766,24 +811,38 @@ static int duplicate_inputs(const struct lyd_node *source, const struct lyd_node
 {
     unsigned visits=0;
     if(parent && LYD_CTX(parent)!=destination)return 0;
-    if(!duplicate_tree(source,destination,options,&visits))return 0;
+    /* Retain the existing direct-parent contract for compiled nested sources:
+     * an opaque destination cannot supply their compiled data ancestry. */
+    if(!(options&LYD_DUP_WITH_PARENTS) && parent && !parent->schema &&
+            source->schema && lysc_data_parent(source->schema))return 0;
+    const struct lysc_node *local_parent=parent?parent->schema:NULL, *mapped=NULL;
+    const struct lyd_node *existing_parent=parent;
+    int has_local_parent=parent!=NULL;
     if(options&LYD_DUP_WITH_PARENTS) {
-        int matched=!parent || !source->parent;
+        /* Native ignores the supplied parent if the source has no parents. */
+        local_parent=NULL;existing_parent=NULL;has_local_parent=source->parent!=NULL;
+        int matched=!parent || !source->parent, first=1;
+        const struct lysc_node *previous_parent=NULL;
         for(const struct lyd_node *n=lyd_parent(source);n;n=lyd_parent(n)) {
             if(++visits>4096)return 0;
             if(parent && LYD_CTX(parent)!=LYD_CTX(n) && !parent->schema && !n->schema)return 0;
-            if(!duplicate_tree(n,destination,0,&visits))return 0;
-            const struct lysc_node *mapped=n->schema;
-            if(n->schema && LYD_CTX(n)!=destination && !duplicate_schema(n->schema,destination,&mapped,&visits))return 0;
-            if(parent && mapped==parent->schema)matched=1;
+            int match=parent && (LYD_CTX(parent)==LYD_CTX(n)?parent->schema==n->schema:
+                    parent->schema && n->schema && duplicate_parent_match(parent->schema,n->schema,&visits));
+            if(match) {
+                if(previous_parent && parent->schema && lysc_data_parent(previous_parent)!=parent->schema)return 0;
+                if(first) {local_parent=parent->schema;existing_parent=parent;}
+                matched=1;break;
+            }
+            if(!duplicate_tree(n,destination,NULL,0,&mapped,&visits))return 0;
+            if(previous_parent && mapped && lysc_data_parent(previous_parent)!=mapped)return 0;
+            if(first)local_parent=mapped;
+            previous_parent=mapped;first=0;
         }
         if(!matched)return 0;
-    } else if(parent && source->schema) {
-        const struct lysc_node *mapped=source->schema;
-        if(LYD_CTX(source)!=destination && !duplicate_schema(source->schema,destination,&mapped,&visits))return 0;
-        if(mapped && lysc_data_parent(mapped)!=parent->schema)return 0;
     }
-    return 1;
+    if(!duplicate_tree(source,destination,local_parent,options,&mapped,&visits))return 0;
+    return !lysc_is_key(source->schema) || !has_local_parent ||
+            duplicate_key(source,mapped,local_parent,existing_parent,&visits);
 }
 
 static int unlink_inputs(const struct lyd_node *node, int siblings)
@@ -798,6 +857,8 @@ static int before_inputs(const struct lyd_node *sibling, const struct lyd_node *
 {
     if(sibling==node || LYD_CTX(sibling)!=LYD_CTX(node) || !acyclic_destination(lyd_parent(sibling),node))return 0;
     if(node->schema) {
+        const struct lyd_node *parent=lyd_parent(sibling);
+        if(parent && parent->schema && lysc_data_parent(node->schema)!=parent->schema)return 0;
         if(!(node->schema->nodetype&(LYS_LIST|LYS_LEAFLIST)) || !(node->schema->flags&LYS_ORDBY_USER))return 0;
         if(sibling->schema && node->schema!=sibling->schema)return 0;
     }
@@ -1025,7 +1086,7 @@ int main(int argc, char **argv)
                 if(ids[i]>=4096 || !require_handle(ids[i]) || !nodes[ids[i]]->schema || (nodes[ids[i]]->parent && nodes[ids[i]]->parent!=nodes[a]))return 4;
                 if(LYD_CTX(nodes[a])!=LYD_CTX(nodes[ids[i]]) || !acyclic_destination(nodes[a],nodes[ids[i]]))return 4;
                 if(!nodes[ids[i]]->parent && (nodes[ids[i]]->next || nodes[ids[i]]->prev!=nodes[ids[i]]))return 4;
-                for(unsigned j=0;j<i;++j)if(ids[i]==ids[j])return 4;
+                for(unsigned j=0;j<i;++j)if(nodes[ids[i]]==nodes[ids[j]])return 4;
             }
             unsigned visits=0;
             for(const struct lyd_node *n=lyd_child(nodes[a]);n;n=n->next) {

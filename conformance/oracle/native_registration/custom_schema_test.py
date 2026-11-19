@@ -220,6 +220,130 @@ def precondition_sweep(driver, plain):
             'driver_runs': runs, 'skips': 0}
 
 
+def admission_sweep(driver, plain):
+    """Resolved aliases and actual destination paths, independent of source
+    path lookup. Each rejected request preserves the exact completed prefix.
+    """
+    valid = refused = runs = 0
+
+    def check(prefix, command, accepted):
+        nonlocal valid, refused, runs
+        for mode in ('--quiet', '--events'):
+            traces = paired(driver, plain, prefix, mode)
+            runs += 2
+            if accepted:
+                paired(driver, plain, prefix + command + '\n', mode)
+                valid += 1
+            else:
+                rejected(driver, plain, prefix, command, mode, traces)
+                refused += 1
+            runs += 2
+
+    # All multi-input commands have distinct handles resolving to one node.
+    # Reads and pointer-only record controls permit aliases; link writers do
+    # not. Duplication's compiled source cannot be its own schema parent.
+    prefix = ('context module m {yang-version 1.1;namespace urn:m;prefix m;'
+              'container w {container c {leaf p {type string;} leaf q {type string;}'
+              'leaf-list ll {type string;ordered-by user;}list i {key k;leaf k {type string;}}}}leaf p {type string;}}\n'
+              'parse 1 {"m:w":{"c":{"p":"A","q":"B","ll":["A","B"]}}}\n'
+              'child 2 1 0\nchild 3 1 0\nchild 4 2 0\nchild 5 3 0\n'
+              'opaque 6 2 u A\nchild 7 3 4\nchild 8 2 2\nchild 9 3 2\n')
+    aliases = {
+        'attach': ('attach 2 3', False), 'before': ('before 8 9', False),
+        'schema': ('schema 2 3', True), 'equal': ('equal 4 5 1', True),
+        'null-reads': ('null-reads 2 3', False), 'instance': ('instance 4 5', True),
+        'record': ('record 2 3 7 1', True), 'record-as': ('record-as 2 4 5 1', True),
+        'dup': ('dup 90 2 3 0', False), 'dup-to-context': ('dup-to-context 90 2 3 0', False),
+        'read-schema': ('read-schema 4 5 2', True), 'read-instance': ('read-instance 4 5 2', True),
+        'read-value': ('read-value 4 5 2', True), 'read-opaque': ('read-opaque 6 7 2 u', True),
+        'frontier': ('frontier 2 4 5 8 9', False),
+    }
+    assert set(aliases) == {cmd for cmd, positions in INPUTS.items() if len(positions) > 1}
+    for command, accepted in aliases.values():
+        check(prefix, command, accepted)
+    # Output/input aliases and optional historical reuse handles complete the
+    # protocol inventory beyond INPUTS (which lists live inputs only).
+    outputs = ('term 3 2 p A', 'list 3 2 i A', 'opaque 3 2 u A',
+               'opaque-invalid-xml 3 2', 'child 3 2 0')
+    for command in outputs:
+        check(prefix, command, False)
+    historical = (
+        'free 4 5\n# reuse-next self\nterm 90 2 p A',
+        'free-root 4 5\n# reuse-next self\nterm 90 0 p A',
+        'free 4 5\nterm 90 2 p A 0 5',
+        'new 8 1\nfree 4 5\ninsert 90 7 1 5',
+    )
+    for command in historical:
+        check(prefix, command, True)
+    # Reach every pairwise frontier check with exactly three existing children
+    # and no table, rather than failing an earlier layout/coverage condition.
+    frontier = 'context\nroot 1 c\nterm 2 1 p A\nchild 6 1 0\nterm 3 1 q B\nterm 4 1 ll A\n'
+    for left in range(4):
+        for right in range(left + 1, 4):
+            ids, rest = [0] * 4, iter((3, 4))
+            for index in range(4):
+                ids[index] = 2 if index == left else 6 if index == right else next(rest)
+            check(frontier, 'frontier 1 ' + ' '.join(map(str, ids)), False)
+
+    def module(body):
+        return 'context module m {yang-version 1.1;namespace urn:m;prefix m;' + body + '}\n'
+
+    def node(kind):
+        if kind.startswith('list'):
+            count = int(kind[-1])
+            keys = 'abc'[:count]
+            statement = 'list p {' + ('key "' + ' '.join(keys) + '";' if count else 'config false;')
+            statement += ''.join('leaf ' + k + ' {type string;}' for k in keys) + '}'
+            return statement, [{k: k.upper() for k in keys}]
+        if kind in ('leaf', 'leaf-list'):
+            return kind + ' p {type string;}', ('A' if kind == 'leaf' else ['A'])
+        return kind + ' p' + (' {presence yes;}' if kind == 'container' else ';'), {}
+
+    # Missing source paths, misleading original paths, and a deeper actual
+    # destination. No WITH_PARENTS: native resolves p directly under that parent.
+    for source_kind in KINDS:
+        statement, value = node(source_kind)
+        source = module('container c {' + statement + '}')
+        source += 'parse 1 ' + json.dumps({'m:c': {'p': value}}, separators=(',', ':')) + '\nchild 2 1 0\n'
+        for destination_kind in (*KINDS, 'missing'):
+            target = '' if destination_kind == 'missing' else node(destination_kind)[0]
+            for ancestry in ('absent', 'shadow', 'nested'):
+                body = 'container d {' + ('container w {' + target + '}' if ancestry == 'nested' else target) + '}'
+                if ancestry == 'shadow':
+                    # An incompatible original path must neither admit an unsafe
+                    # destination nor reject the compatible actual destination.
+                    shadow = 'container p;' if source_kind != 'container' else 'leaf p {type string;}'
+                    body += 'container c {' + shadow + '}'
+                setup = source + module(body) + 'root 3 d\n'
+                parent = 3
+                if ancestry == 'nested':
+                    setup = source + module(body) + 'parse 3 {"m:d":{"w":{}}}\nchild 4 3 0\n'
+                    parent = 4
+                check(setup, f'dup-to-context 90 2 {parent} 1', source_kind == destination_kind)
+            # WITH_PARENTS stops at the matching supplied c ancestor; the copied
+            # child still needs a complete, compatible mapping under that c.
+            setup = source + module('container c {' + target + '}') + 'root 3 c\n'
+            check(setup, 'dup-to-context 90 2 3 5', source_kind == destination_kind)
+
+    # Same-context relocation never remaps schemas. Cover both public move
+    # entry points, including opaque anchors which bypass native sibling-schema
+    # comparison. Only the actual c destination has the correct data ancestry.
+    for kind in ('leaf', 'container', 'list0', 'leaf-list', 'missing'):
+        target = '' if kind == 'missing' else node(kind)[0]
+        setup = module('container c {leaf-list p {type string;ordered-by user;}}container d {' + target + '}')
+        setup += 'parse 1 {"m:c":{"p":["A"]}}\nchild 2 1 0\nroot 3 d\nopaque 4 3 u A\n'
+        for command in ('attach 3 2', 'before 4 2', 'dup 90 2 3 1', 'dup 90 2 3 5'):
+            check(setup, command, False)
+        check(setup, 'attach 1 2', True)
+
+    for file in sorted((ROOT / 'cases' / 'admission').glob('*.calls')):
+        script = 'context\n' + file.read_text()
+        lines = script.rstrip().split('\n')
+        check('\n'.join(lines[:-1]) + '\n', lines[-1], False)
+    return {'aliased_commands': len(aliases), 'output_alias_commands': len(outputs), 'historical_alias_commands': len(historical), 'source_kinds': len(KINDS), 'destination_kinds': len(KINDS) + 1,
+            'ancestries': 3, 'valid_pairs': valid, 'rejected_pairs': refused, 'driver_runs': runs, 'skips': 0}
+
+
 def sweep(driver, plain):
     valid = rejected_count = runs = 0
     for file in sorted((ROOT / 'cases' / 'custom').glob('*.calls')):
@@ -242,7 +366,7 @@ def sweep(driver, plain):
                 rejected(driver, plain, script, command + ' B C', mode, traces)
                 rejected_count += 1; runs += 2
     preconditions = precondition_sweep(driver, plain)
-    summary = {'preconditions': preconditions, 'custom_schema_sweep': True, 'names': len(NAMES), 'kinds': len(KINDS),
+    summary = {'admission': admission_sweep(driver, plain), 'preconditions': preconditions, 'custom_schema_sweep': True, 'names': len(NAMES), 'kinds': len(KINDS),
                'valid_pairs': valid, 'rejected_pairs': rejected_count, 'driver_runs': runs, 'skips': 0}
     print(json.dumps(summary), flush=True)
     return summary

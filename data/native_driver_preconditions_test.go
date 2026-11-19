@@ -38,6 +38,22 @@ func TestNativeDriverPreconditions(t *testing.T) {
 	}
 }
 
+// Each named admission case entered native code or changed links on fa9d6c2.
+// Both builds must refuse it without changing any completed prefix evidence.
+func TestNativeDriverAdmission(t *testing.T) {
+	cases, err := filepath.Glob(filepath.Join("..", "conformance", "oracle", "native_registration", "cases", "admission", "*.calls"))
+	if err != nil || len(cases) != 21 {
+		t.Fatalf("admission inventory: %d, %v", len(cases), err)
+	}
+	for _, file := range cases {
+		script, err := os.ReadFile(file)
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Run(filepath.Base(file), func(t *testing.T) { nativePreconditionRequest(t, string(script)) })
+	}
+}
+
 func nativePreconditionRequest(t *testing.T, script string) {
 	t.Helper()
 	driver := os.Getenv("YANG_NATIVE_REGISTRATION_DRIVER")
