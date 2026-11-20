@@ -69,8 +69,8 @@ go_mutant("ignored-required-message", evidence,
           '^TestNativeG2ExactErrorEvidence/required-message$')
 
 go_mutant("ignored-command-status", evidence,
-          'row.Operation, row.Event, row.RC, normalizeMessages',
-          'row.Operation, row.Event, nativeOK, normalizeMessages',
+          'row.Operation, row.Event, row.RC, normalizedDiagnostics',
+          'row.Operation, row.Event, nativeOK, normalizedDiagnostics',
           '^TestNativeCompletedCommandProjection/rc$')
 
 # Self-contained recreation of the former equality shortcut: preserve completed
@@ -333,14 +333,14 @@ native_driver_mutant('unchecked-list-key-arity',
 
 path = work / 'schema-name-layout.py'
 path.write_text(identity.replace("if n.get('nodetype', 0) & INNER_NODE_TYPES:",
-                                 "if n.get('nodetype', 0) & INNER_NODE_TYPES or n.get('schema') in ('c', 'd', 'r', 'l', 'kl'):"))
+                                 "if n.get('nodetype', 0) & INNER_NODE_TYPES or n.get('schema') in ('63', '64', '72', '6c', '6b6c'):"))
 go_mutant('schema-name-layout', completion,
           'filepath.Join("..", "conformance", "oracle", "native_registration", "identity.py")',
           json.dumps(str(path)), '^TestNativeCustomSchemaKinds/reused-names$')
 
 for name, before, after in (
     ('checker-schema-name-layout', "node.get('nodetype', 0) & INNER_NODE_TYPES:",
-     "node.get('schema') in ('c', 'd', 'r', 'l', 'kl'):"),
+     "node.get('schema') in ('63', '64', '72', '6c', '6b6c'):"),
     ('checker-schema-name-ancestor', 'n.get("schema_identity") == handles[parent].get("schema_identity")',
      'n.get("schema") == handles[parent].get("schema")'),
 ):
@@ -420,3 +420,21 @@ for file in sorted((aux / 'cases/preconditions').glob('*.calls')):
 print(json.dumps({'mutant': 'admission-base', 'sha': base_sha,
                   'named_cases': len(list((aux / 'cases/preconditions').glob('*.calls'))),
                   'builds': 2, 'modes': 2, 'all_failed': True}), flush=True)
+
+# Output encoding must preserve a successful native printer's invalid UTF-8.
+native_driver_mutant('raw-public-output',
+    'if(json)raw_bytes_or_null(j,"json",json);',
+    'if(json)cJSON_AddStringToObject(j,"json",json);',
+    '^TestNativeOutputInvalidXML$')
+
+# Keep the wire correct but move hex expansion into value allocation again.
+# The independent raw/main allocation comparison must detect the extra work.
+raw_body = re.search(r'static cJSON \*raw_bytes_value\(.*?\n}', driver_source.read_text(), re.S).group()
+eager_source = work / 'eager-native-byte-fields.c'
+eager_source.write_text(driver_source.read_text().replace(raw_body,
+    'static cJSON *raw_bytes_value(const char *value)\n{\n    return bytes_value(value);\n}'))
+env = dict(os.environ, YANG_NATIVE_BYTE_SOURCE=str(eager_source))
+result = run(['go', 'test', '-tags', 'oracle', './data', '-run', '^TestNativeOutputByteEmitters$', '-count=1'], env=env)
+(work / 'eager-native-byte-fields.log').write_text(result.stdout)
+assert result.returncode and '--- FAIL:' in result.stdout and '"allocation_failure": true' in result.stdout, result.stdout
+print(json.dumps({'mutant': 'eager-native-byte-fields', 'rejected': True}), flush=True)

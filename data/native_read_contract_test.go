@@ -5,6 +5,7 @@
 package data
 
 import (
+	"encoding/hex"
 	"encoding/json"
 	"os"
 	"os/exec"
@@ -200,9 +201,9 @@ func TestNativeG2ContextMetadataContract(t *testing.T) {
 							record["unexpected_"+field] = []any{}
 						case "mutate":
 							if field == "metadata" {
-								record[field] = []any{"changed"}
+								record[field] = []any{hex.EncodeToString([]byte("changed"))}
 							} else {
-								record[field].([]any)[0].(map[string]any)["namespace"] = "urn:changed"
+								record[field].([]any)[0].(map[string]any)["namespace"] = hex.EncodeToString([]byte("urn:changed"))
 							}
 						}
 					})
@@ -234,9 +235,9 @@ func TestNativeG2BootstrapChannelsContract(t *testing.T) {
 						case "rc":
 							r[field] = float64(7)
 						case "diagnostics":
-							r[field] = []any{map[string]any{"code": float64(7), "context_generation": float64(1), "msg": "changed"}}
+							r[field] = []any{map[string]any{"code": float64(7), "context_generation": float64(1), "msg": hex.EncodeToString([]byte("changed"))}}
 						case "logs":
-							r[field] = []any{map[string]any{"level": float64(0), "line": float64(0), "msg": "changed"}}
+							r[field] = []any{map[string]any{"level": float64(0), "line": float64(0), "msg": hex.EncodeToString([]byte("changed"))}}
 						}
 					}
 				})
@@ -351,7 +352,7 @@ func TestNativeG2ObserverFunctionAnnotation(t *testing.T) {
 		}
 		for _, channel := range []string{"diagnostics", "logs"} {
 			for _, item := range nativeEvidenceArray(row.raw[channel]) {
-				msg, _ := item.(map[string]any)["msg"].(string)
+				msg := nativeByteText(t, item.(map[string]any)["msg"])
 				if strings.Contains(msg, "_nr_impl()") {
 					found = true
 				}
@@ -369,7 +370,7 @@ func TestNativeG2ObserverFunctionAnnotation(t *testing.T) {
 			for _, item := range nativeEvidenceArray(r[channel]) {
 				d := item.(map[string]any)
 				if msg, ok := d["msg"].(string); ok {
-					d["msg"] = strings.ReplaceAll(msg, "argument hash", "argument changed")
+					d["msg"] = hex.EncodeToString([]byte(strings.ReplaceAll(nativeByteText(t, msg), "argument hash", "argument changed")))
 				}
 			}
 		}

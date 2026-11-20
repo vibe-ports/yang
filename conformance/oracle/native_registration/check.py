@@ -8,6 +8,7 @@ import os
 import pathlib
 import subprocess
 
+from protocol import text, encoded
 from drivers import comparison_driver
 from identity import requests, validate
 from protocol import INNER_NODE_TYPES
@@ -246,7 +247,7 @@ def lifetime_evidence(name, rows):
         assert len(tables) == 17 and all(t["present"] and not t.get("retired") and t["used"] == 5 for t in tables[:-1]) and not tables[-1]["present"], (name, "retired replacement table")
     if name.endswith("validation-delete"):
         validation = commands(rows, "validate")[0]
-        assert any(n["schema"] == "def" for n in validation["nodes"] if n["alive"]), (name, "validation did not create default")
+        assert any(text(n["schema"]) == "def" for n in validation["nodes"] if n["alive"]), (name, "validation did not create default")
         assert any(not n["id"] and not n["alive"] and n["creation_operation"] == 2 for n in rows[-1]["nodes"]), (name, "internal deletion did not retire default")
     if name.endswith("retained-same-hash"):
         chains = rows[-1]["table"]["chains"]
@@ -380,7 +381,7 @@ def complete_rb_topology(row):
     for node in row.get("nodes", []):
         if not node["alive"]:
             continue
-        if "lyds_tree" not in node["metadata"]:
+        if encoded("lyds_tree") not in node["metadata"]:
             assert not any(k in node for k in ("rb", "rb_root", "rb_stored_root")), "RB without metadata"
             continue
         assert "rb" in node and "rb_root" in node and "rb_stored_root" in node, "missing RB topology"
@@ -451,7 +452,7 @@ def internal_build_allocations(rows, creations):
     assert {(op, ordinal) for op, ordinal in creations if op == 1} == {(1, i) for i in range(1, 6)}, "missing parser allocations"
     for ordinal, schema in enumerate(("p", "q", "ll", "ll"), 2):
         child = nodes[creations[1, ordinal]]
-        assert child["id"] == 0 and child["schema"] == schema and child["source"] == 0
+        assert child["id"] == 0 and text(child["schema"]) == schema and child["source"] == 0
         assert child["parent"] == creations[1, 1]
     assert (3, 1) in creations, "missing failed constructor allocation"
     failed = creations[3, 1]
@@ -1077,7 +1078,7 @@ def main():
         if args.suite == "all":
             from custom_schema_test import sweep
             sweep(binary, plain)
-        for case in ('read-request-binding', 'read-success-payload'):
+        for case in ('read-request-binding', 'read-success-payload', 'output-invalid-xml'):
             name = 'read/' + case
             rc, rows = run(name)
             control_equal(name, rc, rows)
@@ -1182,12 +1183,12 @@ def main():
             assert any(r["event"] == "lyht_find_next_with_collision_cb.after" and r["rc"] == 6 for r in rows)
             validation = commands(rows, "validate")[0]
             assert validation["rc"] == 0 and validation["diagnostics"] == []
-            assert any("Internal error" in x.get("msg", "") for x in validation.get("logs", []))
+            assert any("Internal error" in text(x.get("msg", "")) for x in validation.get("logs", []))
             assert all(n.get("flags", 0) & 4 == 0 for n in validation["nodes"] if n["id"] == 14)
         if name == "repeated-pointer":
             first, last = commands(rows, "validate")
             assert first["rc"] == 7 and last["rc"] == 0
-            assert first["diagnostics"][0]["path"] == "/m:c/ll[.='Qg==']"
+            assert text(first["diagnostics"][0]["path"]) == "/m:c/ll[.='Qg==']"
             assert any(n["id"] == 11 and n["flags"] & 4 for n in first["nodes"])
             assert any(n["id"] == 11 and not n["flags"] & 4 for n in last["nodes"])
         if name.startswith("collision-history-"):
@@ -1231,7 +1232,7 @@ def main():
             n = by_handle(prefix)
             assert not n[1]["table"]["present"] and not n[11]["metadata"] and any(x.get("rb") for x in prefix["nodes"])
             assert n[11]["next"] == n[12]["generation"]
-            assert [n[i]["value"] for i in [11, 12, 21, 22]] == ["4", "1", "2", "3"]
+            assert [text(n[i]["value"]) for i in [11, 12, 21, 22]] == ["4", "1", "2", "3"]
             assert not n[21]["parent"] and n[21]["next"] == n[22]["generation"]
             assert {by_handle(prefix)[h]["generation"] for h in (21, 22)} in rb_members(prefix) and not n[12]["metadata"]
             stopped = by_handle(rows[-1])

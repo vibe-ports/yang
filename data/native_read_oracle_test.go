@@ -61,7 +61,7 @@ func TestNativeG2RetainedContextDiagnostics(t *testing.T) {
 				t.Fatalf("%s missing retained error channels: %v", name, row.raw)
 			}
 			d := diagnostics[0].(map[string]any)
-			if d["code"] != float64(3) || d["context_generation"] != float64(1) || d["msg"] != "Invalid argument prefix_len (ly_resolve_prefix())." || logs[0].(map[string]any)["msg"] != d["msg"] {
+			if d["code"] != float64(3) || d["context_generation"] != float64(1) || nativeByteText(t, d["msg"]) != "Invalid argument prefix_len (ly_resolve_prefix())." || logs[0].(map[string]any)["msg"] != d["msg"] {
 				t.Fatalf("%s wrong native diagnostic: %v", name, row.raw)
 			}
 		}

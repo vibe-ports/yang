@@ -74,6 +74,70 @@ cases are never run to an accidental completed result or used as goldens.
 
 ## Replay protocol and evidence
 
+All strings copied from native storage or native API output use one byte
+contract: a JSON string containing canonical lowercase hex, two digits per byte.
+The empty string is `""`; a nullable native pointer is JSON `null`; optional
+fields retain their existing omission rules. Decoding hex recovers the exact C
+string bytes up to its terminating NUL, without Unicode replacement. The hex
+contract itself can represent any byte, including `00`; the line protocol and
+native C-string APIs do not accept embedded NUL. JSONL transport remains strict
+UTF-8. Driver-authored labels (`event`, availability, allocation scope,
+continuity) remain ordinary JSON text.
+
+The complete byte-carrying output inventory is:
+
+| Location | Fields / elements |
+|---|---|
+| Every event | `request[]` (exact input bytes, including parser payloads) |
+| `public.result` | `json` (`lyd_print_mem` output, not parsed as JSON) |
+| Snapshot `diagnostics[]` | `msg`, `path`, `apptag` |
+| Snapshot `logs[]` | `msg`, `path`, `schema_path` |
+| Snapshot `nodes[]` | `schema`, `module`, term `value`, `metadata[]` names |
+| Opaque `nodes[]` | `opaque_name`, `opaque_module`, `opaque_prefix`, `opaque_value` |
+| Snapshot `schemas[]` | `module`, `name` |
+| Snapshot `modules[]` | `name`, `namespace`, `revision` |
+| `read.opaque`, `read.selection.opaque` | `name` |
+| `read.selection.value` | nullable `value` |
+
+No other native byte pointer is serialized: opaque format/binding indicators,
+metadata ownership/RB topology, identities, flags, hashes and return codes are
+numeric/boolean observations. Opaque attributes are not serialized by this
+part-1 observer. Metadata values other than the existing RB
+observation are outside part 1. Python's closed contract validates canonical
+hex before history/projection; equality of canonical encodings is exact byte
+equality. Python and Go decode diagnostic messages before the existing narrowly
+scoped source-location/function normalization and re-encode the result. Neither
+consumer relaxes transport UTF-8 checks or parses/replaces native printer bytes.
+
+`cases/read/output-invalid-xml.calls` is the reviewer's live printer replay.
+`TestNativeOutputInvalidXML` requires successful printing and the exact `ff`
+byte in both builds. `TestNativeOutputByteEmitters` compiles output-statement
+probes for all 24 byte emitters against both native libraries; only the copied
+argument is replaced with a 256-byte pattern containing control bytes, quotes,
+backslashes and malformed UTF-8 (`01 0a 0d 09 22 5c ff fe c0 80`). This covers fields whose native
+syntax forbids malformed UTF-8, without changing native storage or claiming
+public reachability for invalid schema/module names. `--source` selects an older
+driver for the same sensitivity probes. The generic field sweep also runs three
+invalid byte sequences at every name/value request position in both builds and
+quiet/verbose modes (including raw JSON/XML/YANG payloads); list-name admission refusal must preserve its prefix.
+All probes use the existing process/line/traversal limits. New byte fields
+retain raw bytes in owned JSON strings and are marked for hex encoding in the
+final write pass. Existing eager hex fields retain their former representation
+inside the JSON tree. Both use the same hex encoder and identical wire scheme.
+The original cJSON render/allocation/free sequence is preserved; the write pass
+uses a 256-byte stack buffer and the existing cJSON nesting limit. It copies
+all other rendered tokens verbatim, including numbers and key escaping. Native
+JSON/XML payloads remain single byte strings; their contents are never parsed.
+
+The encoder work probe compares former raw-string allocation with marked byte
+values at lengths 0/1/16/64/256: both allocate exactly two blocks, with identical
+byte counts. No temporary hex allocation or string copy is added. The extra
+write pass is linear in rendered/output bytes. There are no changes to native
+allocation, reuse setup, admission, constructors, journals or production budgets.
+`TestNativeOutputJSONReuse` runs quiet/verbose controls in both builds under all
+three environment profiles; the existing 192-case matrix and 192 forcing-disabled
+controls retain their original obligations.
+
 Input is a bounded line-oriented public-call script. `cases/*.calls` are the
 independent live-oracle request cases. IDs are script handles, never addresses.
 `root`, `term`, `list`, `opaque`, `dup`, `unlink`, `detach-siblings`, `attach`, `before`, `change`, `parse`,

@@ -429,22 +429,36 @@ func nativeCompletedCommandEvidence(script string, rows []nativeDriverResult) (n
 		if !ok {
 			return nativeCommandEvidence{}, fmt.Errorf("missing logs at %d", row.Operation)
 		}
-		normalizeMessages := func(items []any) []any {
+		normalizeMessages := func(items []any) ([]any, error) {
 			result := make([]any, len(items))
 			for i, item := range items {
 				record := map[string]any{}
 				for k, v := range item.(map[string]any) {
 					if k == "msg" {
+						decoded, err := hex.DecodeString(v.(string))
+						if err != nil {
+							return nil, err
+						}
+						v = string(decoded)
 						v = nativeG2Location.ReplaceAllString(v.(string), "$1$2")
 						v = nativeG2ObserverFunction.ReplaceAllString(v.(string), "$1$2$3")
+						v = hex.EncodeToString([]byte(v.(string)))
 					}
 					record[k] = v
 				}
 				result[i] = record
 			}
-			return result
+			return result, nil
 		}
-		result.projection = append(result.projection, []any{row.Operation, row.Event, row.RC, normalizeMessages(diagnostics), normalizeMessages(logs)})
+		normalizedDiagnostics, err := normalizeMessages(diagnostics)
+		if err != nil {
+			return nativeCommandEvidence{}, err
+		}
+		normalizedLogs, err := normalizeMessages(logs)
+		if err != nil {
+			return nativeCommandEvidence{}, err
+		}
+		result.projection = append(result.projection, []any{row.Operation, row.Event, row.RC, normalizedDiagnostics, normalizedLogs})
 	}
 	return result, nil
 }
@@ -659,12 +673,12 @@ func TestNativeG2UnmodifiedEvidenceRejections(t *testing.T) {
 		},
 		"internal-diagnostic": func(r map[string]any) {
 			if r["nodes"] != nil {
-				r["diagnostics"] = []any{map[string]any{"code": 6, "msg": "Internal error."}}
+				r["diagnostics"] = []any{map[string]any{"code": 6, "msg": hex.EncodeToString([]byte("Internal error."))}}
 			}
 		},
 		"diagnostic-message": func(r map[string]any) {
 			if r["nodes"] != nil {
-				r["diagnostics"] = []any{map[string]any{"code": 7, "msg": "changed"}}
+				r["diagnostics"] = []any{map[string]any{"code": 7, "msg": hex.EncodeToString([]byte("changed"))}}
 			}
 		},
 	}
@@ -737,7 +751,7 @@ func TestNativeG2ExactErrorEvidence(t *testing.T) {
 					for _, channel := range []string{"diagnostics", "logs"} {
 						items, _ := r[channel].([]any)
 						for _, item := range items {
-							item.(map[string]any)["msg"] = "different argument"
+							item.(map[string]any)["msg"] = hex.EncodeToString([]byte("different argument"))
 						}
 					}
 				}
@@ -1094,9 +1108,9 @@ func TestNativeCompletedCommandProjection(t *testing.T) {
 				case "rc":
 					r[field] = float64(7)
 				case "logs":
-					r[field] = []any{map[string]any{"level": float64(0), "line": float64(0), "msg": "changed"}}
+					r[field] = []any{map[string]any{"level": float64(0), "line": float64(0), "msg": hex.EncodeToString([]byte("changed"))}}
 				default:
-					r[field] = []any{map[string]any{"code": float64(7), "context_generation": float64(1), "msg": "changed"}}
+					r[field] = []any{map[string]any{"code": float64(7), "context_generation": float64(1), "msg": hex.EncodeToString([]byte("changed"))}}
 				}
 			})
 			b, err := nativeCompletedCommandEvidence(script, mutant)

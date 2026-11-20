@@ -11,6 +11,7 @@ import unittest
 from collections import Counter
 
 import check
+from protocol import text, encoded
 from drivers import comparison_driver
 from identity import validate, requests
 
@@ -136,8 +137,8 @@ class IdentitySweep(unittest.TestCase):
                 for schema in row.get('schemas', []):
                     # A schema-only ancestor has no data node whose name could
                     # independently expose the change in the old projection.
-                    if schema['name'] == 'input':
-                        schema['name'] = 'changed-input'
+                    if text(schema['name']) == 'input':
+                        schema['name'] = encoded('changed-input')
                         changed += 1
             self.assertGreater(changed, 0)
             self.assertNotEqual(validate(script, mutant), validate(script, right))
@@ -255,7 +256,7 @@ class IdentitySweep(unittest.TestCase):
                             def missing_inner_table(trace):
                                 for row in trace:
                                     for node in row.get('nodes', []):
-                                        if node.get('schema') == 'kl': node.pop('table', None)
+                                        if node.get('schema') == encoded('kl'): node.pop('table', None)
                             self.rejects(script, rows, missing_inner_table)
 
     def test_schema_lineage_in_both_schema_modes(self):
@@ -353,7 +354,7 @@ class IdentitySweep(unittest.TestCase):
                     out = check.by_handle(row)[10]
                     if flags & 4:
                         self.assertEqual(out['creation_operation'], row['operation'])
-                        self.assertEqual(out['value'], 'x')
+                        self.assertEqual(text(out['value']), 'x')
                         self.assertEqual(out['creation_ordinal'], 1 if detached else 2)
                         if detached: self.assertEqual(out['parent'], 0)
                         else:
@@ -361,7 +362,7 @@ class IdentitySweep(unittest.TestCase):
                             self.assertEqual(nodes[out['parent']]['parent'], check.by_handle(row)[4]['generation'])
                     else:
                         self.assertNotEqual(out['creation_operation'], row['operation'])
-                        self.assertEqual(out['value'], 'y')
+                        self.assertEqual(text(out['value']), 'y')
                         self.assertEqual(out['parent'], check.by_handle(row)[5]['generation'])
         (ROOT / '.build' / 'sweep-key-primitive-counts.json').write_text(json.dumps({f'{f}/{d}': c for (f, d), c in counts.items()}, indent=2) + '\n')
 
@@ -419,7 +420,7 @@ class IdentitySweep(unittest.TestCase):
             root, validation = check.commands(rows, 'root')[0], check.commands(rows, 'validate')[0]
             old, new = check.by_handle(root)[1], check.by_handle(validation)[1]
             self.assertNotEqual(old['generation'], new['generation'])
-            self.assertEqual(new['schema'], 'c')
+            self.assertEqual(text(new['schema']), 'c')
             def stale_validation(trace):
                 r = check.commands(trace, 'validate')[0]
                 next(b for b in r['bindings'] if b['handle'] == 1)['generation'] = old['generation']
@@ -506,7 +507,7 @@ class IdentitySweep(unittest.TestCase):
                 mutations.append(dead_link)
             if 'rewind' in script:
                 def other_internal(trace):
-                    q = next(n['generation'] for r in reversed(trace) for n in r.get('nodes', []) if n.get('schema') == 'q')
+                    q = next(n['generation'] for r in reversed(trace) for n in r.get('nodes', []) if n.get('schema') == encoded('q'))
                     check.commands(trace, 'read.first-sibling')[0]['winner'] = q
                 mutations.append(other_internal)
             for mutate in mutations:

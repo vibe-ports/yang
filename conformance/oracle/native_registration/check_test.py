@@ -12,6 +12,7 @@ from unittest.mock import patch
 
 import check
 from identity import request_evidence
+from protocol import encoded
 
 
 def snapshot(event, operation):
@@ -20,8 +21,8 @@ def snapshot(event, operation):
     nodes = [dict(generation=g, id=1 if g == 6 else 0, creation_operation=1 if g == 6 else 0,
                   creation_ordinal=1 if g == 6 else g, source=0, attempt=1 if g == 6 else 0,
                   alive=True, context=1, hash=g, flags=4, metadata=[], nodetype=8 if 2 <= g <= 5 else 1, key=False,
-                  value=str(g) if 2 <= g <= 5 else None, parent=1 if 2 <= g <= 5 else 0, prev=5 if g == 2 else g - 1 if 3 <= g <= 5 else g,
-                  next=g + 1 if 2 <= g < 5 else 0, schema="v" if 2 <= g <= 5 else "c", schema_identity=2 if 2 <= g <= 5 else 1) for g in range(1, 7)]
+                  value=encoded(str(g)) if 2 <= g <= 5 else None, parent=1 if 2 <= g <= 5 else 0, prev=5 if g == 2 else g - 1 if 3 <= g <= 5 else g,
+                  next=g + 1 if 2 <= g < 5 else 0, schema=encoded("v" if 2 <= g <= 5 else "c"), schema_identity=2 if 2 <= g <= 5 else 1) for g in range(1, 7)]
     chains = [dict(generation=g, occurrence=i + 1, node=0, hash=8 * (i + 1), slot=i,
                    bucket=0, ordinal=i, alive=True) for i, g in enumerate((2, 2, 3, 4, 5))]
     nodes[0].update(first=2, tail=5, table=dict(present=True, identity=1, used=5, size=8,
@@ -34,8 +35,8 @@ def snapshot(event, operation):
             "rc": 0, "diagnostics": [], "logs": [], "nodes": nodes,
             "output_handle": 1 if event == "root" else 0, "output_generation": 6 if event == "root" else 0,
             "node_count": 6, "table_count": 1, "tables": [dict(identity=1, alive=True)], "allocation_scope": "every-allocation",
-            "schemas": [dict(identity=1, context=1, module='m', name='c', nodetype=1, parent=0),
-                        dict(identity=2, context=1, module='m', name='v', nodetype=8, parent=1)],
+            "schemas": [dict(identity=1, context=1, module=encoded('m'), name=encoded('c'), nodetype=1, parent=0),
+                        dict(identity=2, context=1, module=encoded('m'), name=encoded('v'), nodetype=8, parent=1)],
             "bindings": [dict(handle=1, generation=6, revision=1, operation=1)]}
 
 
@@ -89,7 +90,7 @@ class ControlComparisonTest(unittest.TestCase):
                 shape(row, False, False)
             else:
                 with self.assertRaises(AssertionError): shape(row, False, False)
-            shape(dict(row, json='{}'), False, False)
+            shape(dict(row, json=encoded('{}')), False, False)
             with self.assertRaises(AssertionError): shape(dict(row, winner=0), False, False)
 
     def compare(self, script, rows, other=None):
@@ -112,7 +113,7 @@ class ControlComparisonTest(unittest.TestCase):
                     check.control_equal("control", 0, rows)
 
     def test_complete_nonempty_control(self):
-        rows = [snapshot("dump", 1), dict(snapshot("public.result", 2), json='{"m:c":{}}'), snapshot("print", 2)]
+        rows = [snapshot("dump", 1), dict(snapshot("public.result", 2), json=encoded('{"m:c":{}}')), snapshot("print", 2)]
         self.compare("dump\nprint 1\n", rows)
 
     def test_rejects_equal_early_stops(self):
@@ -121,13 +122,13 @@ class ControlComparisonTest(unittest.TestCase):
             self.compare("dump\nprint 1\n", rows)
 
     def test_rejects_missing_command_on_either_or_both_sides(self):
-        rows = [snapshot("dump", 1), dict(snapshot("public.result", 2), json='{"m:c":{}}'), snapshot("print", 2)]
+        rows = [snapshot("dump", 1), dict(snapshot("public.result", 2), json=encoded('{"m:c":{}}')), snapshot("print", 2)]
         for left, right in ((rows[1:], rows), (rows, rows[1:]), (rows[1:], rows[1:])):
             with self.subTest(left=len(left), right=len(right)), self.assertRaises(AssertionError):
                 self.compare("dump\nprint 1\n", left, right)
 
     def test_rejects_equal_truncated_replays_with_nonempty_results(self):
-        rows = [dict(snapshot("public.result", 1), json='{"m:c":{}}'), snapshot("print", 1)]
+        rows = [dict(snapshot("public.result", 1), json=encoded('{"m:c":{}}')), snapshot("print", 1)]
         with self.assertRaises(AssertionError):
             self.compare("print 1\ndump\n", rows)
 
@@ -142,18 +143,18 @@ class ControlComparisonTest(unittest.TestCase):
             self.compare("print 1\n", [snapshot("print", 1)])
 
     def test_rejects_wrong_terminal_with_nonempty_results(self):
-        rows = [dict(snapshot("public.result", 1), json='{"m:c":{}}'), snapshot("print", 1), snapshot("boundary.unexpected", 2)]
+        rows = [dict(snapshot("public.result", 1), json=encoded('{"m:c":{}}')), snapshot("print", 1), snapshot("boundary.unexpected", 2)]
         with self.assertRaises(AssertionError):
             self.compare("print 1\n", rows)
 
     def test_rejects_reordered_or_duplicate_commands(self):
-        rows = [snapshot("dump", 1), dict(snapshot("public.result", 2), json='{"m:c":{}}'), snapshot("print", 2)]
+        rows = [snapshot("dump", 1), dict(snapshot("public.result", 2), json=encoded('{"m:c":{}}')), snapshot("print", 2)]
         for mutant in (rows[1:] + rows[:1], rows[:1] + rows):
             with self.subTest(events=[r["event"] for r in mutant]), self.assertRaises(AssertionError):
                 self.compare("dump\nprint 1\n", mutant)
 
     def test_rejects_changed_command_status(self):
-        rows = [snapshot("dump", 1), dict(snapshot("public.result", 2), json='{"m:c":{}}'), snapshot("print", 2)]
+        rows = [snapshot("dump", 1), dict(snapshot("public.result", 2), json=encoded('{"m:c":{}}')), snapshot("print", 2)]
         mutant = copy.deepcopy(rows)
         mutant[0]["rc"] = 7
         with self.assertRaises(AssertionError):

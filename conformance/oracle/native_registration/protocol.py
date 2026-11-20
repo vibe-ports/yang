@@ -59,6 +59,20 @@ def opaque_bytes(value):
     assert value is None or re.fullmatch(r'(?:[0-9a-f]{2})*', value), 'invalid opaque byte string'
 
 
+def native_bytes(value):
+    assert type(value) is str, 'expected native byte string'
+    opaque_bytes(value)
+
+
+def text(value):
+    """Lossless view for native byte comparisons; never a transport decoder."""
+    return bytes.fromhex(value).decode('utf-8', 'surrogateescape')
+
+
+def encoded(value):
+    return value.encode('utf-8', 'surrogateescape').hex()
+
+
 def opaque_name(value):
     assert type(value) is str and value, 'missing opaque name'
     opaque_bytes(value)
@@ -98,12 +112,12 @@ def table(value):
 def node_fields(read_context, module, schema, nodetype, sorted_metadata):
     # Cache only immutable layout descriptions, never trace data or identities.
     fields = PROVENANCE | dict.fromkeys(('context', 'hash', 'flags', 'prev', 'next', 'parent'), int)
-    fields['metadata'] = array(str)
+    fields['metadata'] = array(native_bytes)
     if read_context: fields['context_generation'] = int
     if schema:
-        fields |= {'nodetype': int, 'key': bool, 'schema': str, 'schema_identity': int}
-        if module: fields['module'] = str
-        if nodetype & TERM_NODE_TYPES: fields['value'] = str
+        fields |= {'nodetype': int, 'key': bool, 'schema': native_bytes, 'schema_identity': int}
+        if module: fields['module'] = native_bytes
+        if nodetype & TERM_NODE_TYPES: fields['value'] = native_bytes
         if nodetype & INNER_NODE_TYPES: fields |= {'first': int, 'tail': int, 'table': table}
     else:
         fields |= {'first': int, 'tail': int, 'prefix_format': int, 'prefix_bound': bool,
@@ -120,21 +134,21 @@ def node(value, read_context, module):
         assert value['current'] in ('unavailable', 'unsafe-native-links'), 'invalid availability'
         assert value['alive'] or value['current'] == 'unavailable', 'invalid tombstone'
         return
-    fields = node_fields(read_context, module, 'schema' in value, value.get('nodetype', 0), 'lyds_tree' in value.get('metadata', []))
+    fields = node_fields(read_context, module, 'schema' in value, value.get('nodetype', 0), encoded('lyds_tree') in value.get('metadata', []))
     fields(value)
 
 
 def diagnostic(value):
-    record(value, {'code': int, 'context_generation': int}, dict.fromkeys(('msg', 'path', 'apptag'), str))
+    record(value, {'code': int, 'context_generation': int}, dict.fromkeys(('msg', 'path', 'apptag'), native_bytes))
     assert 0 < value['context_generation'] < 16, 'invalid diagnostic context'
 
 
 def log(value):
-    record(value, {'level': int, 'line': int}, dict.fromkeys(('msg', 'path', 'schema_path'), str))
+    record(value, {'level': int, 'line': int}, dict.fromkeys(('msg', 'path', 'schema_path'), native_bytes))
 
 
 def module(value):
-    record(value, {'name': str, 'implemented': bool, 'latest': int}, {'namespace': str, 'revision': str})
+    record(value, {'name': native_bytes, 'implemented': bool, 'latest': int}, {'namespace': native_bytes, 'revision': native_bytes})
     assert value['name'], 'empty module name'
 
 
@@ -176,8 +190,8 @@ def shape(row, snapshot, read_context):
     elif event in RESULTS:
         fields = common | RESULTS[event]
         if event == 'public.result' and row.get('rc') == 0:
-            fields = fields | {'json': str}
-        record(row, fields, {'json': str} if event == 'public.result' and row.get('rc') != 0 else {})
+            fields = fields | {'json': native_bytes}
+        record(row, fields, {'json': native_bytes} if event == 'public.result' and row.get('rc') != 0 else {})
     else:
         assert event in SNAPSHOTS, 'unknown snapshot kind'
         # Native event snapshots use exactly the same contract as completed commands.
@@ -185,7 +199,7 @@ def shape(row, snapshot, read_context):
         required = common | dict.fromkeys(('rc', 'node_generation', 'source_generation', 'output_handle', 'output_generation', 'node_count', 'table_count'), int)
         required |= {'allocation_scope': str, 'nodes': array(lambda n: node(n, read_context, module_evidence)),
                      'bindings': array(lambda b: record(b, dict.fromkeys(('handle', 'generation', 'revision', 'operation'), int))),
-                     'schemas': array(lambda s: record(s, dict.fromkeys(('identity', 'context', 'parent', 'nodetype'), int) | {'module': str, 'name': str})),
+                     'schemas': array(lambda s: record(s, dict.fromkeys(('identity', 'context', 'parent', 'nodetype'), int) | {'module': native_bytes, 'name': native_bytes})),
                      'tables': array(lambda t: record(t, {'identity': int, 'alive': bool}, {'storage': table})),
                      'diagnostics': array(diagnostic), 'logs': array(log)}
         optional = {'table': table, 'working_rb_root': int}
@@ -217,4 +231,4 @@ def message(value):
 
 
 def messages(items):
-    return [{k: message(v) if k == 'msg' else v for k, v in item.items()} for item in items]
+    return [{k: encoded(message(text(v))) if k == 'msg' else v for k, v in item.items()} for item in items]

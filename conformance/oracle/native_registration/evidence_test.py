@@ -12,7 +12,7 @@ import unittest
 from drivers import comparison_driver
 
 from identity import request_evidence, requests, validate
-from protocol import RESULTS, shape
+from protocol import RESULTS, shape, encoded
 
 ROOT = pathlib.Path(__file__).resolve().parent
 CURRENT = None
@@ -38,11 +38,11 @@ def replay(script, mode='--quiet', read=True, plain=False):
     if not driver:
         raise unittest.SkipTest('set native drivers')
     result = subprocess.run([str(driver), mode,
-                             '--read-schema' if read else '--event-schema'], input=script,
-                            text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                             '--read-schema' if read else '--event-schema'], input=script.encode('utf-8', 'surrogateescape'),
+                            stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                             timeout=30, check=False, env=dict(os.environ, GLIBC_TUNABLES='glibc.malloc.tcache_count=7'))
     assert result.returncode == 0, result.stderr
-    return [json.loads(line) for line in result.stdout.splitlines()]
+    return [json.loads(line) for line in result.stdout.decode('utf-8').splitlines()]
 
 
 def paths(value, prefix=()):
@@ -292,11 +292,11 @@ def pin_exclusions():
     assert validate(script, verbose) == expected, 'intermediate snapshots leaked into comparison'
     # Only the embedded C location varies; the log's separate line stays exact.
     location = copy.deepcopy(rows)
-    location[0]['diagnostics'] = [dict(code=6, context_generation=1, msg='Internal error (first.c:10).')]
-    location[0]['logs'] = [dict(level=0, line=0, msg='Internal error (first.c:10).')]
+    location[0]['diagnostics'] = [dict(code=6, context_generation=1, msg=encoded('Internal error (first.c:10).'))]
+    location[0]['logs'] = [dict(level=0, line=0, msg=encoded('Internal error (first.c:10).'))]
     changed_location = copy.deepcopy(location)
     for channel in ('diagnostics', 'logs'):
-        changed_location[0][channel][0]['msg'] = 'Internal error (second.h:20).'
+        changed_location[0][channel][0]['msg'] = encoded('Internal error (second.h:20).')
     assert validate(script, location) == validate(script, changed_location), 'embedded C location leaked into comparison'
     # Every excluded intermediate field still has a closed, typed contract.
     checked = set()
@@ -350,7 +350,57 @@ def validation_work():
     print(json.dumps({'validation_work': measured}), flush=True)
 
 
+# Every name/value-bearing request position, including raw parser payloads.
+# List names are checked by the driver before constructor dispatch; that one
+# case must preserve its completed prefix and return the explicit refusal.
+BYTE_REQUESTS = (
+    ('root-name', 'root 1 @\n', 0),
+    ('term-name', 'root 1 c\nterm 2 1 @ A\n', 0),
+    ('term-value', 'root 1 c\nterm 2 1 p @\n', 0),
+    ('list-name', 'root 1 c\nlist 2 1 @ A\n', 4),
+    ('list-key', 'root 1 c\nlist 2 1 l @\n', 0),
+    ('opaque-name', 'opaque 1 0 @ A\n', 0),
+    ('opaque-value', 'opaque 1 0 u @\nprint 1\n', 0),
+    ('change-value', 'root 1 c\nterm 2 1 p A\nchange 2 @\n', 0),
+    ('find-name', 'opaque 1 0 u A\nopaq-find 1 @\n', 0),
+    ('schema-value', 'root 1 c\nterm 2 1 p A\nread-schema 2 2 1 @\n', 0),
+    ('instance-value', 'root 1 c\nterm 2 1 p A\nread-instance 2 2 1 @\n', 0),
+    ('read-value', 'root 1 c\nterm 2 1 p A\nread-value 2 2 1 @\n', 0),
+    ('read-name', 'opaque 1 0 u A\nread-opaque 1 1 0 @\n', 0),
+    ('json-value', 'parse 1 {"m:c":{"p":"@"}}\n', 0),
+    ('json-name', 'parse 1 {"m:@":{}}\n', 0),
+    ('xml-value', 'parse-xml 1 <c xmlns="urn:m"><p>@</p></c>\n', 0),
+    ('xml-name', 'parse-xml 1 <@ xmlns="urn:m"/>\n', 0),
+    ('context-name', 'context module @ {namespace urn:x;prefix x;}\n', 0),
+    ('context-value', 'context module x {namespace "urn:@";prefix x;}\n', 0),
+    ('keyless-name', 'context-keyless module @ {namespace urn:x;prefix x;}\n', 0),
+    ('keyless-value', 'context-keyless module x {namespace "urn:@";prefix x;}\n', 0),
+)
+
+
+def byte_arguments():
+    count = 0
+    for label, template, status in BYTE_REQUESTS:
+        for value in (b'\xff', b'\xfe', b'\xc0\x80'):
+            script = template.replace('@', value.decode('utf-8', 'surrogateescape'))
+            peers = []
+            for mode in ('--quiet', '--events'):
+                for plain in (False, True):
+                    driver = comparison_driver() if plain else os.environ['YANG_NATIVE_REGISTRATION_DRIVER']
+                    read = any(f[0].startswith('read-') or f[0] in ('equal', 'context', 'context-keyless') for f in requests(script))
+                    result = subprocess.run([str(driver), mode, *(['--read-schema'] if read else ['--event-schema'])],
+                        input=script.encode('utf-8', 'surrogateescape'), capture_output=True, timeout=30, check=False)
+                    assert result.returncode == status, (label, plain, result.returncode, result.stderr)
+                    rows = [json.loads(line) for line in result.stdout.decode('utf-8').splitlines()]
+                    prefix = script if not status else '\n'.join(script.split('\n')[:-2]) + '\n'
+                    peers.append(validate(prefix, rows))
+            assert all(peer == peers[0] for peer in peers[1:]), ('non-UTF-8 peers differ', label, value)
+            count += 1
+    print(json.dumps({'non_utf8_request_positions': len(BYTE_REQUESTS), 'byte_controls_both': count, 'modes': 2, 'native_replays': 4 * count}), flush=True)
+
+
 def main():
+    byte_arguments()
     total = dict(delete=0, add=0, mutate=0, typed=0, exclusions=0, both_rejected=0, native_outcome=0, request_substitutions_both=0)
     scripts = [
         ('root 1 c\nterm 2 1 p same\nterm 3 1 q same\nterm 4 1 ll a\nterm 5 1 ll b\nread-instance 2 2 1\nread-schema 2 2 1\nread-value 2 4 1 a\nread-opaque 2 2 1 u\nequal 2 3 0\n', True),
@@ -371,8 +421,8 @@ def main():
         for k, v in counts.items(): total[k] += v
     channel_script = 'equal 0 0 1\n'
     channel_rows = replay(channel_script)
-    channel_rows[0]['diagnostics'] = [dict(code=7, context_generation=1, msg='sentinel', path='/m:c', apptag='sentinel')]
-    channel_rows[0]['logs'] = [dict(level=0, line=3, msg='sentinel', path='/m:c', schema_path='/m:c')]
+    channel_rows[0]['diagnostics'] = [dict(code=7, context_generation=1, msg=encoded('sentinel'), path=encoded('/m:c'), apptag=encoded('sentinel'))]
+    channel_rows[0]['logs'] = [dict(level=0, line=3, msg=encoded('sentinel'), path=encoded('/m:c'), schema_path=encoded('/m:c'))]
     counts = sweep(channel_script, channel_rows)
     print(json.dumps({'synthetic_optional_channels': counts}), flush=True)
     for k, v in counts.items(): total[k] += v
