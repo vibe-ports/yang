@@ -23,6 +23,71 @@ Every non-draft PR by the maintainer is reviewed automatically:
   refuses to run when the PR or checkout contains `.codex/` or `.agents/` (codex configuration a
   PR could plant — review those by hand); only `--trusted` runs post an attestation.
 
+For reviews that need to build reproducers or run tests, opt in per invocation:
+
+```sh
+ASTRA_REVIEW_EXEC=container ASTRA_PR=<n> bash <(git show origin/main:scripts/astra) review --trusted
+```
+
+This keeps Codex's host shell read-only and adds one MCP tool, `astra_exec.exec`,
+which runs bash in a fixed disposable linux/amd64 dev container. Use `make` and
+`go` directly in that tool: it is already inside the dev image, so `./dev` would
+try to invoke Docker again. The tool accepts only the command string; it cannot
+select Docker flags, mounts, images, environment variables or a different container.
+Only this tool is preapproved for noninteractive execution; host shell sandboxing
+and the CLI's other approval rules remain in force.
+The launcher needs host Docker access. Neither Docker nor Codex needs to be added
+to the dev image.
+
+The image is built from the fetched `origin/main` Dockerfile and source, with
+main's Go dependencies and minimum Go toolchain downloaded during the trusted
+build. PR build instructions and dependency declarations never run with network
+access. The container has no network at all; only the host Codex process uses the
+model API. New PR dependencies that are absent from main's cache and online checks
+such as vulnerability database refreshes need the separate CI run. A failed or
+unavailable check must be reported as such, not presented as a passing full CI run.
+
+The container mounts a snapshot of committed HEAD at `/source` read-only, and
+creates a writable copy plus a standalone Git history in `/work/yang`. It receives
+neither the host `.git` configuration nor untracked files, credentials, a Docker
+socket, writable shared caches, capabilities or root privileges. Its filesystem
+is read-only except private scratch; `no-new-privileges` prevents the dev image's
+sudo from escalating. Limits are 2 CPUs, 12 GiB RAM, 512 processes, 8 GiB working
+scratch plus 1 GiB temporary space, 30 minutes per command and 64 KiB returned
+output. Source changes and reproducers in scratch disappear after the review.
+The host heavy-test lock is held for the review, including model-selected suites.
+Cleanup runs on normal exit, error, HUP and TERM; the container also expires after
+two hours (including if the launcher is killed). The built image remains cached.
+The trusted image build and the Codex process each have a two-hour deadline, so
+a stalled build or model API call cannot hold the heavy-test lock indefinitely.
+
+The trusted prompt, schema, helper and final verdict validator still come from
+main; PR policy files remain review data. Docker/kernel isolation and trusted main
+are assumed. Executing untrusted tests does not solve prompt injection or protect
+against kernel vulnerabilities. Model output, validation, exit status and posting
+use the existing `review --trusted` path.
+Trusted Python entry points use isolated mode so a checkout or `PYTHONPATH` module
+cannot replace their standard-library imports.
+
+Rollback: unset `ASTRA_REVIEW_EXEC` (or remove that assignment from the launcher).
+The default remains the previous source-only review, with no container or MCP
+helper. Unknown values and container requests outside `review --trusted` fail
+closed. Before merging changes to this policy code, the maintainer must read it.
+
+Executor checks, without a model or a posted verdict:
+
+```sh
+./dev python3 scripts/test-astra-exec.py </dev/null
+TZ=UTC python3 scripts/test-astra-exec.py --docker
+```
+
+The second command holds the heavy-test lock and creates a disposable test head
+on main with an invalid PR Dockerfile and an `export-ignore` canary. It proves
+that main's image is used and the canary survives, checks the source/socket/
+privilege/network boundaries, runs CI component targets and a live oracle test,
+and verifies removal with the Docker daemon. Its fixture commits exist only in
+a temporary repository; the working branch is unchanged.
+
 `ai-review` spends the maintainer's Claude plan token, so it never runs PR code:
 - `pull_request_target`: the workflow and scripts come from `main`;
 - only PRs whose author **and** triggering sender have the maintainer's numeric id

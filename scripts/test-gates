@@ -560,6 +560,7 @@ expect 1 "import-goldens: symlinked golden directory rejected" "missing or redir
 rm "$g/$G"; mv "$t/elsewhere" "$g/$G"
 
 # ---------------------------------------------------------------- astra --trusted (stubbed codex)
+python3 "$src/test-astra-exec.py" || no "astra executor regressions"
 cat >"$t/bin/codex" <<'EOF'
 #!/usr/bin/env bash
 # Stub: records argv, writes an approving answer to the -o file.
@@ -570,6 +571,12 @@ chmod +x "$t/bin/codex"
 abare=$t/astra-origin.git; git init -q --bare -b main "$abare"
 a=$t/as; git -C "$t" clone -q "$abare" as 2>/dev/null; mkdir -p "$a/scripts"
 cp "$src/astra" "$src/astra-gate.py" "$src/review-schema.json" "$a/scripts/"; echo '# rules' >"$a/AGENTS.md"
+# A tiny trusted helper isolates launcher selection from real Docker/model execution.
+cat >"$a/scripts/astra-exec.py" <<'EOF'
+import json, os, pathlib, sys
+pathlib.Path(os.environ['FX'], 'exec-args').write_text(json.dumps(sys.argv[1:]))
+pathlib.Path(sys.argv[6]).write_text('{"verdict":"approve","summary":"container stub","findings":[]}')
+EOF
 git -C "$a" add -A; git -C "$a" commit -qm base; git -C "$a" push -q origin HEAD:main
 git -C "$a" checkout -q -b pr; echo change >"$a/x"; git -C "$a" add x; git -C "$a" commit -qm change
 asha=$(git -C "$a" rev-parse HEAD)
@@ -585,6 +592,19 @@ has "astra --trusted: --ignore-rules passed" "^--ignore-rules$" "$FX/codex-args"
 has "astra --trusted: project AGENTS.md disabled" "^project_doc_max_bytes=0$" "$FX/codex-args"
 expect 0 "astra (untrusted): runs" - astra
 hasnt "astra (untrusted): no attestation" "^VERDICT:" "$t/out"
+ASTRA_REVIEW_EXEC=container expect 2 "astra: container requires trusted review" "requires review --trusted" astra
+ASTRA_REVIEW_EXEC=typo expect 2 "astra: unknown executor fails closed" "must be unset or container" astra --trusted
+echo 'raise RuntimeError("PR helper must never run")' >"$a/scripts/astra-exec.py"
+git -C "$a" add scripts/astra-exec.py; git -C "$a" commit -qm 'untrusted helper'
+execsha=$(git -C "$a" rev-parse HEAD)
+ASTRA_REVIEW_EXEC=container expect 0 "astra: executor comes from main, not the PR" - astra --trusted
+has "astra: container review preserves attestation" "^VERDICT: approve $execsha \(codex-gpt-6-astra\)$" "$t/out"
+has "astra: selected container executor" 'container stub' "$t/out"
+has "astra: main rules passed to executor" '# rules' "$FX/exec-args"
+mkdir "$t/py-poison"; echo 'raise RuntimeError("untrusted Python import")' >"$t/py-poison/json.py"
+PYTHONPATH="$t/py-poison" ASTRA_REVIEW_EXEC=container expect 0 "astra: trusted helper and gate ignore Python import injection" - astra --trusted
+has "astra: isolated gate preserves attestation" "^VERDICT: approve $execsha \(codex-gpt-6-astra\)$" "$t/out"
+git -C "$a" reset -q --hard HEAD~1
 mkdir -p "$a/sub/.codex"; echo 'x=1' >"$a/sub/.codex/config.toml"; git -C "$a" add sub; git -C "$a" commit -qm codex
 expect 2 "astra --trusted: refuses a PR adding .codex/" "contains .codex/ or .agents/" astra --trusted
 git -C "$a" reset -q --hard HEAD~1; rm -rf "$a/sub"; mkdir "$a/.agents"
