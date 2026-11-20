@@ -7,6 +7,7 @@ package data
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -19,6 +20,7 @@ import (
 // These are live-oracle requests, including existing guarded positions. Reject
 // the final request before any primitive, result, snapshot or output binding.
 func TestNativeDriverNodeKinds(t *testing.T) {
+	nativeVerifyConfiguredDriverRoles(t)
 	driver := os.Getenv("YANG_NATIVE_REGISTRATION_DRIVER")
 	if driver == "" {
 		t.Skip("set native drivers")
@@ -45,7 +47,7 @@ func TestNativeDriverNodeKinds(t *testing.T) {
 						cmd := exec.CommandContext(ctx, path, mode, "--read-schema")
 						cmd.Env = append(os.Environ(), "GLIBC_TUNABLES=glibc.malloc.tcache_count=7")
 						cmd.Stdin = strings.NewReader(input)
-						return cmd.Output()
+						return nativeCommandOutput(cmd)
 					}
 					before, err := execute(prefix)
 					prefixExit := 0
@@ -54,7 +56,8 @@ func TestNativeDriverNodeKinds(t *testing.T) {
 					}
 					gotExit := 0
 					if err != nil {
-						exit, ok := err.(*exec.ExitError)
+						var exit *exec.ExitError
+						ok := errors.As(err, &exit)
 						if !ok {
 							t.Fatal(err)
 						}
@@ -64,22 +67,19 @@ func TestNativeDriverNodeKinds(t *testing.T) {
 						t.Fatalf("setup exit %d, want %d: %v", gotExit, prefixExit, err)
 					}
 					after, err := execute(string(script))
-					exit, ok := err.(*exec.ExitError)
+					var exit *exec.ExitError
+					ok := errors.As(err, &exit)
 					if !ok || exit.ExitCode() != 4 {
 						t.Fatalf("wrong-kind request must exit 4: %v\n%s", err, after)
 					}
 					// Allocation addresses and build-path diagnostics never enter stdout.
 					// Comparing decoded streams also proves the input never reached a
 					// mutation hook, a read result, or a completed command snapshot.
-					decode := func(output []byte) []map[string]any {
+					decode := func(output []byte) []json.RawMessage {
 						t.Helper()
-						var rows []map[string]any
-						for _, line := range strings.Split(strings.TrimSpace(string(output)), "\n") {
-							var row map[string]any
-							if err := json.Unmarshal([]byte(line), &row); err != nil {
-								t.Fatal(err)
-							}
-							rows = append(rows, row)
+						rows, err := nativeDecodePrefix(prefix, output)
+						if err != nil {
+							t.Fatal(err)
 						}
 						return rows
 					}

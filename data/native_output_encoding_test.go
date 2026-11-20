@@ -35,7 +35,7 @@ func TestNativeOutputByteEmitters(t *testing.T) {
 	}
 	cmd := exec.Command("python3", "byte_fields_test.py")
 	cmd.Dir = filepath.Join("..", "conformance", "oracle", "native_registration")
-	output, err := cmd.CombinedOutput()
+	output, err := nativeCommandOutput(cmd)
 	if err != nil {
 		t.Fatalf("byte emitter controls: %v\n%s", err, output)
 	}
@@ -43,6 +43,7 @@ func TestNativeOutputByteEmitters(t *testing.T) {
 }
 
 func TestNativeOutputInvalidXML(t *testing.T) {
+	nativeVerifyConfiguredDriverRoles(t)
 	path := filepath.Join("..", "conformance", "oracle", "native_registration", "cases", "read", "output-invalid-xml.calls")
 	script, err := os.ReadFile(path)
 	if err != nil {
@@ -56,7 +57,7 @@ func TestNativeOutputInvalidXML(t *testing.T) {
 		}
 		cmd := exec.Command(driver, "--quiet")
 		cmd.Stdin = bytes.NewReader(script)
-		output, err := cmd.CombinedOutput()
+		output, err := nativeCommandOutput(cmd)
 		if err != nil {
 			t.Fatalf("native printer replay: %v\n%s", err, output)
 		}
@@ -119,7 +120,7 @@ func TestNativeOutputByteArguments(t *testing.T) {
 	}
 	cmd := exec.Command("python3", "-c", "from evidence_test import byte_arguments; byte_arguments()")
 	cmd.Dir = filepath.Join("..", "conformance", "oracle", "native_registration")
-	output, err := cmd.CombinedOutput()
+	output, err := nativeCommandOutput(cmd)
 	if err != nil {
 		t.Fatalf("byte request controls: %v\n%s", err, output)
 	}
@@ -134,21 +135,22 @@ func TestNativeOutputJSONReuse(t *testing.T) {
 	}
 	const script = `import json, os, pathlib
 from reuse_test import execute, evidence, PROFILES
+from transport import decode_rows
 from drivers import comparison_driver
 count = 0
 for profile in PROFILES:
-    for driver in (pathlib.Path(os.environ['YANG_NATIVE_REGISTRATION_DRIVER']), comparison_driver()):
+    for instrumented, driver in ((True, pathlib.Path(os.environ['YANG_NATIVE_REGISTRATION_DRIVER'])), (False, comparison_driver())):
         for verbose in (False, True):
-            result = execute(driver, 'lifetime/validation-delete', verbose, profile)
+            result = execute(driver, 'lifetime/validation-delete', verbose, profile, instrumented=instrumented)
             assert result.returncode == 0, (profile, driver.name, verbose, result.returncode, result.stderr)
-            evidence('lifetime/validation-delete', [json.loads(line) for line in result.stdout.splitlines()])
+            evidence('lifetime/validation-delete', decode_rows(result.stdout))
             count += 1
 assert count == 12
 print(json.dumps({'output_reuse': count}))
 `
 	cmd := exec.Command("python3", "-c", script)
 	cmd.Dir = filepath.Join("..", "conformance", "oracle", "native_registration")
-	output, err := cmd.CombinedOutput()
+	output, err := nativeCommandOutput(cmd)
 	if err != nil {
 		t.Fatalf("JSON allocation/reuse controls: %v\n%s", err, output)
 	}

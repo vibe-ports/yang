@@ -28,7 +28,7 @@ func TestNativeEntryAuditRejections(t *testing.T) {
 			//nolint:gosec // Fixed repository script and finite regression names.
 			cmd := exec.CommandContext(ctx, "python3", filepath.Join("..", "conformance", "oracle", "native_registration", "sweep_test.py"),
 				"IdentitySweep.test_"+name)
-			if out, err := cmd.CombinedOutput(); err != nil {
+			if out, err := nativeCommandOutput(cmd); err != nil {
 				t.Fatalf("entry audit regression: %v\n%s", err, out)
 			} else {
 				t.Logf("%s", out)
@@ -47,7 +47,6 @@ func TestNativeRetainedReadEntries(t *testing.T) {
 	comparison := nativeComparisonDriver()
 	for label, path := range map[string]string{"instrumented": driver, "unmodified": comparison} {
 		t.Run(label, func(t *testing.T) {
-			t.Setenv("YANG_NATIVE_REGISTRATION_DRIVER", path)
 			for _, name := range []string{"retained-null", "retained-opaque"} {
 				t.Run(name, func(t *testing.T) {
 					//nolint:gosec // Fixed repository request names.
@@ -55,7 +54,7 @@ func TestNativeRetainedReadEntries(t *testing.T) {
 					if err != nil {
 						t.Fatal(err)
 					}
-					rows := nativeDriver(t, string(script)) // Includes shared full-evidence validation.
+					rows := nativeDriverReplayPath(t, string(script), "", false, path) // Includes shared full-evidence validation.
 					var reads, nullReads int
 					for _, row := range rows {
 						if row.Event != "read.schema" && row.Event != "read.null" {
@@ -174,7 +173,7 @@ func TestNativeSeparateDriverPaths(t *testing.T) {
 				defer cancel()
 				//nolint:gosec // Fixed repository scripts and private test executables.
 				cmd := exec.CommandContext(ctx, "python3", args...)
-				out, err := cmd.CombinedOutput()
+				out, err := nativeCommandOutput(cmd)
 				if (err != nil) != (mode == "missing-comparison") {
 					t.Fatalf("%s: %v\n%s", mode, err, out)
 				}
@@ -186,6 +185,7 @@ func TestNativeSeparateDriverPaths(t *testing.T) {
 // Exercise the same full-evidence validator the Go wrapper calls before any
 // nativeImage projection or slot indexing, including equal corrupt traces.
 func TestNativeIdentityEvidenceRejections(t *testing.T) {
+	nativeVerifyConfiguredDriverRoles(t)
 	driver := os.Getenv("YANG_NATIVE_REGISTRATION_DRIVER")
 	if driver == "" {
 		t.Skip("set YANG_NATIVE_REGISTRATION_DRIVER after the isolated static build")
@@ -196,13 +196,13 @@ func TestNativeIdentityEvidenceRejections(t *testing.T) {
 	//nolint:gosec // Explicit opt-in local test executable.
 	cmd := exec.CommandContext(ctx, driver, "--quiet")
 	cmd.Stdin = bytes.NewBufferString(script)
-	out, err := cmd.Output()
+	out, err := nativeCommandOutput(cmd)
 	if err != nil {
 		t.Fatal(err)
 	}
-	var raw []json.RawMessage
-	for _, line := range bytes.Split(bytes.TrimSpace(out), []byte{'\n'}) {
-		raw = append(raw, bytes.Clone(line))
+	raw, err := nativeTranscriptRows(out)
+	if err != nil {
+		t.Fatal(err)
 	}
 	if err := nativeValidateEvidence(script, raw); err != nil {
 		t.Fatalf("valid control: %v", err)

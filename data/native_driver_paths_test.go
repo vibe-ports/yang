@@ -74,7 +74,7 @@ print('comparison_driver_live_fallback: both native peers passed')
 			if setting == "empty" {
 				cmd.Env = append(cmd.Env, "YANG_NATIVE_REGISTRATION_COMPARISON_DRIVER=")
 			}
-			out, err := cmd.CombinedOutput()
+			out, err := nativeCommandOutput(cmd)
 			if err != nil || !strings.Contains(string(out), "comparison_driver_live_fallback") || strings.Contains(string(out), "--- SKIP:") {
 				t.Fatalf("single-variable Python replay: %v\n%s", err, out)
 			}

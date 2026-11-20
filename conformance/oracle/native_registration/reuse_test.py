@@ -6,11 +6,11 @@ import io
 import json
 import os
 import pathlib
-import subprocess
 import unittest
 
 import check
-from drivers import comparison_driver
+from drivers import comparison_driver, native_run, verify_pair
+from transport import decode_rows, run
 from identity import validate
 from sweep_test import ancestor_reuse_script
 
@@ -28,7 +28,7 @@ def script_for(name):
     return ancestor_reuse_script() if name == 'ancestor-reuse' else (ROOT / 'cases' / (name + '.calls')).read_text()
 
 
-def execute(driver, name, verbose, profile):
+def execute(driver, name, verbose, profile, *, instrumented):
     env = dict(os.environ)
     for key in ('TZ', 'LC_ALL', 'YANG_REUSE_PADDING'):
         env.pop(key, None)
@@ -36,11 +36,12 @@ def execute(driver, name, verbose, profile):
     options = ['--events' if verbose else '--quiet']
     if name in ('ancestor-reuse', 'lifetime/list-key', 'lifetime/validation-delete'):
         options.append('--event-schema')
-    return subprocess.run([str(driver), *options], input=script_for(name), text=True,
+    return native_run(driver, instrumented=instrumented, options=options, input=script_for(name), text=True,
                           capture_output=True, timeout=25, check=False, env=env)
 
 
 def evidence(name, rows):
+    check.completed_replay(name, rows) if name != 'ancestor-reuse' else None
     validate(script_for(name), rows)
     if name == 'ancestor-reuse':
         ancestors = {n['generation'] for r in check.commands(rows, 'dup') for n in r['nodes']
@@ -58,6 +59,26 @@ def evidence(name, rows):
             assert any(r['old_generation'] == rows[-1]['generation'] for r in check.commands(rows, 'allocation.address-reuse'))
 
 
+def compile_control(source, directory):
+    binaries = []
+    for plain in (False, True):
+        binary = directory / ('driver-unmodified' if plain else 'driver')
+        tree, config = ('source', 'config') if plain else ('instrumented', 'static')
+        args = ['gcc', *(['-DNR_UNMODIFIED'] if plain else []), '-DNDEBUG', '-O3', '-Wall', '-Wextra',
+                '-Wpedantic', '-std=c11', '-Wl,--wrap=free', *(['-Wl,--wrap=lyht_remove,--wrap=lyht_remove_with_resize_cb,--wrap=lyht_find_next,--wrap=lyht_find_next_with_collision_cb'] if '__wrap_lyht_remove_with_resize_cb' in source.read_text() else []), '-Dlys_find_child=nr_entry_find_child', '-I' + str(ROOT),
+                '-I' + str(ROOT / '.build' / tree / 'src'),
+                '-I' + str(ROOT / '.build' / config / 'libyang'),
+                '-I' + str(ROOT / '.build' / config / 'compat'),
+                '-I' + str(ROOT / '.build' / tree / 'src/plugins_exts'),
+                '-o', str(binary), str(source), str(ROOT / 'entry_contracts.c'), str(ROOT.parent / 'cjson/cJSON.c'),
+                str(ROOT / '.build' / ('libyang-unmodified.a' if plain else 'static/libyang.a')),
+                '-lpcre2-8', '-lm', '-lpthread', '-ldl']
+        result = run(args, capture_output=True, text=True, timeout=60, check=False)
+        assert result.returncode == 0, result.stdout + result.stderr
+        binaries.append(binary)
+    return binaries
+
+
 class ReuseControls(unittest.TestCase):
     def test_environment_matrix(self):
         count = 0
@@ -67,9 +88,9 @@ class ReuseControls(unittest.TestCase):
                     traces = []
                     for label, driver in (('instrumented', DRIVER), ('unmodified', COMPARISON_DRIVER)):
                         with self.subTest(profile=profile, case=name, build=label, verbose=verbose):
-                            result = execute(driver, name, verbose, profile)
+                            result = execute(driver, name, verbose, profile, instrumented=label == 'instrumented')
                             self.assertEqual(result.returncode, 0, result.stderr + result.stdout[-2000:])
-                            rows = [json.loads(line) for line in result.stdout.splitlines()]
+                            rows = decode_rows(result.stdout)
                             with contextlib.redirect_stdout(io.StringIO()):
                                 evidence(name, rows)
                             traces.append(rows)
@@ -84,36 +105,21 @@ class ReuseControls(unittest.TestCase):
         # releasing it. Real malloc/calloc still run; no address can equal this
         # held allocation. The constructor assertion, not a build/setup failure,
         # must reject every control, including the seven inherited controls.
-        directory = ROOT / '.build/reuse-disabled'
+        directory = ROOT / '.build/round8/reuse-disabled'
         directory.mkdir(parents=True, exist_ok=True)
         original = (ROOT / 'driver.c').read_text()
         release = '    __real_free(reuse_reserved);'
         self.assertEqual(original.count(release), 1)
         source = directory / 'driver.c'
         source.write_text(original.replace(release, '    (void)reuse_reserved; /* forcing disabled: keep target allocated */'))
-        binaries = []
-        for plain in (False, True):
-            binary = directory / ('driver-unmodified' if plain else 'driver')
-            tree, config = ('source', 'config') if plain else ('instrumented', 'static')
-            args = ['gcc', *(['-DNR_UNMODIFIED'] if plain else []), '-DNDEBUG', '-O3', '-Wall', '-Wextra',
-                    '-Wpedantic', '-std=c11', '-Wl,--wrap=free', '-I' + str(ROOT),
-                    '-I' + str(ROOT / '.build' / tree / 'src'),
-                    '-I' + str(ROOT / '.build' / config / 'libyang'),
-                    '-I' + str(ROOT / '.build' / config / 'compat'),
-                    '-I' + str(ROOT / '.build' / tree / 'src/plugins_exts'),
-                    '-o', str(binary), str(source), str(ROOT.parent / 'cjson/cJSON.c'),
-                    str(ROOT / '.build' / ('libyang-unmodified.a' if plain else 'static/libyang.a')),
-                    '-lpcre2-8', '-lm', '-lpthread', '-ldl']
-            build = subprocess.run(args, capture_output=True, text=True, timeout=60, check=False)
-            self.assertEqual(build.returncode, 0, build.stdout + build.stderr)
-            binaries.append(binary)
+        binaries = compile_control(source, directory)
         count = 0
         for profile in PROFILES:
             for name in CASES:
                 for verbose in (False, True):
-                    for driver in binaries:
+                    for instrumented, driver in zip((True, False), binaries, strict=True):
                         with self.subTest(profile=profile, case=name, build=driver.name, verbose=verbose):
-                            result = execute(driver, name, verbose, profile)
+                            result = execute(driver, name, verbose, profile, instrumented=instrumented)
                             self.assertEqual(result.returncode, 100, result.stderr + result.stdout[-2000:])
                             self.assertEqual(result.stderr.strip(), FAILURE)
                             count += 1
@@ -121,13 +127,40 @@ class ReuseControls(unittest.TestCase):
         print(json.dumps({'reuse_forcing_disabled_rejections': count}), flush=True)
 
 
+    def test_table_forcing_disabled(self):
+        # Hold only the released ly_ht chunk. Native node forcing is unchanged
+        # and must complete before the table-only assertion rejects the replay.
+        directory = ROOT / '.build/round8/table-reuse-disabled'
+        directory.mkdir(parents=True, exist_ok=True)
+        original = (ROOT / 'driver.c').read_text()
+        release = '    __real_free(table_reuse_reserved);'
+        self.assertEqual(original.count(release), 1)
+        source = directory / 'driver.c'
+        source.write_text(original.replace(release, '    (void)table_reuse_reserved; /* table forcing disabled */'))
+        binaries = compile_control(source, directory)
+        count = 0
+        for profile in PROFILES:
+            for verbose in (False, True):
+                for instrumented, driver in zip((True, False), binaries, strict=True):
+                    with self.subTest(profile=profile, build=driver.name, verbose=verbose):
+                        result = execute(driver, 'lifetime/table-reuse', verbose, profile, instrumented=instrumented)
+                        self.assertEqual(result.returncode, 100, result.stderr + result.stdout[-2000:])
+                        self.assertEqual(result.stderr.strip(), 'native constructor did not reuse the prepared table chunk')
+                        rows = decode_rows(result.stdout)
+                        self.assertTrue(any(r['event'] == 'allocation.address-reuse' for r in rows), 'node reuse must remain enabled')
+                        count += 1
+        self.assertEqual(count, 12)
+        print(json.dumps({'table_reuse_forcing_disabled_rejections': count}), flush=True)
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--driver', type=pathlib.Path, default=os.environ.get('YANG_NATIVE_REGISTRATION_DRIVER') or None)
-    parser.add_argument('--comparison-driver', type=pathlib.Path)
+    parser.add_argument('--comparison-driver')
     args, rest = parser.parse_known_args()
     if args.driver is None:
         parser.error('--driver or YANG_NATIVE_REGISTRATION_DRIVER is required')
     DRIVER = args.driver.resolve()
     COMPARISON_DRIVER = comparison_driver(DRIVER, args.comparison_driver)
+    verify_pair(DRIVER, COMPARISON_DRIVER)
     unittest.main(argv=[__file__, *rest])

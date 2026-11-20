@@ -255,7 +255,7 @@ func TestNativeG2EveryEmittedField(t *testing.T) {
 	}
 	cmd := exec.Command("python3", "evidence_test.py")
 	cmd.Dir = filepath.Join("..", "conformance", "oracle", "native_registration")
-	output, err := cmd.CombinedOutput()
+	output, err := nativeCommandOutput(cmd)
 	if err != nil {
 		t.Fatalf("field perturbation control: %v\n%s", err, output)
 	}

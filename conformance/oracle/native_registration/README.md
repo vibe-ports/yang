@@ -64,8 +64,18 @@ and successive incarnations of a reused handle have distinct keys; process-local
 generations are never compared directly. Every comparison checks the exact completed command
 sequence, statuses and diagnostic code/path/app-tag, plus the independently
 expected terminal command or stop boundary on both sides. LOGINT source paths
-and line numbers differ between builds; full validation diagnostics are still
-compared. An empty result set cannot satisfy a control. Constructor-rejection
+and line numbers differ between builds. Normalization requires a native error
+code: diagnostic codes come from the native queue, and logger codes are copied
+only when the stored error's message pointer matches the callback argument.
+The two pinned hash-table NULL-context sites are identified by typed return
+observers: missing removal logs LOGARG before ENOTFOUND, and failed next-record
+resolution logs LOGINT before EINT. Both public and callback entry symbols are
+observed because same-object native calls do not pass through linker wrapping.
+The observers change only the new last log's origin, without allocations or
+native argument/return changes. Other unstored/NULL-context logger messages carry
+code -1 and remain exact. User
+validation messages, including text resembling internal/argument diagnostics,
+remain byte-for-byte evidence. An empty result set cannot satisfy a control. Constructor-rejection
 controls instead compare their explicit rejection snapshot and nonempty log.
 The Go evidence test passes its selected executable
 and uses `YANG_NATIVE_REGISTRATION_COMPARISON_DRIVER` when provided, otherwise
@@ -82,7 +92,14 @@ string bytes up to its terminating NUL, without Unicode replacement. The hex
 contract itself can represent any byte, including `00`; the line protocol and
 native C-string APIs do not accept embedded NUL. JSONL transport remains strict
 UTF-8. Driver-authored labels (`event`, availability, allocation scope,
-continuity) remain ordinary JSON text.
+continuity) remain ordinary JSON text. All consumers enforce a 64 MiB stdout
+budget, 1 MiB stderr budget, 8 MiB record budget and 32768-record budget while
+capturing pipes, before decoding or retaining complete transcripts. UTF-8 BOMs,
+alternate encodings, NUL, CR framing, blank records and unterminated records are
+rejected. Parser requests remove the physical LF once, before recording and
+native dispatch; trailing spaces and a payload CR remain input bytes. Physical
+lines and name/value tokens exceeding the driver's fixed buffers are rejected
+before native entry, as are embedded NUL bytes.
 
 The complete byte-carrying output inventory is:
 
@@ -196,8 +213,12 @@ Stdout is JSONL. `--quiet` emits command snapshots; the default emits primitive
 events as well. `--remote-stop` exits immediately after the remote-last
 insert-after primitive. `--remote-watchdog` runs the separate bounded rewind
 first-sibling control (which terminates for the parented remote-last replay).
-`--merge2-ub-stop` exits before an exhausted forward iterator, unsafe continuation, or
-heterogeneous-schema RB insertion. A 15-second process alarm and bounded table,
+Every mode, including `--quiet`, `--events` and `--merge2-ub-stop`, stops at
+`boundary.merge2-driver-safe-prefix` before the public attachment that could
+dispatch to variant 2 (destination without an RB tree, source with an RB tree).
+This conservative representation check also protects the unmodified build,
+which has no primitive callbacks. No continuation of that variant is exercised
+by these replays. A 15-second process alarm and bounded table,
 RB and find-next traversals label watchdog boundaries; they never invent a
 completed match/miss.
 `free-slot-cap.calls` fills a disabled eight-slot table and records its inert
@@ -384,24 +405,15 @@ allocation-identity controls apply to instrumented traces.
   removing Qg and changing the collision node to RA, schema lookup instead
   returns ENOTFOUND. This establishes the later selection difference caused by
   checked deduplication without calling the repeated I a public API sequence.
-* **merge2-defined.calls:** destination without RB metadata and source with RB
-  metadata enters native variant 2. The trace confirms front → metadata transfer
-  → among → back. The completed public JSON matches untouched native.
-* **merge2-successor.calls:** the trace reaches the wrong successor-schema
-  boundary after front and metadata transfer and stops before the incompatible
-  RB insertion. **merge2-before.calls:** all source nodes before destination
-  reach front → metadata → among → back's no-successor return; observation stops
-  before the subsequent uninitialized continuation read. Neither is a completed
-  golden or a claim of exact native behavior beyond the safe prefix.
-* **merge2-unsorted.calls:** public NoSort/NoMeta copies create D=[D4,D1]
-  without RB metadata and detached S=[S2,S3] with RB metadata. The trace records
-  native's source-only prefix and stops before the exhausted `_among` forward
-  iterator is dereferenced. At the stop, complete RB topology contains
-  D4,D1,S2,S3, separately from the metadata's older stored pointer. This is the
-  native UB-prefix control. The Go regression controls for §4.1 separately
-  verify D-0062's [D1,S2,S3,D4] permutation, metadata-before-replay publication,
-  A=[S3,S2], absent-table threshold frontiers and existing-table growth without
-  inventing destination registration events.
+* **merge2-defined/before/successor/unsorted.calls:** all four stop before
+  the attachment that would enter variant 2, in both builds and every replay
+  mode. The shared safe prefix excludes all variant-2 internals, including the
+  previously successful defined case. Earlier internal callback stops did not
+  protect the unmodified driver, and quiet/default modes could continue into
+  native undefined behavior. ASan/UBSan checks of both runtime-report seeds and
+  these replays now stop at the public boundary. This is a driver API contract,
+  not a completed native verdict or a golden. Go's separate mutation regressions
+  retain coverage of D-0062's ordering and hash-registration behavior.
 * **opaque-threshold.calls:** three schema children plus one opaque remain
   table-absent; the fourth schema child creates the table. **opaque-separated.calls**
   uses public placement of an opaque separator between same-schema children
@@ -2044,3 +2056,32 @@ walks only the key prefix, never the list payload or retained occurrence history
 payload lifetimes, typed non-NULL comparison modeling and general G2 extensions
 remain outside part 1. Live requests replace manifest fixtures here; no golden
 files are created or edited.
+
+## Input validation and output evidence controls
+
+The shared replay helpers verify the fixed amd64 ABI and the instrumented versus
+unmodified executable roles before semantic comparisons. Synthetic transport
+controls use an explicitly separate entry point. An empty comparison CLI setting
+uses the same sibling fallback as an empty environment setting. Completion is
+checked against the caller's expected terminal operation; terminal boundaries
+cannot be followed by later evidence. The remote observational boundary is the
+explicit continuation exception. Sensitivity runners consume Go JSON test
+events, require the selected regression to run, reject skips/setup failures and
+attribute failures to the intended rejection diagnostic.
+
+Table identity persists independently of content purity across every mutation.
+The table reuse replay uses `# reuse-table-free HANDLE` and
+`# reuse-table-next HANDLE` to reserve and release the actual `ly_ht` allocation
+independently of node reuse. `table.address-reuse` records distinct retired/live
+table identities only after their actual native pointers compare equal; no
+addresses are emitted. A table-only forcing-disabled control preserves node
+forcing and must fail. Reuse notices cannot borrow future births or retirements;
+sibling/ancestry normalization uses iterative, visited, allowance-limited walks.
+
+The live Go regressions for these contracts are `TestNativeValidationMessageOrigins`,
+`TestNativeDiagnosticNormalizationBytes`, `TestNativeOutputAllocationFailures`,
+`TestNativeParserRequestFraming`, `TestNativeInputPhysicalFraming`,
+`TestNativeMerge2SafePrefix`, `TestNativeTransportProcesses`,
+`TestNativeEvidenceEntryContracts` and `TestNativeLifetimeIdentityContracts`.
+They exercise native request cases and corrupted-evidence controls; no corpus
+goldens are created or edited.

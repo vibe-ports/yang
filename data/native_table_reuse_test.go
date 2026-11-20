@@ -26,11 +26,11 @@ func TestNativeReuseEnvironmentMatrix(t *testing.T) {
 	defer cancel()
 	cmd := exec.CommandContext(ctx, "python3", filepath.Join("..", "conformance", "oracle", "native_registration", "reuse_test.py"),
 		"--driver", driver, "--comparison-driver", comparison, "-v")
-	out, err := cmd.CombinedOutput()
+	out, err := nativeCommandOutput(cmd)
 	if err != nil {
 		t.Fatalf("reuse environment controls: %v\n%s", err, out)
 	}
-	for _, evidence := range []string{`"reuse_environment_passes": 192`, `"reuse_forcing_disabled_rejections": 192`} {
+	for _, evidence := range []string{`"reuse_environment_passes": 192`, `"reuse_forcing_disabled_rejections": 192`, `"table_reuse_forcing_disabled_rejections": 12`} {
 		if !bytes.Contains(out, []byte(evidence)) {
 			t.Fatalf("missing %s\n%s", evidence, out)
 		}

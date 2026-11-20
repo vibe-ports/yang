@@ -7,6 +7,7 @@ package data
 import (
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -266,13 +267,15 @@ func TestNativeG2MandatoryInputs(t *testing.T) {
 }
 
 func nativeG2InvalidRequest(t *testing.T, script string) {
+	nativeVerifyConfiguredDriverRoles(t)
 	t.Helper()
 	for _, path := range []string{os.Getenv("YANG_NATIVE_REGISTRATION_DRIVER"), nativeComparisonDriver()} {
 		//nolint:gosec // Explicit test driver and fixed bounded native request; driver has its process watchdog.
 		cmd := exec.Command(path, "--quiet", "--read-schema")
 		cmd.Stdin = strings.NewReader(script)
-		out, err := cmd.CombinedOutput()
-		exit, ok := err.(*exec.ExitError)
+		out, err := nativeCommandOutput(cmd)
+		var exit *exec.ExitError
+		ok := errors.As(err, &exit)
 		if !ok || exit.ExitCode() != 4 {
 			t.Fatalf("native request rejection: %v\n%s", err, out)
 		}
@@ -440,8 +443,12 @@ func nativeCompletedCommandEvidence(script string, rows []nativeDriverResult) (n
 							return nil, err
 						}
 						v = string(decoded)
-						v = nativeG2Location.ReplaceAllString(v.(string), "$1$2")
-						v = nativeG2ObserverFunction.ReplaceAllString(v.(string), "$1$2$3")
+						switch item.(map[string]any)["code"] {
+						case float64(6):
+							v = nativeG2Location.ReplaceAllString(v.(string), "$1$2")
+						case float64(3):
+							v = nativeG2ObserverFunction.ReplaceAllString(v.(string), "$1$2$3")
+						}
 						v = hex.EncodeToString([]byte(v.(string)))
 					}
 					record[k] = v
@@ -717,9 +724,11 @@ func TestNativeG2ReadCompletion(t *testing.T) {
 			script := command + " 1 2 3\n"
 			result := nativeDriverResult{Event: event, Operation: 1}
 			completed := nativeDriverResult{Event: command, Operation: 1}
-			if err := nativeCompletedReplay(script, []nativeDriverResult{result, completed}, ""); err != nil {
-				t.Fatal(err)
-			}
+			t.Run("complete", func(t *testing.T) {
+				if err := nativeCompletedReplay(script, []nativeDriverResult{result, completed}, ""); err != nil {
+					t.Fatal(err)
+				}
+			})
 			for name, rows := range map[string][]nativeDriverResult{
 				"missing-result": {completed}, "results-only": {result}, "duplicate-result": {result, result, completed},
 				"wrong-operation":    {{Event: event, Operation: 2}, completed},
@@ -787,7 +796,7 @@ func TestNativeG2UnmodifiedReplayControls(t *testing.T) {
 			r.bootstrap = raw[0]
 			valid = append(valid, r)
 		}
-		nativeG2Unmodified(t, script, valid)
+		nativeG2SyntheticTransport(t, script, valid)
 		return
 	}
 	valid = nativeDriver(t, script)
@@ -817,7 +826,7 @@ func TestNativeG2UnmodifiedReplayControls(t *testing.T) {
 			}
 			cmd := exec.Command(os.Args[0], "-test.run=^TestNativeG2UnmodifiedReplayControls$") //nolint:gosec // current test executable, fixed test selector
 			cmd.Env = append(os.Environ(), "YANG_NATIVE_G2_REPLAY_CHILD=1", "YANG_NATIVE_G2_REFERENCE="+reference, "YANG_NATIVE_REGISTRATION_COMPARISON_DRIVER="+driver)
-			output, err := cmd.CombinedOutput()
+			output, err := nativeCommandOutput(cmd)
 			if (err == nil) != (name == "valid") {
 				t.Fatalf("replay control %s: %v\n%s", name, err, output)
 			}
@@ -1108,7 +1117,7 @@ func TestNativeCompletedCommandProjection(t *testing.T) {
 				case "rc":
 					r[field] = float64(7)
 				case "logs":
-					r[field] = []any{map[string]any{"level": float64(0), "line": float64(0), "msg": hex.EncodeToString([]byte("changed"))}}
+					r[field] = []any{map[string]any{"level": float64(0), "line": float64(0), "code": float64(-1), "msg": hex.EncodeToString([]byte("changed"))}}
 				default:
 					r[field] = []any{map[string]any{"code": float64(7), "context_generation": float64(1), "msg": hex.EncodeToString([]byte("changed"))}}
 				}

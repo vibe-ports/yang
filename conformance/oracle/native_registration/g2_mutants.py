@@ -10,7 +10,8 @@ import re
 import os
 import pathlib
 import shlex
-import subprocess
+from sensitivity import go_result, selected_tests
+from transport import run as transport_run
 
 root = pathlib.Path(__file__).resolve().parents[3]
 aux = root / "conformance/oracle/native_registration"
@@ -18,16 +19,66 @@ work = aux / ".build/g2-mutants"
 work.mkdir(parents=True, exist_ok=True)
 (work / 'drivers.py').write_text((aux / 'drivers.py').read_text())
 (work / 'protocol.py').write_text((aux / 'protocol.py').read_text())
+(work / 'transport.py').write_text((aux / 'transport.py').read_text())
 os.environ["YANG_NATIVE_REGISTRATION_DRIVER"] = str(aux / ".build/driver")
 os.environ["YANG_NATIVE_REGISTRATION_COMPARISON_DRIVER"] = str(aux / ".build/driver-unmodified")
 
 
+REJECTIONS = {'missing-read-completion': 'incomplete native replay',
+ 'empty-equality-registry': 'accepted incomplete equality identities',
+ 'ignored-current-hash': 'accepted changed current operand hash',
+ 'current-context-diagnostics': 'native G2 evidence differs',
+ 'current-context-cleanup': 'native G2 evidence differs',
+ 'unchecked-selection-identities': 'accepted corrupted evidence',
+ 'payload-dispatched-equality': 'accepted corrupted evidence',
+ 'dropped-opaque-state': 'accepted corrupted evidence',
+ 'dropped-context-metadata': 'accepted corrupted evidence',
+ 'dropped-bootstrap-channels': 'accepted corrupted evidence',
+ 'invalid-utf8-transport': 'accepted invalid UTF-8 native transport',
+ 'raw-opaque-byte-name': 'invalid UTF-8 in native transcript',
+ 'replaced-completed-read-storage': 'accepted corrupted evidence',
+ 'schema-coverage-history': 'transient observer schemas changed current evidence',
+ 'python-observer-function-name': 'native G2 evidence differs',
+ 'go-observer-function-name': 'native G2 evidence differs',
+ 'observer-status-obligation': 'missing raw evidence',
+ 'unbound-request': 'accepted both peers executing the wrong request',
+ 'optional-success-payload': 'accepted successful printing without output',
+ 'failed-read-parent': 'accepted parent on failed result',
+ 'unrequested-tombstone': 'accepted a different, internally consistent retired input',
+ 'nullable-mandatory-input': 'accepted a coherent NULL mandatory input',
+ 'occupied-output-slot': 'accepted a coherent replacement of an occupied output slot',
+ 'unrequested-new-binding': 'accepted a coherent alias created by an unrelated request',
+ 'unchecked-list-key-arity': 'unrepresentable request:',
+ 'schema-name-layout': 'missing inner-node table evidence',
+ 'checker-schema-name-layout': 'missing child/table snapshot',
+ 'checker-schema-name-ancestor': 'wrong duplication allocation set',
+ 'NULL-start-before-schema': 'unsafe native request must exit 4',
+ 'foreign-schema-identities': 'wrong schema winner',
+ 'unobserved-context-table': 'native registration driver: exit status 124',
+ 'dropped-unrelated-allocation': 'native allocation callbacks=',
+ 'raw-public-output': 'invalid UTF-8 in native evidence'}
+
 def run(args, **kwargs):
-    return subprocess.run(args, cwd=root, text=True, stdout=subprocess.PIPE,
-                          stderr=subprocess.STDOUT, timeout=180, check=False, **kwargs)
+    result = transport_run(args, cwd=root, text=True, timeout=180, check=False, **kwargs)
+    result.stdout += result.stderr
+    return result
+
+
+
+control_inventory = {}
+
+
+def control_tests(selector):
+    if selector not in control_inventory:
+        result = run(['go', 'test', '-json', '-tags', 'oracle', './data', '-run', selector, '-count=1'])
+        (work / ('control-' + str(len(control_inventory)) + '.log')).write_text(result.stdout)
+        records = go_result(result, selector, passing=True)
+        control_inventory[selector] = selected_tests(records, selector)
+    return control_inventory[selector]
 
 
 def go_mutant(name, file, before, after, test):
+    expected_tests = control_tests(test)
     source = root / file
     text = source.read_text()
     assert before in text, name
@@ -39,19 +90,14 @@ def go_mutant(name, file, before, after, test):
         replacement.write_text(text.replace(before, after))
     overlay = work / (name + ".json")
     overlay.write_text(json.dumps({"Replace": {str(source): str(replacement)}}))
-    result = run(["go", "test", "-tags", "oracle", "-overlay", str(overlay),
+    result = run(["go", "test", "-json", "-tags", "oracle", "-overlay", str(overlay),
                   "./data", "-run", test, "-count=1"])
     (work / (name + ".log")).write_text(result.stdout)
-    assert "no tests to run" not in result.stdout, (name, result.stdout)
     if name in ('ignored-ENOT-code', 'ignored-command-status', 'ignored-required-message', 'missing-required-snapshot'):
-        # The complete protocol projection now independently protects this removal.
-        # G1's shared projection now retains the exact equality code too.
-        assert result.returncode == 0, result.stdout
+        go_result(result, test, passing=True, expected_tests=expected_tests)
         print(json.dumps({'mutant':name, 'protected_by_shared_validation':True}), flush=True)
         return
-    assert result.returncode and "--- FAIL:" in result.stdout and not any(
-        failure in result.stdout for failure in ('[build failed]', 'ModuleNotFoundError', 'ImportError',
-                                                 'SyntaxError', 'FileNotFoundError', 'NameError')), (name, result.stdout)
+    go_result(result, test, diagnostic=REJECTIONS[name], expected_tests=expected_tests)
     print(json.dumps({"mutant": name, "rejected": True}), flush=True)
 
 
@@ -60,8 +106,10 @@ evidence = "data/native_read_evidence_test.go"
 flags = aux / ".build/static/CMakeFiles/yang.dir/flags.make"
 config = dict(line.split(' = ', 1) for line in flags.read_text().splitlines() if line.startswith('C_'))
 driver_source = aux / 'driver.c'
+# Removing a result mapping rejects the valid complete replay. Keep this
+# positive control in its own leaf, with no unexecuted corruption descendants.
 go_mutant("missing-read-completion", completion, '"read-instance": "read.selection.instance",', '',
-          '^TestNativeG2ReadCompletion/read-instance$')
+          '^TestNativeG2ReadCompletion/read-instance/complete$')
 go_mutant("ignored-ENOT-code", evidence, 'row.RC', '(row.RC != nativeOK)',
           '^TestNativeG2ExactErrorEvidence/ENOT-to-EINT$')
 go_mutant("ignored-required-message", evidence,
@@ -119,29 +167,31 @@ for relative, old, new in (
     replacements[str(original)] = str(replaced)
 overlay = work / 'unchecked-control.json'
 overlay.write_text(json.dumps({'Replace':replacements}))
-result = run(['go','test','-tags','oracle','-overlay',str(overlay),'./data','-run',
+result = run(['go','test','-json','-tags','oracle','-overlay',str(overlay),'./data','-run',
               '^TestNativeG2UnmodifiedReplayControls/(results-only|truncated|missing-result)$','-count=1'])
 (work / 'unchecked-control.log').write_text(result.stdout)
 # The common validator and snapshot checks independently reject these partial
 # traces. Removing only completion checks no longer creates an acceptance bug.
-assert result.returncode == 0, result.stdout
+go_result(result, '^TestNativeG2UnmodifiedReplayControls/(results-only|truncated|missing-result)$', passing=True,
+          expected_tests=control_tests('^TestNativeG2UnmodifiedReplayControls/(results-only|truncated|missing-result)$'))
 print(json.dumps({'mutant':'unchecked-control','protected_by_shared_validation':True}),flush=True)
 
 
 def native_driver_mutant(name, before, after, test):
+    expected_tests = control_tests(test)
     text = driver_source.read_text()
     assert before in text, name
     source = work / (name + '.c')
     source.write_text(text.replace(before, after))
     binary = work / name
-    result = run(['gcc', '-DNDEBUG', '-O3', '-std=c11', '-Wl,--wrap=free', '-Dlys_find_child=nr_entry_find_child', *shlex.split(config['C_INCLUDES']),
+    result = run(['gcc', '-DNDEBUG', '-O3', '-std=c11', '-Wl,--wrap=free', *(['-Wl,--wrap=lyht_remove,--wrap=lyht_remove_with_resize_cb,--wrap=lyht_find_next,--wrap=lyht_find_next_with_collision_cb'] if '__wrap_lyht_remove_with_resize_cb' in source.read_text() else []), '-Dlys_find_child=nr_entry_find_child', *shlex.split(config['C_INCLUDES']),
                   '-I'+str(aux), '-o', str(binary), str(source), str(aux / 'entry_contracts.c'), str(aux.parent / 'cjson/cJSON.c'),
                   str(aux / '.build/static/libyang.a'), '-lpcre2-8', '-lm', '-lpthread', '-ldl'])
     assert result.returncode == 0, result.stdout
     env = dict(os.environ, YANG_NATIVE_REGISTRATION_DRIVER=str(binary))
-    result = run(['go', 'test', '-tags', 'oracle', './data', '-run', test, '-count=1'], env=env)
+    result = run(['go', 'test', '-json', '-tags', 'oracle', './data', '-run', test, '-count=1'], env=env)
     (work / (name+'.log')).write_text(result.stdout)
-    assert result.returncode and '--- FAIL:' in result.stdout and '[build failed]' not in result.stdout, (name, result.stdout)
+    go_result(result, test, diagnostic=REJECTIONS[name], expected_tests=expected_tests)
     print(json.dumps({'mutant':name, 'rejected':True}), flush=True)
 
 
@@ -183,6 +233,7 @@ for name, replaced, test in mutants:
 field_control = work / 'field-control'
 field_control.mkdir(exist_ok=True)
 (field_control / 'drivers.py').write_text((aux / 'drivers.py').read_text())
+(field_control / 'transport.py').write_text((aux / 'transport.py').read_text())
 (field_control / 'protocol.py').write_text((aux / 'protocol.py').read_text())
 (field_control / 'identity.py').write_text(identity.replace("if k != 'occurrence'", "if k not in ('occurrence', 'bucket')"))
 (field_control / 'evidence_test.py').write_text((aux / 'evidence_test.py').read_text().replace(
@@ -204,8 +255,11 @@ native_driver_mutant('raw-opaque-byte-name',
 # Replacing current storage with fresh, internally consistent registry IDs must
 # fail even when its normalized contents match and both peers are corrupted.
 path = work / 'replaced-completed-read-storage.py'
-path.write_text(identity.replace('if command and event in STABLE_STORAGE_COMMANDS:',
-                                 'if False and command and event in STABLE_STORAGE_COMMANDS:'))
+storage_read_guard = '        if command and event in STABLE_STORAGE_COMMANDS:'
+storage_owner_guard = '        if command:\n            # Parent children_ht survives'
+assert identity.count(storage_read_guard) == identity.count(storage_owner_guard) == 1
+path.write_text(identity.replace(storage_read_guard, storage_read_guard.replace('if command', 'if False and command')).replace(
+    storage_owner_guard, storage_owner_guard.replace('if command:', 'if False and command:')))
 go_mutant('replaced-completed-read-storage', completion,
           'filepath.Join("..", "conformance", "oracle", "native_registration", "identity.py")',
           json.dumps(str(path)), '^TestNativeG2ReadStorageContinuity$')
@@ -220,9 +274,11 @@ go_mutant('schema-coverage-history', completion,
 name_control = work / 'function-name-control'
 name_control.mkdir(exist_ok=True)
 (name_control / 'identity.py').write_text(identity)
-(name_control / 'protocol.py').write_text((aux / 'protocol.py').read_text().replace(
-    "return OBSERVER_FUNCTION.sub(r'\\1\\2\\3', LOCATION.sub(r'\\1\\2', value))",
-    "return LOCATION.sub(r'\\1\\2', value)"))
+protocol_source = (aux / 'protocol.py').read_text()
+argument_normalizer = "if code == 3: return OBSERVER_FUNCTION.sub(r'\\1\\2\\3', value)"
+assert argument_normalizer in protocol_source, 'missing native-origin argument normalizer'
+(name_control / 'protocol.py').write_text(protocol_source.replace(argument_normalizer, 'if code == 3: return value'))
+
 go_mutant('python-observer-function-name', completion,
           'filepath.Join("..", "conformance", "oracle", "native_registration", "identity.py")',
           json.dumps(str(name_control / 'identity.py')), '^TestNativeG2ObserverFunctionAnnotation$')
@@ -296,6 +352,7 @@ for name, directory in (('request-substitution-control', work / 'request-control
                         ('mandatory-NULL-control', work / 'mandatory-null-control')):
     directory.mkdir(exist_ok=True)
     (directory / 'drivers.py').write_text((aux / 'drivers.py').read_text())
+    (directory / 'transport.py').write_text((aux / 'transport.py').read_text())
     if name == 'request-substitution-control':
         (directory / 'identity.py').write_text(unbound)
         (directory / 'protocol.py').write_text((aux / 'protocol.py').read_text())
@@ -313,9 +370,10 @@ left, right = e.replay(s), e.replay(s, plain=True)
 e.request_substitutions(s, left, right)
 e.sweep(s, left)
 '''
-    result = subprocess.run(
-        ['python3', '-c', control], cwd=directory, text=True, stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT, timeout=180, check=False)
+    result = transport_run(
+        ['python3', '-c', control], cwd=directory, text=True,
+        timeout=180, check=False)
+    result.stdout += result.stderr
     (work / (name + '.log')).write_text(result.stdout)
     expected = {'request-substitution-control': 'accepted substituted request',
                 'success-payload-control': 'accepted identical contract defect',
@@ -338,25 +396,25 @@ go_mutant('schema-name-layout', completion,
           'filepath.Join("..", "conformance", "oracle", "native_registration", "identity.py")',
           json.dumps(str(path)), '^TestNativeCustomSchemaKinds/reused-names$')
 
-for name, before, after in (
+for name, before, after, case in (
     ('checker-schema-name-layout', "node.get('nodetype', 0) & INNER_NODE_TYPES:",
-     "node.get('schema') in ('63', '64', '72', '6c', '6b6c'):"),
+     "node.get('schema') in ('63', '64', '72', '6c', '6b6c'):", 'reused-names'),
     ('checker-schema-name-ancestor', 'n.get("schema_identity") == handles[parent].get("schema_identity")',
-     'n.get("schema") == handles[parent].get("schema")'),
+     'n.get("schema") == handles[parent].get("schema")', 'same-name-ancestors'),
 ):
     directory = work / name
     directory.mkdir(exist_ok=True)
     checker = (aux / 'check.py').read_text()
     assert before in checker, name
     (directory / 'check.py').write_text(checker.replace(before, after))
-    for module in ('identity.py', 'protocol.py', 'drivers.py'):
+    for module in ('identity.py', 'protocol.py', 'drivers.py', 'transport.py'):
         (directory / module).write_text((aux / module).read_text())
     target = directory / 'custom_schema_test.py'
     target.write_text((aux / 'custom_schema_test.py').read_text().replace(
         'ROOT = pathlib.Path(__file__).resolve().parent', 'ROOT = pathlib.Path(' + repr(str(aux)) + ')'))
     go_mutant(name, 'data/native_custom_schema_test.go',
               'filepath.Join("..", "conformance", "oracle", "native_registration", "custom_schema_test.py")',
-              json.dumps(str(target)), '^TestNativeCustomSchemaSweep$')
+              json.dumps(str(target)), '^TestNativeCustomSchemaCheckerCases/' + case + '$')
 
 # Schema-less targets must now be refused before the native value lookup.
 native_driver_mutant('NULL-start-before-schema',
@@ -388,14 +446,18 @@ base_sha = '1b41fab618c3fb6418acdc5f2df2c6f8683e4424'
 base = run(['git', 'show', base_sha + ':conformance/oracle/native_registration/driver.c'])
 assert base.returncode == 0, base.stdout
 source = work / 'admission-base.c'
-source.write_text(base.stdout)
+# Adapt only the old observer wire contract. Native admission/preconditions stay
+# byte-for-byte from the pinned base; unknown logger codes compare literally.
+base_logger = 'cJSON *j=cJSON_CreateObject(); number(j,"level",level);number(j,"line",(double)line);'
+assert base.stdout.count(base_logger) == 1
+source.write_text(base.stdout.replace(base_logger, base_logger + 'number(j,"code",-1);'))
 paths = []
 for label, definitions, library in (
     ('instrumented', [], aux / '.build/static/libyang.a'),
     ('unmodified', ['-DNR_UNMODIFIED'], aux / '.build/libyang-unmodified.a'),
 ):
     binary = work / ('admission-base-' + label)
-    built = run(['gcc', *definitions, '-DNDEBUG', '-O3', '-std=c11', '-Wl,--wrap=free', '-Dlys_find_child=nr_entry_find_child',
+    built = run(['gcc', *definitions, '-DNDEBUG', '-O3', '-std=c11', '-Wl,--wrap=free', *(['-Wl,--wrap=lyht_remove,--wrap=lyht_remove_with_resize_cb,--wrap=lyht_find_next,--wrap=lyht_find_next_with_collision_cb'] if '__wrap_lyht_remove_with_resize_cb' in source.read_text() else []), '-Dlys_find_child=nr_entry_find_child',
                  *shlex.split(config['C_INCLUDES']), '-I'+str(aux), '-o', str(binary),
                  str(source), str(aux / 'entry_contracts.c'), str(aux.parent / 'cjson/cJSON.c'), str(library),
                  '-lpcre2-8', '-lm', '-lpthread', '-ldl'])
@@ -403,12 +465,14 @@ for label, definitions, library in (
     paths.append(binary)
 base_env = dict(os.environ, YANG_NATIVE_REGISTRATION_DRIVER=str(paths[0]),
                 YANG_NATIVE_REGISTRATION_COMPARISON_DRIVER=str(paths[1]))
-result = subprocess.run(['go', 'test', '-json', '-tags', 'oracle', './data', '-run',
+result = transport_run(['go', 'test', '-json', '-tags', 'oracle', './data', '-run',
                          '^TestNativeDriverPreconditions$', '-count=1'],
-                        cwd=root, env=base_env, text=True, stdout=subprocess.PIPE,
-                        stderr=subprocess.STDOUT, timeout=900, check=False)
+                        cwd=root, env=base_env, text=True,
+                        timeout=900, check=False)
+result.stdout += result.stderr
 (work / 'admission-base.log').write_text(result.stdout)
-assert result.returncode == 1 and '[build failed]' not in result.stdout, result.stdout[-1000:]
+go_result(result, '^TestNativeDriverPreconditions$', diagnostic='unsafe native request must exit 4',
+          expected_tests=control_tests('^TestNativeDriverPreconditions$'))
 records = [json.loads(line) for line in result.stdout.splitlines() if line.startswith('{')]
 assert not any('setup exit' in r.get('Output', '') for r in records), 'baseline setup failed before rejection test'
 failed = {r.get('Test') for r in records if r.get('Action') == 'fail'}
@@ -434,7 +498,8 @@ eager_source = work / 'eager-native-byte-fields.c'
 eager_source.write_text(driver_source.read_text().replace(raw_body,
     'static cJSON *raw_bytes_value(const char *value)\n{\n    return bytes_value(value);\n}'))
 env = dict(os.environ, YANG_NATIVE_BYTE_SOURCE=str(eager_source))
-result = run(['go', 'test', '-tags', 'oracle', './data', '-run', '^TestNativeOutputByteEmitters$', '-count=1'], env=env)
+result = run(['go', 'test', '-json', '-tags', 'oracle', './data', '-run', '^TestNativeOutputByteEmitters$', '-count=1'], env=env)
 (work / 'eager-native-byte-fields.log').write_text(result.stdout)
-assert result.returncode and '--- FAIL:' in result.stdout and '"allocation_failure": true' in result.stdout, result.stdout
+go_result(result, '^TestNativeOutputByteEmitters$', diagnostic='"allocation_failure": true',
+          expected_tests=control_tests('^TestNativeOutputByteEmitters$'))
 print(json.dumps({'mutant': 'eager-native-byte-fields', 'rejected': True}), flush=True)

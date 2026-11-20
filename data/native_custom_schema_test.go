@@ -7,6 +7,7 @@ package data
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -21,6 +22,7 @@ import (
 // keyless lists ignore it, one-key lists consume it, larger keys are rejected
 // before allocation, output preparation, or mutation on either native build.
 func TestNativeDriverListArity(t *testing.T) {
+	nativeVerifyConfiguredDriverRoles(t)
 	driver := os.Getenv("YANG_NATIVE_REGISTRATION_DRIVER")
 	if driver == "" {
 		t.Skip("set native drivers")
@@ -54,21 +56,19 @@ func TestNativeDriverListArity(t *testing.T) {
 							//nolint:gosec // Opt-in native driver, bounded repository requests.
 							cmd := exec.CommandContext(ctx, path, mode, "--read-schema")
 							cmd.Stdin = strings.NewReader(script)
-							out, err := cmd.Output()
+							out, err := nativeCommandOutput(cmd)
 							exit := 0
 							if err != nil {
-								failure, ok := err.(*exec.ExitError)
+								var failure *exec.ExitError
+								ok := errors.As(err, &failure)
 								if !ok {
 									t.Fatal(err)
 								}
 								exit = failure.ExitCode()
 							}
-							var rows []json.RawMessage
-							for _, line := range strings.Split(strings.TrimSpace(string(out)), "\n") {
-								if !json.Valid([]byte(line)) {
-									t.Fatalf("invalid driver JSON: %q", line)
-								}
-								rows = append(rows, json.RawMessage(line))
+							rows, err := nativeTranscriptRows(out)
+							if err != nil {
+								t.Fatal(err)
 							}
 							return rows, exit
 						}
@@ -255,6 +255,43 @@ func nativeShallowCopyNodes(t *testing.T, rows []nativeDriverResult) {
 	}
 }
 
+// Named live fixtures exercise the checker independently of the exhaustive
+// admission matrix, so sensitivity controls retain their bounded run budget.
+func TestNativeCustomSchemaCheckerCases(t *testing.T) {
+	if os.Getenv("YANG_NATIVE_REGISTRATION_DRIVER") == "" {
+		t.Skip("set native drivers")
+	}
+	t.Run("unknown-case", func(t *testing.T) {
+		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer cancel()
+		cmd := exec.CommandContext(ctx, "python3", filepath.Join("..", "conformance", "oracle", "native_registration", "custom_schema_test.py"), "--case", "unknown")
+		_, err := nativeCommandOutput(cmd)
+		var failure *exec.ExitError
+		if !errors.As(err, &failure) || failure.ExitCode() != 2 || !strings.Contains(err.Error(), "invalid choice") {
+			t.Fatalf("unknown custom schema case must be rejected: %v", err)
+		}
+	})
+	for _, name := range []string{"reused-names", "same-name-ancestors"} {
+		t.Run(name, func(t *testing.T) {
+			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+			defer cancel()
+			cmd := exec.CommandContext(ctx, "python3", filepath.Join("..", "conformance", "oracle", "native_registration", "custom_schema_test.py"), "--case", name)
+			out, err := nativeCommandOutput(cmd)
+			if err != nil {
+				t.Fatalf("custom schema checker case: %v\n%s", err, out)
+			}
+			var summary struct {
+				Name  string `json:"custom_schema_case"`
+				Runs  int    `json:"driver_runs"`
+				Skips int    `json:"skips"`
+			}
+			if err := json.Unmarshal(out, &summary); err != nil || summary.Name != name || summary.Runs != 4 || summary.Skips != 0 {
+				t.Fatalf("incomplete checker case: %v, %s", err, out)
+			}
+		})
+	}
+}
+
 func TestNativeCustomSchemaSweep(t *testing.T) {
 	if os.Getenv("YANG_NATIVE_REGISTRATION_DRIVER") == "" {
 		t.Skip("set native drivers")
@@ -262,7 +299,7 @@ func TestNativeCustomSchemaSweep(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
 	defer cancel()
 	cmd := exec.CommandContext(ctx, "python3", filepath.Join("..", "conformance", "oracle", "native_registration", "custom_schema_test.py"))
-	out, err := cmd.CombinedOutput()
+	out, err := nativeCommandOutput(cmd)
 	if err != nil {
 		t.Fatalf("custom schema sweep: %v\n%s", err, out)
 	}

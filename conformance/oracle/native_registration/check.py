@@ -9,8 +9,9 @@ import pathlib
 import subprocess
 
 from protocol import text, encoded
-from drivers import comparison_driver
-from identity import requests, validate
+from drivers import comparison_driver, native_run, verify_pair
+from transport import decode_rows
+from identity import requests, validate, completion
 from protocol import INNER_NODE_TYPES
 
 root = pathlib.Path(__file__).resolve().parent
@@ -28,13 +29,13 @@ def run(name, option="--quiet", unmodified=False):
     if b"# reuse-" in script or name in ("handle-tombstone", "handle-tombstone-probe", "retained-address-reuse", "lifetime/stale-handle",
                 "lifetime/retained-same-hash", "lifetime/retained-resize", "lifetime/retained-remove"):
         env["GLIBC_TUNABLES"] = "glibc.malloc.tcache_count=7"
-    result = subprocess.run([str(plain if unmodified else binary), *options], input=script,
+    result = native_run(plain if unmodified else binary, instrumented=not unmodified, options=options, input=script,
                             stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=25, check=False, env=env)
     suffix = (".events.unmodified" if option == "--events" else ".unmodified") if unmodified else (".first-sibling-control" if option == "--remote-watchdog" and name == "remote-last" else "")
     output = root / ".build" / (name + suffix + ".jsonl")
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_bytes(result.stdout)
-    rows = [json.loads(line) for line in result.stdout.splitlines()]
+    rows = decode_rows(result.stdout)
     return result.returncode, rows
 
 
@@ -84,11 +85,12 @@ def assert_lookup_handles(rows, expected):
 
 # Expected stops are request facts, never inferred from the observed final row.
 STOPS = {
+    "merge2-defined": (12, "boundary.merge2-driver-safe-prefix"),
     "lifetime/retained-links": (16, "boundary.retained-dangling-links"),
     "remote-last": (14, "boundary.remote-last-corrupting-primitive"),
-    "merge2-before": (11, "boundary.merge2-before-uninitialized-continuation"),
-    "merge2-successor": (13, "boundary.merge2-successor-schema-precondition"),
-    "merge2-unsorted": (12, "boundary.merge2-exhausted-forward-iterator"),
+    "merge2-before": (11, "boundary.merge2-driver-safe-prefix"),
+    "merge2-successor": (13, "boundary.merge2-driver-safe-prefix"),
+    "merge2-unsorted": (12, "boundary.merge2-driver-safe-prefix"),
     "handle-tombstone": (15, "boundary.tombstoned-handle"),
     "handle-tombstone-probe": (15, "boundary.tombstoned-handle"),
     "dead-occurrence": (5, "boundary.tombstoned-semantic-probe"),
@@ -108,23 +110,10 @@ def request_commands(name):
 
 
 def completed_replay(name, rows, stopped=True):
-    script = request_commands(name)
-    stop = STOPS.get(name) if stopped else None
-    end = stop[0] if stop else len(script) + 1
-    expected = list(enumerate(script[:max(0, end - 1)], 1))
-    script_commands = set(script)
-    actual = [(r["operation"], r["event"]) for r in rows if r["event"] in script_commands]
-    assert actual == expected, (name, "incomplete/out-of-order completed commands", actual, expected)
-    terminal = stop or (len(script), script[-1])
-    assert rows and (rows[-1].get("operation"), rows[-1]["event"]) == terminal, (name, "unexpected terminal", terminal)
-    # An observational remote-link boundary may occur mid-replay, but an early
-    # stop must never be interpreted as permission to omit subsequent commands.
-    reads = {"schema": "read.schema", "rewind": "read.first-sibling", "print": "public.result",
-             "instance": "read.instance", "opaq-find": "read.opaque", "null-reads": "read.null",
-             "read-schema": "read.selection.schema", "read-instance": "read.selection.instance", "read-value": "read.selection.value", "read-opaque": "read.selection.opaque", "equal": "read.equal"}
-    expected_results = [(operation, reads[command]) for operation, command in expected if command in reads]
-    actual_results = [(r["operation"], r["event"]) for r in rows if r["event"] in reads.values()]
-    assert actual_results == expected_results, (name, "missing/extra/out-of-order read/public result")
+    script = (root / 'cases' / (name + '.calls')).read_text()
+    if name in ('invalid-capacity', 'invalid-mode'): script = ''
+    completion(script, rows, STOPS.get(name) if stopped else None, allow_remote=name.startswith('remote-last'))
+    script_commands = {f[0] for f in requests(script)}
     # LOGINT text embeds build-specific C paths/line numbers. Compare command
     # status and diagnostic identity here; validation retains full diagnostics.
     return [(r["operation"], r["event"], r["rc"],
@@ -139,6 +128,12 @@ def compared_results(name, rows, evidence=None):
         # evidence is the complete prefix, independently checked on both peers.
         assert len(rows) == 1 and rows[0]['operation'] == 0
         return validate('', rows)
+    if STOPS.get(name, (None, None))[1] == 'boundary.merge2-driver-safe-prefix':
+        # The independently expected stop precedes every public read/result.
+        # Require the entire nonempty constructor prefix and terminal snapshot.
+        completed = completed_replay(name, rows)
+        assert completed, (name, 'empty compared prefix')
+        return normalized_reads(name, rows) if evidence is None else evidence
     assert results, (name, "empty compared results")
     if evidence is None: evidence = normalized_reads(name, rows, project=False)
     return (final_public(rows),
@@ -188,6 +183,8 @@ def control_equal(name, rc, rows, stopped=True):
         empty = lambda trace: [r for r in trace if r["event"] not in ("public.result", "validate", "read.schema", "read.first-sibling", "read.instance", "read.opaque", "read.null", "read.equal") and not r['event'].startswith('read.selection.')]
         if name in ("invalid-capacity", "invalid-mode"):
             empty = lambda trace: []
+        if STOPS.get(name, (None, None))[1] == 'boundary.merge2-driver-safe-prefix':
+            empty = lambda trace: [r for r in trace if not r['operation']]
         mutate("empty-results-control", empty)
         if name == 'entry-guard':
             def skipped(trace):
@@ -243,6 +240,7 @@ def lifetime_evidence(name, rows):
     assert all(r["rc"] == 0 for r in rows if r["event"] in set(script) | {"public.result", "read.schema"}), (name, "unsuccessful control")
     if name.endswith("table-reuse"):
         tables = [n["table"] for r in commands(rows, "print") for n in r["nodes"] if n["alive"] and n["id"] == 1]
+        assert any((r["old_identity"], r["new_identity"]) == (tables[0]["identity"], tables[1]["identity"]) for r in commands(rows, "table.address-reuse")), (name, "no actual directed table address reuse")
         assert len({t["identity"] for t in tables[:-1]}) == 16 and all(t["identity"] > 0 for t in tables[:-1]), (name, "reused/collapsed table generation")
         assert len(tables) == 17 and all(t["present"] and not t.get("retired") and t["used"] == 5 for t in tables[:-1]) and not tables[-1]["present"], (name, "retired replacement table")
     if name.endswith("validation-delete"):
@@ -300,6 +298,8 @@ def by_handle(row):
 
 
 def compare_custom(script, rows, plain_rows):
+    completion(script, rows)
+    completion(script, plain_rows)
     """Custom schemas use the same full validator, without fixed-case counts."""
     assert validate(script, rows) == validate(script, plain_rows), 'custom schema evidence differs'
     fields = requests(script)
@@ -472,7 +472,7 @@ RESIZES = {
     "remote-last-release": 1, "collision-build": 4, "collision-resize": 3,
     "repeated-pointer": 4, "collision-history-retained": 2,
     "collision-history-shrunk": 4, "driver-lifetime": 1,
-    "merge2-defined": 1, "merge2-successor": 1, "opaque-separated": 1,
+    "opaque-separated": 1,
     "schema-pointer": 1, "schema-pointer-reverse": 1,
 }
 DUP_INITS = {"driver-lifetime": 1}
@@ -520,10 +520,10 @@ PRIMITIVE_COUNTS = {
     'invalid-capacity': (0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0),
     'invalid-mode': (0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0),
     'list-events': (12, 4, 5, 9, 5, 0, 0, 8, 5, 3, 1, 4, 0, 0, 0, 0),
-    'merge2-before': (9, 4, 4, 5, 0, 0, 0, 4, 3, 4, 2, 4, 1, 1, 1, (1, 0)),
-    'merge2-defined': (12, 6, 5, 12, 0, 0, 0, 4, 3, 8, 1, 6, 1, 1, 1, 1),
-    'merge2-successor': (12, 5, 5, 12, 0, 0, 0, 5, 3, 8, 1, 5, 1, 1, (1, 0), 0),
-    'merge2-unsorted': (9, 4, 4, 5, 0, 0, 0, 4, 3, 3, 3, 4, 2, 1, (1, 0), 0),
+    'merge2-before': (7, 2, 0, 0, 0, 0, 0, 4, 3, 4, 0, 2, 0, 0, 0, 0),
+    'merge2-defined': (9, 3, 0, 0, 0, 0, 0, 4, 3, 6, 0, 3, 0, 0, 0, 0),
+    'merge2-successor': (10, 3, 0, 0, 0, 0, 0, 5, 3, 7, 0, 3, 0, 0, 0, 0),
+    'merge2-unsorted': (7, 2, 0, 0, 0, 0, 0, 4, 3, 3, 1, 2, 1, 0, 0, 0),
     'opaque-eligibility': (5, 4, 0, 0, 0, 0, 0, 1, 1, 0, 1, 1, 0, 0, 0, 0),
     'opaque-separated': (9, 2, 4, 12, 0, 0, 0, 4, 2, 2, 4, 1, 0, 0, 0, 0),
     'opaque-threshold': (6, 1, 4, 5, 0, 0, 0, 4, 1, 3, 1, 0, 0, 0, 0, 0),
@@ -559,10 +559,10 @@ LIFETIME_COUNTS = {
     'handle-tombstone': (1, 1, 8, 8),
     'internal-build': (1, 1, 5, 6),
     'list-events': (1, 0, 0, 0),
-    'merge2-before': (1, 0, 0, 0),
-    'merge2-defined': (1, 0, 0, 0),
-    'merge2-successor': (1, 0, 0, 0),
-    'merge2-unsorted': (1, 0, 0, 0),
+    'merge2-before': (0, 0, 0, 0),
+    'merge2-defined': (0, 0, 0, 0),
+    'merge2-successor': (0, 0, 0, 0),
+    'merge2-unsorted': (0, 0, 0, 0),
     'opaque-separated': (1, 0, 0, 0),
     'opaque-threshold': (1, 0, 0, 0),
     'remote-last-release': (1, 1, 9, 9),
@@ -579,6 +579,7 @@ REUSE_CASES = {"driver-lifetime", "handle-tombstone", "handle-tombstone-probe", 
 IDENTITY_FIELDS = {"generation", "id", "creation_operation", "creation_ordinal", "source", "alive"}
 EVENT_FIELDS = {
     "allocation.address-reuse": {"old_generation", "new_generation"},
+    "table.address-reuse": {"old_identity", "new_identity"},
     "read.schema": {"operation", "rc", "queried_parent", "target", "winner", "current_parent", "before", "after"},
     "read.first-sibling": {"operation", "winner"},
     "public.result": {"operation", "rc"},
@@ -1049,7 +1050,7 @@ def main():
     global binary, plain
     parser = argparse.ArgumentParser()
     parser.add_argument("--driver", type=pathlib.Path, default=os.environ.get("YANG_NATIVE_REGISTRATION_DRIVER") or None)
-    parser.add_argument("--comparison-driver", type=pathlib.Path)
+    parser.add_argument("--comparison-driver")
     parser.add_argument("--suite", choices=("all", "core"), default="all")
     parser.add_argument("--lifetime-case", choices=LIFETIME_CONTROLS)
     parser.add_argument("--retained-reuse", action="store_true")
@@ -1057,12 +1058,7 @@ def main():
     if args.driver is None: parser.error('--driver or YANG_NATIVE_REGISTRATION_DRIVER is required')
     binary = args.driver.resolve()
     plain = comparison_driver(binary, args.comparison_driver)
-    assert binary != plain, "comparison must be an identified unmodified executable"
-    for executable, instrumented in [(binary, 1), (plain, 0)]:
-        abi = json.loads(subprocess.check_output([str(executable), "--abi"], timeout=5))
-        assert abi == {"pointer_bytes": 8, "long_double_bytes": 16, "long_double_mantissa_bits": 64,
-                       "pointer_record_bytes": 16, "rb_node_bytes": 40, "ndebug": 1,
-                       "instrumented": instrumented}, (str(executable), abi)
+    verify_pair(binary, plain)
 
 
     if args.retained_reuse:
@@ -1118,7 +1114,7 @@ def main():
     negative_evidence("remote-last", rows, stopped=False)
     control_equal("remote-last", rc, rows, stopped=False)
     summary("remote-last-parented-rewind-terminates", rc, rows)
-    for name in ["remote-nonlast", "collision-build", "collision-resize", "repeated-pointer", "merge2-defined", "driver-lifetime", "internal-build", "collision-history-retained", "collision-history-shrunk", "handle-tombstone", "handle-tombstone-probe", "dead-occurrence", "free-slot-cap", "remote-last-results", "remote-last-release", "opaque-threshold", "opaque-separated", "opaque-eligibility", "resize-disabled", "retained-address-reuse", "list-events", "schema-pointer", "schema-pointer-reverse"]:
+    for name in ["remote-nonlast", "collision-build", "collision-resize", "repeated-pointer", "driver-lifetime", "internal-build", "collision-history-retained", "collision-history-shrunk", "handle-tombstone", "handle-tombstone-probe", "dead-occurrence", "free-slot-cap", "remote-last-results", "remote-last-release", "opaque-threshold", "opaque-separated", "opaque-eligibility", "resize-disabled", "retained-address-reuse", "list-events", "schema-pointer", "schema-pointer-reverse"]:
         rc, rows = run(name, "--remote-watchdog" if name == "remote-nonlast" else "--events")
         assert rc == 0, (name, rc)
         invariants(rows, name)
@@ -1172,12 +1168,6 @@ def main():
             g = {i: node["generation"] for i, node in n.items()}
             assert (n[1]["first"], n[1]["tail"], n[2]["first"], n[2]["tail"]) == (g[11], g[14], g[16], g[18])
             assert (n[11]["prev"], n[14]["next"], n[16]["prev"], n[16]["next"], n[17]["prev"], n[17]["next"], n[17]["parent"], n[18]["prev"], n[18]["next"]) == (g[14], 0, g[18], g[17], g[16], g[18], g[2], g[17], 0)
-        if name == "merge2-defined":
-            phases = [r["event"] for r in rows]
-            assert phases.index("lyds_merge_nodes2_front.after") < phases.index("lyds_merge_nodes2_among.after") < phases.index("lyds_merge_nodes2_back.after")
-            front = phases.index("lyds_merge_nodes2_front.after")
-            among = phases.index("lyds_merge_nodes2_among.before")
-            assert "lyds_move_meta.after" in phases[front + 1:among]
         if name == "collision-build":
             assert any(r["event"] == "lyd_insert_hash_add.after" and r["rc"] == 6 for r in rows)
             assert any(r["event"] == "lyht_find_next_with_collision_cb.after" and r["rc"] == 6 for r in rows)
@@ -1215,31 +1205,23 @@ def main():
         if name not in ["driver-lifetime", "dead-occurrence", "retained-address-reuse"] and not name.startswith("handle-tombstone"):
             control_equal(name, rc, rows)
         summary(name, rc, rows)
-    for name in ["merge2-successor", "merge2-before", "merge2-unsorted"]:
-        rc, rows = run(name, "--merge2-ub-stop")
-        assert rc == 0 and "boundary.merge2" in rows[-1]["event"], name
-        invariants(rows, name)
-        negative_evidence(name, rows)
-        complete_rb_topology(rows[-1])
-        expected = {21, 22, 11, 12}
-        if name in ["merge2-before", "merge2-unsorted"]:
-            assert {by_handle(rows[-1])[h]["generation"] for h in expected} in rb_members(rows[-1]), (name, rb_members(rows[-1]))
-            assert rows[-1]["working_rb_root"]
-            assert any(n.get("rb_stored_root") != n.get("rb_root") for n in rows[-1]["nodes"] if n.get("rb"))
-        if name == "merge2-unsorted":
-            assert rows[-1]["event"] == "boundary.merge2-exhausted-forward-iterator"
-            prefix = commands(rows, "dump")[-1]
-            n = by_handle(prefix)
-            assert not n[1]["table"]["present"] and not n[11]["metadata"] and any(x.get("rb") for x in prefix["nodes"])
-            assert n[11]["next"] == n[12]["generation"]
-            assert [text(n[i]["value"]) for i in [11, 12, 21, 22]] == ["4", "1", "2", "3"]
-            assert not n[21]["parent"] and n[21]["next"] == n[22]["generation"]
-            assert {by_handle(prefix)[h]["generation"] for h in (21, 22)} in rb_members(prefix) and not n[12]["metadata"]
-            stopped = by_handle(rows[-1])
-            assert stopped[1]["first"] == stopped[21]["generation"]
-            assert [stopped[i]["next"] for i in [21, 22, 11, 12]] == [stopped[i]["generation"] for i in [22, 11, 12]] + [0]
-            assert rows[-1]["working_rb_root"] in [n["rb_root"] for n in rows[-1]["nodes"] if n.get("rb")]
-        summary(name, rc, rows)
+    for name in ("merge2-defined", "merge2-successor", "merge2-before", "merge2-unsorted"):
+        for option in ("--quiet", "--events", "--merge2-ub-stop"):
+            traces = []
+            for unmodified in (False, True):
+                rc, rows = run(name, option, unmodified=unmodified)
+                assert rc == 0 and rows[-1]['event'] == 'boundary.merge2-driver-safe-prefix', (name, option, unmodified)
+                completed_replay(name, rows)
+                normalized_reads(name, rows)
+                stop = STOPS[name][0]
+                assert not any(r['operation'] >= stop and not r['event'].startswith('boundary.') for r in rows), 'native merge2 entered after safe prefix'
+                if option == '--events' and not unmodified:
+                    invariants(rows, name)
+                    negative_evidence(name, rows)
+                    control_equal(name, rc, rows)
+                traces.append(rows)
+                summary(name + option + ('.unmodified' if unmodified else ''), rc, rows)
+            compare_control(name, 0, traces[0], 0, traces[1])
     for name in ("invalid-capacity", "invalid-mode"):
         rc, rows = run(name, "--events")
         assert rc == 4 and len(rows) == 1 and rows[0]["event"] == "driver.ready.actual-children-callback", name

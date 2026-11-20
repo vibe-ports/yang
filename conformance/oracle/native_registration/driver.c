@@ -18,6 +18,23 @@
 #include "native_observer.h"
 #include "../cjson/cJSON.h"
 
+/* Every cJSON construction/insertion is checked before evidence can be emitted.
+ * Macros preserve each call's allocation count and evaluate arguments once. */
+static cJSON *json_required(cJSON *item) { if(!item)exit(91); return item; }
+static cJSON_bool json_added(cJSON_bool added) { if(!added)exit(91); return added; }
+#define cJSON_CreateObject() json_required(cJSON_CreateObject())
+#define cJSON_CreateArray() json_required(cJSON_CreateArray())
+#define cJSON_CreateNull() json_required(cJSON_CreateNull())
+#define cJSON_CreateString(v) json_required(cJSON_CreateString(v))
+#define cJSON_CreateNumber(v) json_required(cJSON_CreateNumber(v))
+#define cJSON_Duplicate(v,r) json_required(cJSON_Duplicate(v,r))
+#define cJSON_AddArrayToObject(j,k) json_required(cJSON_AddArrayToObject(j,k))
+#define cJSON_AddStringToObject(j,k,v) json_required(cJSON_AddStringToObject(j,k,v))
+#define cJSON_AddNumberToObject(j,k,v) json_required(cJSON_AddNumberToObject(j,k,v))
+#define cJSON_AddBoolToObject(j,k,v) json_required(cJSON_AddBoolToObject(j,k,v))
+#define cJSON_AddItemToObject(j,k,v) json_added(cJSON_AddItemToObject(j,k,v))
+#define cJSON_AddItemToArray(j,v) json_added(cJSON_AddItemToArray(j,v))
+
 #define LIMIT 65536
 struct identity { const struct lyd_node *ptr; unsigned generation, script, operation, ordinal, source, attempt; int alive; };
 struct occurrence { const struct ly_ht *ht; uint32_t slot, hash; unsigned identity, serial; int live; };
@@ -40,6 +57,9 @@ static unsigned reuse_held_count;
 static uint16_t reuse_kind;
 static size_t reuse_size = sizeof(struct lyd_node_term);
 static char reuse_next[16];
+static const struct ly_ht *table_reuse_target, *table_reuse_expected;
+static void *table_reuse_reserved, *table_reuse_held[LIMIT];
+static unsigned table_reuse_held_count, table_reuse_next;
 static const struct lysc_node *schemas[256];
 static unsigned schema_count;
 static const struct ly_ctx *read_contexts[16];
@@ -205,10 +225,67 @@ static void logger(LY_LOG_LEVEL level, const char *msg, const char *data_path, c
 {
     if(!log_messages)log_messages=cJSON_CreateArray();
     cJSON *j=cJSON_CreateObject(); number(j,"level",level);number(j,"line",(double)line);
+    /* log_vprintf stores before calling the logger. Pointer equality binds
+     * provenance without interpreting user-controlled message text. NULL-
+     * context/unstored logs remain unknown and are compared byte-for-byte. */
+    int code=-1;
+    for(unsigned ci=1;ci<=read_context_count;++ci) {
+        const struct ly_err_item *e=ly_err_last(read_contexts[ci]);
+        if(e && e->msg==msg) {code=e->err;break;}
+    }
+    number(j,"code",code);
     if(msg)raw_bytes_or_null(j,"msg",msg);
     if(data_path)raw_bytes_or_null(j,"path",data_path);
     if(schema_path)raw_bytes_or_null(j,"schema_path",schema_path);
     cJSON_AddItemToArray(log_messages,j);
+}
+
+/* The two NULL-context LOGINT/LOGARG sites in pinned hash_table.c log
+ * immediately before returning these exact statuses. Typed linker observers
+ * recover that origin for the last log without parsing its message or changing
+ * native calls, allocations, arguments or return values. All other unstored
+ * logs retain unknown origin. Native objects remain unmodified in both builds. */
+static cJSON *last_log(void)
+{
+    return log_messages && log_messages->child?log_messages->child->prev:NULL;
+}
+static void last_log_origin(cJSON *last, LY_ERR code)
+{
+    cJSON *field=cJSON_GetObjectItemCaseSensitive(last,"code");
+    if(!cJSON_IsNumber(field) || (field->valuedouble!=-1 && field->valuedouble!=code))exit(91);
+    cJSON_SetNumberValue(field,code);
+}
+LY_ERR __real_lyht_remove(struct ly_ht *, void *, uint32_t);
+LY_ERR __wrap_lyht_remove(struct ly_ht *ht, void *value, uint32_t hash)
+{
+    cJSON *previous=last_log();
+    LY_ERR rc=__real_lyht_remove(ht,value,hash);
+    if(rc==LY_ENOTFOUND && last_log()!=previous)last_log_origin(last_log(),LY_EINVAL);
+    return rc;
+}
+LY_ERR __real_lyht_find_next(const struct ly_ht *, void *, uint32_t, void **);
+LY_ERR __wrap_lyht_find_next(const struct ly_ht *ht, void *value, uint32_t hash, void **match)
+{
+    cJSON *previous=last_log();
+    LY_ERR rc=__real_lyht_find_next(ht,value,hash,match);
+    if(rc==LY_EINT && last_log()!=previous)last_log_origin(last_log(),LY_EINT);
+    return rc;
+}
+LY_ERR __real_lyht_remove_with_resize_cb(struct ly_ht *, void *, uint32_t, lyht_value_equal_cb);
+LY_ERR __wrap_lyht_remove_with_resize_cb(struct ly_ht *ht, void *value, uint32_t hash, lyht_value_equal_cb callback)
+{
+    cJSON *previous=last_log();
+    LY_ERR rc=__real_lyht_remove_with_resize_cb(ht,value,hash,callback);
+    if(rc==LY_ENOTFOUND && last_log()!=previous)last_log_origin(last_log(),LY_EINVAL);
+    return rc;
+}
+LY_ERR __real_lyht_find_next_with_collision_cb(const struct ly_ht *, void *, uint32_t, lyht_value_equal_cb, void **);
+LY_ERR __wrap_lyht_find_next_with_collision_cb(const struct ly_ht *ht, void *value, uint32_t hash, lyht_value_equal_cb callback, void **match)
+{
+    cJSON *previous=last_log();
+    LY_ERR rc=__real_lyht_find_next_with_collision_cb(ht,value,hash,callback,match);
+    if(rc==LY_EINT && last_log()!=previous)last_log_origin(last_log(),LY_EINT);
+    return rc;
 }
 
 static int observed(const struct ly_ht *ht)
@@ -228,9 +305,17 @@ static void retire_table(const struct ly_ht *ht)
 
 static void allocate_table(const struct ly_ht *ht)
 {
-    for(unsigned t=table_identity_count;t;--t)if(table_identities[t].ptr==ht){if(table_identities[t].alive)exit(98);break;}
+    unsigned old=0;
+    for(unsigned t=table_identity_count;t;--t)if(table_identities[t].ptr==ht){if(table_identities[t].alive)exit(98);old=t;break;}
     if(table_identity_count+1==LIMIT)exit(98);
     table_identities[++table_identity_count]=(struct table_identity){ht,1};
+    if(old && op) {
+        cJSON *j=cJSON_CreateObject();
+        if(!j || !cJSON_AddStringToObject(j,"event","table.address-reuse") ||
+                !cJSON_AddNumberToObject(j,"old_identity",old) ||
+                !cJSON_AddNumberToObject(j,"new_identity",table_identity_count))exit(91);
+        emit(j);
+    }
     for(unsigned i=0;i<retired_count;++i)if(retired_tables[i]==ht)retired_tables[i]=NULL;
 }
 
@@ -252,11 +337,21 @@ void __wrap_free(void *ptr)
         }
     }
 #endif
+    if(ptr && ptr==(const void *)table_reuse_target && table_reuse_reserved)exit(100);
     __real_free(ptr);
+    if(ptr && ptr==(const void *)table_reuse_target) {
+        while(reuse_held_count+table_reuse_held_count<LIMIT-8) {
+            void *candidate=malloc(sizeof(struct ly_ht));
+            if(!candidate)exit(100);
+            if(candidate==ptr){table_reuse_reserved=candidate;return;}
+            table_reuse_held[table_reuse_held_count++]=candidate;
+        }
+        fputs("could not recover the freed table chunk\n",stderr);exit(100);
+    }
     if(ptr && ptr==(const void *)reuse_target) {
         /* Reacquire immediately after the real native free, before any trace
          * allocation can split/coalesce or retain the released chunk. */
-        while(reuse_held_count<LIMIT-8) {
+        while(reuse_held_count+table_reuse_held_count<LIMIT-8) {
             void *candidate=malloc(reuse_size);
             if(!candidate)exit(100);
             if(candidate==ptr) {reuse_reserved=candidate;return;}
@@ -597,7 +692,7 @@ static const struct lyd_node *prepare_node_reuse(void)
             identities[identity(reuse_target)].alive)return NULL;
     const struct lyd_node *target=reuse_target;
     void *fill[7];
-    if(reuse_held_count>LIMIT-7)exit(100);
+    if(reuse_held_count+table_reuse_held_count>LIMIT-7)exit(100);
     for(unsigned i=0;i<7;++i) {
         fill[i]=malloc(reuse_size);
         if(!fill[i])exit(100);
@@ -660,6 +755,41 @@ static void finish_node_reuse(const struct lyd_node *expected, const struct lyd_
     if(rc || actual!=expected) {fputs("native constructor did not reuse the prepared node chunk\n",stderr);exit(100);}
     for(unsigned i=0;i<reuse_held_count;++i)free(reuse_held[i]);
     reuse_held_count=0;
+}
+
+/* Separate storage control: reserve the ly_ht object itself, independently
+ * of node reuse. Every held allocation uses the existing LIMIT allowance. */
+static void arm_table_reuse(const struct lyd_node *owner)
+{
+    const char *tunables=getenv("GLIBC_TUNABLES");
+    if(!tunables || strcmp(tunables,"glibc.malloc.tcache_count=7"))exit(100);
+    if(!owner || !owner->schema || !(owner->schema->nodetype&LYD_NODE_INNER) || table_reuse_target || table_reuse_reserved)exit(100);
+    table_reuse_target=((const struct lyd_node_inner *)owner)->children_ht;
+    if(!table_reuse_target)exit(100);
+}
+
+static void prepare_table_reuse(void)
+{
+    if(!table_reuse_next)return;
+    if(!table_reuse_target || !table_reuse_reserved || table_identities[table_identity(table_reuse_target)].alive)exit(100);
+    void *fill[7];
+    if(reuse_held_count+table_reuse_held_count>LIMIT-7)exit(100);
+    for(unsigned i=0;i<7;++i){fill[i]=malloc(sizeof(struct ly_ht));if(!fill[i])exit(100);}
+    for(unsigned i=0;i<7;++i)free(fill[i]);
+    for(unsigned i=0;i<7;++i){void *ptr=malloc(sizeof(struct ly_ht));if(!ptr)exit(100);table_reuse_held[table_reuse_held_count++]=ptr;}
+    table_reuse_expected=table_reuse_target;table_reuse_target=NULL;
+    __real_free(table_reuse_reserved);
+    table_reuse_reserved=NULL;
+}
+
+static void finish_table_reuse(void)
+{
+    if(!table_reuse_next)return;
+    const struct lyd_node *owner=nodes[table_reuse_next];
+    const struct ly_ht *actual=owner && owner->schema && (owner->schema->nodetype&LYD_NODE_INNER)?((const struct lyd_node_inner *)owner)->children_ht:NULL;
+    if(actual!=table_reuse_expected){fputs("native constructor did not reuse the prepared table chunk\n",stderr);exit(100);}
+    for(unsigned i=0;i<table_reuse_held_count;++i)free(table_reuse_held[i]);
+    table_reuse_held_count=0;table_reuse_next=0;table_reuse_expected=NULL;
 }
 
 static int tombstoned_occurrence(void)
@@ -1019,6 +1149,69 @@ static void free_slot_boundary(void)
     exit(0);
 }
 
+/* Bounded physical framing: LF terminates a request and is never parser data.
+ * No partial request, NUL, or overlong physical line can reach native code. */
+static int read_request_line(char *line, size_t capacity)
+{
+    size_t len=0;int byte;
+    while((byte=fgetc(stdin))!=EOF && byte!='\n') {
+        if(!byte || len+1>=capacity)exit(4);
+        line[len++]=(char)byte;
+    }
+    if(ferror(stdin))exit(91);
+    line[len]=0;return len || byte!=EOF;
+}
+
+static int request_token_widths(const char *command)
+{
+    unsigned name=0,value=0;
+    if(!strcmp(command,"root"))name=2;
+    if(!strcmp(command,"term") || !strcmp(command,"list") || !strcmp(command,"opaque")){name=3;value=4;}
+    if(!strcmp(command,"change"))value=2;
+    if(!strcmp(command,"opaq-find"))name=2;
+    if(!strncmp(command,"read-",5))value=4;
+    if(strlen(command)>31)return 0;
+    cJSON *item;
+    if(name && (item=cJSON_GetArrayItem(request_arguments,name)) && strlen(item->valuestring)>158)return 0;
+    if(value && (item=cJSON_GetArrayItem(request_arguments,value)) && strlen(item->valuestring)>510)return 0;
+    return 1;
+}
+
+/* Conservatively refuse the whole merge2 dispatch before entering native code.
+ * The untouched control has no primitive callbacks; an internal stop cannot
+ * protect it. This observes representation/dispatch only, never simulates RB
+ * insertion, comparison, or the unsafe continuation. One 4096-visit allowance
+ * covers both sibling runs and their metadata. */
+static int merge2_tree(const struct lyd_node *node, unsigned *visits)
+{
+    for(const struct lyd_meta *m=node->meta;m;m=m->next) {
+        if(++*visits>4096)exit(97);
+        if(!strcmp(m->name,"lyds_tree")) {
+            struct lyd_value_lyds_tree *tree;LYD_VALUE_GET(&m->value,tree);
+            return tree && tree->rbt;
+        }
+    }
+    return 0;
+}
+static int merge2_input(const struct lyd_node *parent, const struct lyd_node *source)
+{
+    if(source->parent || source->prev->next || !source->next)return 0;
+    unsigned visits=0;unsigned char seen[256]={0},without_tree[256]={0};
+    for(const struct lyd_node *n=lyd_child(parent);n;n=n->next) {
+        if(++visits>4096)exit(97);
+        if(!n->schema || !lyds_is_supported(n))continue;
+        unsigned s=schema_identity(n->schema);
+        if(!seen[s]){seen[s]=1;without_tree[s]=!merge2_tree(n,&visits);}
+    }
+    for(const struct lyd_node *n=source;n;n=n->next) {
+        if(++visits>4096)exit(97);
+        if(!n->schema || !lyds_is_supported(n))continue;
+        unsigned s=schema_identity(n->schema);
+        if(without_tree[s] && merge2_tree(n,&visits))return 1;
+    }
+    return 0;
+}
+
 int main(int argc, char **argv)
 {
     if(argc>1 && !strcmp(argv[1],"--abi")) {
@@ -1061,8 +1254,16 @@ int main(int argc, char **argv)
     events=(argc>1 && !strcmp(argv[1],"--quiet"))?0:1;
     snapshot("driver.ready.actual-children-callback",NULL,NULL,0,NULL);
     char line[1024],cmd[32];
-    while(fgets(line,sizeof line,stdin)) {
+    while(read_request_line(line,sizeof line)) {
         unsigned a=0,b=0,c=0,d=0; int creating=0,refresh=0; char name[80]={0},value[256]={0};
+        if(!strncmp(line,"# reuse-table-free ",19)) {
+            if(sscanf(line,"# reuse-table-free %u",&a)!=1 || !require_handle(a))return 4;
+            arm_table_reuse(nodes[a]);continue;
+        }
+        if(!strncmp(line,"# reuse-table-next ",19)) {
+            if(table_reuse_next || sscanf(line,"# reuse-table-next %u",&a)!=1 || !require_parent(a))return 4;
+            table_reuse_next=a;continue;
+        }
         if(!strncmp(line,"# reuse-free ",13)) {
             if(sscanf(line,"# reuse-free %u %79s",&a,name)!=2 || !require_handle(a))return 4;
             const struct lyd_node *target=reuse_node(nodes[a],name);
@@ -1088,13 +1289,15 @@ int main(int argc, char **argv)
                 sscanf(line,"%*s %n",&offset);if(!offset)return 4;
             }
             char payload[sizeof line];
-            if(offset) {strcpy(payload,line+offset);size_t len=strlen(payload);if(len && payload[len-1]=='\n')payload[len-1]=0;arg=payload;}
+            if(offset) {strcpy(payload,line+offset);arg=payload;}
             cJSON *item=bytes_value(arg);
             if(!item || !cJSON_AddItemToArray(request_arguments,item))exit(91);
             if(offset)break;
             ++token;
         }
+        if(!request_token_widths(cmd))return 4;
         const struct lyd_node *directed_reuse=NULL;
+        prepare_table_reuse();
         ++op; ordinal=0;pending_script=0;output_handle=output_generation=0; for(unsigned i=1;i<=read_context_count;++i)ly_err_clean((struct ly_ctx*)read_contexts[i],NULL);cJSON_Delete(log_messages);log_messages=NULL;
         rc=LY_SUCCESS;
         if(tombstoned_occurrence() && (!strcmp(cmd,"instance") || !strcmp(cmd,"opaq-find") || !strcmp(cmd,"null-reads") || !strncmp(cmd,"read-",5) || !strcmp(cmd,"equal") || !strcmp(cmd,"record") || !strcmp(cmd,"record-as") || !strcmp(cmd,"child") || !strcmp(cmd,"schema") || !strcmp(cmd,"validate") || !strcmp(cmd,"rewind") || !strcmp(cmd,"print") || !strcmp(cmd,"attach") || !strcmp(cmd,"before") || !strcmp(cmd,"change") || !strcmp(cmd,"find-next-loop") || !strcmp(cmd,"root") || !strcmp(cmd,"term") || !strcmp(cmd,"dup") || !strcmp(cmd,"dup-to-context") || !strcmp(cmd,"unlink") || !strcmp(cmd,"detach-siblings") || !strcmp(cmd,"free") || !strcmp(cmd,"free-root") || !strcmp(cmd,"opaque") || !strcmp(cmd,"opaque-invalid-xml") || !strcmp(cmd,"parse") || !strcmp(cmd,"parse-xml") || !strcmp(cmd,"list") || !strcmp(cmd,"frontier"))) {snapshot("boundary.tombstoned-semantic-probe",NULL,generic,0,NULL);return 0;}
@@ -1175,7 +1378,7 @@ int main(int argc, char **argv)
             creating=1;pending_script=a;rc=lyd_dup_single_to_ctx(nodes[b],ctx,nodes[c],d,&nodes[a]);
         }
         else if(!strcmp(cmd,"unlink")) {if(sscanf(line,"%*s %u",&a)!=1||a>=4096||!require_handle(a)||!unlink_inputs(nodes[a],0))return 4;rc=lyd_unlink_tree(nodes[a]);}
-        else if(!strcmp(cmd,"attach")) {if(sscanf(line,"%*s %u %u",&a,&b)!=2||a>=4096||b>=4096||!require_parent(a)||!require_handle(b))return 4;if(!attachment_inputs(nodes[a],nodes[b]))return 4;rc=lyd_insert_child(nodes[a],nodes[b]);}
+        else if(!strcmp(cmd,"attach")) {if(sscanf(line,"%*s %u %u",&a,&b)!=2||a>=4096||b>=4096||!require_parent(a)||!require_handle(b))return 4;if(!attachment_inputs(nodes[a],nodes[b]))return 4;if(merge2_input(nodes[a],nodes[b])){snapshot("boundary.merge2-driver-safe-prefix",NULL,generic,0,NULL);return 0;}rc=lyd_insert_child(nodes[a],nodes[b]);}
         else if(!strcmp(cmd,"before")) {if(sscanf(line,"%*s %u %u",&a,&b)!=2||a>=4096||b>=4096||!require_handle(a)||!require_handle(b)||(nodes[b]->schema&&!node_kind(nodes[b],LYS_LIST|LYS_LEAFLIST)))return 4;if(!before_inputs(nodes[a],nodes[b]))return 4;rc=lyd_insert_before(nodes[a],nodes[b]);}
         else if(!strcmp(cmd,"detach-siblings")) {if(sscanf(line,"%*s %u",&a)!=1||a>=4096||!require_handle(a)||!unlink_inputs(nodes[a],1))return 4;rc=lyd_unlink_siblings(nodes[a]);}
         else if(!strcmp(cmd,"change")) {if(sscanf(line,"%*s %u %255s",&a,value)!=2||a>=4096||!require_kind(a,LYD_NODE_TERM))return 4;rc=lyd_change_term(nodes[a],value);}
@@ -1384,10 +1587,11 @@ int main(int argc, char **argv)
             bind_handle(a);output_handle=a;output_generation=nodes[a]?identity(nodes[a]):0;
             if(creating && nodes[a] && identities[identity(nodes[a])].operation==op && !identities[identity(nodes[a])].script)identities[identity(nodes[a])].script=a;
         }
+        finish_table_reuse();
         snapshot(cmd,NULL,generic,rc,NULL);
     }
     if(ferror(stdin))return 6;
-    if(reuse_target || reuse_reserved || reuse_next[0])return 100;
+    if(reuse_target || reuse_reserved || reuse_next[0] || table_reuse_target || table_reuse_reserved || table_reuse_next)return 100;
     /* Each trace process owns its forest; avoid walking deliberately corrupt graphs. */
     return 0;
 }

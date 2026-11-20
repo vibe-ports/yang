@@ -7,7 +7,8 @@ import pathlib
 import subprocess
 
 from check import compare_custom
-from drivers import comparison_driver
+from drivers import comparison_driver, native_run, verify_pair
+from transport import decode_rows
 from identity import INPUTS, requests, validate
 
 ROOT = pathlib.Path(__file__).resolve().parent
@@ -17,18 +18,19 @@ NAMES = ('c', 'p', 'q', 'll', 'v', 'z', 'r', 'a', 'a2', 'o', 'd', 'l', 'kl',
 KINDS = ('leaf', 'leaf-list', 'container', 'list0', 'list1', 'list2', 'list3', 'anydata', 'anyxml')
 
 
-def execute(driver, script, mode):
-    result = subprocess.run([str(driver), mode, '--read-schema'], input=script,
+def execute(driver, script, mode, *, instrumented):
+    result = native_run(driver, instrumented=instrumented, options=[mode, '--read-schema'], input=script,
                             text=True, capture_output=True, timeout=25, check=False,
                             env=dict(os.environ, GLIBC_TUNABLES='glibc.malloc.tcache_count=7'))
     assert result.returncode in (0, 4), ('unexpected driver exit', result.returncode, result.stderr, script)
-    return result.returncode, [json.loads(line) for line in result.stdout.splitlines()]
+    return result.returncode, decode_rows(result.stdout)
 
 
 def paired(driver, plain, script, mode):
+    verify_pair(driver, plain)
     traces = []
-    for binary in (driver, plain):
-        rc, rows = execute(binary, script, mode)
+    for instrumented, binary in ((True, driver), (False, plain)):
+        rc, rows = execute(binary, script, mode, instrumented=instrumented)
         assert rc == 0, ('valid custom replay rejected', script)
         # Pin successful completion independently of comparison/normalization.
         assert rows[-1]['operation'] == len(requests(script)), 'early custom stop'
@@ -43,8 +45,8 @@ def paired(driver, plain, script, mode):
 
 
 def rejected(driver, plain, prefix, command, mode, traces):
-    for binary, before in zip((driver, plain), traces, strict=True):
-        rc, after = execute(binary, prefix + command + '\n', mode)
+    for instrumented, binary, before in zip((True, False), (driver, plain), traces, strict=True):
+        rc, after = execute(binary, prefix + command + '\n', mode, instrumented=instrumented)
         assert rc == 4, ('unrepresentable request accepted', command, rc)
         assert before == after, ('rejected command entered native code', command)
 
@@ -164,7 +166,7 @@ def precondition_sweep(driver, plain):
                 for j, b in enumerate(handles):
                     c = handles[(i + 2*j) % len(handles)]
                     script = command_prefix + template.format(a=a, b=b, c=c) + '\n'
-                    results = [execute(binary, script, mode) for binary in (driver, plain)]
+                    results = [execute(binary, script, mode, instrumented=instrumented) for instrumented, binary in ((True, driver), (False, plain))]
                     runs += 2
                     assert results[0][0] == results[1][0] == (0 if expected(command, a, b, c) else 4), ('admission differs', script, [r[0] for r in results])
                     if results[0][0] == 4:
@@ -200,7 +202,7 @@ def precondition_sweep(driver, plain):
                     suffix = ('root 90 c' if b % 10 == 1 else 'term 90 31 p A')
                     script = reuse_prefix + f'{command} {a} {b}\n'
                     if valid: script += '# reuse-next self\n' + suffix + '\n'
-                    traces = [execute(binary, script, mode) for binary in (driver, plain)]
+                    traces = [execute(binary, script, mode, instrumented=instrumented) for instrumented, binary in ((True, driver), (False, plain))]
                     assert all(rc == (0 if valid else 4) for rc, _ in traces), (command, a, b)
                     if valid:
                         compare_custom(script, traces[0][1], traces[1][1]); accepted += 1
@@ -375,7 +377,17 @@ def sweep(driver, plain):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--driver', type=pathlib.Path, default=os.environ.get('YANG_NATIVE_REGISTRATION_DRIVER'))
-    parser.add_argument('--comparison-driver', type=pathlib.Path)
+    parser.add_argument('--comparison-driver')
+    parser.add_argument('--case', choices=('reused-names', 'same-name-ancestors'))
     args = parser.parse_args()
     assert args.driver, 'set native driver'
-    sweep(args.driver.resolve(), comparison_driver(args.driver.resolve(), args.comparison_driver))
+    driver = args.driver.resolve()
+    plain = comparison_driver(driver, args.comparison_driver)
+    verify_pair(driver, plain)
+    if args.case:
+        script = (ROOT / 'cases' / 'custom' / (args.case + '.calls')).read_text()
+        for mode in ('--quiet', '--events'):
+            paired(driver, plain, script, mode)
+        print(json.dumps({'custom_schema_case': args.case, 'driver_runs': 4, 'skips': 0}), flush=True)
+    else:
+        sweep(driver, plain)

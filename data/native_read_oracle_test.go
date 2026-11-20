@@ -5,10 +5,16 @@
 package data
 
 import (
+	"context"
+	"encoding/json"
+	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
+	"time"
 )
 
 // nativeComparisonDriver resolves the unmodified comparison driver: the
@@ -23,6 +29,78 @@ func nativeComparisonDriver() string {
 		return filepath.Join(filepath.Dir(driver), "driver-unmodified")
 	}
 	return ""
+}
+
+// Verify both independent native roles before any semantic replay. Synthetic
+// transport controls use nativeG2SyntheticTransport explicitly instead.
+func nativeDriverRole(path string, instrumented int) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	//nolint:gosec // Configured test-only executable and fixed bounded ABI query.
+	cmd := exec.CommandContext(ctx, path, "--abi")
+	out, err := nativeCommandOutput(cmd)
+	if err != nil {
+		return fmt.Errorf("native ABI exit: %w", err)
+	}
+	rows, err := nativeTranscriptRows(out)
+	if err != nil {
+		return fmt.Errorf("native ABI JSONL: %w", err)
+	}
+	if len(rows) != 1 {
+		return fmt.Errorf("native ABI record count: %d", len(rows))
+	}
+	var actual map[string]int
+	if err := json.Unmarshal(rows[0], &actual); err != nil {
+		return fmt.Errorf("native ABI JSON: %w", err)
+	}
+	expected := map[string]int{"pointer_bytes": 8, "long_double_bytes": 16, "long_double_mantissa_bits": 64, "pointer_record_bytes": 16, "rb_node_bytes": 40, "ndebug": 1, "instrumented": instrumented}
+	if !reflect.DeepEqual(actual, expected) {
+		return fmt.Errorf("native ABI/role mismatch: %v want %v", actual, expected)
+	}
+	return nil
+}
+
+// Native semantic replay may select either configured role, while synthetic
+// transports use their separate helper. Normalize relative path spellings before
+// binding the launched executable to the already verified configuration.
+func nativeReplayPathRole(path string) (int, error) {
+	selected, err := filepath.Abs(path)
+	if err != nil {
+		return 0, err
+	}
+	for role, configured := range []string{nativeComparisonDriver(), os.Getenv("YANG_NATIVE_REGISTRATION_DRIVER")} {
+		expected, err := filepath.Abs(configured)
+		if err != nil {
+			return 0, err
+		}
+		if configured != "" && path != "" && selected == expected {
+			return role, nil
+		}
+	}
+	return 0, fmt.Errorf("native replay path is not a configured driver: %s", path)
+}
+
+func nativeVerifyConfiguredDriverRoles(t *testing.T) {
+	t.Helper()
+	primary, comparison := os.Getenv("YANG_NATIVE_REGISTRATION_DRIVER"), nativeComparisonDriver()
+	if primary == "" {
+		t.Skip("set YANG_NATIVE_REGISTRATION_DRIVER after the isolated static build")
+	}
+	if err := nativeDriverRole(primary, 1); err != nil {
+		t.Fatal(err)
+	}
+	if err := nativeDriverRole(comparison, 0); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func nativeG2SyntheticTransport(t *testing.T, script string, instrumented []nativeDriverResult) []nativeDriverResult {
+	t.Helper()
+	unmodified := nativeDriverReplayTransport(t, script, "", false, nativeComparisonDriver())
+	if err := nativeG2CompareEvidence(script, instrumented, unmodified); err != nil {
+		t.Fatal(err)
+	}
+	return unmodified
 }
 
 func nativeG2Unmodified(t *testing.T, script string, instrumented []nativeDriverResult) []nativeDriverResult {

@@ -12,8 +12,9 @@ from collections import Counter
 
 import check
 from protocol import text, encoded
-from drivers import comparison_driver
-from identity import validate, requests
+from drivers import comparison_driver, native_run, verify_pair
+from transport import decode_rows
+from identity import validate, requests, completion
 
 ROOT = pathlib.Path(__file__).resolve().parent
 DRIVER = None
@@ -22,11 +23,12 @@ COMPARISON_DRIVER = None
 
 def execute(script, plain=False, verbose=False, terminal=None, event_schema=True):
     path = COMPARISON_DRIVER if plain else DRIVER
-    result = subprocess.run([str(path), '--events' if verbose else '--quiet', *(['--event-schema'] if event_schema else [])],
+    result = native_run(path, instrumented=not plain, options=['--events' if verbose else '--quiet', *(['--event-schema'] if event_schema else [])],
                             input=script, text=True, capture_output=True, timeout=25, check=False,
                             env=dict(os.environ, GLIBC_TUNABLES='glibc.malloc.tcache_count=7') if '# reuse-' in script else None)
     assert result.returncode == 0, (result.returncode, result.stderr, result.stdout[-1000:])
-    rows = [json.loads(line) for line in result.stdout.splitlines()]
+    rows = decode_rows(result.stdout)
+    completion(script, rows, (len(requests(script)), terminal) if terminal else None)
     validate(script, rows)
     expected = [(i, f[0]) for i, f in enumerate(requests(script), 1)]
     actual = [(r['operation'], r['event']) for r in rows if r['event'] in {f[0] for f in requests(script)}]
@@ -565,9 +567,10 @@ class IdentitySweep(unittest.TestCase):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--driver', type=pathlib.Path, default=os.environ.get('YANG_NATIVE_REGISTRATION_DRIVER') or None)
-    parser.add_argument('--comparison-driver', type=pathlib.Path)
+    parser.add_argument('--comparison-driver')
     args, rest = parser.parse_known_args()
     if args.driver is None: parser.error('--driver or YANG_NATIVE_REGISTRATION_DRIVER is required')
     DRIVER = args.driver.resolve()
     COMPARISON_DRIVER = comparison_driver(DRIVER, args.comparison_driver)
+    verify_pair(DRIVER, COMPARISON_DRIVER)
     unittest.main(argv=[sys.argv[0], *rest])

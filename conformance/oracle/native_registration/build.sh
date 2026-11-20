@@ -23,13 +23,13 @@ fi
     -DENABLE_TOOLS=OFF -DENABLE_YANGLINT_INTERACTIVE=OFF
 "$cmake_bin" --build "$build_root/static" -j2
 git -C "$build_root/instrumented" diff --no-ext-diff > "$build_root/instrumentation.patch"
-gcc -DNDEBUG -O3 -Wall -Wextra -Wpedantic -std=c11 -Wl,--wrap=free -Dlys_find_child=nr_entry_find_child -I"$build_root/instrumented/src" \
+gcc -DNDEBUG -O3 -Wall -Wextra -Wpedantic -std=c11 -Wl,--wrap=free -Wl,--wrap=lyht_remove,--wrap=lyht_remove_with_resize_cb,--wrap=lyht_find_next,--wrap=lyht_find_next_with_collision_cb -Dlys_find_child=nr_entry_find_child -I"$build_root/instrumented/src" \
     -I"$build_root/static/libyang" -I"$build_root/static/compat" -I"$build_root/instrumented/src/plugins_exts" \
     -o "$build_root/driver.new" driver.c entry_contracts.c ../cjson/cJSON.c "$build_root/static/libyang.a" -lpcre2-8 -lm -lpthread -ldl
 mv "$build_root/driver.new" "$build_root/driver"
 # The untouched oracle image's Release objects provide the interference control.
 find "$build_root/config/CMakeFiles/yangobj.dir" -name '*.o' -print0 | xargs -0 ar rcs "$build_root/libyang-unmodified.a"
-gcc -DNR_UNMODIFIED -DNDEBUG -O3 -Wall -Wextra -Wpedantic -std=c11 -Wl,--wrap=free -Dlys_find_child=nr_entry_find_child -I"$build_root/source/src" \
+gcc -DNR_UNMODIFIED -DNDEBUG -O3 -Wall -Wextra -Wpedantic -std=c11 -Wl,--wrap=free -Wl,--wrap=lyht_remove,--wrap=lyht_remove_with_resize_cb,--wrap=lyht_find_next,--wrap=lyht_find_next_with_collision_cb -Dlys_find_child=nr_entry_find_child -I"$build_root/source/src" \
     -I"$build_root/config/libyang" -I"$build_root/config/compat" -I"$build_root/source/src/plugins_exts" \
     -o "$build_root/driver-unmodified.new" driver.c entry_contracts.c ../cjson/cJSON.c "$build_root/libyang-unmodified.a" -lpcre2-8 -lm -lpthread -ldl
 mv "$build_root/driver-unmodified.new" "$build_root/driver-unmodified"

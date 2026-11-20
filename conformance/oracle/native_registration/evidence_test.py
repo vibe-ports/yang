@@ -9,9 +9,10 @@ import signal
 import sys
 import unittest
 
-from drivers import comparison_driver
+from drivers import comparison_driver, native_run, verify_pair
+from transport import decode_rows
 
-from identity import request_evidence, requests, validate
+from identity import request_evidence, requests, validate, completion
 from protocol import RESULTS, shape, encoded
 
 ROOT = pathlib.Path(__file__).resolve().parent
@@ -37,12 +38,12 @@ def replay(script, mode='--quiet', read=True, plain=False):
     driver = comparison_driver() if plain else os.environ.get('YANG_NATIVE_REGISTRATION_DRIVER')
     if not driver:
         raise unittest.SkipTest('set native drivers')
-    result = subprocess.run([str(driver), mode,
+    result = native_run(driver, instrumented=not plain, options=[mode,
                              '--read-schema' if read else '--event-schema'], input=script.encode('utf-8', 'surrogateescape'),
                             stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                             timeout=30, check=False, env=dict(os.environ, GLIBC_TUNABLES='glibc.malloc.tcache_count=7'))
     assert result.returncode == 0, result.stderr
-    return [json.loads(line) for line in result.stdout.decode('utf-8').splitlines()]
+    return decode_rows(result.stdout)
 
 
 def paths(value, prefix=()):
@@ -61,9 +62,10 @@ def parent_at(value, path):
     return value, path[-1]
 
 
-def rejected_or_changed(script, rows, expected):
+def rejected_or_changed(script, rows, expected, terminal=None):
     signal.setitimer(signal.ITIMER_REAL, 3)
     try:
+        completion(script, rows, terminal)
         actual = validate(script, rows)
     except (AssertionError, KeyError, IndexError, TypeError, ValueError):
         return True
@@ -72,8 +74,9 @@ def rejected_or_changed(script, rows, expected):
     return actual != expected
 
 
-def invalid_contract(script, rows, project):
+def invalid_contract(script, rows, project, terminal=None):
     try:
+        completion(script, rows, terminal)
         validate(script, rows, project=project)
     except (AssertionError, KeyError, IndexError, TypeError, ValueError):
         return True
@@ -127,7 +130,7 @@ def excluded(row, path, script):
     complete = event == 'driver.ready.actual-children-callback' or 0 < op <= len(req) and event == req[op - 1][0]
     if not complete and 'nodes' in row:
         return 'instrumented intermediate snapshot'
-    if event in ('read.compare', 'allocation.address-reuse'):
+    if event in ('read.compare', 'allocation.address-reuse', 'table.address-reuse'):
         return 'instrumented callback/reuse notice'
     if path == ('allocation_scope',): return 'coverage claim differs by build'
     if path[0] in ('node_count', 'table_count', 'tables'): return 'observer lifetime registry'
@@ -163,14 +166,26 @@ def contract_defect(row, path, action):
 
 
 def perturb(rows, index, path, action):
-    mutant = copy.deepcopy(rows)
-    parent, field = parent_at(mutant[index], path)
+    # Native JSONL has tree-shaped values. Validators only read those values;
+    # isolate the edited branch while sharing every untouched observation.
+    mutant = rows.copy()
+    parent = rows[index].copy()
+    mutant[index] = parent
+    for field in path[:-1]:
+        child = parent[field].copy()
+        parent[field] = child
+        parent = child
+    field = path[-1]
     value = parent[field]
     if action == 'typed': parent[field] = {'invalid_type': True} if type(value) is not dict else 'invalid_type'
     elif action == 'delete': del parent[field]
     elif action == 'add':
-        if type(value) is dict: parent[field]['unexpected_field'] = 1
-        elif type(value) is list: parent[field].append({'unexpected_field': 1})
+        if type(value) is dict:
+            parent[field] = value.copy()
+            parent[field]['unexpected_field'] = 1
+        elif type(value) is list:
+            parent[field] = value.copy()
+            parent[field].append({'unexpected_field': 1})
         else: return None
     elif type(value) is bool: parent[field] = not value
     elif type(value) is int: parent[field] = value + 1
@@ -198,8 +213,9 @@ def counterpart(rows, row, path):
     return index, path
 
 
-def sweep(script, rows, peer=None):
+def sweep(script, rows, peer=None, terminal=None):
     global CURRENT
+    completion(script, rows, terminal)
     expected = validate(script, rows)
     seen, counts = set(), dict(delete=0, add=0, mutate=0, typed=0, exclusions=0, both_rejected=0, native_outcome=0)
     outcomes = set()
@@ -221,11 +237,11 @@ def sweep(script, rows, peer=None):
             assert other is not None or reason, ('missing native counterpart', key)
             peer_rows = peer if peer is not None else rows
             mutant = perturb(rows, index, path, 'typed')
-            assert invalid_contract(script, mutant, True) and invalid_contract(script, mutant, False), ('unvalidated type', key)
+            assert invalid_contract(script, mutant, True, terminal) and invalid_contract(script, mutant, False, terminal), ('unvalidated type', key)
             # Two identical peers cannot rely on projection inequality. The
             # validation-only lane must reject each malformed peer itself.
             if other is not None:
-                assert invalid_contract(script, perturb(peer_rows, *other, 'typed'), False), ('accepted identical type defect', key)
+                assert invalid_contract(script, perturb(peer_rows, *other, 'typed'), False, terminal), ('accepted identical type defect', key)
                 counts['both_rejected'] += 1
             else:
                 counts['exclusions'] += 1
@@ -233,8 +249,8 @@ def sweep(script, rows, peer=None):
             for action in ('delete', 'add', 'mutate'):
                 mutant = perturb(rows, index, path, action)
                 if mutant is None: continue
-                invalid = invalid_contract(script, mutant, False)
-                peer_invalid = other is not None and invalid_contract(script, perturb(peer_rows, *other, action), False)
+                invalid = invalid_contract(script, mutant, False, terminal)
+                peer_invalid = other is not None and invalid_contract(script, perturb(peer_rows, *other, action), False, terminal)
                 if contract_defect(row, path, action):
                     assert invalid and (peer_invalid or other is None), ('accepted identical contract defect', action, key)
                 if invalid and peer_invalid:
@@ -245,7 +261,7 @@ def sweep(script, rows, peer=None):
                     # such a witness. Optional fields remain optional.
                     outcomes.add((action, key))
                     counts['native_outcome'] += 1
-                changed = invalid or rejected_or_changed(script, mutant, expected)
+                changed = invalid or rejected_or_changed(script, mutant, expected, terminal)
                 if not changed:
                     assert reason, ('uncompared field', action, key)
                     # Shape must still reject deletion of required excluded
@@ -293,7 +309,7 @@ def pin_exclusions():
     # Only the embedded C location varies; the log's separate line stays exact.
     location = copy.deepcopy(rows)
     location[0]['diagnostics'] = [dict(code=6, context_generation=1, msg=encoded('Internal error (first.c:10).'))]
-    location[0]['logs'] = [dict(level=0, line=0, msg=encoded('Internal error (first.c:10).'))]
+    location[0]['logs'] = [dict(code=6, level=0, line=0, msg=encoded('Internal error (first.c:10).'))]
     changed_location = copy.deepcopy(location)
     for channel in ('diagnostics', 'logs'):
         changed_location[0][channel][0]['msg'] = encoded('Internal error (second.h:20).')
@@ -305,9 +321,7 @@ def pin_exclusions():
             key = row['event'], tuple('*' if type(k) is int else k for k in path), type(value)
             if key in checked: continue
             checked.add(key)
-            mutant = copy.deepcopy(row)
-            parent, field = parent_at(mutant, path)
-            parent[field] = {'invalid_type': True} if type(value) is not dict else 'invalid_type'
+            mutant = perturb([row], 0, path, 'typed')[0]
             try:
                 shape(mutant, False, True)
             except (AssertionError, KeyError, TypeError):
@@ -388,10 +402,10 @@ def byte_arguments():
                 for plain in (False, True):
                     driver = comparison_driver() if plain else os.environ['YANG_NATIVE_REGISTRATION_DRIVER']
                     read = any(f[0].startswith('read-') or f[0] in ('equal', 'context', 'context-keyless') for f in requests(script))
-                    result = subprocess.run([str(driver), mode, *(['--read-schema'] if read else ['--event-schema'])],
+                    result = native_run(driver, instrumented=not plain, options=[mode, *(['--read-schema'] if read else ['--event-schema'])],
                         input=script.encode('utf-8', 'surrogateescape'), capture_output=True, timeout=30, check=False)
                     assert result.returncode == status, (label, plain, result.returncode, result.stderr)
-                    rows = [json.loads(line) for line in result.stdout.decode('utf-8').splitlines()]
+                    rows = decode_rows(result.stdout)
                     prefix = script if not status else '\n'.join(script.split('\n')[:-2]) + '\n'
                     peers.append(validate(prefix, rows))
             assert all(peer == peers[0] for peer in peers[1:]), ('non-UTF-8 peers differ', label, value)
@@ -416,13 +430,16 @@ def main():
         plain = replay(script, read=read, plain=True)
         assert validate(script, rows) == validate(script, plain), 'positive native peers differ'
         total['request_substitutions_both'] += request_substitutions(script, rows, plain)
-        counts = sweep(script, rows, plain)
+        terminal = (5, 'boundary.tombstoned-handle') if script.endswith('check-handle 2\n') else None
+        completion(script, rows, terminal)
+        completion(script, plain, terminal)
+        counts = sweep(script, rows, plain, terminal)
         print(json.dumps({'request': script.splitlines()[0], 'controls': counts}), flush=True)
         for k, v in counts.items(): total[k] += v
     channel_script = 'equal 0 0 1\n'
     channel_rows = replay(channel_script)
     channel_rows[0]['diagnostics'] = [dict(code=7, context_generation=1, msg=encoded('sentinel'), path=encoded('/m:c'), apptag=encoded('sentinel'))]
-    channel_rows[0]['logs'] = [dict(level=0, line=3, msg=encoded('sentinel'), path=encoded('/m:c'), schema_path=encoded('/m:c'))]
+    channel_rows[0]['logs'] = [dict(code=6, level=0, line=3, msg=encoded('sentinel'), path=encoded('/m:c'), schema_path=encoded('/m:c'))]
     counts = sweep(channel_script, channel_rows)
     print(json.dumps({'synthetic_optional_channels': counts}), flush=True)
     for k, v in counts.items(): total[k] += v

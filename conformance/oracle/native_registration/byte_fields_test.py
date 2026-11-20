@@ -11,6 +11,7 @@ import os
 import pathlib
 import re
 import subprocess
+from transport import run
 import tempfile
 
 ROOT = pathlib.Path(__file__).resolve().parent
@@ -34,12 +35,13 @@ def main():
     parser.add_argument('--source', type=pathlib.Path, default=pathlib.Path(os.environ.get('YANG_NATIVE_BYTE_SOURCE', ROOT / 'driver.c')))
     args = parser.parse_args()
     source = args.source.read_text()
+    inventory_source = '\n'.join(line for line in source.splitlines() if not line.startswith('#define'))
     # Each real call is copied verbatim except its byte argument. This isolates
     # encoding from native grammar restrictions and optional log dispatch.
     labels = {'event', 'continuity', 'current', 'allocation_scope'}
     emitters = re.findall(r'(?:raw_bytes_or_null|bytes_or_null|cJSON_AddStringToObject)\((\w+),"([^"]+)",', source)
     assert sorted((obj, key) for obj, key in emitters if key not in labels) == sorted((obj, key) for obj, key, _ in FIELDS), 'byte emitter inventory drift'
-    assert set(re.findall(r'cJSON_CreateString\(([^)]+)\)', source)) <= {'hex', 'm->name', 'value'}, 'unlisted byte array emitter'
+    assert set(re.findall(r'cJSON_CreateString\(([^)]+)\)', inventory_source)) <= {'hex', 'm->name', 'value'}, 'unlisted byte array emitter'
     calls = []
     for obj, key, expression in FIELDS:
         candidates = [f'{fn}({obj},"{key}",{expression})' for fn in ('bytes_or_null', 'raw_bytes_or_null', 'cJSON_AddStringToObject')]
@@ -99,17 +101,17 @@ cJSON_InitHooks(NULL);return 0;}'''
             native = ROOT / '.build' / ('source' if plain else 'instrumented')
             library = ROOT / '.build/libyang-unmodified.a' if plain else build / 'libyang.a'
             binary = work / ('unmodified' if plain else 'instrumented')
-            command = ['gcc', '-DNDEBUG', '-O2', '-std=c11', '-Wl,--wrap=free', '-Dlys_find_child=nr_entry_find_child',
+            command = ['gcc', '-DNDEBUG', '-O2', '-std=c11', '-Wl,--wrap=free', *(['-Wl,--wrap=lyht_remove,--wrap=lyht_remove_with_resize_cb,--wrap=lyht_find_next,--wrap=lyht_find_next_with_collision_cb'] if '__wrap_lyht_remove_with_resize_cb' in source else []), '-Dlys_find_child=nr_entry_find_child',
                        *(['-DNR_UNMODIFIED'] if plain else []),
                        '-I' + str(ROOT), '-I' + str(native / 'src'), '-I' + str(build / 'libyang'),
                        '-I' + str(build / 'compat'), '-I' + str(native / 'src/plugins_exts'),
                        '-o', str(binary), str(work / 'probe.c'), str(ROOT / 'entry_contracts.c'),
                        str(ROOT / '../cjson/cJSON.c'), str(library), '-lpcre2-8', '-lm', '-lpthread', '-ldl']
             try:
-                subprocess.run(command, check=True, capture_output=True)
+                run(command, check=True, capture_output=True)
             except subprocess.CalledProcessError as error:
                 raise AssertionError(error.stderr.decode('utf-8')) from error
-            output = subprocess.run([binary], check=True, capture_output=True).stdout
+            output = run([binary], check=True, capture_output=True).stdout
             # Strict transport, then exact byte round-trip, independently of the
             # production evidence validator's knowledge of the field names.
             lines = output.splitlines()

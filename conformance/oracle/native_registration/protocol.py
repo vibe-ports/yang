@@ -144,7 +144,7 @@ def diagnostic(value):
 
 
 def log(value):
-    record(value, {'level': int, 'line': int}, dict.fromkeys(('msg', 'path', 'schema_path'), native_bytes))
+    record(value, {'level': int, 'line': int, 'code': int}, dict.fromkeys(('msg', 'path', 'schema_path'), native_bytes))
 
 
 def module(value):
@@ -176,7 +176,7 @@ COMMANDS = frozenset(('new', 'root', 'term', 'list', 'frontier', 'opaque', 'opaq
 BOUNDARIES = frozenset('boundary.' + x for x in ('tombstoned-handle', 'tombstoned-semantic-probe',
     'new-null', 'retained-dangling-links', 'primitive-free-slot-cap', 'watchdog.find-next-cycle',
     'remote-last-corrupting-primitive', 'merge2-before-uninitialized-continuation',
-    'merge2-exhausted-forward-iterator', 'merge2-successor-schema-precondition'))
+    'merge2-exhausted-forward-iterator', 'merge2-successor-schema-precondition', 'merge2-driver-safe-prefix'))
 
 
 def shape(row, snapshot, read_context):
@@ -184,6 +184,8 @@ def shape(row, snapshot, read_context):
     common = {'event': str, 'operation': int, 'request': array(opaque_name)}
     if event == 'allocation.address-reuse':
         record(row, common | {'old_generation': int, 'new_generation': int})
+    elif event == 'table.address-reuse':
+        record(row, common | {'old_identity': int, 'new_identity': int})
     elif event == 'boundary.tombstoned-handle':
         record(row, common | {'handle': int, 'generation': int, 'current': str})
         assert row['current'] == 'unavailable', 'invalid tombstone availability'
@@ -212,12 +214,12 @@ def shape(row, snapshot, read_context):
         assert event not in RESULTS, 'result masquerading as snapshot'
 
 
-LOCATION = re.compile(r'^(Internal error) \([^()]*\.(?:c|h):[0-9]+\)(\.)$')
+LOCATION = re.compile(r'^(Internal error) \([^()]*\.(?:c|h):[0-9]+\)(\.)\Z')
 
 
 # Only wrap() in instrument.py adds this suffix to __func__ in LOGARG.
 OBSERVER_FUNCTIONS = ('lyd_insert_hash', 'lyd_unlink_hash', 'lyd_insert_hash_add', 'lyht_resize', '_lyht_insert_with_resize_cb', 'lyht_remove_with_resize_cb', 'lyht_find_next_with_collision_cb', 'lyd_insert_after_node', 'lyd_insert_before_node', 'lyd_unlink_ignore_lyds', 'lyd_insert_only_child', 'lyd_insert_node_last', 'lyds_move_meta', 'lyds_merge_nodes2_front', 'lyds_merge_nodes2_among', 'lyds_merge_nodes2_back', 'lyd_validate_duplicates')
-OBSERVER_FUNCTION = re.compile(r'^(Invalid argument .+ \()(' + '|'.join(OBSERVER_FUNCTIONS) + r')_nr_impl(\(\)\)\.)$')
+OBSERVER_FUNCTION = re.compile(r'^(Invalid argument .+ \()(' + '|'.join(OBSERVER_FUNCTIONS) + r')_nr_impl(\(\)\)\.)\Z')
 SNAPSHOTS = COMMANDS | (BOUNDARIES - {'boundary.tombstoned-handle'}) | frozenset(
     name + phase for name in OBSERVER_FUNCTIONS for phase in ('.before', '.after')) | frozenset((
     'driver.ready.actual-children-callback', 'table.allocate', 'table.retire', 'node.retiring', 'node.free',
@@ -226,9 +228,11 @@ SNAPSHOTS = COMMANDS | (BOUNDARIES - {'boundary.tombstoned-handle'}) | frozenset
     'merge2.among.successor-schema', 'remote.nonlast.before', 'remote.last.before'))
 
 
-def message(value):
-    return OBSERVER_FUNCTION.sub(r'\1\2\3', LOCATION.sub(r'\1\2', value))
+def message(value, code):
+    if code == 6: return LOCATION.sub(r'\1\2', value)
+    if code == 3: return OBSERVER_FUNCTION.sub(r'\1\2\3', value)
+    return value
 
 
 def messages(items):
-    return [{k: encoded(message(text(v))) if k == 'msg' else v for k, v in item.items()} for item in items]
+    return [{k: encoded(message(text(v), item['code'])) if k == 'msg' else v for k, v in item.items()} for item in items]
