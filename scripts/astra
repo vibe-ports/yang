@@ -4,6 +4,8 @@
 #   scripts/astra review --trusted            review fetched origin/main...HEAD (no other base)
 #   scripts/astra design FILE...              critique a design note / task plan
 # Env: ASTRA_MODEL (gpt-6-astra), ASTRA_EFFORT (xhigh), ASTRA_PR (PR number → post as comment).
+# ASTRA_REVIEW_EXEC=container adds offline disposable dev-container execution to --trusted.
+# Unset it to restore source-only reviews; verdict validation and posting stay on the host.
 # Exit 1 if any blocking finding (or, for design, verdict "changes") — usable as a gate.
 # Review findings carry a scope: blocking ones gate the merge, follow-ups are filed as issues.
 #
@@ -22,7 +24,13 @@ cmd=${1:?usage: scripts/astra review [BASE] | review --trusted | design FILE...}
 trusted=
 if [[ $cmd == review && ${1:-} == --trusted ]]; then trusted=1; shift; fi
 model=${ASTRA_MODEL:-gpt-6-astra}
-out=$(mktemp); schema=$(mktemp); trap 'rm -f "$out" "$out.log" "$schema"' EXIT
+case ${ASTRA_REVIEW_EXEC:-} in
+  '') ;;
+  container) [[ -n $trusted ]] || { echo 'astra: container execution requires review --trusted' >&2; exit 2; } ;;
+  *) echo 'astra: ASTRA_REVIEW_EXEC must be unset or container' >&2; exit 2 ;;
+esac
+out=$(mktemp); schema=$(mktemp); helper= gate=
+trap 'rm -f "$out" "$out.log" "$schema"; [[ -z $helper ]] || rm -f "$helper"; [[ -z $gate ]] || rm -f "$gate"' EXIT
 sha=$(git rev-parse HEAD)
 
 rules="Follow AGENTS.md (goals: no cgo, libyang v5.8.6 compatibility, auditability). Check behaviour
@@ -76,13 +84,23 @@ assumptions, missing cases, simpler alternatives, what fixtures would prove it."
   *) echo "unknown command $cmd" >&2; exit 2 ;;
 esac
 
-codex exec -m "$model" -c model_reasoning_effort="${ASTRA_EFFORT:-xhigh}" "${codex_opts[@]}" \
-  -s read-only --ephemeral --output-schema "$schema" -o "$out" "$prompt" </dev/null >"$out.log" 2>&1 ||
+reviewer=(codex exec -m "$model" -c model_reasoning_effort="${ASTRA_EFFORT:-xhigh}" "${codex_opts[@]}" \
+  -s read-only --ephemeral --output-schema "$schema" -o "$out" "$prompt")
+if [[ ${ASTRA_REVIEW_EXEC:-} == container ]]; then
+  helper=$(mktemp)
+  git show origin/main:scripts/astra-exec.py >"$helper"
+  reviewer=(python3 -I "$helper" review "$sha" "$model" "${ASTRA_EFFORT:-xhigh}" "$schema" "$out" "$prompt")
+fi
+"${reviewer[@]}" </dev/null >"$out.log" 2>&1 ||
   { echo "codex failed:" >&2; tail -20 "$out.log" >&2; exit 2; }
 
 gate=scripts/astra-gate.py
-if [[ -n $trusted ]]; then gate=$(mktemp); trap 'rm -f "$out" "$out.log" "$schema" "$gate"' EXIT; git show origin/main:scripts/astra-gate.py >"$gate"; fi
-report=$(python3 "$gate" "$out" "$model" "$sha" "$cmd" "$trusted" "$label") && rc=0 || rc=$?
+gate_python=(python3)
+if [[ -n $trusted ]]; then
+  gate=$(mktemp); git show origin/main:scripts/astra-gate.py >"$gate"
+  gate_python+=(-I)  # Main's validator must not import checkout/user Python modules.
+fi
+report=$("${gate_python[@]}" "$gate" "$out" "$model" "$sha" "$cmd" "$trusted" "$label") && rc=0 || rc=$?
 echo "$report"
 [[ -n ${ASTRA_PR:-} ]] && gh pr comment "$ASTRA_PR" --body "$report" >/dev/null
 exit $rc
