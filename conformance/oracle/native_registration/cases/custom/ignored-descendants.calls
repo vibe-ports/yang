@@ -1,0 +1,27 @@
+# SPDX-License-Identifier: BSD-3-Clause
+context
+root 1 c
+list 2 1 i A
+child 3 2 0
+dup 4 3 0 0
+root 5 c
+root 6 c
+root 7 c
+root 9 other
+frontier 9 4 5 6 7
+dup 20 9 0 0
+dup 8 3 0 0
+opaque 10 0 u A
+attach 10 8
+dup 22 10 0 0
+context module m {yang-version 1.1;namespace urn:m;prefix m;container other;}
+dup-to-context 21 9 0 0
+dup-to-context 23 10 0 0
+equal 20 20 0
+equal 21 21 0
+equal 22 22 0
+equal 23 23 0
+print 20
+print 21
+print 22
+print 23

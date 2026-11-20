@@ -1,0 +1,8 @@
+# SPDX-License-Identifier: BSD-3-Clause
+root 1 c
+context
+root 11 c
+list 2 1 j x
+opaque 3 2 u A
+list 12 11 j x
+read-value 2 12 0 [bogus='A']

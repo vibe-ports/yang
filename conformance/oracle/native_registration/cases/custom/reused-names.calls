@@ -1,0 +1,108 @@
+# SPDX-License-Identifier: BSD-3-Clause
+# All built-in names reused with different node kinds.
+context module m {yang-version 1.1;namespace urn:m;prefix m;leaf c {type string;}leaf d {type string;}leaf r {type string;}leaf l {type string;}leaf kl {type string;}leaf i {type string;}leaf j {type string;}leaf other {type string;}leaf input {type string;}leaf output {type string;}container p {presence yes;}container q {presence yes;}container ll {presence yes;}container v {presence yes;}container z {presence yes;}container a {presence yes;}container a2 {presence yes;}container o {presence yes;}container k {presence yes;}container x {presence yes;}container def {presence yes;}}
+term 1 0 c A
+read-schema 1 1 0
+read-instance 1 1 0
+equal 1 1 1
+print 1
+term 2 0 d A
+read-schema 2 2 0
+read-instance 2 2 0
+equal 2 2 1
+print 2
+term 3 0 r A
+read-schema 3 3 0
+read-instance 3 3 0
+equal 3 3 1
+print 3
+term 4 0 l A
+read-schema 4 4 0
+read-instance 4 4 0
+equal 4 4 1
+print 4
+term 5 0 kl A
+read-schema 5 5 0
+read-instance 5 5 0
+equal 5 5 1
+print 5
+term 6 0 i A
+read-schema 6 6 0
+read-instance 6 6 0
+equal 6 6 1
+print 6
+term 7 0 j A
+read-schema 7 7 0
+read-instance 7 7 0
+equal 7 7 1
+print 7
+term 8 0 other A
+read-schema 8 8 0
+read-instance 8 8 0
+equal 8 8 1
+print 8
+term 9 0 input A
+read-schema 9 9 0
+read-instance 9 9 0
+equal 9 9 1
+print 9
+term 10 0 output A
+read-schema 10 10 0
+read-instance 10 10 0
+equal 10 10 1
+print 10
+root 11 p
+read-schema 11 11 0
+read-instance 11 11 0
+equal 11 11 1
+print 11
+root 12 q
+read-schema 12 12 0
+read-instance 12 12 0
+equal 12 12 1
+print 12
+root 13 ll
+read-schema 13 13 0
+read-instance 13 13 0
+equal 13 13 1
+print 13
+root 14 v
+read-schema 14 14 0
+read-instance 14 14 0
+equal 14 14 1
+print 14
+root 15 z
+read-schema 15 15 0
+read-instance 15 15 0
+equal 15 15 1
+print 15
+root 16 a
+read-schema 16 16 0
+read-instance 16 16 0
+equal 16 16 1
+print 16
+root 17 a2
+read-schema 17 17 0
+read-instance 17 17 0
+equal 17 17 1
+print 17
+root 18 o
+read-schema 18 18 0
+read-instance 18 18 0
+equal 18 18 1
+print 18
+root 19 k
+read-schema 19 19 0
+read-instance 19 19 0
+equal 19 19 1
+print 19
+root 20 x
+read-schema 20 20 0
+read-instance 20 20 0
+equal 20 20 1
+print 20
+root 21 def
+read-schema 21 21 0
+read-instance 21 21 0
+equal 21 21 1
+print 21

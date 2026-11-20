@@ -3,7 +3,9 @@
 root 1 c
 list 11 1 l K
 print 11
+# reuse-free 11 child
 free 11
+# reuse-next child
 list 11 1 l K
 print 11
 free 11

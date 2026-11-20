@@ -1,0 +1,4 @@
+# SPDX-License-Identifier: BSD-3-Clause
+# Live libyang v5.8.6 printer-byte control; no generated golden.
+opaque-invalid-xml 1 0
+print 1

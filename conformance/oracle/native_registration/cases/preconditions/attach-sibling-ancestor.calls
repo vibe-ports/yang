@@ -1,0 +1,6 @@
+# SPDX-License-Identifier: BSD-3-Clause
+opaque 1 0 u A
+opaque 2 0 v B
+opaque 3 2 w C
+before 2 1
+attach 3 1

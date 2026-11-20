@@ -64,8 +64,18 @@ and successive incarnations of a reused handle have distinct keys; process-local
 generations are never compared directly. Every comparison checks the exact completed command
 sequence, statuses and diagnostic code/path/app-tag, plus the independently
 expected terminal command or stop boundary on both sides. LOGINT source paths
-and line numbers differ between builds; full validation diagnostics are still
-compared. An empty result set cannot satisfy a control. Constructor-rejection
+and line numbers differ between builds. Normalization requires a native error
+code: diagnostic codes come from the native queue, and logger codes are copied
+only when the stored error's message pointer matches the callback argument.
+The two pinned hash-table NULL-context sites are identified by typed return
+observers: missing removal logs LOGARG before ENOTFOUND, and failed next-record
+resolution logs LOGINT before EINT. Both public and callback entry symbols are
+observed because same-object native calls do not pass through linker wrapping.
+The observers change only the new last log's origin, without allocations or
+native argument/return changes. Other unstored/NULL-context logger messages carry
+code -1 and remain exact. User
+validation messages, including text resembling internal/argument diagnostics,
+remain byte-for-byte evidence. An empty result set cannot satisfy a control. Constructor-rejection
 controls instead compare their explicit rejection snapshot and nonempty log.
 The Go evidence test passes its selected executable
 and uses `YANG_NATIVE_REGISTRATION_COMPARISON_DRIVER` when provided, otherwise
@@ -73,6 +83,77 @@ and uses `YANG_NATIVE_REGISTRATION_COMPARISON_DRIVER` when provided, otherwise
 cases are never run to an accidental completed result or used as goldens.
 
 ## Replay protocol and evidence
+
+All strings copied from native storage or native API output use one byte
+contract: a JSON string containing canonical lowercase hex, two digits per byte.
+The empty string is `""`; a nullable native pointer is JSON `null`; optional
+fields retain their existing omission rules. Decoding hex recovers the exact C
+string bytes up to its terminating NUL, without Unicode replacement. The hex
+contract itself can represent any byte, including `00`; the line protocol and
+native C-string APIs do not accept embedded NUL. JSONL transport remains strict
+UTF-8. Driver-authored labels (`event`, availability, allocation scope,
+continuity) remain ordinary JSON text. All consumers enforce a 64 MiB stdout
+budget, 1 MiB stderr budget, 8 MiB record budget and 32768-record budget while
+capturing pipes, before decoding or retaining complete transcripts. UTF-8 BOMs,
+alternate encodings, NUL, CR framing, blank records and unterminated records are
+rejected. Parser requests remove the physical LF once, before recording and
+native dispatch; trailing spaces and a payload CR remain input bytes. Physical
+lines and name/value tokens exceeding the driver's fixed buffers are rejected
+before native entry, as are embedded NUL bytes.
+
+The complete byte-carrying output inventory is:
+
+| Location | Fields / elements |
+|---|---|
+| Every event | `request[]` (exact input bytes, including parser payloads) |
+| `public.result` | `json` (`lyd_print_mem` output, not parsed as JSON) |
+| Snapshot `diagnostics[]` | `msg`, `path`, `apptag` |
+| Snapshot `logs[]` | `msg`, `path`, `schema_path` |
+| Snapshot `nodes[]` | `schema`, `module`, term `value`, `metadata[]` names |
+| Opaque `nodes[]` | `opaque_name`, `opaque_module`, `opaque_prefix`, `opaque_value` |
+| Snapshot `schemas[]` | `module`, `name` |
+| Snapshot `modules[]` | `name`, `namespace`, `revision` |
+| `read.opaque`, `read.selection.opaque` | `name` |
+| `read.selection.value` | nullable `value` |
+
+No other native byte pointer is serialized: opaque format/binding indicators,
+metadata ownership/RB topology, identities, flags, hashes and return codes are
+numeric/boolean observations. Opaque attributes are not serialized by this
+part-1 observer. Metadata values other than the existing RB
+observation are outside part 1. Python's closed contract validates canonical
+hex before history/projection; equality of canonical encodings is exact byte
+equality. Python and Go decode diagnostic messages before the existing narrowly
+scoped source-location/function normalization and re-encode the result. Neither
+consumer relaxes transport UTF-8 checks or parses/replaces native printer bytes.
+
+`cases/read/output-invalid-xml.calls` is the reviewer's live printer replay.
+`TestNativeOutputInvalidXML` requires successful printing and the exact `ff`
+byte in both builds. `TestNativeOutputByteEmitters` compiles output-statement
+probes for all 24 byte emitters against both native libraries; only the copied
+argument is replaced with a 256-byte pattern containing control bytes, quotes,
+backslashes and malformed UTF-8 (`01 0a 0d 09 22 5c ff fe c0 80`). This covers fields whose native
+syntax forbids malformed UTF-8, without changing native storage or claiming
+public reachability for invalid schema/module names. `--source` selects an older
+driver for the same sensitivity probes. The generic field sweep also runs three
+invalid byte sequences at every name/value request position in both builds and
+quiet/verbose modes (including raw JSON/XML/YANG payloads); list-name admission refusal must preserve its prefix.
+All probes use the existing process/line/traversal limits. New byte fields
+retain raw bytes in owned JSON strings and are marked for hex encoding in the
+final write pass. Existing eager hex fields retain their former representation
+inside the JSON tree. Both use the same hex encoder and identical wire scheme.
+The original cJSON render/allocation/free sequence is preserved; the write pass
+uses a 256-byte stack buffer and the existing cJSON nesting limit. It copies
+all other rendered tokens verbatim, including numbers and key escaping. Native
+JSON/XML payloads remain single byte strings; their contents are never parsed.
+
+The encoder work probe compares former raw-string allocation with marked byte
+values at lengths 0/1/16/64/256: both allocate exactly two blocks, with identical
+byte counts. No temporary hex allocation or string copy is added. The extra
+write pass is linear in rendered/output bytes. There are no changes to native
+allocation, reuse setup, admission, constructors, journals or production budgets.
+`TestNativeOutputJSONReuse` runs quiet/verbose controls in both builds under all
+three environment profiles; the existing 192-case matrix and 192 forcing-disabled
+controls retain their original obligations.
 
 Input is a bounded line-oriented public-call script. `cases/*.calls` are the
 independent live-oracle request cases. IDs are script handles, never addresses.
@@ -132,8 +213,12 @@ Stdout is JSONL. `--quiet` emits command snapshots; the default emits primitive
 events as well. `--remote-stop` exits immediately after the remote-last
 insert-after primitive. `--remote-watchdog` runs the separate bounded rewind
 first-sibling control (which terminates for the parented remote-last replay).
-`--merge2-ub-stop` exits before an exhausted forward iterator, unsafe continuation, or
-heterogeneous-schema RB insertion. A 15-second process alarm and bounded table,
+Every mode, including `--quiet`, `--events` and `--merge2-ub-stop`, stops at
+`boundary.merge2-driver-safe-prefix` before the public attachment that could
+dispatch to variant 2 (destination without an RB tree, source with an RB tree).
+This conservative representation check also protects the unmodified build,
+which has no primitive callbacks. No continuation of that variant is exercised
+by these replays. A 15-second process alarm and bounded table,
 RB and find-next traversals label watchdog boundaries; they never invent a
 completed match/miss.
 `free-slot-cap.calls` fills a disabled eight-slot table and records its inert
@@ -320,24 +405,15 @@ allocation-identity controls apply to instrumented traces.
   removing Qg and changing the collision node to RA, schema lookup instead
   returns ENOTFOUND. This establishes the later selection difference caused by
   checked deduplication without calling the repeated I a public API sequence.
-* **merge2-defined.calls:** destination without RB metadata and source with RB
-  metadata enters native variant 2. The trace confirms front → metadata transfer
-  → among → back. The completed public JSON matches untouched native.
-* **merge2-successor.calls:** the trace reaches the wrong successor-schema
-  boundary after front and metadata transfer and stops before the incompatible
-  RB insertion. **merge2-before.calls:** all source nodes before destination
-  reach front → metadata → among → back's no-successor return; observation stops
-  before the subsequent uninitialized continuation read. Neither is a completed
-  golden or a claim of exact native behavior beyond the safe prefix.
-* **merge2-unsorted.calls:** public NoSort/NoMeta copies create D=[D4,D1]
-  without RB metadata and detached S=[S2,S3] with RB metadata. The trace records
-  native's source-only prefix and stops before the exhausted `_among` forward
-  iterator is dereferenced. At the stop, complete RB topology contains
-  D4,D1,S2,S3, separately from the metadata's older stored pointer. This is the
-  native UB-prefix control. The Go regression controls for §4.1 separately
-  verify D-0062's [D1,S2,S3,D4] permutation, metadata-before-replay publication,
-  A=[S3,S2], absent-table threshold frontiers and existing-table growth without
-  inventing destination registration events.
+* **merge2-defined/before/successor/unsorted.calls:** all four stop before
+  the attachment that would enter variant 2, in both builds and every replay
+  mode. The shared safe prefix excludes all variant-2 internals, including the
+  previously successful defined case. Earlier internal callback stops did not
+  protect the unmodified driver, and quiet/default modes could continue into
+  native undefined behavior. ASan/UBSan checks of both runtime-report seeds and
+  these replays now stop at the public boundary. This is a driver API contract,
+  not a completed native verdict or a golden. Go's separate mutation regressions
+  retain coverage of D-0062's ordering and hash-registration behavior.
 * **opaque-threshold.calls:** three schema children plus one opaque remain
   table-absent; the fourth schema child creates the table. **opaque-separated.calls**
   uses public placement of an opaque separator between same-schema children
@@ -1016,3 +1092,996 @@ uncommitted. The full checks are the only remaining verification work.
 New manifest fixture ids: none. New live cases: `retained-null`,
 `retained-opaque`, `entry-guard`, `entry-order`, `entry-opaque`,
 `entry-duplicate`, `entry-schema-lineage`.
+
+
+## G2 part 1: complete native read evidence and normalization
+
+Based on `a10a82a`, this extraction establishes native evidence before later Go
+kernels consume it. Run read requests with `--quiet --read-schema` on both drivers.
+Require the ready snapshot, every completed command, exactly one separate result
+per read/equality request, and the exact terminal command. G1's inventory remains active.
+
+New protocol commands (covered by retained requests or `TestNativeG2ProtocolSmoke`):
+
+- `context [YANG MODULE]`, `context-keyless`: retain independent contexts.
+- `child ID PARENT INDEX`: bind a child alias without changing its allocation label.
+- `parse-xml ID XML`, `opaque-invalid-xml ID PARENT`: construct XML operands.
+- `dup-to-context ID SOURCE PARENT OPTIONS`: duplicate into the current context.
+- `read-schema START TARGET PARENT`, `read-instance START TARGET PARENT`, `read-value START TARGET PARENT VALUE`, `read-opaque START TARGET PARENT NAME`: native selection; START zero supplies null; PARENT identifies observed storage.
+- `equal A B OPTIONS`: native `lyd_compare_single`, observing both operand generations.
+- `record PARENT NODE HASH CHECK`, `record-as PARENT NODE HASH_SOURCE CHECK`: synthetic occurrence insertion, with no public-producer claim.
+- `list ID PARENT NAME ~`: supply an empty key.
+
+Generations resolve injectively through completed-operation component keys and
+versioned bindings; reused handles retain distinct incarnations and aliases preserve
+birth labels. Context collection and command-boundary cleanup cover every retained
+context in creation order, within the existing 16-slot cap, including old operands.
+
+Snapshot obligations derive from bootstrap/completed-command identity and the request,
+before field discovery. Missing nodes, tables, schemas or bindings fail on either or
+both peers. The audit's `root; dump; equal` reproducer also rejects missing dump nodes
+with differing statuses. Shared `nativeCompletedCommandEvidence` retains normalized
+state, exact statuses and both diagnostic channels for validation-only requests;
+`nativeG2Evidence` additionally requires and normalizes selection/equality results.
+
+Live state includes current node hashes separately from immutable occurrence hashes;
+they may differ. Equality resolves live operand bindings, context, kind, flags, links
+and inner storage. Selection retains winner/current-parent/next identities, layout,
+slots, bucket order, recorded hashes and free chains. Only process-local observer
+serials and embedded C source locations are normalized away; messages, code/path/app-tag,
+diagnostic context and log fields remain evidence.
+
+Live requests: `read-empty-prefix`, `read-equality-incarnations`, `read-retained-diagnostics`;
+inline requests cover audit reproducers, populated equality storage, command-only
+projection and protocol smoke. Empty-prefix requests here test evidence, not the later
+Go prefix implementation. No manifest fixture IDs or golden changes.
+`g2_mutants.py` uses compiler overlays and copied observer binaries; build errors or
+missing tests cannot count as rejection. Its equality shortcut needs no historical ref.
+
+Ordinary work on archived `a10a82a` and this worktree matches in all twelve unchanged
+`TestNativeOrdinaryWorkBaseline` cases. At 64 children: `(4504,8099,1147,116176)` without
+a journal, `(4504,8649,1186,345128)` with one; at 256: `(26608,42844,4207,444112)` and
+`(26608,44994,4256,1425512)` (visits, charges, allocations, bytes). No production Go
+hot path, mutation/journal ownership, routing, layout, public API or dependency changes.
+
+Deferred: prefix snapshots/scanning (part 2); schema/opaque selection, actual cursors
+and native input/output/type/revision discrimination (part 3); instance/value selection,
+recursive comparison, typed-target/separator/option discrimination (part 4); validation
+duplicate reads, exemptions and audit-3 finding 3 (part 5).
+
+Targeted G2/completion/common-projection Go tests passed (11.564s); Python checker
+passed 12 tests. Both native drivers rebuilt. Base/head ordinary-work tests, registry
+checks, oracle-tag vet and lint for new issues passed. Sensitivity controls rejected
+eight defects; two check removals remain independently protected by shared validation.
+
+Locked amd64 results (normal dev user; each prescribed full command invoked once):
+- `build.sh`: exit 0; `make ci`: exit 2; `make test-oracle oracle-check`: exit 2.
+- Both make commands stop at F2 ancestor-reuse with `TZ=UTC`: base and head each have zero ancestor reuses in 5/5 trials; without TZ both have one reuse in 5/5 trials. This inherited control remains open; neither named #351 flake occurred.
+- `go test -tags oracle ./data -run '^TestNative' -count=1 -timeout=30m -v`: exit 0, 57 top-level passes, zero skips; `check.py`: exit 0; `g2_mutants.py`: exit 0.
+- Previously unrun conformance oracle tests, `make test-gates vuln secrets sensitive registries`, and `make oracle-check` ran separately under the lock: all exit 0. Goldens match.
+- Isolated identity sweep: pass without TZ (29.507s), fail with UTC (26.898s); TZ-only reproduces the base/head failure, while `YANG_ORACLE_REQUIRED=1` alone does not.
+
+## Deterministic reuse continuation
+
+This continuation resolves the inherited F2 blocker recorded above. Under UTC,
+startup/trace allocation activity could keep every ancestor address out of the
+next 32 duplications. More repetition did not force the required native path.
+The address-reuse assertion and all structural/mutant assertions remain active.
+
+The same bounded allocator setup used by the seven G1 exact-address requests
+now accepts inner nodes as well as terms. `# reuse-free HANDLE PATH` selects a
+live allocation through `self`, `parent`, or `child` (first child).
+The real native free runs first; its wrapper immediately reacquires that exact
+chunk and holds it across observer output. `# reuse-next PATH` drains the same
+seven-entry glibc bin, releases the reservation immediately before the next
+supported public constructor/validation call, and requires the node returned
+through PATH to have exactly that address. These test-setup directives create
+no aliases, identities, snapshots, or command ordinals. Native calloc/free and
+all pinned library objects remain unchanged. EOF with unused setup fails.
+
+`lyd_dup_single(... WITH_PARENTS ...)` creates the list ancestor/key before the
+top container. F2 therefore reserves the actual unhandled list parent from the
+first duplicate and requires the next duplicate's list parent to reuse it.
+The other 31 cycles and the original positive ancestor-reuse assertion remain.
+
+The complete positive-address-reuse inventory is:
+
+| Control | Forced allocation and next native path | Status |
+|---|---|---|
+| `IdentitySweep.test_f2_ancestor_reuse` | Unhandled list parent → `lyd_dup_single` list parent | Added |
+| `driver-lifetime` | Handle 100 term → handle 101 `lyd_new_term` | Added |
+| `lifetime/recreate-print` | Handle 11 term → next `lyd_new_term` | Added |
+| `lifetime/recreate-lookup` | Handle 11 term → next `lyd_new_term` | Added |
+| `lifetime/dup-descendant` | First internal child → next `lyd_dup_single` first child | Added |
+| `lifetime/parse-descendant` | First internal child → next `lyd_parse_data_mem` first child | Added |
+| `lifetime/list-key` | Internal key → next `lyd_new_list` key | Added |
+| `lifetime/table-reuse` | Root container → next `lyd_new_inner` root | Added |
+| `lifetime/validation-delete` | Internal default removed by explicit term creation → next `lyd_validate_all` default | Added |
+| `handle-tombstone` | Handle 14 term → handle 104 term | Already forced in G1 |
+| `handle-tombstone-probe` | Handle 14 term → handle 104 term | Already forced in G1 |
+| `retained-address-reuse` | Generic handle 1 term → replacement handle 1 term | Already forced in G1 |
+| `lifetime/stale-handle` | Handle 14 term → handle 104 term | Already forced in G1 |
+| `lifetime/retained-same-hash` | Generic handle 1 term → replacement handle 1 term | Already forced in G1 |
+| `lifetime/retained-resize` | Generic handle 1 term → replacement handle 1 term | Already forced in G1 |
+| `lifetime/retained-remove` | Generic handle 1 term → replacement handle 1 term | Already forced in G1 |
+
+Go consumers are `TestNativeIdentitySweep`, `TestNativeObserverEvidence`,
+`TestNativeTombstoneAddressReuse`, `TestNativeRetainedAddressReuse`, and
+`TestNativeComparisonLifetimes`. Their trace-corruption/completion controls use
+the same requests. The other `native_table_*_test.go` controls assert modeled
+slots/free chains, identity continuity, allocation counts, or synthetic pointer
+keys; they do not require Go allocator address reuse. `table-reuse` requires
+observed node reuse and sixteen distinct live table generations, not repeated
+physical table addresses. Table identity/retirement mutants remain active.
+The F5 winner sweep and `TestNativeIdentityEvidenceRejections` recreate a handle
+with a new generation; their stale-generation mutants require no physical address
+reuse. There are no other positive allocator-dependent requirements in this inventory.
+
+`TestNativeReuseEnvironmentMatrix` runs `reuse_test.py`: all sixteen controls in
+both builds and trace modes under UTC/C locale, unset TZ/C.UTF-8 locale, and
+UTC/C.UTF-8 with a 65,536-byte padding environment value. All 192 runs must pass.
+A separately compiled variant omits only the reservation release, keeping the
+exact chunk allocated across the native call. All 192 corresponding runs must
+exit 100 with the constructor-address assertion; compile/setup errors do not
+count as rejection. This regression reaches the actual free/constructor path.
+
+Changed native harness paths: free interception, bounded bin preparation,
+term/inner sizing, test-only path selection, and constructor address checks for
+root, term, list, duplicate, JSON parse, and validation. The seven G1 controls
+retain their request syntax and assertions. Excluded: production Go, native
+library algorithms/instrumentation, public API, journals, budgets, caches,
+ownership, dependencies, policy files, and golden files. Existing observer
+LIMIT/watchdog bounds still cap recovery/storage/traversal; every new malloc
+and constructor result is checked. No production hot path changed.
+
+The existing counted-work regression ran on current upstream main `a10a82a`
+(verified with `git ls-remote`) and this worktree: all twelve visit/charge/
+allocation/byte tuples match, including duplicate-heavy adverse insertion order
+at 64 and 256 children, with/without a journal. No new manifest fixture IDs.
+
+Continuation verification (amd64, normal dev user, UTC exported outside and
+inside the container, stdin redirected from `/dev/null`):
+
+| Command/check | Exit | Evidence |
+|---|---:|---|
+| `build.sh` | 0 | Both binaries rebuilt; driver source matches BUILDINFO |
+| Targeted Go reuse/lifetime/sweep regressions | 0 | Includes the new Go matrix regression |
+| `reuse_test.py -v` | 0 | 192 positive runs; 192 exact constructor-assertion rejections |
+| Go matrix regression with both release-disabled driver paths | 1 (expected) | All 192 positive cases fail at the constructor address check |
+| Standalone reuse patch on main `a10a82a` | 0 | Applies cleanly; both binaries build; all 192 positive matrix runs pass |
+| Main/head ordinary-work regression | 0 / 0 | All twelve tuples identical |
+| Oracle-tag `go vet ./data`; Python checker unit tests | 0 / 0 | 12 checker tests passed |
+| `make ci` | 0 | Race, 386, minimum Go, oracle, security and golden checks green |
+| `make test-oracle oracle-check` | 0 | Both oracle modules pass; goldens match |
+| Driver-enabled `go test -tags oracle ./data -run '^TestNative' -count=1 -timeout=30m -v` | 0 | 58 top-level passes, zero skips |
+| `check.py --driver … --comparison-driver …` | 0 | Both drivers; complete positive and rejecting replay controls |
+| `g2_mutants.py` | 0 | Eight rejecting mutants, two independently protected removals |
+
+The five full checks above ran in one `flock -w 1800` critical section; each
+prescribed make command ran once. The lock was acquired without a timeout.
+These full results certify part 1 plus the reuse fix; the standalone main patch
+was separately checked with both native builds and the 192-run positive matrix.
+Neither named #351 flake occurred. Unfiltered oracle-tag lint still exits 1 for
+the same twelve existing findings (two gocritic, ten gosec); none names the new
+Go regression. The default CI lint passed. No reuse finding remains open.
+
+Full logs and exact statuses are under ignored `.build/reuse-checks/`;
+targeted/sensitivity/standalone logs and all twelve work tuples are under
+`.build/reuse-evidence/`. No manifest fixture IDs were added.
+
+## Part 1 evidence field inventory (pre-gate audit)
+
+The inventory was made before changing the acceptance predicate. `snapshot()` is
+shared by bootstrap, every completed command, instrumented native events and
+snapshot boundaries. Commands without a separate result still emit this full
+snapshot. The following table records the former validation/comparison gaps and
+the contracts the audit repair must enforce. All names refer to JSON keys.
+
+Command-to-channel dispatch is exhaustive for this extracted driver:
+
+| Request | Output in addition to the common completed snapshot |
+|---|---|
+| `new`, `root`, `term`, `list`, `frontier`, `opaque`, `opaque-invalid-xml`, `dup`, `dup-to-context`, `unlink`, `attach`, `before`, `detach-siblings`, `change`, `parse`, `parse-xml`, `context`, `context-keyless`, `child`, `record`, `record-as`, `insert`, `remove`, `I`, `U`, `free`, `free-root`, `validate`, `check-handle`, `dump`, `find-next-loop` | No separate successful result record. Instrumented events use the snapshot contract; explicit precondition/watchdog stops may replace completion, checked against the request's expected terminal. |
+| `schema` | `read.schema` |
+| `instance`, `opaq-find` | `read.instance`, `read.opaque`; instrumented comparison callbacks may accompany instance lookup. |
+| `null-reads` | `read.null`, containing all three native statuses/winners |
+| `read-schema`, `read-instance`, `read-value`, `read-opaque` | Corresponding `read.selection.*` |
+| `equal` | `read.equal` |
+| `rewind` | `read.first-sibling` |
+| `print` | `public.result` |
+| Bootstrap | One `driver.ready.actual-children-callback` snapshot at operation 0 |
+| `# reuse-free`, `# reuse-next` | Directives do not consume an operation; successful reuse may emit `allocation.address-reuse`. Existing positive/held-target rejection controls pin this channel. |
+
+The process exit status is checked before accepting a replay (the two rejected
+constructor controls explicitly expect exit 5). Stderr contains transport/control
+failure explanations and is retained for failure reporting, not semantic equality:
+these failures cannot certify successful evidence. Existing watchdog and held-target
+rejection controls pin that exclusion. Native semantic diagnostics use the JSON
+queue and logger channels below, including successful operations with diagnostics.
+
+| Channel / emitter | Complete emitted fields | Validation and comparison |
+|---|---|---|
+| Snapshot envelope | event, operation, rc, node_generation, source_generation, optional working_rb_root/table, output_handle, output_generation, node_count, table_count, allocation_scope, bindings, tables, nodes, schemas, diagnostics, optional modules; logs | `identity.validate` checks registries/provenance and request bindings. Previously bootstrap rc/logs and incidental envelope state were dropped. Require shape independently of field presence; compare bootstrap and completed semantic envelopes. |
+| Bindings | handle, generation, revision, operation | Request binding history validated; generations mapped injectively; compare all binding history fields. |
+| Node lifetime | generation, id, creation_operation, creation_ordinal, source, attempt, alive; dead/unsafe current | Provenance, tombstones, source ordering and birth labels validated. Observer ordering/provenance excluded only as described below; live component keys and bindings compared. |
+| Live common node | context, optional context_generation, hash, flags, prev, next, parent, metadata | References validated. Previously metadata contents and the current-context bit were dropped; preserve both, current hash separately from recorded hashes. |
+| Schema node | nodetype, key, schema, schema_identity, optional module/value; inner first, tail, table | Schema registry and ancestry validated; normalize schema identity through its descriptor, compare all semantic content. |
+| Opaque node | first, tail, prefix_format, prefix_bound | Previously name, module/namespace, prefix and raw value were not emitted. Add required opaque_name/opaque_module/opaque_prefix/opaque_value; preserve null versus empty and all opaque text bytes, including invalid XML. Prefix payload traversal remains part 2. |
+| Sorted metadata | rb_stored_root, rb_root, rb entries: owner, node, parent, left, right, color | References validated; previously topology omitted from shared projection. Preserve topology and metadata names. No new sorted-tree algorithm. |
+| Compiled schemas | identity, context, parent, nodetype, module, name | Immutable registry/ancestry validated; compare current live descriptors through structural keys. Unreferenced discovery history is excluded, with the temporary-parser control described below. |
+| Current context modules | name, optional namespace/revision, implemented, latest | Previously only key presence checked and contents dropped. Validate record types/nonempty registry and compare full ordered contents, including bootstrap. |
+| Table registry | identity, alive, optional storage at unsafe boundary | Registry/retirement/ownership validated. Observer history excluded across builds; current storage compared. |
+| Table observation | present; if present identity, optional retired, continuity, size, used, mode, free, buckets(first,last), slots(next,node,hash), chains(bucket,slot,ordinal,node,generation,occurrence,hash,alive), free_chain, free_terminal | Validate full shape/layout, owner, occurrence binding and continuity before normalization. Previously `read.selection.*` escaped this registry check. Compare every layout/content field after local identity resolution. |
+| Diagnostic queue | code, context_generation, optional msg/path/apptag | Validate field types/context; compare complete records at bootstrap and command completion. |
+| Logger (always present, including an empty bootstrap array) | level, line, optional msg/path/schema_path | Validate types and compare full records, including bootstrap. Normalize only the embedded Internal error C source location and the exact observer wrapper annotation described below. |
+| equal result | event, operation, rc, left_generation, right_generation, options | Validate by event and request regardless of `nodes`; reject snapshot fields here. Bind both operands to the preceding registry and compare identities/options/status. |
+| read-selection result (schema/instance/value/opaque) | event, operation, rc, winner, winner_script, current_parent, parent_script, next_generation, next_script, before, after | Validate request dispatch and all identities/storage against preceding snapshot, then compare semantic result and tables. |
+| G1 schema result | event, operation, rc, queried_parent, target, schema_hash, winner, current_parent, before, after | Existing request/winner validation retained; preserve every result field after reference resolution. |
+| G1 instance/opaque result | event, operation, rc, supplied, winner, current_parent, target or name, before, after | Existing dispatch validation retained; preserve complete result after reference resolution. |
+| Null result | event, operation, queried_parent, target, before, after, schema_rc/schema_winner, instance_rc/instance_winner, value_rc/value_winner | Existing null preconditions retained; preserve all three results and storage. |
+| Rewind / public result | event, operation, winner / event, operation, rc, optional json | Validate dispatch, compare complete normalized result; failed printing may omit json. |
+| Callback comparison | event, operation, left, right, options | Instrumented-only `read.compare`; validate live operands. Excluded across builds because the untouched library emits no callback observations. |
+| Reuse / tombstone boundary | event, old_generation, new_generation / event, operation, handle, generation, current | Validate against retained identities and bindings. Process-local reuse notices excluded across builds; tombstone boundary identity is validated. |
+| ABI query | pointer_bytes, long_double_bytes, long_double_mantissa_bits, pointer_record_bytes, rb_node_bytes, ndebug, instrumented | Separate `--abi` channel: checker asserts all seven exact expected constants (instrumented differs deliberately). No replay projection. |
+
+Cross-build exclusions are limited to instrumented intermediate snapshots/callbacks
+and reuse notices (no untouched counterpart), allocation_scope (different explicit
+coverage claims), lifetime registry counts/retired rows and creation_ordinal/source/
+attempt (transient observations and discovery order differ), numeric node/schema/
+table/occurrence identities (process-local, validated before structural resolution),
+and table continuity (instrumented `observed`, untouched children `unknown` or generic
+`observed-generic`). Live state, schema descriptors, binding revisions/operations,
+current tables, all result fields, bootstrap/command status and diagnostic contents
+are compared. An excluded identifier must still be present, correctly typed, owned,
+and consistent with retained history. Exclusions are pinned by positive equivalence
+and invalid-identity rejection controls, not by accepting missing fields. Unknown
+fields fail closed. Optional fields retain their presence in semantic comparison.
+
+
+The watchdog's `event`/`classification` line is an unsuccessful transport
+(exit 124), rejected before evidence comparison. It cannot certify a replay.
+Instrumented non-completed snapshots, including native precondition boundaries,
+are an observation lane: their closed JSON shape, identities and history are
+validated, while their intermediate state is excluded from cross-build equality
+because the untouched library does not emit the same event schedule. Existing G1
+boundary/completion controls pin the requested stop and diagnostics separately.
+The field sweep checks that this excluded lane still rejects malformed fields;
+`pin_exclusions` also proves quiet/verbose equivalence, complete occurrence-token
+renumbering, and the documented cross-build coverage/continuity difference.
+
+Audit-5 regression mapping:
+
+| Previous finding | Repair and live regression |
+|---|---|
+| Selection table identities disappeared | Closed table/occurrence shapes, preceding owner/storage equality, serial ownership and continuity checks before normalization. `TestNativeG2SelectionContract` deletes, adds and mutates table identity, occurrence and continuity on left/right/both peers. |
+| `nodes` bypassed equality operands | Result shape selected by event/request; snapshot fields rejected on results. `TestNativeG2EqualityResultContract` covers missing operands, the injected completed snapshot and a wrong operand binding, including identical peers. |
+| Opaque values absent | `node_json` emits required byte-exact hex name, nullable module/namespace, prefix and value bytes. `TestNativeG2OpaqueOperandContract` compares A/B with C/D at the same verdict and deletes/adds/mutates each new field. |
+| Modules and metadata dropped | Closed nonempty module registry and typed metadata arrays preserved, along with current-context bit and sorted topology. `TestNativeG2ContextMetadataContract` exercises bootstrap and completed equality, deletion/null/empty/addition/content mutation. |
+| Bootstrap status/diagnostics dropped | Bootstrap envelope includes rc and complete diagnostics/logs. `snapshot` always emits logs, including empty arrays. `TestNativeG2BootstrapChannelsContract` covers deletion/addition/mutation of all three channels. |
+
+Every named Go regression fails against the original predicate from `0fdf084`;
+all five failures are saved in `.build/audit5/predicate-before.log`. The generic
+sweep also fails against that predicate (`old-fields.log`, missing bootstrap
+operation). Self-contained audit mutants disable each repaired protection and
+must fail the corresponding Go regression. The generic bucket-omission mutant
+must fail specifically with an uncompared bucket, not an import or setup error.
+The generic sweep exposed and fixed omitted chain bucket/ordinal content too.
+
+`TestNativeG2EveryEmittedField` walks actual nested JSON, tries deletion, addition,
+same-type mutation and wrong-type mutation for each distinct emitted field shape,
+and exercises the documented exclusions. Synthetic queue/logger records cover
+optional diagnostic fields absent from the selected native failures; these are
+acceptance-predicate tests, not claims about native diagnostic semantics.
+
+Native functions changed: observer-only `node_json`, `snapshot`, and new
+`bytes_or_null`; library implementations remain pinned and unchanged. No production
+Go mutation, journal, cache, ownership, budget, public API, dependency, policy or
+golden path changed. Input lines, observer LIMIT bounds and native watchdog remain
+in force; opaque byte emission is linear in the bounded operand value. Parts 2–5
+(prefix payloads, read kernels/cursors, comparison kernels and validation adapters)
+remain excluded. No new manifest fixture IDs; all new native cases are live inline
+requests retained in the regression sources.
+
+Fresh audit-5 targeted evidence: all five named Go contracts, existing identity
+rejection controls, completed-command projection and protocol smoke passed (exit
+0); oracle-tag vet passed (exit 0); checker unit tests passed 12/12 (exit 0).
+The generic Go control passed (exit 0, 352.05s): 6,814 deletion controls, 1,270
+addition controls, 6,238 same-type mutations and 6,814 wrong-type mutations,
+plus 1,740 typed fields in the excluded intermediate lane. Its single accepted
+semantic perturbation is the explicitly excluded callback comparison option.
+All five new self-contained audit mutants and the generic bucket omission were
+rejected. Unfiltered oracle-tag lint exits 1 for the same twelve inherited
+findings (two gocritic, ten gosec); none is in the changed code.
+
+The ordinary-work regression was rerun on an archive of the specified main base
+`a10a82a` and this worktree (exit 0 / 0). All twelve visit/charge/memory-count/byte
+tuples match exactly, including duplicate-heavy reverse insertion at 64 and 256
+children, with and without the journal. At 64: `(4504,8099,1147,116176)` /
+`(4504,8649,1186,345128)`; at 256: `(26608,42844,4207,444112)` /
+`(26608,44994,4256,1425512)`. Full tuples are saved in
+`.build/audit5/work-main.log` and `work-head.log`. Protocol shape validation scans
+module evidence once per snapshot and checks each nested record once; no
+production work path changed.
+
+
+The final byte-boundary inventory also found a native-successful opaque name
+containing byte `ff`: cJSON emitted that byte directly, and Go's ordinary JSON
+decoder could replace it with Unicode replacement text. `bytes_or_null` therefore
+hex-encodes all four opaque text fields, not just values. The Go transport rejects
+invalid UTF-8 before decoding any channel. `TestNativeG2OpaqueByteNames` uses live
+`ff` versus `fe` names with the same verdict and compares both native builds;
+`TestNativeG2EvidenceUTF8` rejects malformed transport. Dedicated observer/Go
+counterfactuals pin both protections. These remain evidence-only changes.
+
+Final byte-boundary checks: rebuilt targeted drivers, all G2 contracts (including
+byte names/transport), completed-command projection, oracle-tag vet and 12 checker
+unit tests pass (exit 0). The generic sweep passes again with unchanged counts
+(exit 0, 345.91s). Both additional byte-boundary mutants are rejected. Oracle-tag
+lint still exits 1 for exactly the twelve inherited findings, with no new issue.
+
+The completed metadata corruption explicitly selects handle 1 from the audit
+request; the bootstrap case selects its independent seed. This oracle-only
+control was tightened while CI was in its untagged race phase, before oracle
+compilation; its focused rerun and oracle-tag vet both exit 0.
+
+Two observation differences are now pinned explicitly. Compiled-schema registry
+entries seen only while temporary data exists are coverage history: the untouched
+observer cannot discover them after cleanup. Every descriptor remains typed,
+unique, ancestry checked and immutable locally; descriptors of all current live
+nodes (with complete compiled ancestry) remain compared. The real missing-key
+parser case in `TestNativeG2TransientSchemaRegistry` compares verbose traces and
+then creates a live list, so a later referenced descriptor is still evidence.
+
+`instrument.py:wrap` adds `_nr_impl` to `__func__`. Only that suffix in the final
+function annotation of an `Invalid argument … (FUNCTION()).` message is normalized,
+and only for the exact wrapped-function inventory. Argument text, base function,
+code, context, path, app-tag, level and separate line remain exact. The real
+zero-hash remove in `TestNativeG2ObserverFunctionAnnotation` pins equivalence and
+rejects changed argument text. `TestNativeG2ObserverWithoutStatus` reaches the
+instrumented comparison callback, whose contract has no rc; status projection is
+selected by completed-command identity, without imposing rc on observer notices.
+
+Read storage identity is checked across the preceding and completed snapshots,
+including generic storage. All read, alias, print, dump and context commands are
+inventoried in `STABLE_STORAGE_COMMANDS`; constructors, index/data mutations,
+validation and synthetic schema mutation are excluded from that purity rule.
+`TestNativeG2ReadStorageContinuity` retires an old table and supplies a fresh,
+internally consistent registry/occurrence set with identical contents. Both owned
+and generic variants must fail on left/right/both peers before IDs are removed.
+Its disabled-guard counterfactual is rejected by the regression.
+
+Validation-only consumers now skip constructing comparison output, while keeping
+all shape, registry, reference, ownership, lifetime and read checks. The generic
+field sweep requires every wrong-type perturbation to fail in both lanes. Static
+layout contracts are bounded and contain no trace data; table obligations are
+checked before walking values. The existing checker-wrapper time budget is kept.
+Incomplete schedules and missing event counts are rejected before walking retained
+history. Each peer's complete projection is reused only within one comparison;
+mutable traces are never cached across comparisons. These changes retain every
+positive and negative acceptance obligation.
+
+The once-only locked full run acquired the heavy-check lock within the requested
+hour. Commands ran as the normal amd64 dev user, with UTC set outside and inside
+the container and both driver variables set inside. Exact command exits:
+
+| Command | Exit | Evidence / qualification |
+|---|---:|---|
+| `bash conformance/oracle/native_registration/build.sh` | 1, retry 0 | Existing cached build files had incompatible ownership; rebuilding with dev-owned copies succeeded. Fresh BUILDINFO matches driver.c and pinned native commit `47351e5`. |
+| `make ci` | 2 | Reached oracle tests after race, 386 and minimum-Go checks; exposed transient-schema and observer-function diagnostic differences now covered by focused regressions. |
+| `make test-oracle oracle-check` | 2 | Stopped in test-oracle on those differences and an invalid resize mode in the new storage-continuity test, since corrected to mode 1. Did not reach oracle-check in this invocation. |
+| Driver-enabled `go test -tags oracle ./data -run '^TestNative' -count=1 -timeout=30m -v` | 1 | Zero skips; only failure was the checker wrapper's three-minute deadline. |
+| `python3 .../check.py --driver ... --comparison-driver ...` | 0 | Both native binaries, all checker controls. |
+| `python3 .../g2_mutants.py` | 0 | All then-present sensitivity controls rejected their counterfactuals. Four subsequently added exclusion/status controls also passed in a targeted run. |
+| `make test-gates vuln secrets sensitive oracle-check registries` | 0 | Separately locked, previously unreached CI components; no golden edits. |
+| `go vet -tags oracle ./data` | 0 | Focused post-fix check. |
+
+Raw full statuses are in `.build/audit5/full-status.txt`; individual logs preserve
+the failures. The outer full-run controller accidentally used unavailable `rg`
+for aggregation: its exit 0 is **not** a passing aggregate. Individual command
+statuses above are authoritative; zero skips was checked separately on the host.
+The later focused-run statuses are in `final-status.txt`. No failure is attributed
+to the known unrelated flakes. A green full CI/oracle/native gate on the final
+patch remains pending: the user limited full suites to one run, so they were not
+repeated after fixes. No commit or push was made.
+
+Post-fix targeted verification: the complete G2 contract set (including the field
+sweep), completed-command projection, identity rejection controls and native
+identity sweep pass together (exit 0, 393.62s). The checker wrapper passes within
+its unchanged three-minute budget (exit 0, 125.75s), and checker unit tests pass
+12/12 (exit 0). Logs: `current-contracts.log`, `checker-budget-final3.log` and
+`current-units.log`. The earlier deadline failures are retained, rather than
+reclassified as unrelated flakes.
+
+Final validation-order check: `TestNativeG2EveryEmittedField` passes in 298.64s
+(exit 0), with the same 6,814 deletions, 1,270 additions, 6,238 value mutations,
+6,814 wrong-type controls and 1,740 typed excluded-lane fields. Oracle-tag vet and
+gofmt checks exit 0. Focused reruns of all five contract counterfactuals, generic
+bucket omission and four exclusion/status counterfactuals each exit 0 as runners:
+every intended broken predicate is rejected by a real failing regression. Logs:
+`current-fields.log` and `current-mutants.log`. Final sources are recorded in
+`final-sources.sha256`.
+
+## PR #352 round 2: request and outcome contracts
+
+The inventory below covers every command accepted by `main`, every `emit` call,
+and every snapshot/result layout. `request` is mandatory on every replay record,
+including intermediate snapshots, boundaries and memory-reuse notices. It contains
+lowercase hex encodings of the exact command and argument bytes; `parse`,
+`parse-xml`, `context` and `context-keyless` retain their parser payload as one
+byte-preserving argument, including significant interior and trailing spaces.
+Tokenization uses C's ASCII whitespace; Unicode spaces and line separators can
+remain opaque name bytes. Bootstrap has
+`operation: 0, request: []`. Other records name the executing operation and must
+match that request before history is walked. Omitted arguments remain omitted;
+they cannot be silently replaced with explicitly supplied defaults. `--abi` and
+the emergency process-watchdog output are separate transport channels, unchanged.
+
+Here `h` is an input handle resolved through the preceding completed bindings;
+`out` is the requested output handle. All scalar arguments below, including
+output handles, flags, hashes, names, values and native parser text, are bound by
+`request`. Live input generations, output bindings and selection operands receive
+the additional checks shown. Zero input handles denote NULL where the driver
+permits it; they never select a different live binding.
+
+| Command and arguments | Additional binding / outcome obligation |
+|---|---|
+| `new capacity mode` | Successful completion requires present generic `table`; rejected creation ends at `boundary.new-null`, without generic storage. Subsequent completed snapshots require that storage until another `new`. |
+| `root out name` | Successful output is a live allocation born in this operation; name is request-bound. |
+| `term out parent name value [flags [reuse]]` | Live parent or NULL; successful output is a new live allocation. Optional reuse names a retained dead generation. Flags and value remain exact request arguments, before native canonicalization. |
+| `list out parent name keys` | Live parent or NULL; new live output on success. `~` is the driver's explicit empty-key string argument. |
+| `opaque out parent name value` | Live parent or NULL; new live output on success; byte-exact opaque fields remain required in live node evidence. |
+| `opaque-invalid-xml out parent` | Live parent or NULL; new live output on success; fixed invalid value is a driver control, not a request argument. |
+| `parse out json`, `parse-xml out xml` | Exact raw parser payload; successful returned allocation was born in this operation. A failed parse may retain native partial output and failure history. |
+| `dup out source parent flags`, `dup-to-context out source parent flags` | Live source and live parent or NULL; returned binding must match the native output pointer. Native flags determine copy depth/context; output need not be a newly born object when native returns an existing key. |
+| `child out parent index` | Live parent; returned child aliases a live generation and is the only binding allowed to refresh. Index is request-bound. |
+| `frontier parent h1 h2 h3 h4` | All five inputs are live; synthetic schema/link setup, not a public mutation claim. |
+| `unlink h`, `detach-siblings h`, `change h value`, `I h`, `U h` | Live input; no output binding. Native mutations/statuses and complete post-state remain comparison evidence. |
+| `attach parent child`, `before sibling node` | Both inputs live; no output binding. |
+| `record parent node hash checked`, `record-as parent node hash-source checked` | Live parent/node and, for `record-as`, live hash source; no output binding. Synthetic registration controls retain native storage/callbacks. |
+| `insert h hash [checked [reuse]]`, `remove h hash` | Existing live input or the driver's lazy construction/binding path; optional construction reuse names a retained dead generation. Only the requested lazy handle may refresh. |
+| `free h [reuse-target]`, `free-root h [reuse-target]` | Inputs live before destruction; bindings/history remain retained. Unsafe links require the explicit terminal boundary and unavailable-node representation. |
+| `rewind h` | Live input; required `read.first-sibling`; refreshed output binding must equal its winner. |
+| `validate h` | Live input; only this output binding may refresh. Failure does not discard native partial state, diagnostics or history. |
+| `check-handle h`, `print h`, `find-next-loop h hash cap` | Live input; `print` requires `public.result`; other commands have no separate ordinary result. Find-next's explicit cap boundary can replace completion. |
+| `dump` | Complete state/status/diagnostic snapshot, no output binding or separate result. |
+| `context [yang]`, `context-keyless [yang]` | Exact optional raw schema payload; old contexts remain retained. Current module evidence and context-tagged diagnostics are required. |
+| `schema parent target`, `null-reads parent target` | Live parent/target generations equal `queried_parent`/`target`; mandatory `read.schema` / `read.null`. |
+| `instance start target`, `opaq-find start name` | `supplied` equals the actual start generation; instance target generation / opaque name equals the request. NULL start requires ENOTFOUND and zero winner/parent. |
+| `read-schema start target [parent]`, `read-instance start target [parent]` | Mandatory actual `start_generation`, `target_generation`, `queried_parent`, bound to preceding live bindings and requested observation owner. No value/name field permitted. |
+| `read-value start target [parent [value]]` | Same generations, plus mandatory nullable `value`: NULL only when omitted. |
+| `read-opaque start target [parent [name]]` | Same generations, plus mandatory `name`: native default `unknown` only when omitted. The target remains the request's live observation anchor even though the opaque API itself only takes start/name. No value field permitted. |
+| `equal left right options` | `read.equal` operands resolve the actual preceding handle generations, including NULL; exact options. |
+| `# reuse-free h path`, `# reuse-next path` | Preparation directives, no semantic operation/result. Existing live-target, held-target and actual memory-reuse controls remain required. They are excluded from semantic request-line substitution. |
+
+Every completed command retains the full closed snapshot layout, even on error.
+Commands without a returned pointer forbid nonzero `output_handle` or
+`output_generation`. Constructors and refreshing commands require the requested
+output handle and its exact binding; a failed call may return NULL or native
+partial output. No validator invents success or discards failure diagnostics.
+Each separate result must occur once before its matching completed command, with
+the same status when it carries `rc`. Unknown fields, fields belonging to another
+result kind, missing required fields and wrong types are rejected in the shared
+validator used by both Python and Go.
+
+| Record kind | Required outcome fields and forbidden states |
+|---|---|
+| Bootstrap / completed / intermediate / snapshot boundary | Common closed snapshot: status, allocation coverage/counts, complete nodes/tables/schemas/bindings, event pointer fields, diagnostics and logs; read contexts also require modules. Availability and node-kind dependent fields follow the existing closed node/table contracts. Generic storage is required on completed commands/terminal snapshots when a successful `new` established it. Native intermediate events keep their existing observational exclusions. |
+| `read.selection.schema/instance/value/opaque` | All operand generations, winner/script labels, current parent and next identities/labels, before/after storage always required. Success requires nonzero live winner and exact current links. Error requires zero winner, parent and next (including script labels). NULL start requires `(rc,winner) == (5,0)` even when a nonzero observation parent retains a table. `value` and `name` are required only on their respective kinds and forbidden on the others. |
+| `read.schema`, `read.instance`, `read.opaque` | Status, requested generation/name fields, winner/parent, before/after always required; success iff winner, otherwise ENOTFOUND and zero parent. Query storage is unchanged and bound to its preceding owner; schema hash remains native observed data. |
+| `read.null` | Parent/target, before/after, all three statuses/winners required. Each native NULL read requires ENOTFOUND and zero winner. No generic `rc`, JSON, or selection-only fields. |
+| `read.first-sibling` | Winner required, independently derived from the preceding sibling component; no `rc` or JSON. |
+| `read.equal` | `rc`, both operand generations, options required for either outcome. No snapshot payload, selection links or JSON. |
+| `public.result` | `rc == 0`: string `json` required. `rc != 0`: `json` remains optional because a failed print may retain partial output. All selection/snapshot/operand fields forbidden. |
+| `read.compare` | Operation/request and live left/right generations/options required. Instrumented callback observation, not a result required on the untouched peer. |
+| `allocation.address-reuse` | Operation/request plus old/new generations required; old generation dead and new generation later in retained history. No snapshot or `rc`. |
+| `boundary.tombstoned-handle` | Operation/request, requested handle, its retained dead generation, and `current: unavailable` required; no snapshot or success fields. |
+| `--abi` | Unchanged separate seven-field ABI assertion in the checker; no semantic request payload. |
+
+The two named regressions are `TestNativeG2SubstitutedNullStart` and
+`TestNativeG2RequiredSuccessPayload`, backed by live requests
+`read/read-request-binding.calls` and `read/read-success-payload.calls`.
+Both fail against the validator and rebuilt drivers from `703b425`: the former
+accepts the wrong successful request, and the latter accepts missing JSON on both
+peers. `TestNativeG2SelectionArguments` covers every selection kind with omitted
+and explicit parent/value/name arguments; `TestNativeG2RawRequestArguments`
+separately binds whitespace in JSON, XML and YANG parser payloads. Outcome unit
+controls preserve failed-print optionality and reject unrelated result fields.
+
+The generic control now applies every perturbation to identical peers and checks
+the validation-only lane before comparison. Its independent `contract_defect`
+inventory requires rejection for required-field deletion, unknown additions,
+request/operand/option/status/link substitutions and every wrong type. It does
+not infer optionality from the validator under test. Each executed argument of
+each request line, including command tokens, is also substituted against both
+real native peers; validation must reject without using projection inequality.
+`check.py` runs this request control on every paired replay in its command
+inventory, including the two named cases. Unexecuted suffixes after explicit
+native stop boundaries and preparation comments are recorded exclusions.
+
+There is an essential limit to a structural validator: changing well-formed
+native observed data (for example a terminal value, diagnostic text or printed
+JSON) is distinguishable by the independent native outcome, not by comparing two
+identical alterations. Deleting an explicitly optional diagnostic or failed-print
+payload is also valid. The field control reports these as `native_outcome_fields`
+and retains their independent projection checks; it never counts equal altered
+peers as rejection evidence. This boundary is separate from required-by-outcome
+fields and request bindings, which must fail validation on each peer alone.
+
+Self-contained sensitivity controls remove the entire request-binding family or
+relax successful JSON back to optional. The named Go regressions and the generic
+request/outcome controls must fail for the corresponding defect; a compile/import
+failure cannot count as sensitivity evidence.
+
+Changed native functions are driver-only `emit`, `bytes_value` / `bytes_or_null`,
+and command argument/result observation in `main`. Selection value/name fields
+and G1 opaque-name arguments use the same byte-exact hex representation. The Go
+validator transport carries `script_hex`; Python uses surrogate escape only to
+split the original bytes without replacing invalid UTF-8. `TestNativeG2OpaqueByteNames`
+remains a positive control, and `TestNativeG2OpaqueByteArguments` independently
+rejects substitutions of distinct invalid UTF-8 request bytes. The actual library functions remain pinned:
+`lyd_find_sibling_val`, `lyd_find_sibling_first`,
+`lyd_find_sibling_opaq_next`, `lyd_compare_single`, `lyd_print_mem`.
+No native mutation algorithm, production Go path, #257 journal operation, cache,
+ownership rule, budget, public API, dependency, policy file or golden is changed.
+Request emission uses the existing 1024-byte input cap and existing process
+watchdog; one request array is replaced per operation, and record copies are
+bounded by that line. Validation scans request bytes once per record before its
+existing shape/history passes. Parts 2–5 remain excluded.
+
+Ordinary work is checked against the specified main base `a10a82a` with the
+unchanged duplicate-heavy, reverse-insertion `TestNativeOrdinaryWorkBaseline`,
+with and without the journal. The twelve `(visits, charges, allocations, bytes)`
+tuples are the same as the table above; no production work path changed.
+Current run commands/statuses are reported with the review request, separately
+from the historical runs above. No new manifest fixture IDs; all new cases are
+live native requests, with no golden generation or edits.
+
+The command inventory is pinned independently against the driver's command
+branches by the checker unit test. Shared completion and the closed snapshot-kind
+inventory also reject renamed/extra intermediate records and incomplete traces
+that still contain their result rows. `TestNativeG2FailedResultLinks` covers
+schema, instance, opaque and general selection failures; the non-NULL G1 misses
+ensure its disabled-parent-guard counterfactual reaches that guard.
+The evidence-work control counts executed validator lines on duplicate-heavy,
+reverse-order setup followed by 4/16 prints, requires a fixed per-field allowance
+and at most 5% growth per emitted field, and is run unchanged with main's validator.
+Observer-only temporary retirement records with no counterpart on the untouched
+build remain in the documented lifetime-history exclusion; their local closed
+shapes and types are still required.
+
+`TestNativeG2TombstoneRequestBinding` supplies two independently retired handles
+and coherently replaces both handle and generation in the terminal boundary.
+Each native peer must reject that boundary unless the retired handle is actually
+an input to the executing request. Live-input checks and this terminal check use
+one shared input inventory, including lazy insertion and optional free targets.
+Its disabled-binding sensitivity control must fail after valid native replays.
+The terminal control also supplies two retired inputs to `instance`: it rejects
+the second input being reported instead of the first failing handle check.
+
+Request typing is independent of the trace's echoed bytes. Minimum argument
+counts cover every command; unsigned fields, handle ranges, historical reuse
+handles and the native token widths must be representable without a partial
+scan or truncation. These are private replay-protocol preconditions, not changes
+to a libyang API. Nullability is explicit: constructor parents and duplicate
+parents may be NULL, `instance` / `opaq-find` starts may be NULL, both equality
+operands may be NULL, and general selections allow NULL start and observation
+parent. General selection targets, including the opaque observation anchor,
+remain mandatory. All other input handles are mandatory. Constructing and
+aliasing commands require a vacant output slot; `rewind` and `validate` refresh
+an existing live handle. Every new or refreshed binding, including intermediate
+snapshots, must belong to the executing request's output or lazy insert/remove
+handle. A terminal boundary cannot retain a separate result from its unfinished
+command.
+
+`TestNativeG2MandatoryInputs` coherently edits both the request echo and selection
+target generation to NULL, or edits print/unlink request inputs to NULL, on both
+peers. Both actual native drivers reject these malformed programs with exit 4.
+The generic control includes zero substitutions and independently forges the
+matching request echoes for mandatory inputs; equal forged echoes are not proof
+of valid arguments. `TestNativeG2OutputSlotBindings` coherently changes output
+bindings, labels and retained history to replace a still-occupied slot;
+`TestNativeG2UnrequestedBindings` adds a fully formed alias on a read-only command.
+Their disabled-precondition counterfactuals must fail the named regressions.
+
+Input-handle nullability is separate from schema-argument validity.
+`lyd_find_sibling_val` checks its schema before NULL-start handling.
+`TestNativeG2NullSchemaPreconditions` uses live opaque targets with NULL and
+non-NULL starts in schema/value reads: native EINVAL (3), rather than ENOTFOUND
+(5), is required and preserved. No typed value is prepared on this path.
+
+
+## Driver input-kind audit (G2 part 1)
+
+Every input handle is checked for a live allocation before a kind-specific
+layout is read. Wrong kinds exit with status 4 before native calls, output
+bindings or reuse preparation. `TestNativeDriverNodeKinds` replays each
+`cases/input/*.calls` prefix and full request in both builds and both observer
+modes, requiring identical prefix evidence and exit 4 for the final line.
+
+| Command / argument | Required kind |
+| --- | --- |
+| `term`, `list`: parent | NULL or compiled inner |
+| `opaque`, `opaque-invalid-xml`: parent | NULL, compiled inner or opaque |
+| `dup`, `dup-to-context`: destination parent | NULL, compiled inner or opaque |
+| `attach`: parent; `child`: source parent | Compiled inner or opaque |
+| `record`, `record-as`, `schema`, `null-reads`: owner | Compiled inner |
+| Every `read-*`: explicit queried parent | NULL or compiled inner |
+| `frontier`: owner / children | Compiled container / schema-backed nodes |
+| `schema`, `null-reads`: target | Schema-backed node |
+| `change`: target | Compiled terminal |
+| `before`: inserted node | Opaque or compiled list/leaf-list; native checks user ordering and schema compatibility |
+| `free`, `free-root`: optional reuse target; `# reuse-free`: selected self/parent/child | Compiled inner or terminal |
+| `term`, synthetic `insert`: explicit reuse target | Retained terminal allocation; kind saved before free |
+
+Inferred parents on sibling reads are checked before reading an inner table;
+opaque parents have no such table. Constructor output handles, duplication
+sources, sibling starts/targets, comparison operands, record payload/hash-source
+nodes and the remaining unlink/hash/free/validation/printing commands accept
+all native node kinds. Their native semantics, constructor-name checks and
+schema/context compatibility errors remain native responsibilities. NULL schema
+read targets still reach the native precondition diagnostics. Native callbacks,
+algorithms, allocation ownership, retirement history, production journals and
+budgets are unchanged. Kind checks use fixed handle lookup and schema bits;
+they allocate no memory and add no traversals.
+
+Comparison selection is shared by all Go tests (`nativeComparisonDriver`) and
+Python entry points (`drivers.comparison_driver`). A nonempty explicit
+comparison setting wins; otherwise the resolver selects `driver-unmodified`
+beside the instrumented executable. With neither setting it returns no path so
+the caller can skip. A configured missing executable fails normally. CLI
+arguments precede environment settings. The Go fallback command regression runs
+`go test -tags oracle ./data -run '^TestNativeComparisonDriverFallbackCommand$' -count=1 -v`
+with only `YANG_NATIVE_REGISTRATION_DRIVER`, for unset and empty comparison
+settings, and requires both peers' live read evidence through the Python field inventory's replay entry.
+
+## Custom schema argument and evidence contracts
+
+Custom inline `context` schemas remain supported. The bounded `list ID PARENT
+NAME VALUE` protocol represents zero or one key. For a keyless list, VALUE is a
+legacy ignored placeholder and the native call receives no variadic arguments.
+For a one-key list, VALUE is the key (`~` means the empty string). Larger key
+counts, missing/non-list schema nodes, extra tokens, and truncated name/value
+tokens exit 4 before output preparation or native construction. The compiled
+schema lookup follows `_lyd_new_list_node` input dispatch; checking the first
+key and its immediate successor suffices to reject every larger key count.
+
+The schema-dependent native-call inventory is:
+
+| Calls / commands | Argument representation and dispatch |
+| --- | --- |
+| `lyd_new_list` / `list` | The only variadic call; compiled key flags select exactly zero or one string arguments, otherwise exit 4. |
+| `lyd_new_inner` / `root`, bootstrap | Fixed arguments; native lookup checks container/RPC/action/notification kind. Bootstrap uses the fixed initial module. |
+| `lyd_new_term`, `lyd_change_term` / `term`, `change`, bootstrap | Fixed textual string and native JSON/canonical options; native type plugins parse the string. Parent/terminal layouts are checked before access. No binary/LYB or any-value union is passed. |
+| `lyd_new_opaq`, `lyd_new_opaq2` / opaque commands | Fixed string arguments, JSON module or XML namespace; parent layout checked. The invalid-XML request intentionally supplies invalid UTF-8 as text. |
+| `lyd_find_sibling_val` / schema, NULL, read-schema/value | Fixed textual value/predicate or NULL; native schema kind selects schema-only, leaf-list value, or list-predicate parsing. No key varargs. NULL-schema diagnostics remain native results. |
+| `lyd_find_sibling_schema`, `lyd_find_sibling_first`, `lyd_find_sibling_opaq_next`, `lyd_compare_single` | Fixed schema/node pointers or opaque name; request-bound handles and native kind dispatch. Comparisons preserve operand order and options. |
+| `lyd_dup_single`, `lyd_dup_single_to_ctx` / dup, lazy insert/remove | Fixed node/parent/options; native recursion owns key copying and context/representation checks. |
+| `lyd_parse_data_mem`, `lys_parse_mem`, `lyd_validate_all`, `lyd_print_mem` | Fixed format and textual JSON/XML/YANG input; native parsers own variable schema/value shape. |
+| Child, link/unlink, free, first-sibling, hash/table controls and observers | Fixed pointers/counts, checked handle liveness and layout; generic hash records always contain one node pointer. No schema-sized argument vector. |
+
+Python layout validation (`protocol.node_fields`, `identity.validate`, and the
+checker's `require_inner_fields`) uses recorded node-type masks. Duplication
+ancestor matching and key aliases use compiled schema identity, including the
+full path/context, rather than names. Bootstrap selection uses creation operation,
+inner kind and parentlessness. The Go evidence consumers invoke this same closed
+contract and preserve the complete schema descriptors; they have no separate
+name-based kind dispatch. Ancestor-reuse controls likewise select inner kinds.
+Names remain semantic descriptor data and explicit expected results of fixed
+request cases (parser child order, default `def`, expected winner substitutions),
+never a layout or schema-equivalence shortcut. Metadata `lyds_tree` is a native
+metadata identifier, not a schema name.
+
+`cases/custom/reused-names.calls` reuses all 21 built-in names as different
+node kinds. `same-name-ancestors.calls` distinguishes equal-named compiled paths
+in WITH_PARENTS duplication. `custom_schema_test.py` deterministically sweeps
+21 names, nine kinds (including lists with 0/1/2/3 keys), three rotating nesting
+depths, both modes and both builds. Every completed trace validates and compares;
+unrepresentable list requests must exit 4 with exactly the setup trace. Go
+regressions independently exercise top-level and nested key counts and full
+evidence validation. `g2_mutants.py` restores both reported defects and requires
+those Go regressions to fail, without treating compilation failure as evidence.
+
+These changes affect only request admission and test evidence. They add no Go
+production mutation, journal operation, budget charge, native algorithm, or
+exported API. The admission check adds one existing native schema lookup and a
+constant two-key inspection, bounded by the existing input/context caps. The
+ordinary duplicate-heavy/reverse-order counted-work regression is also run on
+the pinned main baseline and the worktree. Non-NULL typed selection, embedded
+any payload lifetime, generic foreign-context equivalence and broader G2
+comparison modeling remain outside part 1; the sweep uses empty any payloads
+and schema-only selection.
+
+## Request admission audit (G2 part 1, PR #352)
+
+This inventory supersedes the earlier input-kind audit where it delegated caller
+preconditions to native diagnostics. It covers every libyang function called
+by `driver.c`, including observer accessors and synthetic table controls. The
+reference is the pinned v5.8.6 tree, specifically the Doxygen contracts beside
+these declarations and their implementations (inspected with `scripts/lyfn`).
+`TD` means `src/tree_data.h` / `src/tree_data.c`; `NEW` is
+`src/tree_data_new.c`; `COMMON` is `src/tree_data_common.c`; `HASH` is
+`src/tree_data_hash.c`; `HT` means `src/hash_table.h` / `src/hash_table.c`;
+`SC` means `src/tree_schema.h` / `src/tree_schema.c`. These are paths in
+`.cache/libyang`, at commit `47351e59e2965e350f9d4098f15ecbe6b3850f6f`.
+
+Every script handle is resolved to a live generation before dereference. Every
+output slot must be empty or dead before construction. New guards run before
+output preparation, allocator reuse, native calls, or synthetic link writes;
+refused requests exit 4 with exactly their completed prefix evidence. Invalid
+YANG/JSON/XML text, unknown constructor names, malformed typed values and list
+predicate text remain native parsing/validation results: the caller supplies a
+valid textual representation, not a promise that the content satisfies a type.
+The documented `lyd_find_sibling_val` NULL-schema precondition is now checked
+before both its NULL-start and non-NULL-start paths.
+
+The comparison header explicitly supports different contexts. The source's
+`lyd_compare_schema_parents_equal` nevertheless dereferences both schemas when
+both foreign nodes are opaque. This driver conservatively admits foreign
+comparisons only for schema-backed trees. Same-context opaque/schema operands,
+NULL comparisons and supported foreign schema operands remain admitted. This is
+input validation in a test driver, not a change to the native comparison API.
+Nonempty any payload comparison remains outside part 1 and is refused before
+entry, in both operand orders, including indirect instance lookup. Empty any
+nodes remain supported. The source's asymmetric any-value pointer test is not
+used as an input validator.
+
+| Function | Caller requirement (docs and source) | Driver check / fixed argument; source |
+| --- | --- | --- |
+| `ly_ctx_new` | Non-NULL output; search directory/flags valid | Address of context slot, `ly_yang_module_dir()`, fixed `LY_CTX_NO_YANGLIBRARY`; `src/context.c` |
+| `ly_yang_module_dir` | No arguments | Fixed installed module directory; `src/parser_common.c` |
+| `lys_parse_mem` | Live context, NUL-terminated schema text, supported format, module output | Retained context; bounded text or fixed module; `LYS_IN_YANG`, output address; `src/tree_schema.c` |
+| `ly_log_options` | Supported log option bits | Fixed `LY_LOSTORE | LY_LOLOG`; `src/log.c` |
+| `ly_set_log_clb` | Callback has native signature and lives while installed | Static `logger`; `src/log.c` |
+| `ly_err_first` | Live context for the calling thread; cannot re-enter while the context-data write lock is held | Retained contexts only; unrelated table-allocation hooks during context setup return before snapshot accessors; `src/log.c`, `src/ly_common.c` |
+| `ly_err_clean` | Live mutable context; error item belongs to it or NULL | Same registry, fixed NULL (all errors); `src/log.c` |
+| `ly_ctx_get_module_iter` | Live context, initialized non-NULL index | Current retained context; local `uint32_t index=0`; `src/context.c` |
+| `lyd_new_inner` | Parent or module, name; output when parent is NULL | Bootstrap checks parse success; `root` refuses a NULL current module after failed schema loading, before output/reuse; bounded name and output address; TD/NEW |
+| `lyd_new_inner` | Inner schema dispatch (container/RPC/action/notification) | Native fixed-argument lookup reports unknown/wrong-kind names; no schema-sized input; NEW |
+| `lyd_new_term` | Parent/module contexts equal; parent has inner layout | `require_kind` before reading parent's module; module always taken from parent or current module; NEW `_lyd_new_term` |
+| `lyd_new_term` | Value is textual JSON or canonical; STORE_ONLY and CANON cannot combine | Bounded string, native textual format dispatch; reject both bits before output/reuse; NEW `lyd_new_val_get_format`, `_lyd_new_term` |
+| `lyd_new_term` | Parent or module, name, output for top-level construction | Non-NULL current module for a top-level request (checked after failed schema loading), or retained parent module; fixed/bounded name and output address; native terminal lookup/type parsing; NEW |
+| `lyd_new_list` | Parent/module contexts equal and inner parent | `require_kind`, module from parent; NEW |
+| `lyd_new_list` | Exactly one value argument per schema key; textual value format | Existing compiled lookup admits 0/1 keys, passes exactly that count, options 0; NEW `_lyd_new_list_node` / key va_arg loop |
+| `lyd_new_list` | List schema exists; parent or module, name and output | Non-NULL current module or retained parent module before schema lookup; existing list lookup/kind check before output; NEW |
+| `lyd_new_opaq` | Parent inner or opaque, or context; output if no parent | `require_parent`; context from parent or retained current context; output address; NEW |
+| `lyd_new_opaq` | Parent/context equal; JSON name/module/value strings; prefix absent or equals module | Context derived from parent, bounded text, fixed module `m`, NULL prefix; NEW |
+| `lyd_new_opaq2` | Parent inner or opaque, or context; output if no parent | `require_parent`; context derived from parent/current context, output address; NEW |
+| `lyd_new_opaq2` | Parent/context equal; XML namespace/value text | Fixed namespace, NULL prefix, deliberately malformed UTF-8 text (native result), no binary/raw union; NEW |
+| `lyd_change_term` | Non-NULL schema-backed leaf or leaf-list | `require_kind(..., LYD_NODE_TERM)`; TD/NEW |
+| `lyd_change_term` | NUL-terminated JSON textual value or NULL | Bounded value token; native type validation; NEW |
+| `lyd_parse_data_mem` | Live context, NUL-terminated input, supported format/options, output | Retained context, bounded JSON/XML remainder, fixed parse flags, output slot checked; `src/parser_data.c` |
+| `lyd_dup_single` | Live source; parent inner/opaque or NULL; same top context | Live handles, `require_parent`, `duplicate_inputs` checks parent/source contexts; TD |
+| `lyd_dup_single` | Without WITH_PARENTS, supplied parent matches source schema's data parent | `duplicate_inputs` compares compiled data-parent identity (opaque insertion supported); TD `lyd_dup` / `lyd_dup_r` |
+| `lyd_dup_single` | WITH_PARENTS supplied parent matches an ancestor, unless source is top-level; copied parents link through compatible data ancestry | Bounded ancestor walk, complete compiled matching, and each copied-to-copied or copied-to-supplied parent link, matching native top-level parent short circuit; TD `lyd_dup_get_local_parent` |
+| `lyd_dup_single_to_ctx` | Source/destination live; destination parent belongs to destination context | Retained current context; live source/parent; `duplicate_inputs`; TD |
+| `lyd_dup_single_to_ctx` | Every mapped schema exists and has the source node kind and list key names/order/count | `duplicate_schema` follows `lyd_find_schema_ctx` relative to the actual supplied compiled parent; otherwise it resolves the full data ancestry. `duplicate_tree` carries each mapped parent through recursive children and shallow list keys; TD |
+| `lyd_dup_single_to_ctx` | Destination-relative child schema or WITH_PARENTS ancestor is compatible | Direct lookup uses the supplied parent, even when the original source path is absent or incompatible. WITH_PARENTS follows native complete compiled-ancestor matching, then checks every copied ancestor and the mapped local parent. Missing/wrong-kind mappings exit 4 before entry; TD |
+| `lyd_dup_single`, `lyd_dup_single_to_ctx` | Each copied list supplies its compiled keys in the initial data positions | `duplicate_tree` checks only the required key prefix before shallow/recursive copies and ancestor creation, sharing the 4096-visit cap; TD `lyd_dup_r`, HASH `lyd_hash` |
+| `lyd_dup_single`, `lyd_dup_single_to_ctx` | A source key with a local parent returns an existing key instead of entering recursive duplication | `duplicate_key` requires a list parent, a mapped key of the same kind and complete compiled ancestry, and the key in the existing destination prefix or the original prefix copied into a new list ancestor; TD `lyd_dup`, `lyd_find_sibling_schema` |
+| `lyd_dup_single_to_ctx` | Foreign opaque ancestor matching cannot call schema-parent comparator with NULL schemas | Reject both-opaque foreign ancestor pair before call; TD `lyd_dup_get_local_parent` |
+| `lyd_unlink_tree` | Cannot unlink an attached list key | `unlink_inputs`, before native mutation; TD `lyd_unlink_check` |
+| `lyd_unlink_siblings` | Cannot unlink any attached list key in the suffix | Bounded complete suffix check before first mutation; TD `lyd_unlink_check` |
+| `lyd_insert_child` | Non-NULL inner/opaque parent, live node | `require_parent` / `require_handle`; TD |
+| `lyd_insert_child` | Matching contexts, schema parent, and legal unlink | `attachment_inputs` checks every node native bulk insertion would move; compiled parent identity and attached-key refusal; TD `lyd_insert_check_schema`, `lyd_move_nodes` |
+| `lyd_insert_child` | Insertion preserves an acyclic tree | Bounded destination ancestry walk for each moved sibling; TD link insertion assumes a tree |
+| `lyd_insert_before` | Distinct non-NULL nodes, same context | `before_inputs`, including alias equality; TD |
+| `lyd_insert_before` | Inserted schema node is user-ordered list/leaf-list, same schema as schema-backed sibling | `before_inputs` kind/flag/identity checks; opaque nodes remain allowed by source; TD |
+| `lyd_insert_before` | Destination cannot be below inserted node; actual compiled parent has the inserted node's data schema ancestry | `acyclic_destination` and `before_inputs` before unlink/relink, including an opaque anchor under a compiled parent; TD |
+| `lyd_find_sibling_first` | Non-NULL target; siblings may be NULL | Mandatory live target; NULL start admitted; TD |
+| `lyd_find_sibling_first` | Every comparison reached has supported context/schema/any representation | `instance_inputs` checks actual first-sibling frontier and retained live occurrences in its native table, plus target; `instance`, `read-instance`; TD |
+| `lyd_find_sibling_first` | NULL start returns before comparisons | Guard returns immediately for NULL start; also fixed NULL start in `null-reads`; TD |
+| `lyd_find_sibling_val` | Non-NULL data schema (not choice/case) | `schema_read_inputs` on read-schema/value, schema-backed targets on schema/null-reads; all data handles have data schema types; TD |
+| `lyd_find_sibling_val` | Textual leaf-list value or list predicates, or NULL for schema-only lookup | Bounded string or NULL, length 0 requests strlen, native JSON type/predicate parsing; TD |
+| `lyd_find_sibling_val` | Native linear schema search assumes inner parent layout | `schema_read_inputs` refuses a non-NULL start under an opaque parent; schema command derives start from checked inner owner; TD/COMMON |
+| `lyd_find_sibling_schema` | Non-NULL schema; NULL siblings allowed | `null-reads` supplies checked target schema and NULL start; internal duplication guards preserve schema layout; COMMON |
+| `lyd_find_sibling_opaq_next` | Non-NULL name; valid opaque-at-end sibling list | Fixed/bounded NUL-terminated name; `opaque_read_inputs` follows native start dispatch and checks every node visited before a match is opaque, including synthetic mixed runs; TD |
+| `lyd_compare_single` | NULL operands short circuit | Explicit nullable handles; `comparison_inputs` preserves this short circuit; TD |
+| `lyd_compare_single` | Foreign comparison path requires schemas where it dereferences parent schemas | `comparison_inputs` rejects foreign opaque trees, including descendants; TD `lyd_compare_single_schema`, `lyd_compare_schema_parents_equal` |
+| `lyd_compare_single` | Any payload representation compatible before string/child access | Part-1 admission requires empty any nodes in compared trees, both directions; TD `lyd_compare_single_data` |
+| `lyd_insert_hash` | Live node with valid parent links/layout; opaque/root/any parent may short circuit | Live handle; constructors/link guards and frontier admission preserve layouts; HASH |
+| `lyd_unlink_hash` | Live node with valid parent links; table records remain pointer-sized | Same invariant, and no handles into embedded any payloads; HASH |
+| `lyd_free_tree` | No attached list key | `unlink_inputs` also on free without reuse; `src/tree_data_free.c` |
+| `lyd_free_tree` | Optional allocator target is actually in freed subtree and supported layout | `free_reuse_input` bounded target-ancestry check and inner/terminal kind; `src/tree_data_free.c` |
+| `lyd_free_all` | Live tree with acyclic parents and sibling component | Live handles and link admission; native walks to root; `src/tree_data_free.c` |
+| `lyd_free_all` | Optional allocator target belongs to freed root/sibling component | `free_reuse_input(..., all)` compares first root siblings before arming reuse; `src/tree_data_free.c` |
+| `lyd_validate_all` | Non-NULL tree pointer; data and supplied context equal | Live handle, address of slot; current-context equality before validation/reuse; `src/parser_data.h`, `src/validation.c` |
+| `lyd_validate_all` | Standard data tree, fixed supported validation flags | Native parser/constructors establish data layout; fixed PRESENT; native validates content; `src/validation.c` |
+| `lyd_print_mem` | Valid output address, live tree and supported data format/flags | Local NULL output buffer/address, live handle, fixed JSON/SHRINK; `src/printer_data.c` |
+| `lyd_child` | Live node or NULL; kind controls child layout | Native accessor after handle check; arbitrary layout accesses use `node_kind`/`require_parent`; TD inline accessor |
+| `lyd_parent` | Live node or NULL | Checked handles or bounded walks of live native storage; TD inline accessor |
+| `lyd_first_sibling` | Live node/NULL with consistent prev/next links | Live handles, link admission, existing retirement boundaries before dangling traversal; TD |
+| `lyd_get_value` | Live terminal/opaque node; native value storage initialized | Observer calls only after terminal kind and native initialization hooks; TD inline accessor |
+| `lysc_is_key` | Schema may be NULL, otherwise live compiled schema | Retained contexts and schema-backed native allocations; SC inline accessor |
+| `lysc_data_parent` | Schema may be NULL, otherwise live compiled schema | Retained schemas in duplication and attachment admission; SC inline accessor |
+| `lysc_node_child` | Live compiled schema of a supported kind | Looked-up list/mapped list in key guards; `src/tree_schema_common.c` |
+| `lys_find_child` | Context/parent/module, name, exactly one of module or module-name | Retained context/schema; list uses module only, duplication module-name only; bounded strings; SC |
+| `lyht_new` | Power-of-two capacity (source also accepts 0), nonzero record size, callback, resize 0/1 | Capacity/mode rejected before freeing old table; fixed pointer record size and captured native callback; HT |
+| `lyht_free` | Live table; optional free callback compatible with records | Existing generic table, fixed NULL callback; HT |
+| `lyht_insert` | Live table, pointer to correctly sized record | Generic/children tables carry exactly one node pointer; live payload and non-NULL schema checks on insert/record/record-as; HT/HASH callback |
+| `lyht_insert_no_check` | Same record representation even when duplicate checking is disabled | Same admission as checked insertion; synthetic retained schema/context mismatches remain intentional; HT |
+| `lyht_remove` | Live table, pointer-sized record and matching hash token | Mandatory generic table; live schema payload (or fixed native duplicate); bounded unsigned hash; HT |
+| `lyht_find_next` | Live table, previous pointer record and hash, compatible callback operands | Mandatory generic table/live schema handle; `next_inputs` requires a previous pointer/hash occurrence and checks retained comparison operands before call; finite 1024-step control; HT/HASH |
+| `lyht_get_rec` | Record storage, actual record size, in-range slot | Existing bounded snapshot/chain walks check slot bounds; HT internal accessor |
+| `lyht_hash_multi` | Valid byte span/length, final NULL terminator call | Native schema name/module strlen spans, initial 0 and final NULL/0; HT |
+
+`record` and `record-as` deliberately allow schema-backed nodes from a different
+context or parent: modification callbacks compare pointers only. Their later
+lookup comparisons are checked at read admission. Opaque record payloads are
+refused even for no-check insertion, because the captured callback dereferences
+its search operand schema. Hash-source handles in `record-as` may be opaque;
+only their numeric hash is used. Generic `insert`/`remove` and `find-next-loop`
+receive the same schema protection. `frontier` additionally checks four distinct resolved
+schema nodes (different handles may alias one allocation), common context, no cycles or detached sibling suffixes, and that
+no existing child is abandoned. Its deliberately synthetic schema placement
+remains outside public data-tree compatibility claims.
+
+The new walks allocate nothing, have the existing 4096-node traversal limit,
+and scan at most the existing LIMIT occurrence history. Production Go paths,
+journals, budgets, native algorithms and exported API are unchanged. Ordinary
+counted work is checked against main with the unchanged
+`TestNativeOrdinaryWorkBaseline` (reverse insertion and duplicate-heavy input).
+
+`TestNativeDriverPreconditions` has a named live request for every added
+requirement in `cases/preconditions/`, including the exact foreign-opaque
+example, reversed operands, indirect reads, record payloads, destination
+layouts, link cycles, list-key restrictions, format options and allocator
+ownership. Each compares prefix and rejected evidence in both modes/builds.
+`TestNativeDriverForeignSchemaReads` covers the supported foreign-schema linear
+and table paths in both directions. The evidence validator now follows native
+cross-context schema matching on those paths, retaining full same-context
+schema identity checks. `custom_schema_test.py` adds three contexts and an
+independent expected-admission matrix for all multi-handle commands, plus
+optional free/reuse operands and positive controls. Every accepted trace is
+fully validated and compared; every refusal must equal its setup trace.
+
+Non-NULL typed comparison modeling, embedded any payload ownership, and general
+G2 normalization beyond these request admission paths remain excluded. No
+manifest fixtures or goldens are added: these are named live-oracle requests.
+
+The three-context verbose sweep also exposed an observer precondition: native
+`ly_ctx_data_add` can allocate a private hash table while holding
+`ly_ctx_data_rwlock` for writing. Taking a snapshot there calls `ly_err_first`,
+which tries to acquire that lock again. `nr_event` defers unrelated allocation snapshots while `context` /
+`context-keyless` construct and parse a new context; these callbacks still clear
+reused retirement addresses. Allocation snapshots during data operations remain
+visible, including unrelated native tables. All data-table events, diagnostics
+and completed command evidence remain checked. `TestNativeDriverContextSnapshots` runs the valid
+three-context script in both builds/modes; the named `unobserved-context-table`
+mutant restores the re-entry and must fail this test. Native library code is
+unchanged.
+
+The deterministic admission matrix covers 3 contexts and 17 commands: 756
+accepted and 2,774 refused cases (7,320 native process runs including setup
+prefixes). The Go sweep regression pins those counts and zero skips. All 62
+named refusal regressions fail on `1b41fab618c3fb6418acdc5f2df2c6f8683e4424`
+in both builds and modes with the same entry probe (248 rejecting subtests), with successful setup
+prefixes; `g2_mutants.py` repeats this sensitivity check.
+
+Main `a10a82a567a1fc79cb8c01e3479522be4afef932` (verified from the remote) and
+this worktree both passed `TestNativeOrdinaryWorkBaseline`. Each entry is
+`(visits, charges, allocations, bytes)`; all twelve tuples are identical:
+
+| Children | Without journal, main = head | With journal, main = head |
+| --- | --- | --- |
+| 0 | (1, 0, 16, 2248) | (1, 11, 36, 12384) |
+| 1 | (8, 17, 37, 4152) | (8, 42, 58, 18256) |
+| 2 | (38, 155, 65, 6392) | (38, 187, 86, 20496) |
+| 3 | (53, 208, 77, 7504) | (53, 247, 98, 21624) |
+| 64 | (4504, 8099, 1147, 116176) | (4504, 8649, 1186, 345128) |
+| 256 | (26608, 42844, 4207, 444112) | (26608, 44994, 4256, 1425512) |
+
+Failed inline schema parsing clears `mod` (`lys_parse` initializes its output to
+NULL). `root`, top-level `term`, and top-level `list` now refuse a missing current
+module before any native call or output preparation. Named `*-missing-module`
+requests pin this error path; `TestNativeDriverFailedContextParent` proves that
+valid construction through a retained parent module still works and preserves
+the failed schema load's diagnostics.
+
+`entry_contracts.c` provides a driver-call entry probe for `lys_find_child` in both
+builds. It stops with invariant-failure status 101 if invalid arguments reach
+that API; normal request admission returns 4 first. This independently proves
+that the missing-module `list` request never enters native code: the former
+lookup itself returned NULL, so its subsequent exit 4 otherwise hid the bad
+call. The base-source sensitivity builds link the same probe and require all
+62 named regressions to fail; compilation failure is not accepted as evidence.
+The probe stores no state, allocates nothing, and forwards valid inputs and
+results unchanged. BUILDINFO includes its digest.
+
+`TestNativeDriverUnrelatedAllocationEvidence` pins all three native allocation
+callbacks in `collision-build` (the unmodified library has no internal hooks).
+The `dropped-unrelated-allocation` mutant restores the overly broad omission and
+must fail this regression. Context setup is the only enabled path that creates
+contexts; bootstrap construction runs before observation is enabled. The
+instrumentation and pinned library algorithms are unchanged.
+
+The Go suite runs the full custom-schema/admission sweep once, through
+`TestNativeCustomSchemaSweep`. `TestNativeObserverEvidence` selects
+`check.py --suite core` for the independent core fixtures and their evidence
+mutants, avoiding a duplicate 7,320-process admission sweep in the same test
+invocation. No Go test is skipped. Standalone `check.py` defaults to `--suite all`
+and still executes both the matrix and every core fixture afresh.
+
+
+## PR #352: destination and alias input validation
+
+This follow-up changes only input validation in the test driver. All guards run
+before output preparation, reuse, native entry or synthetic link writes. A
+rejection exits 4 and preserves exactly the completed prefix evidence.
+
+| Command family | Resolved-node and destination requirements |
+| --- | --- |
+| `frontier parent a b c d` | The four children resolve to pairwise distinct allocations and differ from the owner. Context, cycle, complete prior-child coverage and detached-suffix guards still apply. Handle-number distinctness is insufficient. Its synthetic schema placement is intentional. |
+| `attach parent node` | Resolved nodes differ; every moved sibling has matching context and the actual compiled data parent, and cannot contain the destination. Existing checks already use node pointers. |
+| `before anchor node` | Resolved nodes differ. In addition to user ordering/context/schema checks, the actual destination parent must match the inserted schema ancestry even when the anchor is opaque. |
+| `dup`, `dup-to-context` | Output slots are empty/dead. Source and parent may alias only where native duplication and schema ancestry permit it; there is no blanket distinctness requirement. Every schema native will copy must exist with the same kind/key layout in the destination. Direct copies resolve relative to the supplied parent; recursive copies and shallow keys resolve relative to their mapped parent. WITH_PARENTS resolves copied ancestors, validates each new parent link, and matches the supplied ancestor using complete compiled ancestry, including choice/case. A top-level source key follows native existing-key dispatch: the mapped node must be a key in the matching list ancestry, and the existing or copied parent must supply its key prefix. |
+| `record`, `record-as`, generic `insert`/`remove`, allocator controls | Pointer-only records may repeat a node, including a hash-source alias. Generic insertion duplicates the fixed bootstrap terminal into no parent and does not map a request-supplied destination. Optional reuse operands identify historical storage and may alias the allocation being released. |
+| Reads and `equal` | Aliases are valid subject to the existing layout, context and representation guards. Output-producing constructors and `child` require empty/dead output slots rather than different input handle numbers. |
+
+`TestNativeDriverAdmission` runs twenty-one named live requests in `cases/admission/`
+in both builds and both output modes. Each fails on the preserved fa9d6c2
+binaries and requires exit 4 with unchanged prefix evidence on this patch.
+The cases include both review examples, reversed source/destination kinds,
+missing direct/root/ancestor schemas, recursive child and shallow list-key
+mapping, relocation beside an opaque anchor, and existing-key duplication.
+The key cases distinguish wrong node kind, a non-key leaf, incompatible compiled
+ancestry, an opaque ancestor, and absent key prefixes in existing or copied
+parents. Whole-list shallow/recursive copies and non-key copies with list
+ancestors receive the same required-key-prefix validation. Copied ancestors
+and the final matched parent must also have compatible compiled data ancestry;
+the synthetic frontier controls exercise both links before native insertion. `custom/existing-key.calls` covers same-context and foreign-context
+existing-key returns, matched and copied ancestors, both comparison orders,
+and table and linear lookup paths. Go assertions pin the returned aliases,
+new copied-ancestor key, both equality orders, and actual table/index presence. `custom/ignored-descendants.calls` pins
+nonrecursive container/opaque copies with real ignored key children and a
+destination missing those children's original schema paths. Each copy must
+allocate exactly one empty data node; its four public prints must succeed.
+
+The deterministic custom-schema sweep also covers every multi-input command
+with aliased live handles. Its destination matrix crosses nine source kinds
+with nine destination kinds plus a missing child, using absent original paths,
+misleading original paths and deeper actual destination parents, plus matching
+WITH_PARENTS destinations. Output-slot and historical reuse aliases are also
+covered. Same-context
+attach, before and both duplication modes check incompatible destination
+ancestry. Admitted requests pass the full evidence validator and cross-build
+comparison; rejected requests preserve the prefix; unexpected exit codes fail.
+
+Native functions whose admission changes are `lyd_dup_single`,
+`lyd_dup_single_to_ctx` (through `lyd_dup`, `lyd_dup_get_local_parent`,
+`lyd_find_schema_ctx`, `lyd_dup_r`) and `lyd_insert_before`, plus synthetic
+`frontier` link assignment. Native algorithms, production Go mutations,
+journals, caches, work accounting and exported API remain unchanged. Admission
+walks allocate nothing and share the existing 4096-visit cap. Key admission
+walks only the key prefix, never the list payload or retained occurrence history. Embedded any
+payload lifetimes, typed non-NULL comparison modeling and general G2 extensions
+remain outside part 1. Live requests replace manifest fixtures here; no golden
+files are created or edited.
+
+## Input validation and output evidence controls
+
+The shared replay helpers verify the fixed amd64 ABI and the instrumented versus
+unmodified executable roles before semantic comparisons. Synthetic transport
+controls use an explicitly separate entry point. An empty comparison CLI setting
+uses the same sibling fallback as an empty environment setting. Completion is
+checked against the caller's expected terminal operation; terminal boundaries
+cannot be followed by later evidence. The remote observational boundary is the
+explicit continuation exception. Sensitivity runners consume Go JSON test
+events, require the selected regression to run, reject skips/setup failures and
+attribute failures to the intended rejection diagnostic.
+
+Table identity persists independently of content purity across every mutation.
+The table reuse replay uses `# reuse-table-free HANDLE` and
+`# reuse-table-next HANDLE` to reserve and release the actual `ly_ht` allocation
+independently of node reuse. `table.address-reuse` records distinct retired/live
+table identities only after their actual native pointers compare equal; no
+addresses are emitted. A table-only forcing-disabled control preserves node
+forcing and must fail. Reuse notices cannot borrow future births or retirements;
+sibling/ancestry normalization uses iterative, visited, allowance-limited walks.
+
+The live Go regressions for these contracts are `TestNativeValidationMessageOrigins`,
+`TestNativeDiagnosticNormalizationBytes`, `TestNativeOutputAllocationFailures`,
+`TestNativeParserRequestFraming`, `TestNativeInputPhysicalFraming`,
+`TestNativeMerge2SafePrefix`, `TestNativeTransportProcesses`,
+`TestNativeEvidenceEntryContracts` and `TestNativeLifetimeIdentityContracts`.
+They exercise native request cases and corrupted-evidence controls; no corpus
+goldens are created or edited.

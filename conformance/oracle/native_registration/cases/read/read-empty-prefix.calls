@@ -1,0 +1,14 @@
+# SPDX-License-Identifier: BSD-3-Clause
+# A captured XML default namespace cannot resolve a zero-length value prefix.
+parse-xml 1 <u xmlns="urn:m">:value</u>
+opaque 2 0 u m:value
+equal 1 2 1
+equal 2 1 1
+# Valid nonempty prefix and no-colon controls use the same namespace.
+parse-xml 3 <u xmlns="urn:m" xmlns:p="urn:m">p:value</u>
+equal 3 2 1
+equal 2 3 1
+parse-xml 4 <u xmlns="urn:m">plain</u>
+opaque 5 0 u plain
+equal 4 5 1
+equal 5 4 1

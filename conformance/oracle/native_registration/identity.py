@@ -5,12 +5,36 @@ References are process-local generations. Cross-process keys are assigned once,
 from completed-operation components, never from a mutable allocation label.
 """
 import json
+import re
 import sys
 from collections import Counter
+from protocol import BOUNDARIES, COMMANDS, INNER_NODE_TYPES, TERM_NODE_TYPES, shape, messages
 
 
 def requests(script):
-    return [line.split() for line in script.splitlines() if line.strip() and not line.lstrip().startswith('#')]
+    result = []
+    for line in script.split('\n'):
+        line = line.lstrip(' \t\r\v\f')
+        fields = re.findall(r'\S+', line, re.ASCII)
+        if not fields or fields[0].startswith('#'): continue
+        # These native commands pass the remainder to a parser. Whitespace
+        # inside a JSON/XML/YANG string is data, unlike token separators.
+        limit = 2 if fields[0] in ('parse', 'parse-xml') else 1 if fields[0] in ('context', 'context-keyless') else -1
+        if limit < 0:
+            result.append(fields)
+        else:
+            fields = re.split(r'[ \t\r\v\f]+', line, maxsplit=limit)
+            if fields[-1] == '': fields.pop()
+            result.append(fields)
+    return result
+
+
+def argument(value):
+    return value.encode('utf-8', 'surrogateescape').hex()
+
+
+def request_evidence(fields):
+    return [argument(f) for f in fields]
 
 
 def table_records(row):
@@ -25,21 +49,263 @@ def table_records(row):
             yield ('node', node['generation']), node['table']
 
 
-def validate(script, rows):
+# These commands may refresh handles, contexts or observer history, but never
+# replace current data/generic hash storage. Mutation commands remain separate.
+STABLE_STORAGE_COMMANDS = frozenset(('dump', 'child', 'schema', 'instance', 'opaq-find',
+    'null-reads', 'rewind', 'print', 'check-handle', 'find-next-loop', 'context', 'context-keyless',
+    'read-schema', 'read-instance', 'read-value', 'read-opaque', 'equal'))
+
+# Closed command/result dispatch, shared by the checker and Go's comparison.
+COMMAND_RESULTS = {'schema': 'read.schema', 'instance': 'read.instance',
+    'opaq-find': 'read.opaque', 'null-reads': 'read.null',
+    'rewind': 'read.first-sibling', 'print': 'public.result', 'equal': 'read.equal'}
+COMMAND_RESULTS |= {'read-' + k: 'read.selection.' + k for k in ('schema', 'instance', 'value', 'opaque')}
+
+# One inventory for every live input handle. Output handles and historical
+# memory-reuse controls are checked separately; zero denotes a native NULL.
+INPUTS = {k: (1,) for k in ('unlink', 'detach-siblings', 'change', 'I', 'U', 'free',
+    'free-root', 'rewind', 'validate', 'check-handle', 'print', 'find-next-loop', 'opaq-find')}
+INPUTS |= {k: (1, 2) for k in ('attach', 'before', 'schema', 'equal', 'null-reads', 'instance', 'record')}
+INPUTS |= {k: (2, 3) for k in ('dup', 'dup-to-context')}
+INPUTS |= {k: (2,) for k in ('term', 'list', 'opaque', 'opaque-invalid-xml', 'child')}
+INPUTS |= {k: (1, 2, 3) for k in ('read-schema', 'read-instance', 'read-value', 'read-opaque', 'record-as')}
+INPUTS['frontier'] = (1, 2, 3, 4, 5)
+
+NULLABLE_INPUTS = {k: (2,) for k in ('term', 'list', 'opaque', 'opaque-invalid-xml')}
+NULLABLE_INPUTS |= {k: (3,) for k in ('dup', 'dup-to-context')}
+NULLABLE_INPUTS |= {'instance': (1,), 'opaq-find': (1,), 'equal': (1, 2)}
+NULLABLE_INPUTS |= {k: (1, 3) for k in ('read-schema', 'read-instance', 'read-value', 'read-opaque')}
+
+MIN_ARGUMENTS = {k: 1 for k in ('unlink', 'detach-siblings', 'I', 'U', 'free', 'free-root',
+    'rewind', 'validate', 'check-handle', 'print')}
+MIN_ARGUMENTS |= {k: 2 for k in ('new', 'root', 'attach', 'before', 'change', 'parse', 'parse-xml',
+    'instance', 'opaq-find', 'schema', 'null-reads', 'opaque-invalid-xml', 'insert', 'remove',
+    'read-schema', 'read-instance', 'read-value', 'read-opaque')}
+MIN_ARGUMENTS |= {k: 3 for k in ('equal', 'child', 'find-next-loop')}
+MIN_ARGUMENTS |= {k: 4 for k in ('term', 'list', 'opaque', 'dup', 'dup-to-context', 'record', 'record-as')}
+MIN_ARGUMENTS |= {'frontier': 5, 'dump': 0, 'context': 0, 'context-keyless': 0}
+assert MIN_ARGUMENTS.keys() == COMMANDS
+
+UINT_ARGUMENTS = INPUTS | {'new': (1, 2), 'root': (1,), 'term': (1, 2, 5, 6),
+    'list': (1, 2), 'opaque': (1, 2), 'opaque-invalid-xml': (1, 2),
+    'dup': (1, 2, 3, 4), 'dup-to-context': (1, 2, 3, 4), 'parse': (1,), 'parse-xml': (1,),
+    'child': (1, 2, 3), 'record': (1, 2, 3, 4), 'record-as': (1, 2, 3, 4), 'equal': (1, 2, 3),
+    'find-next-loop': (1, 2, 3), 'insert': (1, 2, 3, 4), 'remove': (1, 2, 3),
+    'free': (1, 2), 'free-root': (1, 2)}
+TOKEN_LIMITS = {'root': {2: 79}, 'term': {3: 79, 4: 255}, 'list': {3: 79, 4: 255},
+    'opaque': {3: 79, 4: 255}, 'change': {2: 255}, 'opaq-find': {2: 79}}
+TOKEN_LIMITS |= {k: {4: 255} for k in ('read-schema', 'read-instance', 'read-value', 'read-opaque')}
+OUTPUT_COMMANDS = frozenset(('root', 'term', 'list', 'opaque', 'opaque-invalid-xml', 'dup',
+    'dup-to-context', 'parse', 'parse-xml', 'child', 'rewind', 'validate'))
+PREPARED_OUTPUTS = OUTPUT_COMMANDS - {'rewind', 'validate'}
+
+
+def input_arguments(fields):
+    positions = list(INPUTS.get(fields[0], ()))
+    if fields[0] in ('free', 'free-root') and len(fields) > 2: positions.append(2)
+    if fields[0] in ('insert', 'remove'): positions.append(1)
+    return [(i, int(fields[i])) for i in positions if i < len(fields)]
+
+
+def input_handles(fields):
+    return [handle for _, handle in input_arguments(fields)]
+
+
+def request_contract(fields):
+    command = fields[0]
+    assert len(fields) > MIN_ARGUMENTS[command], 'missing request argument'
+    if command == 'list': assert len(fields) == 5, 'list requires one value token (ignored for keyless lists)'
+    assert all('\x00' not in f for f in fields), 'NUL in request argument'
+    for position in UINT_ARGUMENTS.get(command, ()):
+        if position >= len(fields): continue
+        value = fields[position]
+        assert re.fullmatch(r'\+?[0-9]+', value) and int(value) <= 0xffffffff, 'invalid unsigned argument'
+    for position, handle in input_arguments(fields):
+        assert 0 <= handle < 4096, 'invalid input handle range'
+        assert handle or position in NULLABLE_INPUTS.get(command, ()), 'NULL mandatory input'
+    if command in OUTPUT_COMMANDS:
+        assert 0 < int(fields[1]) < 4096, 'invalid output handle'
+    reuse_position = 6 if command == 'term' else 4 if command == 'insert' else len(fields)
+    if reuse_position < len(fields):
+        assert 0 < int(fields[reuse_position]) < 4096, 'invalid historical handle'
+    for position, limit in TOKEN_LIMITS.get(command, {}).items():
+        if position < len(fields):
+            assert len(fields[position].encode('utf-8', 'surrogateescape')) <= limit, 'truncated request argument'
+    if command == 'new':
+        assert int(fields[1]) <= 32768 and int(fields[2]) <= 65535, 'invalid constructor request range'
+    if command == 'find-next-loop':
+        assert int(fields[3]) <= 1024, 'invalid find-next request cap'
+
+
+# All boundaries except the remote-link observation terminate native replay.
+# Bind each one to its native dispatch, independently of its payload.
+BOUNDARY_COMMANDS = {
+    'boundary.new-null': {'new'},
+    'boundary.retained-dangling-links': {'free', 'free-root'},
+    'boundary.primitive-free-slot-cap': {'insert'},
+    'boundary.watchdog.find-next-cycle': {'find-next-loop'},
+    'boundary.remote-last-corrupting-primitive': {'term'},
+    'boundary.merge2-before-uninitialized-continuation': {'attach'},
+    'boundary.merge2-exhausted-forward-iterator': {'attach'},
+    'boundary.merge2-successor-schema-precondition': {'attach'},
+    'boundary.merge2-driver-safe-prefix': {'attach'},
+    'boundary.tombstoned-handle': set(INPUTS) | {'insert', 'remove'},
+    'boundary.tombstoned-semantic-probe': set(COMMANDS) - {'new', 'dump', 'context', 'context-keyless', 'insert', 'remove'},
+}
+OBSERVATIONAL_BOUNDARY = 'boundary.remote-last-corrupting-primitive'
+
+
+def boundary_policy(req, rows, *, allow_remote=False):
+    for index, row in enumerate(rows):
+        event, operation = row['event'], row['operation']
+        assert type(event) is str, 'invalid event type'
+        assert type(operation) is int, 'invalid operation type'
+        if not event.startswith('boundary.'): continue
+        assert event in BOUNDARY_COMMANDS, 'unknown native boundary'
+        assert 0 < operation <= len(req) and req[operation - 1][0] in BOUNDARY_COMMANDS[event], 'boundary at wrong request'
+        if event == OBSERVATIONAL_BOUNDARY and allow_remote: continue
+        assert index == len(rows) - 1, 'evidence after terminal boundary'
+
+
+def completion(script, rows, terminal=None, *, allow_remote=False):
+    """Require the caller's expected stop, or the entire requested replay."""
     req = requests(script)
-    recorded = {n['generation']: n for r in rows for n in r.get('nodes', [])}
+    boundary_policy(req, rows, allow_remote=allow_remote)
+    end, event = terminal if terminal else (len(req), req[-1][0] if req else 'driver.ready.actual-children-callback')
+    count = end - 1 if terminal and event.startswith('boundary.') else end
+    expected = [(i, fields[0]) for i, fields in enumerate(req[:count], 1)]
+    actual = [(r['operation'], r['event']) for r in rows if r['event'] in COMMANDS]
+    assert actual == expected, 'incomplete/out-of-order completed commands'
+    expected_results = [(op, COMMAND_RESULTS[c]) for op, c in expected if c in COMMAND_RESULTS]
+    actual_results = [(r['operation'], r['event']) for r in rows if r['event'] in COMMAND_RESULTS.values()]
+    assert actual_results == expected_results, 'missing/extra/out-of-order read/public result'
+    assert rows and (rows[-1]['operation'], rows[-1]['event']) == (end, event), 'unexpected terminal'
+    for row in rows:
+        if row['event'].startswith('boundary.') and not (allow_remote and row['event'] == OBSERVATIONAL_BOUNDARY):
+            assert terminal and (row['operation'], row['event']) == terminal, 'unexpected native boundary'
+
+
+def validate(script, rows, refs=None, *, project=True, read_context=None):
+    req = requests(script)
+    assert all(f[0] in COMMANDS for f in req), 'unknown request command'
+    for fields in req: request_contract(fields)
+    boundary_policy(req, rows, allow_remote=True)
+    expected_requests = [[]] + [request_evidence(fields) for fields in req]
+    inferred_context = any(f[0].startswith('read-') or f[0] in ('equal', 'context', 'context-keyless') for f in req)
+    assert read_context is None or type(read_context) is bool, 'invalid read-context mode'
+    assert read_context is not False or not inferred_context, 'read-context mode contradicts requests'
+    read_context_evidence = inferred_context if read_context is None else read_context
     assert rows and rows[0]['event'] == 'driver.ready.actual-children-callback', 'missing bootstrap evidence'
+    assert rows[0]['operation'] == 0 and sum(r['event'] == 'driver.ready.actual-children-callback' for r in rows) == 1, 'invalid bootstrap count/operation'
+    # Check every closed layout before walking history. A malformed late row
+    # must not require constructing all earlier registries just to reject it.
+    for row in rows:
+        event, operation = row['event'], row.get('operation', 0)
+        assert type(operation) is int, 'invalid operation type'
+        assert 0 <= operation <= len(req), 'invalid request operation'
+        assert operation or event == 'driver.ready.actual-children-callback', 'record without executing request'
+        assert row['request'] == expected_requests[operation], 'wrong request arguments'
+    for row in rows:
+        event, operation = row['event'], row.get('operation', 0)
+        command = 0 < operation <= len(req) and event == req[operation - 1][0]
+        assert event not in COMMANDS or command, 'command at wrong request'
+        shape(row, command or event == 'driver.ready.actual-children-callback', read_context_evidence)
+    # A reuse notice may precede discovery in a quiet native call, but its
+    # first following snapshot must belong to this operation. Never borrow
+    # allocation/retirement evidence from a later request.
+    next_snapshots, upcoming = {}, None
+    for index in range(len(rows) - 1, -1, -1):
+        if 'nodes' in rows[index]: upcoming = rows[index]
+        if rows[index]['event'] in ('allocation.address-reuse', 'table.address-reuse'):
+            next_snapshots[index] = upcoming
     previous, provenance, labels, retired, table_owners, serials = {}, {}, {}, set(), {}, {}
     previous_tables, bindings, keys, indexes, creations = {}, {}, {}, Counter(), {}
     normalized, last_nodes, completed_nodes, completed_bindings = {}, {}, {}, {}
+    completed_row = {}
     schemas, schema_keys, schema_nodes = {}, {}, {}
-    for row in rows:
+    results, completed_operation, generic_present = {}, 0, False
+    reuse_snapshot, reuse_nodes, reuse_tables = None, {}, {}
+    for row_index, row in enumerate(rows):
         event, operation = row['event'], row.get('operation', 0)
         unsafe = event == 'boundary.retained-dangling-links'
         if unsafe:
             assert row is rows[-1] and req[operation - 1][0] in ('free', 'free-root'), 'invalid unsafe boundary'
         command = 0 < operation <= len(req) and event == req[operation - 1][0]
+        assert operation in (completed_operation, completed_operation + 1), 'out-of-order operation'
+        if operation:
+            fields = req[operation - 1]
+            if fields[0] in PREPARED_OUTPUTS:
+                old = completed_bindings.get(int(fields[1]))
+                assert not old or not old['generation'] or not completed_nodes[old['generation']]['alive'], 'occupied output handle'
+            result_kind = COMMAND_RESULTS.get(fields[0])
+            if event in COMMAND_RESULTS.values():
+                assert operation == completed_operation + 1 and event == result_kind, 'result at wrong request'
+                assert operation not in results, 'duplicate result'
+                results[operation] = row
+            if command:
+                assert operation == completed_operation + 1, 'duplicate completed command'
+                assert (operation in results) == bool(result_kind), 'missing/unexpected request result'
+                if result_kind and 'rc' in results[operation]:
+                    assert results[operation]['rc'] == row['rc'], 'result/command status mismatch'
+                completed_operation = operation
+        # Snapshot obligations come from the protocol/request, never field presence.
+        if command or event == 'driver.ready.actual-children-callback':
+            assert isinstance(row.get('nodes'), list), 'missing required snapshot nodes'
+        if event.startswith('read.selection.'):
+            fields = req[operation - 1]
+            assert event == 'read.selection.' + fields[0].removeprefix('read-'), 'wrong selection request'
+            start, target = (int(x) for x in fields[1:3])
+            parent = int(fields[3]) if len(fields) > 3 else 0
+            owner = completed_bindings[parent]['generation'] if parent else last_nodes[completed_bindings[start]['generation']]['parent'] if start else 0
+            for field, handle in (('start_generation', start), ('target_generation', target)):
+                g = completed_bindings[handle]['generation'] if handle else 0
+                assert row[field] == g and (not g or (g in keys and last_nodes[g]['alive'])), 'wrong selection operand binding'
+            assert row['queried_parent'] == owner, 'wrong selection queried parent'
+            if fields[0] == 'read-value':
+                assert row['value'] == (argument(fields[4]) if len(fields) > 4 else None), 'wrong selection value'
+            if fields[0] == 'read-opaque':
+                assert row['name'] == argument(fields[4] if len(fields) > 4 else 'unknown'), 'wrong selection name'
+            expected = last_nodes[owner].get('table', {'present': False}) if owner else {'present': False}
+            assert row['before'] == row['after'] == expected, 'wrong selection storage/identity/continuity'
+            for _, table in table_records(row):
+                if not table['present']: continue
+                t = table['identity']
+                assert type(t) is int and t > 0 and previous_tables[t]['alive'], 'invalid selection table identity'
+                assert table_owners[t] == ('node', owner), 'wrong selection table owner'
+                for x in table['chains']:
+                    assert type(x['occurrence']) is int and x['occurrence'] > 0, 'missing selection occurrence'
+                    assert serials[x['occurrence']] == (t, x['generation'], x['hash']), 'wrong selection occurrence'
+            winner = row['winner']
+            if fields[0] in ('read-schema', 'read-value') and 'schema' not in last_nodes[row['target_generation']]:
+                # lyd_find_sibling_val checks schema before the NULL-start branch.
+                assert (row['rc'], winner) == (3, 0), 'NULL schema must return EINVAL'
+            elif not start:
+                assert (row['rc'], winner) == (5, 0), 'null sibling must return ENOTFOUND'
+            assert row['rc'] != 0 or winner, 'successful selection without winner'
+            assert not winner or row['rc'] == 0, 'failed selection with winner'
+            for field, label in (('winner', 'winner_script'), ('current_parent', 'parent_script'), ('next_generation', 'next_script')):
+                g = row[field]
+                assert not g or (g in keys and last_nodes[g]['alive']), 'invalid selection reference'
+                assert row[label] == (last_nodes[g]['id'] if g else 0), 'wrong selection label'
+            if winner:
+                assert row['current_parent'] == last_nodes[winner]['parent'] and row['next_generation'] == last_nodes[winner]['next'], 'wrong selection links'
+            else:
+                assert row['current_parent'] == row['next_generation'] == 0, 'links without winner'
         if 'nodes' not in row:
+            # Shape validation above dispatches by event, never payload presence.
+            # Preserve every semantic result field; local table/occurrence IDs
+            # have already been bound to the retained snapshot registry.
+            def read_ref(g):
+                assert not g or g in keys, 'unbound result reference'
+                return keys[g] if g else 0
+            def read_table(t):
+                if not t['present']: return t
+                return {k: ([{a: read_ref(b) if a == 'generation' else b for a, b in x.items() if a != 'occurrence'} for x in v]
+                            if k == 'chains' else v)
+                        for k, v in t.items() if k not in ('identity', 'continuity')}
+            references = {'generation', 'start_generation', 'target_generation', 'left_generation', 'right_generation', 'winner', 'current_parent', 'next_generation', 'queried_parent', 'target', 'supplied', 'schema_winner', 'instance_winner', 'value_winner'}
+            if project and event not in ('read.compare', 'allocation.address-reuse', 'table.address-reuse'):
+                normalized[operation, event + '.complete'] = {k: read_ref(v) if k in references else read_table(v) if k in ('before', 'after') else v for k, v in row.items()}
             if event in ('read.null', 'read.schema'):
                 fields = req[operation - 1]
                 assert fields[0] == ('schema' if event == 'read.schema' else 'null-reads'), 'read at wrong operation'
@@ -60,12 +326,13 @@ def validate(script, rows):
                     target = completed_bindings[int(fields[2])]['generation']
                     assert row['target'] == target and target in keys and last_nodes[target]['alive'], 'wrong requested target'
                 else:
-                    assert row['name'] == fields[2], 'wrong opaque name'
+                    assert row['name'] == argument(fields[2]), 'wrong opaque name'
                 for g in (supplied, winner, parent):
                     assert not g or (g in keys and last_nodes[g]['alive']), 'invalid read identity'
                 if not supplied:
                     assert (winner, row['rc'], parent) == (0, 5, 0), 'null sibling must return ENOTFOUND'
                 assert row['rc'] == (0 if winner else 5), 'wrong read status'
+                assert winner or parent == 0, 'parent without winner'
                 assert not winner or last_nodes[winner]['parent'] == parent, 'wrong current parent'
                 assert row['before'] == row['after'], 'lookup mutated storage'
                 owner = last_nodes[supplied]['parent'] if supplied else 0
@@ -83,19 +350,54 @@ def validate(script, rows):
                 for kind in ('schema', 'instance', 'value'):
                     assert (row[kind + '_winner'], row[kind + '_rc']) == (0, 5), 'null sibling must return ENOTFOUND'
                 normalized[operation, event] = (operation, keys[parent], 0, 5)
+            if event in ('allocation.address-reuse', 'table.address-reuse'):
+                following = next_snapshots[row_index]
+                assert following and following['operation'] == operation, 'reuse lacks current-operation snapshot'
+                # Quiet native calls can emit many reuse notices before one
+                # snapshot. Index that snapshot once for both allocation kinds.
+                if following is not reuse_snapshot:
+                    reuse_snapshot = following
+                    reuse_nodes = {n['generation']: n for n in following['nodes']}
+                    reuse_tables = {t['identity']: t for t in following['tables']}
             if event == 'allocation.address-reuse':
                 old, new = row['old_generation'], row['new_generation']
-                assert type(old) is int and type(new) is int and 0 < old < new and old in recorded and new in recorded and not recorded[old]['alive'], 'invalid reuse identities'
+                observed = reuse_nodes
+                assert 0 < old < new and old in observed and new in observed and not observed[old]['alive'], 'invalid reuse identities'
+                assert new not in last_nodes and observed[new]['creation_operation'] == operation, 'reuse replacement not born in operation'
+                assert old in last_nodes or observed[old]['creation_operation'] == operation, 'reuse of unobserved past allocation'
+            if event == 'table.address-reuse':
+                old, new = row['old_identity'], row['new_identity']
+                observed = reuse_tables
+                assert 0 < old < new and old in observed and new in observed and not observed[old]['alive'] and observed[new]['alive'], 'invalid table reuse identities'
+                assert new not in previous_tables, 'already observed table replacement'
+
             if event == 'boundary.tombstoned-handle':
                 g = row['generation']
+                requested = input_handles(req[operation - 1])
+                assert row['handle'] in requested, 'unrequested tombstone handle'
+                dead_inputs = [h for h in requested if h in bindings and (bound := bindings[h]['generation']) and not last_nodes[bound]['alive']]
+                assert dead_inputs and row['handle'] == dead_inputs[0], 'wrong tombstone check order'
                 assert g in last_nodes and not last_nodes[g]['alive'] and bindings[row['handle']]['generation'] == g, 'invalid tombstone probe'
+            if event == 'read.equal':
+                fields = req[operation - 1]
+                assert fields[0] == 'equal' and row['options'] == int(fields[3]), 'wrong comparison request'
+                operands = []
+                for field, handle in zip(('left_generation', 'right_generation'), map(int, fields[1:3]), strict=True):
+                    g = row[field]
+                    assert type(g) is int and g == (bindings[handle]['generation'] if handle else 0), 'wrong comparison operand binding'
+                    assert not g or (g in last_nodes and last_nodes[g]['alive'] and g in keys), 'invalid comparison operand'
+                    operands.append(keys[g] if g else 0)
+                normalized[operation, event] = (operation, row['rc'], *operands, row['options'])
             if event in ('read.schema', 'read.first-sibling'):
+
                 def live(g):
                     assert g == 0 or (g in last_nodes and last_nodes[g]['alive'] and g in keys), ('invalid read identity', g)
                     return keys[g] if g else 0
                 winner = row['winner']
                 live(winner)
                 if event == 'read.schema':
+                    assert row['rc'] == (0 if winner else 5), 'wrong schema status'
+                    assert winner or row['current_parent'] == 0, 'parent without winner'
                     parent = row['queried_parent']
                     live(parent); live(row['current_parent'])
                     assert not winner or last_nodes[winner]['parent'] == row['current_parent'], 'wrong current parent'
@@ -125,13 +427,28 @@ def validate(script, rows):
                     schema = last_nodes[target]['schema_identity']
                     def matches(g):
                         n = last_nodes[g]
-                        return n.get('schema_identity') == schema
+                        candidate = n.get('schema_identity')
+                        if not candidate: return False
+                        if schemas[candidate]['context'] == schemas[schema]['context']:
+                            return candidate == schema
+                        # Native table callback compares complete schema ancestry
+                        # across contexts; the linear path compares names only.
+                        left, right = candidate, schema
+                        while left and right:
+                            a, b = schemas[left], schemas[right]
+                            if (a['module'], a['name']) != (b['module'], b['name']): return False
+                            if not table['present']: return True
+                            if a['nodetype'] != b['nodetype']: return False
+                            left, right = a['parent'], b['parent']
+                        return left == right
                     if table['present']:
                         candidates = [x['generation'] for x in table['chains'] if x['hash'] == row['schema_hash'] and matches(x['generation'])]
                         assert not winner or winner in candidates, 'winner outside queried schema run'
                     else:
-                        candidates, g = [], last_nodes[parent]['first']
+                        candidates, g, seen = [], last_nodes[parent]['first'], set()
                         while g and last_nodes[g].get('schema'):
+                            assert g not in seen and len(seen) < 4096, 'schema sibling traversal limit/cycle'
+                            seen.add(g)
                             if matches(g): candidates.append(g)
                             g = last_nodes[g]['next']
                     assert winner == (candidates[0] if candidates else 0), 'wrong schema winner'
@@ -145,11 +462,25 @@ def validate(script, rows):
                     else:
                         expected, seen = g, set()
                         while last_nodes[expected]['prev'] and last_nodes[last_nodes[expected]['prev']]['next']:
-                            assert expected not in seen, 'sibling cycle'
+                            assert expected not in seen and len(seen) < 4096, 'sibling traversal limit/cycle'
                             seen.add(expected); expected = last_nodes[expected]['prev']
                     assert winner == expected, 'wrong first sibling'
                     normalized[operation, event] = (operation, live(winner))
             continue
+        if row is reuse_snapshot:
+            reuse_snapshot, reuse_nodes, reuse_tables = None, {}, {}
+        if command and event == 'new':
+            generic_present = row['rc'] == 0
+        if event == 'boundary.new-null':
+            generic_present = False
+        if command or event.startswith('boundary.'):
+            assert ('table' in row) == generic_present, 'missing/unrequested generic storage'
+            if generic_present: assert row['table']['present'], 'missing generic storage'
+        assert 'diagnostics' in row and isinstance(row['diagnostics'], list), 'missing diagnostics'
+        for diagnostic in row['diagnostics']:
+            assert {'code', 'context_generation'} <= diagnostic.keys(), 'missing diagnostic context identity'
+            assert type(diagnostic['code']) is int and type(diagnostic['context_generation']) is int and 0 < diagnostic['context_generation'] < 16, 'invalid diagnostic identity'
+        if read_context_evidence: assert 'modules' in row, 'missing read context evidence'
         assert row['allocation_scope'] in ('every-allocation', 'survivors-and-observed-frees')
         assert type(row['node_count']) is int and 0 < row['node_count'] < 65536, 'invalid allocation count'
         assert type(row['table_count']) is int and 0 <= row['table_count'] < 65536, 'invalid table count'
@@ -160,7 +491,9 @@ def validate(script, rows):
         assert schemas.keys() <= registry_schemas.keys(), 'lost schema registry'
         current_schema_keys, unique_schemas = {}, set()
         for s, record in sorted(registry_schemas.items()):
-            assert type(s) is int and s > 0 and record['context'] == 1, 'invalid schema identity/context'
+            context = record['context']
+            assert type(s) is int and s > 0 and type(context) is int and 0 < context < 16, 'invalid schema identity/context'
+            assert context == 1 or read_context_evidence, 'invalid schema identity/context'
             assert record['module'] and record['name'] and record['nodetype'] > 0, 'incomplete schema descriptor'
             parent = record['parent']
             assert type(parent) is int and 0 <= parent < s, 'invalid compiled schema ancestry'
@@ -177,7 +510,7 @@ def validate(script, rows):
         assert set(nodes) == set(range(1, row['node_count'] + 1)), 'generation gap'
         bootstrap = [n for n in nodes.values() if n['creation_operation'] == 0]
         assert len(bootstrap) == 5 and all(n['alive'] for n in bootstrap), 'missing bootstrap identities'
-        seed = [n for n in bootstrap if n.get('schema') == 'c']
+        seed = [n for n in bootstrap if n.get('nodetype', 0) & INNER_NODE_TYPES and not n['parent']]
         assert len(seed) == 1, 'missing bootstrap root'
         seed_table = seed[0]['table']
         assert seed_table['present'] and seed_table['identity'] == 1 and seed_table['used'] == 5 and seed_table['size'] == 8, 'missing bootstrap table evidence'
@@ -202,14 +535,23 @@ def validate(script, rows):
                     assert n['current'] == 'unsafe-native-links', 'missing unsafe availability'
                     continue
                 assert n.get('current') != 'unsafe-native-links', 'unsafe current state outside boundary'
+                assert {'context', 'hash', 'flags', 'parent', 'prev', 'next', 'metadata'} <= n.keys(), 'missing live node state'
+                if read_context_evidence or 'modules' in row:
+                    assert 'context_generation' in n and type(n['context_generation']) is int and 0 < n['context_generation'] < 16, 'missing read context identity'
+                if n.get('schema'):
+                    assert {'nodetype', 'key'} <= n.keys(), 'missing native node kind'
+                    if n['nodetype'] & TERM_NODE_TYPES: assert 'value' in n, 'missing terminal value'
+                else:
+                    assert {'first', 'tail', 'prefix_format', 'prefix_bound'} <= n.keys(), 'missing opaque state'
                 if n.get('schema'):
                     s = n['schema_identity']
                     assert type(s) is int and s > 0 and s in schemas, 'missing schema identity'
                     descriptor = schemas[s]
-                    assert (n['schema'], n['nodetype'], n['context']) == (descriptor['name'], descriptor['nodetype'], descriptor['context']), 'node/schema descriptor mismatch'
+                    assert (n['schema'], n['nodetype'], n.get('context_generation', n['context'])) == (descriptor['name'], descriptor['nodetype'], descriptor['context']), 'node/schema descriptor mismatch'
                     assert 'module' not in n or n['module'] == descriptor['module'], 'node/schema module mismatch'
                     assert schema_nodes.setdefault(g, s) == s, 'node/schema identity drift'
-                if n.get('schema') in ('c', 'd', 'r', 'l', 'kl'):
+                # libyang v5.8.6 tree_data.h:LYD_NODE_INNER / tree_schema.h.
+                if n.get('nodetype', 0) & INNER_NODE_TYPES:
                     assert {'first', 'tail', 'table'} <= n.keys(), 'missing inner-node table evidence'
                 for field in ('parent', 'prev', 'next', 'first', 'tail', 'rb_root', 'rb_stored_root'):
                     ref = n.get(field, 0)
@@ -220,6 +562,10 @@ def validate(script, rows):
                         ref = member[field]
                         assert not ref or ref in nodes, 'missing RB identity'
                         if command: assert not ref or nodes[ref]['alive'], 'RB tombstone'
+        # Native replay can intentionally retain foreign sibling links and
+        # stale child endpoints. Preserve them as evidence; graph consumers
+        # below enforce their own visited/4096 traversal allowance instead of
+        # assuming that every completed snapshot is a consistent native tree.
         live_labels = [n['id'] for n in nodes.values() if n['alive'] and n['id']]
         assert len(set(live_labels)) == len(live_labels), 'ambiguous allocation labels'
         registry = {t['identity']: t for t in row['tables']}
@@ -256,6 +602,12 @@ def validate(script, rows):
                 assert serials.setdefault(serial, (t, g, x['hash'])) == (t, g, x['hash']), 'occurrence changed ownership'
         bs = {b['handle']: b for b in row['bindings']}
         assert len(bs) == len(row['bindings']), 'ambiguous handle'
+        allowed = set()
+        if operation and req[operation - 1][0] in OUTPUT_COMMANDS | {'insert', 'remove'}:
+            allowed.add(int(req[operation - 1][1]))
+        assert bs.keys() - completed_bindings.keys() <= allowed, 'unrequested new binding'
+        for h, old in completed_bindings.items():
+            if h not in allowed: assert bs[h] == old, 'unrequested binding refresh'
         for h, b in bs.items():
             assert 0 < h < 4096 and b['revision'] > 0 and b['operation'] <= operation, 'invalid binding'
             assert b['generation'] == 0 or b['generation'] in nodes, 'missing binding allocation'
@@ -270,50 +622,82 @@ def validate(script, rows):
         assert bindings.keys() <= bs.keys(), 'lost retained binding'
         if command:
             fields = req[operation - 1]
-            unary = ('unlink', 'detach-siblings', 'change', 'I', 'U', 'free', 'free-root', 'rewind', 'validate', 'check-handle', 'print', 'find-next-loop', 'opaq-find')
-            inputs = [int(fields[1])] if event in unary else [int(fields[1]), int(fields[2])] if event in ('attach', 'before', 'schema', 'null-reads', 'instance') else [int(fields[2]), int(fields[3])] if event == 'dup' else [int(fields[2])] if event in ('term', 'list', 'opaque') else []
+            inputs = input_handles(fields)
+            if event in ('insert', 'remove'):
+                inputs = [h for h in inputs if h in completed_bindings and (g := completed_bindings[h]['generation']) and completed_nodes[g]['alive']]
+            reuse_index = 6 if event == 'term' else 4 if event == 'insert' else len(fields)
+            if reuse_index < len(fields):
+                g = completed_bindings[int(fields[reuse_index])]['generation']
+                assert g and not completed_nodes[g]['alive'], 'invalid historical reuse binding'
             for h in inputs:
                 if h:
                     assert h in completed_bindings, 'missing input binding'
                     g = completed_bindings[h]['generation']
                     assert g and g in completed_nodes and completed_nodes[g]['alive'], 'invalid input identity'
-            outputs = ('root', 'term', 'list', 'opaque', 'dup', 'parse', 'rewind', 'validate')
+            outputs = OUTPUT_COMMANDS
             changed = int(fields[1]) if event in outputs else 0
             lazy = int(fields[1]) if event in ('insert', 'remove') else 0
             for h, old in completed_bindings.items():
                 if h not in (changed, lazy): assert bs[h] == old, 'unrequested binding refresh'
 
-            if event in ('root', 'term', 'list', 'opaque', 'dup', 'parse', 'rewind', 'validate'):
+            if event in outputs:
                 h = int(fields[1])
                 assert h in bs, 'missing output binding'
                 assert row['output_handle'] == h and row['output_generation'] == bs[h]['generation'], 'binding differs from returned pointer'
                 if row['rc'] == 0 and event != 'validate':
                     g = bs[h]['generation']
                     assert g and nodes[g]['alive'], 'invalid returned binding'
-                if event in ('root', 'term', 'list', 'opaque', 'parse') and row['rc'] == 0:
+                if event in ('root', 'term', 'list', 'opaque', 'opaque-invalid-xml', 'parse', 'parse-xml') and row['rc'] == 0:
                     assert nodes[bs[h]['generation']]['creation_operation'] == operation, 'returned wrong incarnation'
                 if event == 'rewind':
                     assert keys[bs[h]['generation']] == normalized[operation, 'read.first-sibling'][1], 'rewind binding not refreshed'
+            else:
+                assert row['output_handle'] == row['output_generation'] == 0, 'unrequested output binding'
+        if command:
+            # Parent children_ht survives insertions, removals and resizing;
+            # only destroying its owner ends that table lifetime. Generic new
+            # explicitly destroys/replaces the standalone table.
+            for g, old in completed_nodes.items():
+                old_table = old.get('table', {})
+                if old['alive'] and nodes[g]['alive'] and old_table.get('present'):
+                    assert nodes[g].get('table', {}).get('identity') == old_table['identity'], 'mutation replaced owned table identity'
+            old_table = completed_row.get('table', {})
+            if old_table.get('present') and event != 'new':
+                assert row.get('table', {}).get('identity') == old_table['identity'], 'mutation replaced generic table identity'
+        if command and event in STABLE_STORAGE_COMMANDS:
+            # Bind result observations to the completed snapshot as well as the
+            # preceding one. Fresh local IDs with identical layout are still a
+            # storage replacement; they must not disappear in normalization.
+            for g, old in completed_nodes.items():
+                if old['alive'] and 'table' in old:
+                    assert nodes[g]['alive'] and nodes[g].get('table') == old['table'], 'read replaced/changed owned storage'
+            assert row.get('table') == completed_row.get('table'), 'read replaced/changed generic storage'
         # Assign injective cross-process keys in physical component order, once
         # per generation. Handles select traversal anchors; aliases do not label
         # allocations, and a reused handle gets a new allocation incarnation.
         if command or operation == 0:
             visited = set()
             def walk(g):
-                if not g or g in visited or not nodes[g]['alive']: return
-                visited.add(g)
-                if g not in keys:
-                    origin = nodes[g]['creation_operation']; indexes[origin] += 1
-                    keys[g] = (origin, indexes[origin])
-                walk(nodes[g].get('first', 0)); walk(nodes[g]['next'])
+                pending = [g]
+                while pending:
+                    g = pending.pop()
+                    if not g or g in visited or not nodes[g]['alive']: continue
+                    assert len(visited) < 4096, 'normalization traversal limit'
+                    visited.add(g)
+                    if g not in keys:
+                        origin = nodes[g]['creation_operation']; indexes[origin] += 1
+                        keys[g] = (origin, indexes[origin])
+                    pending.append(nodes[g]['next'])
+                    pending.append(nodes[g].get('first', 0))
             def component(g):
+                if g in visited: return
                 seen = set()
                 while nodes[g]['parent']:
-                    assert g not in seen, 'parent cycle'
+                    assert g not in seen and len(seen) < 4096, 'parent traversal limit/cycle'
                     seen.add(g); g = nodes[g]['parent']
                 seen = set()
                 while nodes[g]['prev'] and nodes[nodes[g]['prev']]['next']:
-                    assert g not in seen, 'sibling cycle'
+                    assert g not in seen and len(seen) < 4096, 'sibling traversal limit/cycle'
                     seen.add(g); g = nodes[g]['prev']
                 walk(g)
             for h, b in sorted(bs.items()):
@@ -324,17 +708,63 @@ def validate(script, rows):
             def ref(g):
                 assert not g or g in keys, 'incomplete normalization'
                 return keys[g] if g else 0
-            live = {}
-            for g, n in nodes.items():
-                if n['alive']:
-                    live[ref(g)] = (schema_keys.get(n.get('schema_identity')), n.get('module'), n.get('schema'), n.get('value'), n.get('flags'),
-                                    tuple(ref(n.get(f, 0)) for f in ('parent', 'prev', 'next', 'first', 'tail')))
-            normalized[operation, 'identity.state'] = (live, {h: (ref(b['generation']), b['revision']) for h, b in bs.items()})
-        if command or operation == 0: completed_nodes, completed_bindings = nodes, bs
+            # Keep reference completeness checks in the validation lane too.
+            for field in ('node_generation', 'source_generation', 'output_generation', 'working_rb_root'):
+                ref(row.get(field, 0))
+            for n in nodes.values():
+                if not n['alive']: continue
+                for field in ('parent', 'prev', 'next', 'first', 'tail', 'rb_root', 'rb_stored_root'):
+                    ref(n.get(field, 0))
+                for member in n.get('rb', []):
+                    for field in ('owner', 'node', 'parent', 'left', 'right'): ref(member[field])
+            for _, t in table_records(row):
+                if t['present']:
+                    for x in t['chains']: ref(x['generation'])
+            if refs is not None: refs[operation] = dict(keys)
+            if project:
+                def storage(table):
+                    if not table or not table['present']: return None
+                    return (table['size'], table['used'], table['mode'], table['free'], table['buckets'], table['slots'],
+                            [{k: ref(v) if k == 'generation' else v for k, v in x.items() if k != 'occurrence'} for x in table['chains']],
+                            table['free_chain'], table['free_terminal'])
+                live = {}
+                for g, n in nodes.items():
+                    if n['alive']:
+                        live[ref(g)] = (schema_keys.get(n.get('schema_identity')), n.get('module'), n.get('schema'), n.get('value'), n.get('flags'),
+                                        tuple(ref(n.get(f, 0)) for f in ('parent', 'prev', 'next', 'first', 'tail')),
+                                        n.get('context_generation', n.get('context')), n.get('nodetype'), n.get('key'),
+                                        n.get('prefix_format'), n.get('prefix_bound'), storage(n.get('table')), n['hash'],
+                                        n['context'], n['metadata'], n.get('opaque_name'), n.get('opaque_module'), n.get('opaque_prefix'), n.get('opaque_value'),
+                                        ref(n.get('rb_root', 0)), ref(n.get('rb_stored_root', 0)),
+                                        [{f: ref(v) if f != 'color' else v for f, v in r.items()} for r in n.get('rb', [])])
+                normalized[operation, 'identity.state'] = (live, {h: (ref(b['generation']), b['revision'], b['operation']) for h, b in bs.items()})
+                normalized[operation, 'envelope'] = (row['event'], row['rc'], row.get('modules'),
+                    messages(row['diagnostics']), messages(row.get('logs', [])),
+                    {f: ref(row[f]) for f in ('node_generation', 'source_generation', 'output_generation')},
+                    row['output_handle'], ref(row.get('working_rb_root', 0)), storage(row.get('table')),
+                    sorted({schema_keys[n['schema_identity']] for n in nodes.values() if n['alive'] and 'schema_identity' in n}, key=repr))
+        if command or operation == 0: completed_row, completed_nodes, completed_bindings = row, nodes, bs
         previous, previous_tables, bindings, last_nodes = nodes, registry, bs, nodes
+    if completed_operation < len(req):
+        assert rows[-1]['event'] in BOUNDARIES and rows[-1]['operation'] == completed_operation + 1, 'incomplete request without native boundary'
+        assert completed_operation + 1 not in results, 'result before terminal boundary'
+    else:
+        assert rows[-1]['event'] == (req[-1][0] if req else 'driver.ready.actual-children-callback'), 'unexpected trailing record'
     return normalized
 
 
 if __name__ == '__main__':
-    payload = json.load(sys.stdin)
-    validate(payload['script'], payload['rows'])
+    payload_bytes = sys.stdin.buffer.read((64 << 20) + 1)
+    assert len(payload_bytes) <= 64 << 20, 'identity input exceeds byte budget'
+    payload = json.loads(payload_bytes.decode('utf-8', 'strict'))
+    refs = {} if payload.get('project') else None
+    script = bytes.fromhex(payload['script_hex']).decode('utf-8', 'surrogateescape')
+    result = validate(script, payload['rows'], refs, project=bool(payload.get('project')), read_context=payload.get('read_context'))
+    if refs is not None:
+        def canonical(value):
+            if isinstance(value, dict):
+                return [[canonical(k), canonical(v)] for k, v in sorted(value.items(), key=lambda x: repr(x[0]))]
+            if isinstance(value, (tuple, list)): return [canonical(x) for x in value]
+            return value
+        json.dump({'states': [[op, event, canonical(value)] for (op, event), value in result.items()],
+                   'refs': refs}, sys.stdout)

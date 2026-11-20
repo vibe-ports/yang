@@ -20,14 +20,29 @@ import (
 	"strings"
 	"testing"
 	"time"
+	"unicode/utf8"
 )
 
 type nativeDriverResult struct {
 	Evidence  json.RawMessage `json:"-"`
-	Event     string          `json:"event"`
-	Operation int             `json:"operation"`
-	RC        nativeStatus    `json:"rc"`
-	Table     struct {
+	bootstrap json.RawMessage
+	raw       map[string]any
+
+	Modules []struct {
+		Name        string `json:"name"`
+		Namespace   string `json:"namespace"`
+		Implemented bool   `json:"implemented"`
+		Latest      uint8  `json:"latest"`
+	} `json:"modules"`
+	Before       json.RawMessage `json:"before"`
+	After        json.RawMessage `json:"after"`
+	WinnerScript int             `json:"winner_script"`
+	ParentScript int             `json:"parent_script"`
+	NextScript   int             `json:"next_script"`
+	Event        string          `json:"event"`
+	Operation    int             `json:"operation"`
+	RC           nativeStatus    `json:"rc"`
+	Table        struct {
 		Present bool `json:"present"`
 		nativeImage
 		Slots []struct{ Next uint32 } `json:"slots"`
@@ -43,6 +58,18 @@ type nativeDriverResult struct {
 	} `json:"nodes"`
 }
 
+func (r *nativeDriverResult) UnmarshalJSON(b []byte) error {
+	if !utf8.Valid(b) {
+		return fmt.Errorf("invalid UTF-8 in native evidence")
+	}
+	type plain nativeDriverResult
+	if err := json.Unmarshal(b, (*plain)(r)); err != nil {
+		return err
+	}
+	r.Evidence = bytes.Clone(b)
+	return json.Unmarshal(b, &r.raw)
+}
+
 // Both processes must finish P, Q, R release and still print the two detached
 // allocations. A zero exit status or equal empty result sets proves neither.
 func TestNativeReleaseControlCompletion(t *testing.T) {
@@ -50,18 +77,14 @@ func TestNativeReleaseControlCompletion(t *testing.T) {
 	if driver == "" {
 		t.Skip("set YANG_NATIVE_REGISTRATION_DRIVER after the isolated static build")
 	}
-	comparison := os.Getenv("YANG_NATIVE_REGISTRATION_COMPARISON_DRIVER")
-	if comparison == "" {
-		comparison = filepath.Join(filepath.Dir(driver), "driver-unmodified")
-	}
+	comparison := nativeComparisonDriver()
 	script, err := os.ReadFile(filepath.Join("..", "conformance", "oracle", "native_registration", "cases", "remote-last-release.calls"))
 	if err != nil {
 		t.Fatal(err)
 	}
 	for label, path := range map[string]string{"instrumented": driver, "unmodified": comparison} {
 		t.Run(label, func(t *testing.T) {
-			t.Setenv("YANG_NATIVE_REGISTRATION_DRIVER", path)
-			rows := nativeDriver(t, string(script))
+			rows := nativeDriverReplayPath(t, string(script), "", false, path)
 			var completed []string
 			var released, prints int
 			dead := make(map[int]bool)
@@ -117,7 +140,7 @@ func TestNativeControlReplayRejections(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 	cmd := exec.CommandContext(ctx, "python3", filepath.Join("..", "conformance", "oracle", "native_registration", "check_test.py"))
-	if out, err := cmd.CombinedOutput(); err != nil {
+	if out, err := nativeCommandOutput(cmd); err != nil {
 		t.Fatalf("control comparison regressions: %v\n%s", err, out)
 	}
 }
@@ -125,14 +148,12 @@ func TestNativeControlReplayRejections(t *testing.T) {
 // The stale handle must name storage actually reused by a live native node,
 // including when verbose observer allocations perturb the allocator bins.
 func TestNativeTombstoneAddressReuse(t *testing.T) {
+	nativeVerifyConfiguredDriverRoles(t)
 	driver := os.Getenv("YANG_NATIVE_REGISTRATION_DRIVER")
 	if driver == "" {
 		t.Skip("set YANG_NATIVE_REGISTRATION_DRIVER after the isolated static build")
 	}
-	comparison := os.Getenv("YANG_NATIVE_REGISTRATION_COMPARISON_DRIVER")
-	if comparison == "" {
-		comparison = filepath.Join(filepath.Dir(driver), "driver-unmodified")
-	}
+	comparison := nativeComparisonDriver()
 	for label, path := range map[string]string{"instrumented": driver, "unmodified": comparison} {
 		for _, name := range []string{"handle-tombstone", "handle-tombstone-probe", "lifetime/stale-handle"} {
 			//nolint:gosec // Fixed repository replay names from the literal case list.
@@ -148,13 +169,13 @@ func TestNativeTombstoneAddressReuse(t *testing.T) {
 					cmd := exec.CommandContext(ctx, path, option)
 					cmd.Env = append(os.Environ(), "GLIBC_TUNABLES=glibc.malloc.tcache_count=7")
 					cmd.Stdin = bytes.NewReader(script)
-					out, err := cmd.CombinedOutput()
+					out, err := nativeCommandOutput(cmd)
 					if err != nil {
 						t.Fatalf("tombstone replay: %v\n%s", err, out)
 					}
-					var rows []json.RawMessage
-					for _, line := range bytes.Split(bytes.TrimSpace(out), []byte{'\n'}) {
-						rows = append(rows, json.RawMessage(line))
+					rows, err := nativeTranscriptRows(out)
+					if err != nil {
+						t.Fatal(err)
 					}
 					if err := nativeValidateEvidence(string(script), rows); err != nil {
 						t.Fatal(err)
@@ -215,16 +236,13 @@ func TestNativeRetainedAddressReuse(t *testing.T) {
 	if driver == "" {
 		t.Skip("set YANG_NATIVE_REGISTRATION_DRIVER after the isolated static build")
 	}
-	comparison := os.Getenv("YANG_NATIVE_REGISTRATION_COMPARISON_DRIVER")
-	if comparison == "" {
-		comparison = filepath.Join(filepath.Dir(driver), "driver-unmodified")
-	}
+	comparison := nativeComparisonDriver()
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 	//nolint:gosec // Fixed checker and explicit opt-in local driver paths.
 	cmd := exec.CommandContext(ctx, "python3", filepath.Join("..", "conformance", "oracle", "native_registration", "check.py"),
 		"--driver", driver, "--comparison-driver", comparison, "--retained-reuse")
-	out, err := cmd.CombinedOutput()
+	out, err := nativeCommandOutput(cmd)
 	if err != nil {
 		t.Fatalf("retained address reuse: %v\n%s", err, out)
 	}
@@ -240,17 +258,14 @@ func TestNativeComparisonLifetimes(t *testing.T) {
 	if driver == "" {
 		t.Skip("set YANG_NATIVE_REGISTRATION_DRIVER after the isolated static build")
 	}
-	comparison := os.Getenv("YANG_NATIVE_REGISTRATION_COMPARISON_DRIVER")
-	if comparison == "" {
-		comparison = filepath.Join(filepath.Dir(driver), "driver-unmodified")
-	}
+	comparison := nativeComparisonDriver()
 	for _, name := range []string{"recreate-print", "recreate-lookup", "dup-descendant", "parse-descendant", "list-key", "table-reuse", "validation-delete", "retained-same-hash", "stale-handle", "retained-resize", "retained-remove"} {
 		t.Run(name, func(t *testing.T) {
 			ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 			defer cancel()
 			cmd := exec.CommandContext(ctx, "python3", filepath.Join("..", "conformance", "oracle", "native_registration", "check.py"),
 				"--driver", driver, "--comparison-driver", comparison, "--lifetime-case", name)
-			out, err := cmd.CombinedOutput()
+			out, err := nativeCommandOutput(cmd)
 			if err != nil {
 				t.Fatalf("lifetime comparison: %v\n%s", err, out)
 			}
@@ -269,10 +284,7 @@ func TestNativeReleaseRetirementPaths(t *testing.T) {
 	if driver == "" {
 		t.Skip("set YANG_NATIVE_REGISTRATION_DRIVER after the isolated static build")
 	}
-	comparison := os.Getenv("YANG_NATIVE_REGISTRATION_COMPARISON_DRIVER")
-	if comparison == "" {
-		comparison = filepath.Join(filepath.Dir(driver), "driver-unmodified")
-	}
+	comparison := nativeComparisonDriver()
 	remote, err := os.ReadFile(filepath.Join("..", "conformance", "oracle", "native_registration", "cases", "remote-last-release.calls"))
 	if err != nil {
 		t.Fatal(err)
@@ -283,7 +295,6 @@ func TestNativeReleaseRetirementPaths(t *testing.T) {
 	}
 	for label, path := range map[string]string{"instrumented": driver, "unmodified": comparison} {
 		t.Run(label, func(t *testing.T) {
-			t.Setenv("YANG_NATIVE_REGISTRATION_DRIVER", path)
 			for _, tc := range []struct {
 				name, script, terminal string
 				operation              int
@@ -298,7 +309,7 @@ func TestNativeReleaseRetirementPaths(t *testing.T) {
 					if strings.HasPrefix(tc.terminal, "boundary.") {
 						terminal = tc.terminal
 					}
-					rows := nativeDriverUntil(t, tc.script, terminal)
+					rows := nativeDriverReplayPath(t, tc.script, terminal, false, path)
 					if len(rows) == 0 || rows[len(rows)-1].Event != tc.terminal {
 						t.Fatalf("unexpected terminal: %v, want %s", rows, tc.terminal)
 					}
@@ -319,13 +330,34 @@ func nativeDriver(t *testing.T, script string) []nativeDriverResult {
 
 func nativeDriverUntil(t *testing.T, script, terminal string) []nativeDriverResult {
 	t.Helper()
-	path := os.Getenv("YANG_NATIVE_REGISTRATION_DRIVER")
+	return nativeDriverReplay(t, script, terminal, false)
+}
+
+func nativeDriverReplay(t *testing.T, script, terminal string, verbose bool) []nativeDriverResult {
+	t.Helper()
+	return nativeDriverReplayPath(t, script, terminal, verbose, os.Getenv("YANG_NATIVE_REGISTRATION_DRIVER"))
+}
+
+func nativeDriverReplayPath(t *testing.T, script, terminal string, verbose bool, path string) []nativeDriverResult {
+	t.Helper()
+	nativeVerifyConfiguredDriverRoles(t)
+	if _, err := nativeReplayPathRole(path); err != nil {
+		t.Fatal(err)
+	}
+	return nativeDriverReplayTransport(t, script, terminal, verbose, path)
+}
+
+func nativeDriverReplayTransport(t *testing.T, script, terminal string, verbose bool, path string) []nativeDriverResult {
+	t.Helper()
 	if path == "" {
 		t.Skip("isolated static observer: set YANG_NATIVE_REGISTRATION_DRIVER after its test-only build")
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 	options := []string{"--quiet"}
+	if verbose {
+		options[0] = "--events"
+	}
 	for _, line := range strings.Split(script, "\n") {
 		fields := strings.Fields(line)
 		if len(fields) > 0 && (fields[0] == "list" || fields[0] == "frontier") {
@@ -333,22 +365,25 @@ func nativeDriverUntil(t *testing.T, script, terminal string) []nativeDriverResu
 			break
 		}
 	}
+	for _, line := range strings.Split(script, "\n") {
+		fields := strings.Fields(line)
+		if len(fields) > 0 && (strings.HasPrefix(fields[0], "read-") || fields[0] == "equal" || fields[0] == "context" || fields[0] == "context-keyless") {
+			options = append(options, "--read-schema")
+			break
+		}
+	}
 	//nolint:gosec // Explicit opt-in path and bounded test-only arguments.
 	cmd := exec.CommandContext(ctx, path, options...)
 	cmd.Stdin = strings.NewReader(script)
-	out, err := cmd.CombinedOutput()
+	out, err := nativeCommandOutput(cmd)
 	if err != nil {
 		t.Fatalf("native registration driver: %v\n%s\nscript:\n%s", err, out, script)
 	}
-	var raw []json.RawMessage
-	scan := bufio.NewScanner(bytes.NewReader(out))
-	scan.Buffer(make([]byte, 4096), 8<<20)
-	for scan.Scan() {
-		raw = append(raw, bytes.Clone(scan.Bytes()))
-	}
-	if err := scan.Err(); err != nil {
+	raw, err := nativeTranscriptRows(out)
+	if err != nil {
 		t.Fatal(err)
 	}
+	ready := 0
 	if err := nativeValidateEvidence(script, raw); err != nil {
 		t.Fatal(err)
 	}
@@ -358,8 +393,16 @@ func nativeDriverUntil(t *testing.T, script, terminal string) []nativeDriverResu
 		if err := json.Unmarshal(line, &r); err != nil {
 			t.Fatal(err)
 		}
-		r.Evidence = bytes.Clone(line)
-		if r.Event == "driver.ready.actual-children-callback" || r.Event == "allocation.address-reuse" {
+		r.bootstrap = raw[0]
+		if r.Event == "driver.ready.actual-children-callback" {
+			ready++
+			if ready != 1 || r.Operation != 0 || len(results) != 0 {
+				t.Fatal("invalid native ready event")
+			}
+
+			continue
+		}
+		if r.Event == "allocation.address-reuse" {
 			continue
 		}
 		for i := range r.Table.Chains {
@@ -374,6 +417,10 @@ func nativeDriverUntil(t *testing.T, script, terminal string) []nativeDriverResu
 		}
 		results = append(results, r)
 	}
+	if ready != 1 {
+		t.Fatal("missing native ready event")
+	}
+
 	if err := nativeCompletedReplay(script, results, terminal); err != nil {
 		t.Fatal(err)
 	}
@@ -383,22 +430,50 @@ func nativeDriverUntil(t *testing.T, script, terminal string) []nativeDriverResu
 // Validate the full evidence before projecting it into the private table model.
 // Python and Go consumers deliberately share this validator, including mutants.
 func nativeValidateEvidence(script string, rows []json.RawMessage) error {
-	payload, err := json.Marshal(struct {
-		Script string            `json:"script"`
-		Rows   []json.RawMessage `json:"rows"`
-	}{script, rows})
+	_, err := nativeIdentityEvidenceRun(script, rows, false)
+	return err
+}
+
+type nativeIdentityEvidence struct {
+	States []any               `json:"states"`
+	Refs   map[int]map[int]any `json:"refs"`
+}
+
+func nativeIdentityProjection(script string, rows []json.RawMessage) (nativeIdentityEvidence, error) {
+	return nativeIdentityEvidenceRun(script, rows, true)
+}
+
+// G1 validation keeps its validation-only transport. G2 additionally requests
+// canonical states/refs after the same complete-evidence checks have succeeded.
+func nativeIdentityEvidenceRun(script string, rows []json.RawMessage, project bool) (nativeIdentityEvidence, error) {
+	return nativeIdentityEvidenceRunContext(script, rows, project, nil)
+}
+
+func nativeIdentityEvidenceRunContext(script string, rows []json.RawMessage, project bool, readContext *bool) (nativeIdentityEvidence, error) {
+	var result nativeIdentityEvidence
+	payload, err := nativeEvidencePayload(script, rows, project, readContext, nativeStdoutBudget)
 	if err != nil {
-		return err
+		return result, err
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 	//nolint:gosec // Fixed repository validator receives local test evidence.
 	cmd := exec.CommandContext(ctx, "python3", filepath.Join("..", "conformance", "oracle", "native_registration", "identity.py"))
 	cmd.Stdin = bytes.NewReader(payload)
-	if out, err := cmd.CombinedOutput(); err != nil {
-		return fmt.Errorf("native identity evidence: %w: %s", err, out)
+	out, err := nativeCommandOutput(cmd)
+	if err != nil {
+		return result, fmt.Errorf("native identity evidence: %w: %s", err, out)
 	}
-	return nil
+	if !project {
+		return result, nil
+	}
+	if !utf8.Valid(out) {
+		return result, fmt.Errorf("invalid UTF-8 in native identity projection")
+	}
+	if err := json.Unmarshal(out, &result); err != nil {
+		return result, err
+	}
+	return result, nil
 }
 
 func TestNativeIdentitySweep(t *testing.T) {
@@ -406,16 +481,13 @@ func TestNativeIdentitySweep(t *testing.T) {
 	if driver == "" {
 		t.Skip("set YANG_NATIVE_REGISTRATION_DRIVER after the isolated static build")
 	}
-	comparison := os.Getenv("YANG_NATIVE_REGISTRATION_COMPARISON_DRIVER")
-	if comparison == "" {
-		comparison = filepath.Join(filepath.Dir(driver), "driver-unmodified")
-	}
+	comparison := nativeComparisonDriver()
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 	defer cancel()
 	//nolint:gosec // Fixed test script and explicitly opted-in local driver.
 	cmd := exec.CommandContext(ctx, "python3", filepath.Join("..", "conformance", "oracle", "native_registration", "sweep_test.py"),
 		"--driver", driver, "--comparison-driver", comparison)
-	if out, err := cmd.CombinedOutput(); err != nil {
+	if out, err := nativeCommandOutput(cmd); err != nil {
 		t.Fatalf("identity/lifetime sweep: %v\n%s", err, out)
 	} else {
 		t.Logf("%s", out)
@@ -431,7 +503,7 @@ func nativeCompletedReplay(script string, results []nativeDriverResult, terminal
 	}
 	var expected, expectedReads []event
 	commandNames := make(map[string]bool)
-	reads := map[string]string{"print": "public.result", "schema": "read.schema", "rewind": "read.first-sibling", "null-reads": "read.null", "instance": "read.instance", "opaq-find": "read.opaque"}
+	reads := map[string]string{"print": "public.result", "schema": "read.schema", "rewind": "read.first-sibling", "null-reads": "read.null", "instance": "read.instance", "opaq-find": "read.opaque", "read-schema": "read.selection.schema", "read-instance": "read.selection.instance", "read-value": "read.selection.value", "read-opaque": "read.selection.opaque", "equal": "read.equal"}
 	for _, line := range strings.Split(script, "\n") {
 		fields := strings.Fields(line)
 		if len(fields) == 0 || strings.HasPrefix(fields[0], "#") {
@@ -454,11 +526,14 @@ func nativeCompletedReplay(script string, results []nativeDriverResult, terminal
 		}
 	}
 	var actual, actualReads []event
-	for _, row := range results {
+	for i, row := range results {
+		if strings.HasPrefix(row.Event, "boundary.") && (row.Event != terminal || i != len(results)-1) {
+			return fmt.Errorf("unexpected native boundary: %s", row.Event)
+		}
 		if commandNames[row.Event] {
 			actual = append(actual, event{row.Operation, row.Event})
 		}
-		if row.Event == "public.result" || row.Event == "read.schema" || row.Event == "read.first-sibling" || row.Event == "read.null" || row.Event == "read.instance" || row.Event == "read.opaque" {
+		if row.Event == "public.result" || row.Event == "read.schema" || row.Event == "read.first-sibling" || row.Event == "read.null" || row.Event == "read.instance" || row.Event == "read.opaque" || row.Event == "read.equal" || strings.HasPrefix(row.Event, "read.selection.") {
 			actualReads = append(actualReads, event{row.Operation, row.Event})
 		}
 	}
@@ -496,22 +571,45 @@ func TestNativeDriverReplayCompletion(t *testing.T) {
 	}
 }
 
+// G1 entry controls and G2 selections must share the completion validator.
+func TestNativeMergedReadCompletion(t *testing.T) {
+	commands := []string{"instance", "opaq-find", "null-reads", "read-schema", "read-instance", "read-value", "read-opaque", "equal"}
+	reads := []string{"read.instance", "read.opaque", "read.null", "read.selection.schema", "read.selection.instance", "read.selection.value", "read.selection.opaque", "read.equal"}
+	var script strings.Builder
+	var rows []nativeDriverResult
+	for i, command := range commands {
+		script.WriteString(command + " 1 2 3\n")
+		rows = append(rows, nativeDriverResult{Operation: i + 1, Event: reads[i]}, nativeDriverResult{Operation: i + 1, Event: command})
+	}
+	if err := nativeCompletedReplay(script.String(), rows, ""); err != nil {
+		t.Fatal(err)
+	}
+	for i, command := range commands {
+		t.Run(command, func(t *testing.T) {
+			missing := append([]nativeDriverResult(nil), rows[:2*i]...)
+			missing = append(missing, rows[2*i+1:]...)
+			if err := nativeCompletedReplay(script.String(), missing, ""); err == nil {
+				t.Fatal("accepted missing read result")
+			}
+		})
+	}
+}
+
 func TestNativeObserverEvidence(t *testing.T) {
 	driver := os.Getenv("YANG_NATIVE_REGISTRATION_DRIVER")
 	if driver == "" {
 		t.Skip("set YANG_NATIVE_REGISTRATION_DRIVER after the isolated static build")
 	}
-	comparison := os.Getenv("YANG_NATIVE_REGISTRATION_COMPARISON_DRIVER")
-	if comparison == "" {
-		comparison = filepath.Join(filepath.Dir(driver), "driver-unmodified")
-	}
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Minute)
+	comparison := nativeComparisonDriver()
+	// TestNativeCustomSchemaSweep owns the custom matrix; this test runs the
+	// core native cases without repeating that matrix in the same Go suite.
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
 	defer cancel()
 	// This independently checks occurrence identities, retirement, logging versus
 	// context diagnostics, public controls and the labeled native stop boundaries.
 	cmd := exec.CommandContext(ctx, "python3", filepath.Join("..", "conformance", "oracle", "native_registration", "check.py"),
-		"--driver", driver, "--comparison-driver", comparison)
-	out, err := cmd.CombinedOutput()
+		"--driver", driver, "--comparison-driver", comparison, "--suite", "core")
+	out, err := nativeCommandOutput(cmd)
 	if err != nil {
 		t.Fatalf("native observer evidence: %v\n%s", err, out)
 	}

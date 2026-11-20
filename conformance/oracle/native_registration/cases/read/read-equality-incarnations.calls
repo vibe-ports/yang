@@ -1,0 +1,11 @@
+# SPDX-License-Identifier: BSD-3-Clause
+# Reuse a handle, then alias the new allocation without changing its birth label.
+root 1 c
+term 2 1 p same
+free 2
+term 2 1 p same
+child 11 1 0
+equal 2 11 1
+dup 3 2 0 66
+equal 2 3 1
+equal 3 2 1

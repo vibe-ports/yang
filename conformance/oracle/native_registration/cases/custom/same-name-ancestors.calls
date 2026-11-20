@@ -1,0 +1,10 @@
+# SPDX-License-Identifier: BSD-3-Clause
+# Equal names at different compiled paths must not stop ancestor duplication.
+context module m {yang-version 1.1;namespace urn:m;prefix m;container p {container p {leaf c {type string;}}}}
+parse 1 {"m:p":{"p":{"c":"A"}}}
+child 2 1 0
+child 3 2 0
+dup 4 3 1 6
+print 1
+equal 3 4 0
+equal 4 3 0

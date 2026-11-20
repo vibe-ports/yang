@@ -1,0 +1,7 @@
+# SPDX-License-Identifier: BSD-3-Clause
+root 1 c
+parse 2 {"m:c":{},"m:other":{}}
+root 3 c
+root 4 c
+root 5 c
+frontier 1 2 3 4 5

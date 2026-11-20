@@ -1,0 +1,4 @@
+# SPDX-License-Identifier: BSD-3-Clause
+root 1 c
+opaque 2 0 u A
+free-root 1 2

@@ -3,7 +3,9 @@
 root 1 c
 term 11 1 p P
 print 11
+# reuse-free 11 self
 free 11
+# reuse-next self
 term 11 1 p P
 print 11
 free 11
